@@ -3,15 +3,15 @@ package main
 import (
 	"fmt"
 
+	"github.com/mclaughlinconnor/ts_inspector/parsers/pug"
 	sitter "github.com/smacker/go-tree-sitter"
-	"github.com/smacker/go-tree-sitter/javascript"
 )
 
 func main() {
-	input := []byte("function hello() { console.log('hello') }; function goodbye(){}")
+	input := []byte("span Hello World\n")
 
 	parser := sitter.NewParser()
-	parser.SetLanguage(javascript.GetLanguage())
+	parser.SetLanguage(pug.GetLanguage())
 
 	tree := parser.Parse(nil, input)
 
