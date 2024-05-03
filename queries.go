@@ -11,6 +11,9 @@ var queries = map[string]map[string][]byte{}
 const (
 	QueryComponentDecorator = "query_component_decorator"
 	QueryPropertyUsage      = "query_property_usage"
+	QueryContent            = "query_content"
+	QueryAttribute          = "query_attribute"
+	QueryInterpolation      = "query_interpolation"
 )
 
 var componentDecorator = []byte(`
@@ -30,10 +33,29 @@ var componentDecorator = []byte(`
     (#eq? @decorator_name "Component"))
 `)
 
-var propertyUsage = []byte(`
+var typescriptPropertyUsage = []byte(`
   (member_expression
     object: (this)
     property: (property_identifier) @var)
+`)
+
+var javascriptPropertyUsage = []byte(`
+  (identifier) @name
+`)
+
+var pugAttribute = []byte(`
+  (attribute
+    (attribute_name) @name
+    (quoted_attribute_value
+      (attribute_value) @value))
+`)
+
+var pugContent = []byte(`
+  (content) @content
+`)
+
+var angularContentInterpolation = []byte(`
+  (interpolation) @interpolation
 `)
 
 func registerQuery(name string, lang string, query []byte) {
@@ -60,5 +82,9 @@ func GetQuery(name string, lang string) (*sitter.QueryCursor, *sitter.Query) {
 
 func InitQueries() {
 	registerQuery(QueryComponentDecorator, TypeScript, componentDecorator)
-	registerQuery(QueryPropertyUsage, TypeScript, propertyUsage)
+	registerQuery(QueryPropertyUsage, TypeScript, typescriptPropertyUsage)
+	registerQuery(QueryPropertyUsage, JavaScript, javascriptPropertyUsage)
+	registerQuery(QueryContent, Pug, pugContent)
+	registerQuery(QueryAttribute, Pug, pugAttribute)
+	registerQuery(QueryInterpolation, AngularContent, angularContentInterpolation)
 }

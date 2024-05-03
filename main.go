@@ -16,8 +16,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-	input := ReadFile(filename)
-
 	InitQueries()
-	ParseFileContent(filename, input)
+	HandleTypeScriptFile(filename)
 }

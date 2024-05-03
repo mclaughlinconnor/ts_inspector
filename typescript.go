@@ -4,7 +4,7 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
-func ExtractUsages(usages map[string]Usage, root *sitter.Node, content []byte) (returnedUsages map[string]Usage, err error) {
+func ExtractTypeScriptUsages(usages Usages, root *sitter.Node, content []byte) (returnedUsages Usages, err error) {
 	qc, q := GetQuery(QueryPropertyUsage, TypeScript)
 
 	qc.Exec(q, root)
