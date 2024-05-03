@@ -18,17 +18,19 @@ var PrivateAccessibility = accessibility{"private"}
 
 type Identifier struct {
 	AccessModifier accessibility
-  Name string
-  Node *sitter.Node
+	Name           string
+	Node           *sitter.Node
 }
 
 type UsageInstance struct {
-  Access access
-  Node *sitter.Node
+	Access access
+	Node   *sitter.Node
 }
 
 type Usage struct {
 	Access access
-  Name string
-  Usages []UsageInstance
+	Name   string
+	Usages []UsageInstance
 }
+
+type Usages map[string]Usage

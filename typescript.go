@@ -26,16 +26,16 @@ func ExtractTypeScriptUsages(usages Usages, root *sitter.Node, content []byte) (
 
 		_, ok = usages[name]
 		if ok {
-      existingUsages := usages[name]
-      existingUsages.Usages = append(existingUsages.Usages, usageInstance)
+			existingUsages := usages[name]
+			existingUsages.Usages = append(existingUsages.Usages, usageInstance)
 			usages[name] = existingUsages
 		} else {
 			usages[name] = Usage{
-        LocalAccess,
-        name,
-        []UsageInstance{usageInstance},
-      }
-    }
+				LocalAccess,
+				name,
+				[]UsageInstance{usageInstance},
+			}
+		}
 	}
 	return usages, nil
 }

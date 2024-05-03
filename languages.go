@@ -15,15 +15,15 @@ const (
 	JavaScript     = "javascript"
 )
 
-var languageConsts = []string {AngularContent, JavaScript, Pug, TypeScript}
+var languageConsts = []string{AngularContent, JavaScript, Pug, TypeScript}
 
 var languages = map[string]*sitter.Language{
-  AngularContent : angular_content.GetLanguage(),
-  Pug : pug.GetLanguage(),
-  TypeScript : typescript.GetLanguage(),
-  JavaScript : javascript.GetLanguage(),
+	AngularContent: angular_content.GetLanguage(),
+	Pug:            pug.GetLanguage(),
+	TypeScript:     typescript.GetLanguage(),
+	JavaScript:     javascript.GetLanguage(),
 }
 
 func GetLanguage(language string) *sitter.Language {
-  return languages[language]
+	return languages[language]
 }
