@@ -10,6 +10,7 @@ var queries = map[string]map[string][]byte{}
 
 const (
 	QueryComponentDecorator = "query_component_decorator"
+	QueryPropertyUsage      = "query_property_usage"
 )
 
 var componentDecorator = []byte(`
@@ -26,9 +27,14 @@ var componentDecorator = []byte(`
       )
     )
     (#eq? @key_name "templateUrl")
-    (#eq? @decorator_name "Component")
-  )
-  `)
+    (#eq? @decorator_name "Component"))
+`)
+
+var propertyUsage = []byte(`
+  (member_expression
+    object: (this)
+    property: (property_identifier) @var)
+`)
 
 func registerQuery(name string, lang string, query []byte) {
 	_, ok := queries[lang]
@@ -54,4 +60,5 @@ func GetQuery(name string, lang string) (*sitter.QueryCursor, *sitter.Query) {
 
 func InitQueries() {
 	registerQuery(QueryComponentDecorator, TypeScript, componentDecorator)
+	registerQuery(QueryPropertyUsage, TypeScript, propertyUsage)
 }

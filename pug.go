@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"path"
 	"path/filepath"
 
@@ -21,7 +22,7 @@ func ExtractTemplateFilename(controllerFilePath string, root *sitter.Node, conte
 
 		m = qc.FilterPredicates(m, content)
 		if len(m.Captures) == 0 {
-      continue
+			continue
 		}
 
 		relativeTemplatePath := m.Captures[2].Node.Content(content)
@@ -36,6 +37,6 @@ func ExtractTemplateFilename(controllerFilePath string, root *sitter.Node, conte
 			return templateFilePath, nil
 		}
 
-		return "", errors.New("Expected template file does not exist")
+		return "", fmt.Errorf("Expected template file does not exist: %s", templateFilePath)
 	}
 }

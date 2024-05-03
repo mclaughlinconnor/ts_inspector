@@ -7,11 +7,13 @@ import {ChangeDetectionStrategy, Component} from '@angular/core';
 })
 
 export class RootComponent {
-  public public: number = 23;
+  public data: number = 23;
 
   public get getter(): number {
-    return 23;
+    return this.data;
   }
 
-  constructor() { }
+  constructor() {
+    console.log(this.data);
+  }
 }

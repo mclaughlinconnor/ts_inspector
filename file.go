@@ -25,5 +25,11 @@ func ParseFileContent(filename string, content []byte) (ok bool) {
 
 	log.Printf("Found template for %s at %s", filename, templateFilename)
 
+  usages := map[string]Usage{};
+  usages, err = ExtractUsages(usages, root, content)
+  if err != nil {
+    log.Print(err)
+  }
+
 	return true
 }
