@@ -14,6 +14,7 @@ const (
 	QueryContent            = "query_content"
 	QueryAttribute          = "query_attribute"
 	QueryInterpolation      = "query_interpolation"
+	QueryPrototypeUsage     = "query_prototype_usage"
 )
 
 var componentDecorator = []byte(`
@@ -58,6 +59,24 @@ var angularContentInterpolation = []byte(`
   (interpolation) @interpolation
 `)
 
+var typescriptPrototypeUsage = []byte(`
+  [
+    (member_expression
+      object: (member_expression
+        object: (identifier) @class
+        property: (property_identifier) @prototype)
+      property: (property_identifier) @var)
+    (subscript_expression
+      object: (member_expression
+        object: (identifier) @class
+        property: (property_identifier) @prototype)
+      index: (string
+        (string_fragment) @var))
+    (#eq? @prototype "prototype")
+    ; (#eq? @class "class") ; add later when class checking is supported
+  ]
+`)
+
 func registerQuery(name string, lang string, query []byte) {
 	_, ok := queries[lang]
 	if !ok {
@@ -87,4 +106,5 @@ func InitQueries() {
 	registerQuery(QueryContent, Pug, pugContent)
 	registerQuery(QueryAttribute, Pug, pugAttribute)
 	registerQuery(QueryInterpolation, AngularContent, angularContentInterpolation)
+	registerQuery(QueryPrototypeUsage, TypeScript, typescriptPrototypeUsage)
 }
