@@ -15,6 +15,7 @@ export class RootComponent {
 
   constructor() {
     RootComponent.prototype.prototypalUsage
+    console.log(this.connor)
     console.log(this.data);
     console.log(this.not);
   }

@@ -3,14 +3,16 @@ package main
 import sitter "github.com/smacker/go-tree-sitter"
 
 type access struct {
-	modifier string
+	modifier   string
+	precedence int
 }
 
-var LocalAccess = access{"local"}
-var ForeignAccess = access{"foreign"}
+var ConstructorAccess = access{"constructor", 0}
+var LocalAccess = access{"local", 1}
+var ForeignAccess = access{"foreign", 2}
 
 type accessibility struct {
-	modifier string
+	Modifier string
 }
 
 var PublicAccessibility = accessibility{"public"}
@@ -34,3 +36,11 @@ type Usage struct {
 }
 
 type Usages map[string]Usage
+
+func CalculateNewAccessType(new access, old access) access {
+	if new.precedence > old.precedence {
+		return new
+	}
+
+	return old
+}

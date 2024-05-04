@@ -73,12 +73,12 @@ func extractIndentifierUsages(text []byte, usages Usages) (Usages, error) {
 		_, ok := usages[name]
 		if ok {
 			existingUsages := usages[name]
+			existingUsages.Access = CalculateNewAccessType(existingUsages.Access, usageInstance.Access)
 			existingUsages.Usages = append(existingUsages.Usages, usageInstance)
-			existingUsages.Access = ForeignAccess // Pug usages are always foreign
 			usages[name] = existingUsages
 		} else {
 			usages[name] = Usage{
-				ForeignAccess,
+				usageInstance.Access,
 				name,
 				[]UsageInstance{usageInstance},
 			}
