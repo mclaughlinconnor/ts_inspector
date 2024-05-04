@@ -34,9 +34,7 @@ func ReadFile(filename string) []byte {
 
 type HandleCapture[T any] func(captures []sitter.QueryCapture, returnValue T) (T, error)
 
-func WithCaptures[T any](query string, language string, content []byte, handler HandleCapture[T]) (T, error) {
-	var returnValue T
-
+func WithCaptures[T any](query string, language string, content []byte, returnValue T, handler HandleCapture[T]) (T, error) {
 	parser := sitter.NewParser()
 	parser.SetLanguage(GetLanguage(language))
 

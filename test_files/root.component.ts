@@ -15,5 +15,6 @@ export class RootComponent {
 
   constructor() {
     console.log(this.data);
+    console.log(this.not);
   }
 }

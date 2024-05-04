@@ -14,8 +14,7 @@ func HandleTypeScriptFile(filename string) (returnedState Usages, ok bool) {
 
 	return parseFileContent(filename, TypeScript, state,
 		parseCallback[Usages](func(root *sitter.Node, content []byte, filename string, state Usages) (result Usages, ok bool) {
-			usages := Usages{}
-			usages, err := ExtractTypeScriptUsages(usages, root, content)
+			state, err := ExtractTypeScriptUsages(state, root, content)
 			if err != nil {
 				log.Print(err)
 			}
@@ -25,9 +24,9 @@ func HandleTypeScriptFile(filename string) (returnedState Usages, ok bool) {
 				log.Fatal(err)
 			}
 
-			HandlePugFile(templateFilename, state)
+			state, ok = HandlePugFile(templateFilename, state)
 
-			return nil, true
+			return state, ok
 		}))
 }
 
@@ -38,7 +37,7 @@ func HandlePugFile(filename string, state Usages) (returnedState Usages, ok bool
 			if err != nil {
 				log.Print(err)
 			}
-			return nil, true
+			return usages, true
 		}))
 }
 
