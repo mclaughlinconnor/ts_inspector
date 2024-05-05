@@ -1,10 +1,11 @@
-package main
+package parser
 
 import (
-	"github.com/mclaughlinconnor/ts_inspector/parsers/angular_content"
-	"github.com/mclaughlinconnor/ts_inspector/parsers/javascript"
-	"github.com/mclaughlinconnor/ts_inspector/parsers/pug"
-	"github.com/mclaughlinconnor/ts_inspector/parsers/typescript"
+	"ts_inspector/treesitter_parsers/angular_content"
+	"ts_inspector/treesitter_parsers/javascript"
+	"ts_inspector/treesitter_parsers/pug"
+	"ts_inspector/treesitter_parsers/typescript"
+
 	sitter "github.com/smacker/go-tree-sitter"
 )
 

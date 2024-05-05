@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"ts_inspector/parser"
 )
 
 func main() {
@@ -18,8 +19,8 @@ func main() {
 		log.Fatal(err)
 	}
 
-	InitQueries()
-	usages, _ := HandleTypeScriptFile(filename)
+	parser.InitQueries()
+	usages, _ := parser.HandleTypeScriptFile(filename)
 
 	j, err := json.MarshalIndent(usages, "", "  ")
 
