@@ -9,11 +9,11 @@ import (
 
 type parseCallback[V any] func(root *sitter.Node, content []byte, filename string, state V) (result V, ok bool)
 
-func HandleTypeScriptFile(filename string) (returnedState Usages, ok bool) {
-	state := Usages{}
+func HandleTypeScriptFile(filename string) (returnedState State, ok bool) {
+	state := NewState()
 
 	return parseFileContent(filename, TypeScript, state,
-		parseCallback[Usages](func(root *sitter.Node, content []byte, filename string, state Usages) (result Usages, ok bool) {
+		parseCallback[State](func(root *sitter.Node, content []byte, filename string, state State) (result State, ok bool) {
 			state, err := ExtractTypeScriptUsages(state, root, content)
 			if err != nil {
 				log.Print(err)
@@ -30,14 +30,14 @@ func HandleTypeScriptFile(filename string) (returnedState Usages, ok bool) {
 		}))
 }
 
-func HandlePugFile(filename string, state Usages) (returnedState Usages, ok bool) {
+func HandlePugFile(filename string, state State) (returnedState State, ok bool) {
 	return parseFileContent(filename, Pug, state,
-		parseCallback[Usages](func(root *sitter.Node, content []byte, filename string, usages Usages) (result Usages, ok bool) {
-			usages, err := ExtractPugUsages(usages, content)
+		parseCallback[State](func(root *sitter.Node, content []byte, filename string, state State) (result State, ok bool) {
+			state, err := ExtractPugUsages(state, content)
 			if err != nil {
 				log.Print(err)
 			}
-			return usages, true
+			return state, true
 		}))
 }
 

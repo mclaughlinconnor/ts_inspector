@@ -44,3 +44,11 @@ func CalculateNewAccessType(new access, old access) access {
 
 	return old
 }
+
+type State struct {
+	Usages Usages
+}
+
+func NewState() State {
+	return State{Usages{}}
+}

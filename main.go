@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -17,5 +19,9 @@ func main() {
 	}
 
 	InitQueries()
-	HandleTypeScriptFile(filename)
+	usages, _ := HandleTypeScriptFile(filename)
+
+	j, err := json.MarshalIndent(usages, "", "  ")
+
+	fmt.Println(string(j))
 }

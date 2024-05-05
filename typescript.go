@@ -4,8 +4,8 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
-func ExtractTypeScriptUsages(usages Usages, root *sitter.Node, content []byte) (Usages, error) {
-	usages, _ = WithCaptures(QueryPrototypeUsage, TypeScript, content, usages, HandleCapture[Usages](func(captures []sitter.QueryCapture, returnValue Usages) (Usages, error) {
+func ExtractTypeScriptUsages(state State, root *sitter.Node, content []byte) (State, error) {
+	state, _ = WithCaptures(QueryPrototypeUsage, TypeScript, content, state, HandleCapture[State](func(captures []sitter.QueryCapture, returnValue State) (State, error) {
 		if len(captures) == 0 {
 			return returnValue, nil
 		}
@@ -13,12 +13,12 @@ func ExtractTypeScriptUsages(usages Usages, root *sitter.Node, content []byte) (
 		node := captures[2].Node
 		name := node.Content(content)
 
-		usages = addUsage(usages, name, node, content)
+		state = addUsage(state, name, node, content)
 
-		return usages, nil
+		return state, nil
 	}))
 
-	return WithCaptures(QueryPropertyUsage, TypeScript, content, usages, HandleCapture[Usages](func(captures []sitter.QueryCapture, returnValue Usages) (Usages, error) {
+	return WithCaptures(QueryPropertyUsage, TypeScript, content, state, HandleCapture[State](func(captures []sitter.QueryCapture, returnValue State) (State, error) {
 		if len(captures) == 0 {
 			return returnValue, nil
 		}
@@ -26,13 +26,13 @@ func ExtractTypeScriptUsages(usages Usages, root *sitter.Node, content []byte) (
 		node := captures[0].Node
 		name := node.Content(content)
 
-		usages = addUsage(usages, name, node, content)
+		state = addUsage(state, name, node, content)
 
-		return usages, nil
+		return state, nil
 	}))
 }
 
-func addUsage(usages Usages, name string, node *sitter.Node, content []byte) Usages {
+func addUsage(state State, name string, node *sitter.Node, content []byte) State {
 	access := LocalAccess
 	if isInConstructor(node, content) {
 		access = ConstructorAccess
@@ -40,21 +40,21 @@ func addUsage(usages Usages, name string, node *sitter.Node, content []byte) Usa
 
 	usageInstance := UsageInstance{access, node}
 
-	_, ok := usages[name]
+	usage, ok := state.Usages[name]
 	if ok {
-		existingUsages := usages[name]
+		existingUsages := usage
 		existingUsages.Access = CalculateNewAccessType(existingUsages.Access, usageInstance.Access)
 		existingUsages.Usages = append(existingUsages.Usages, usageInstance)
-		usages[name] = existingUsages
+		state.Usages[name] = existingUsages
 	} else {
-		usages[name] = Usage{
+		state.Usages[name] = Usage{
 			usageInstance.Access,
 			name,
 			[]UsageInstance{usageInstance},
 		}
 	}
 
-	return usages
+	return state
 }
 
 func isInConstructor(node *sitter.Node, content []byte) bool {

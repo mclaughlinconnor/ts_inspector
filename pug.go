@@ -31,60 +31,64 @@ func ExtractTemplateFilename(controllerFilePath string, root *sitter.Node, conte
 	}))
 }
 
-func ExtractPugUsages(usages Usages, content []byte) (returnedUsages Usages, err error) {
-	usages, err = WithCaptures(QueryAttribute, Pug, content, usages, func(captures []sitter.QueryCapture, returnValue Usages) (Usages, error) {
+func ExtractPugUsages(state State, content []byte) (State, error) {
+	state, err := WithCaptures(QueryAttribute, Pug, content, state, func(captures []sitter.QueryCapture, returnValue State) (State, error) {
 		name := []byte(captures[0].Node.Content(content))
 
 		isAttr, err := isAngularAttribute(name)
 
 		if err != nil {
-			return usages, err
+			return state, err
 		}
 
 		if isAttr {
 			valueNode := captures[1].Node
 			value := []byte(valueNode.Content(content))
-			return extractIndentifierUsages(value, usages)
+			return extractIndentifierUsages(value, state)
 		}
 
-		return usages, nil
+		return state, nil
 	})
 
-	return WithCaptures(QueryContent, Pug, content, usages, HandleCapture[Usages](func(captures []sitter.QueryCapture, returnValue Usages) (Usages, error) {
+	if err != nil {
+		return state, err
+	}
+
+	return WithCaptures(QueryContent, Pug, content, state, HandleCapture[State](func(captures []sitter.QueryCapture, returnValue State) (State, error) {
 		tagContentNode := captures[0].Node
 		tagContent := []byte(tagContentNode.Content(content))
 
-		return WithCaptures(QueryInterpolation, AngularContent, tagContent, usages, func(captures []sitter.QueryCapture, returnValue Usages) (Usages, error) {
+		return WithCaptures(QueryInterpolation, AngularContent, tagContent, state, func(captures []sitter.QueryCapture, returnValue State) (State, error) {
 			interpolationNode := captures[0].Node
 			interpolation := []byte(interpolationNode.Content(tagContent))
 
-			return extractIndentifierUsages(interpolation, usages)
+			return extractIndentifierUsages(interpolation, state)
 		})
 	}))
 }
 
 // Intentionally only get `identifier`s instead of `property_identifier`s because only the `identifier` will exist on the controller
-func extractIndentifierUsages(text []byte, usages Usages) (Usages, error) {
-	return WithCaptures(QueryPropertyUsage, JavaScript, text, usages, func(captures []sitter.QueryCapture, returnValue Usages) (Usages, error) {
+func extractIndentifierUsages(text []byte, state State) (State, error) {
+	return WithCaptures(QueryPropertyUsage, JavaScript, text, state, func(captures []sitter.QueryCapture, returnValue State) (State, error) {
 		node := captures[0].Node
 		name := node.Content(text)
 		usageInstance := UsageInstance{ForeignAccess, node}
 
-		_, ok := usages[name]
+		usage, ok := state.Usages[name]
 		if ok {
-			existingUsages := usages[name]
+			existingUsages := usage
 			existingUsages.Access = CalculateNewAccessType(existingUsages.Access, usageInstance.Access)
 			existingUsages.Usages = append(existingUsages.Usages, usageInstance)
-			usages[name] = existingUsages
+			state.Usages[name] = existingUsages
 		} else {
-			usages[name] = Usage{
+			state.Usages[name] = Usage{
 				usageInstance.Access,
 				name,
 				[]UsageInstance{usageInstance},
 			}
 		}
 
-		return usages, nil
+		return state, nil
 	})
 
 }
