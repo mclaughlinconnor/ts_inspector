@@ -10,7 +10,7 @@ import (
 )
 
 func ExtractTemplateFilename(controllerFilePath string, root *sitter.Node, content []byte) (filename string, err error) {
-	return WithCaptures(QueryComponentDecorator, TypeScript, content, "", HandleCapture[string](func(captures []sitter.QueryCapture, returnValue string) (string, error) {
+	return WithMatches(QueryComponentDecorator, TypeScript, content, "", HandleMatch[string](func(captures []sitter.QueryCapture, returnValue string) (string, error) {
 		if len(captures) == 0 {
 			return returnValue, nil
 		}
@@ -32,7 +32,7 @@ func ExtractTemplateFilename(controllerFilePath string, root *sitter.Node, conte
 }
 
 func ExtractPugUsages(state State, content []byte) (State, error) {
-	state, err := WithCaptures(QueryAttribute, Pug, content, state, func(captures []sitter.QueryCapture, returnValue State) (State, error) {
+	state, err := WithMatches(QueryAttribute, Pug, content, state, func(captures []sitter.QueryCapture, returnValue State) (State, error) {
 		name := []byte(captures[0].Node.Content(content))
 
 		isAttr, err := isAngularAttribute(name)
@@ -54,11 +54,11 @@ func ExtractPugUsages(state State, content []byte) (State, error) {
 		return state, err
 	}
 
-	return WithCaptures(QueryContent, Pug, content, state, HandleCapture[State](func(captures []sitter.QueryCapture, returnValue State) (State, error) {
+	return WithMatches(QueryContent, Pug, content, state, HandleMatch[State](func(captures []sitter.QueryCapture, returnValue State) (State, error) {
 		tagContentNode := captures[0].Node
 		tagContent := []byte(tagContentNode.Content(content))
 
-		return WithCaptures(QueryInterpolation, AngularContent, tagContent, state, func(captures []sitter.QueryCapture, returnValue State) (State, error) {
+		return WithMatches(QueryInterpolation, AngularContent, tagContent, state, func(captures []sitter.QueryCapture, returnValue State) (State, error) {
 			interpolationNode := captures[0].Node
 			interpolation := []byte(interpolationNode.Content(tagContent))
 
@@ -69,7 +69,7 @@ func ExtractPugUsages(state State, content []byte) (State, error) {
 
 // Intentionally only get `identifier`s instead of `property_identifier`s because only the `identifier` will exist on the controller
 func extractIndentifierUsages(text []byte, state State) (State, error) {
-	return WithCaptures(QueryPropertyUsage, JavaScript, text, state, func(captures []sitter.QueryCapture, returnValue State) (State, error) {
+	return WithMatches(QueryPropertyUsage, JavaScript, text, state, func(captures []sitter.QueryCapture, returnValue State) (State, error) {
 		node := captures[0].Node
 		name := node.Content(text)
 		usageInstance := UsageInstance{ForeignAccess, node}

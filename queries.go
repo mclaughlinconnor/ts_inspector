@@ -15,6 +15,7 @@ const (
 	QueryAttribute          = "query_attribute"
 	QueryInterpolation      = "query_interpolation"
 	QueryPrototypeUsage     = "query_prototype_usage"
+	QueryPropertyDefinition = "query_property_definition"
 )
 
 var componentDecorator = []byte(`
@@ -77,6 +78,23 @@ var typescriptPrototypeUsage = []byte(`
   ]
 `)
 
+var typescriptPropetyDefinition = []byte(`
+  [
+    (public_field_definition
+      decorator: (decorator
+        (call_expression
+          function: (identifier) @decorator))*
+      (accessibility_modifier) @accessibility_modifier
+      name: (property_identifier) @var) @definition
+    (required_parameter
+      decorator: (decorator
+        (call_expression
+          function: (identifier) @decorator))*
+      (accessibility_modifier) @accessibility_modifier
+      pattern: (identifier) @var) @definition
+  ]
+`)
+
 func registerQuery(name string, lang string, query []byte) {
 	_, ok := queries[lang]
 	if !ok {
@@ -107,4 +125,5 @@ func InitQueries() {
 	registerQuery(QueryAttribute, Pug, pugAttribute)
 	registerQuery(QueryInterpolation, AngularContent, angularContentInterpolation)
 	registerQuery(QueryPrototypeUsage, TypeScript, typescriptPrototypeUsage)
+	registerQuery(QueryPropertyDefinition, TypeScript, typescriptPropetyDefinition)
 }

@@ -32,9 +32,9 @@ func ReadFile(filename string) []byte {
 	return data
 }
 
-type HandleCapture[T any] func(captures []sitter.QueryCapture, returnValue T) (T, error)
+type HandleMatch[T any] func(captures []sitter.QueryCapture, returnValue T) (T, error)
 
-func WithCaptures[T any](query string, language string, content []byte, returnValue T, handler HandleCapture[T]) (T, error) {
+func WithMatches[T any](query string, language string, content []byte, returnValue T, handler HandleMatch[T]) (T, error) {
 	parser := sitter.NewParser()
 	parser.SetLanguage(GetLanguage(language))
 
@@ -61,4 +61,32 @@ func WithCaptures[T any](query string, language string, content []byte, returnVa
 	}
 
 	return returnValue, nil
+}
+
+func IsAngularDecorator(name string) bool {
+	_, found := angularDecorators[name]
+
+	return found
+}
+
+var angularDecorators = map[string]bool{
+	"Attribute":       true,
+	"Component":       true,
+	"ContentChild":    true,
+	"ContentChildren": true,
+	"Directive":       true,
+	"Host":            true,
+	"HostBinding":     true,
+	"HostListener":    true,
+	"Inject":          true,
+	"Injectable":      true,
+	"Input":           true,
+	"NgModule":        true,
+	"Optional":        true,
+	"Output":          true,
+	"Pipe":            true,
+	"Self":            true,
+	"SkipSelf":        true,
+	"ViewChild":       true,
+	"ViewChildren":    true,
 }

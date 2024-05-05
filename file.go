@@ -19,6 +19,11 @@ func HandleTypeScriptFile(filename string) (returnedState State, ok bool) {
 				log.Print(err)
 			}
 
+			state, err = ExtractTypeScriptDefinitions(state, root, content)
+			if err != nil {
+				log.Print(err)
+			}
+
 			templateFilename, err := ExtractTemplateFilename(filename, root, content)
 			if err != nil {
 				log.Fatal(err)

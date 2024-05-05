@@ -7,6 +7,9 @@ import {ChangeDetectionStrategy, Component} from '@angular/core';
 })
 
 export class RootComponent {
+  @Output()
+  @LazyGetter()
+  @Input()
   public data: number = 23;
 
   public get getter(): number {
