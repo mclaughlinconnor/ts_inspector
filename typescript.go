@@ -35,20 +35,27 @@ func ExtractTypeScriptUsages(state State, root *sitter.Node, content []byte) (St
 }
 
 func ExtractTypeScriptDefinitions(state State, root *sitter.Node, content []byte) (State, error) {
+	state, _ = WithMatches(QueryMethodDefinition, TypeScript, content, state, HandleMatch[State](func(captures []sitter.QueryCapture, returnValue State) (State, error) {
+		definition := Definition{}
+		for _, capture := range captures {
+			definition = handleDefinition(definition, capture.Node, content)
+		}
+
+		state.Definitions[definition.Name] = definition
+
+		return returnValue, nil
+	}))
+
 	return WithMatches(QueryPropertyDefinition, TypeScript, content, state, HandleMatch[State](func(captures []sitter.QueryCapture, returnValue State) (State, error) {
 		var definitionNode *sitter.Node
 		var accessibilityNode *sitter.Node
 		var nameNode *sitter.Node
 
-		decoratorNodes := []*sitter.Node{}
 		nodeIndex := 0
-
 		definitionNode = captures[nodeIndex].Node
 		nodeIndex++
-		for captures[nodeIndex].Node.Type() == "identifier" {
-			decoratorNodes = append(decoratorNodes, captures[nodeIndex].Node)
-			nodeIndex++
-		}
+
+		decorators, nodeIndex := handleDecorators(captures, nodeIndex, content)
 
 		accessibilityNode = captures[nodeIndex].Node
 		nodeIndex++
@@ -63,14 +70,7 @@ func ExtractTypeScriptDefinitions(state State, root *sitter.Node, content []byte
 			log.Fatal(err)
 		}
 
-		decorators := []Decorator{}
-		for _, decoratorNode := range decoratorNodes {
-			decoratorName := decoratorNode.Content(content)
-			isAngularDecorator := IsAngularDecorator(decoratorName)
-			decorators = append(decorators, Decorator{isAngularDecorator, decoratorName})
-		}
-
-		state.Definitions[name] = Definition{a, decorators, name, definitionNode}
+		state.Definitions[name] = CreatePropertyDefinition(a, decorators, name, definitionNode)
 
 		return state, nil
 	}))
@@ -114,4 +114,54 @@ func isInConstructor(node *sitter.Node, content []byte) bool {
 	}
 
 	return false
+}
+
+func handleDefinition(definition Definition, node *sitter.Node, content []byte) Definition {
+	if node.Type() == "identifier" { // Should be safer. identifier doesn't just mean identifiers inside decorators
+		definition.Decorators = append(definition.Decorators, handleDecorator(node, content))
+	} else if node.Type() == "accessibility_modifier" {
+		a, err := CalculateAccessibilityFromString(node.Content(content))
+		if err != nil {
+			log.Fatal(err)
+		}
+		definition.AccessModifier = a
+	} else if node.Type() == "static" {
+		definition.Static = true
+	} else if node.Type() == "override_modifier" {
+		definition.Override = true
+	} else if node.Type() == "readonly" {
+		definition.Readonly = true
+	} else if node.Type() == "async" {
+		definition.Async = true
+	} else if node.Type() == "*" {
+		definition.Generator = true
+	} else if node.Type() == "set" {
+		definition.Setter = true
+	} else if node.Type() == "get" {
+		definition.Getter = true
+	} else if node.Type() == "property_identifier" {
+		definition.Name = node.Content(content)
+	} else {
+		log.Println(node.Type())
+	}
+
+	return definition
+}
+
+func handleDecorators(captures []sitter.QueryCapture, startIndex int, content []byte) ([]Decorator, int) {
+	decorators := []Decorator{}
+	nodeIndex := startIndex
+
+	for captures[nodeIndex].Node.Type() == "identifier" {
+		decorators = append(decorators, handleDecorator(captures[nodeIndex].Node, content))
+		nodeIndex++
+	}
+
+	return decorators, nodeIndex
+}
+
+func handleDecorator(node *sitter.Node, content []byte) Decorator {
+	decoratorName := node.Content(content)
+	isAngularDecorator := IsAngularDecorator(decoratorName)
+	return Decorator{isAngularDecorator, decoratorName}
 }

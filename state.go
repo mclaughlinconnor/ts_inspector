@@ -25,9 +25,16 @@ var ProtectedAccessibility = accessibility{"protected"}
 
 type Definition struct {
 	AccessModifier accessibility
+	Async          bool
 	Decorators     []Decorator
+	Generator      bool
+	Getter         bool
 	Name           string
 	Node           *sitter.Node
+	Override       bool
+	Readonly       bool
+	Setter         bool
+	Static         bool
 }
 
 type Decorator struct {
@@ -79,4 +86,8 @@ func CalculateAccessibilityFromString(a string) (accessibility, error) {
 	}
 
 	return PublicAccessibility, fmt.Errorf("Unhandled accessibility: %s", a)
+}
+
+func CreatePropertyDefinition(accessModifier accessibility, decorators []Decorator, name string, node *sitter.Node) Definition {
+	return Definition{accessModifier, false, decorators, false, false, name, node, false, false, false, false}
 }

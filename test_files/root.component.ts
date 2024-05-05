@@ -12,7 +12,14 @@ export class RootComponent {
   @Input()
   public data: number = 23;
 
+  @Onput()
+  @Input
+  @Input
   public get getter(): number {
+    return this.data;
+  }
+
+  public tter(): number {
     return this.data;
   }
 
