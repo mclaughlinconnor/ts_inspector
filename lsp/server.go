@@ -2,11 +2,11 @@ package lsp
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"os"
+	"ts_inspector/parser"
 	"ts_inspector/rpc"
 )
 
@@ -27,30 +27,28 @@ func Start() {
 			continue
 		}
 
-		handleMessage(logger, writer, method, contents)
+		state := parser.NewState()
+
+		handleMessage(logger, writer, state, method, contents)
 	}
 }
 
-func handleMessage(logger *log.Logger, writer io.Writer, method string, contents []byte) {
+func handleMessage(logger *log.Logger, writer io.Writer, state parser.State, method string, contents []byte) parser.State {
 	logger.Printf("Received msg with method: %s", method)
-	var request InitializeRequest
-	if err := json.Unmarshal(contents, &request); err != nil {
-		logger.Printf("Hey, we couldn't parse this: %s", err)
-	}
 
 	switch method {
 	case "initialize":
-		msg := NewInitializeResponse(request.ID)
-		writeResponse(writer, msg)
+		request := TryParseRequest[InitializeRequest](logger, contents)
+		HandleInitialise(writer, logger, request)
+	case "textDocument/didOpen":
+		request := TryParseRequest[DidOpenTextDocumentNotification](logger, contents)
+		state = HandleDidOpen(writer, logger, state, request)
+	case "textDocument/didChange":
+		request := TryParseRequest[DidChangeTextDocumentNotification](logger, contents)
+		state = HandleDidChange(writer, logger, state, request)
 	}
 
-	logger.Print("Sent the reply")
-}
-
-func writeResponse(writer io.Writer, msg any) {
-	reply := rpc.EncodeMessage(msg)
-	writer.Write([]byte(reply))
-
+	return state
 }
 
 func getLogger(filename string) *log.Logger {
