@@ -17,3 +17,5 @@ ts_inspector
 
 # Go workspace file
 go.work
+
+log.txt
