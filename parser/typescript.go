@@ -6,8 +6,8 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
-func ExtractTypeScriptUsages(state State, root *sitter.Node, content []byte) (State, error) {
-	state, _ = WithMatches(QueryPrototypeUsage, TypeScript, content, state, HandleMatch[State](func(captures []sitter.QueryCapture, returnValue State) (State, error) {
+func ExtractTypeScriptUsages(file File, root *sitter.Node, content []byte) (File, error) {
+	file, _ = WithMatches(QueryPrototypeUsage, TypeScript, content, file, HandleMatch[File](func(captures []sitter.QueryCapture, returnValue File) (File, error) {
 		if len(captures) == 0 {
 			return returnValue, nil
 		}
@@ -15,12 +15,12 @@ func ExtractTypeScriptUsages(state State, root *sitter.Node, content []byte) (St
 		node := captures[2].Node
 		name := node.Content(content)
 
-		state = addUsage(state, name, node, content)
+		file = addUsage(file, name, node, content)
 
-		return state, nil
+		return file, nil
 	}))
 
-	return WithMatches(QueryPropertyUsage, TypeScript, content, state, HandleMatch[State](func(captures []sitter.QueryCapture, returnValue State) (State, error) {
+	return WithMatches(QueryPropertyUsage, TypeScript, content, file, HandleMatch[File](func(captures []sitter.QueryCapture, returnValue File) (File, error) {
 		if len(captures) == 0 {
 			return returnValue, nil
 		}
@@ -28,25 +28,25 @@ func ExtractTypeScriptUsages(state State, root *sitter.Node, content []byte) (St
 		node := captures[0].Node
 		name := node.Content(content)
 
-		state = addUsage(state, name, node, content)
+		file = addUsage(file, name, node, content)
 
-		return state, nil
+		return file, nil
 	}))
 }
 
-func ExtractTypeScriptDefinitions(state State, root *sitter.Node, content []byte) (State, error) {
-	state, _ = WithMatches(QueryMethodDefinition, TypeScript, content, state, HandleMatch[State](func(captures []sitter.QueryCapture, returnValue State) (State, error) {
+func ExtractTypeScriptDefinitions(file File, root *sitter.Node, content []byte) (File, error) {
+	file, _ = WithMatches(QueryMethodDefinition, TypeScript, content, file, HandleMatch[File](func(captures []sitter.QueryCapture, returnValue File) (File, error) {
 		definition := Definition{}
 		for _, capture := range captures {
 			definition = handleDefinition(definition, capture.Node, content)
 		}
 
-		state.Definitions[definition.Name] = definition
+		file.Definitions[definition.Name] = definition
 
 		return returnValue, nil
 	}))
 
-	return WithMatches(QueryPropertyDefinition, TypeScript, content, state, HandleMatch[State](func(captures []sitter.QueryCapture, returnValue State) (State, error) {
+	return WithMatches(QueryPropertyDefinition, TypeScript, content, file, HandleMatch[File](func(captures []sitter.QueryCapture, returnValue File) (File, error) {
 		var definitionNode *sitter.Node
 		var accessibilityNode *sitter.Node
 		var nameNode *sitter.Node
@@ -70,13 +70,13 @@ func ExtractTypeScriptDefinitions(state State, root *sitter.Node, content []byte
 			log.Fatal(err)
 		}
 
-		state.Definitions[name] = CreatePropertyDefinition(a, decorators, name, definitionNode)
+		file.Definitions[name] = CreatePropertyDefinition(a, decorators, name, definitionNode)
 
-		return state, nil
+		return file, nil
 	}))
 }
 
-func addUsage(state State, name string, node *sitter.Node, content []byte) State {
+func addUsage(file File, name string, node *sitter.Node, content []byte) File {
 	access := LocalAccess
 	if isInConstructor(node, content) {
 		access = ConstructorAccess
@@ -84,21 +84,21 @@ func addUsage(state State, name string, node *sitter.Node, content []byte) State
 
 	usageInstance := UsageInstance{access, node}
 
-	usage, ok := state.Usages[name]
+	usage, ok := file.Usages[name]
 	if ok {
 		existingUsages := usage
 		existingUsages.Access = CalculateNewAccessType(existingUsages.Access, usageInstance.Access)
 		existingUsages.Usages = append(existingUsages.Usages, usageInstance)
-		state.Usages[name] = existingUsages
+		file.Usages[name] = existingUsages
 	} else {
-		state.Usages[name] = Usage{
+		file.Usages[name] = Usage{
 			usageInstance.Access,
 			name,
 			[]UsageInstance{usageInstance},
 		}
 	}
 
-	return state
+	return file
 }
 
 func isInConstructor(node *sitter.Node, content []byte) bool {

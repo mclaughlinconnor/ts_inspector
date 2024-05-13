@@ -65,13 +65,20 @@ func CalculateNewAccessType(new access, old access) access {
 	return old
 }
 
-type State struct {
-	Usages      Usages
+type State map[string]File
+
+type File struct {
 	Definitions Definitions
+	Usages      Usages
+	Template    string
 }
 
-func NewState() State {
-	return State{Usages{}, Definitions{}}
+func NewFile() File {
+	return File{
+		Definitions{},
+		Usages{},
+		"",
+	}
 }
 
 func CalculateAccessibilityFromString(a string) (accessibility, error) {

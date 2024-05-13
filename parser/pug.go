@@ -9,8 +9,8 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
-func ExtractTemplateFilename(controllerFilePath string, root *sitter.Node, content []byte) (filename string, err error) {
-	return WithMatches(QueryComponentDecorator, TypeScript, content, "", HandleMatch[string](func(captures []sitter.QueryCapture, returnValue string) (string, error) {
+func ExtractTemplateFilename(file File, controllerFilePath string, root *sitter.Node, content []byte) (File, error) {
+	return WithMatches(QueryComponentDecorator, TypeScript, content, file, HandleMatch[File](func(captures []sitter.QueryCapture, returnValue File) (File, error) {
 		if len(captures) == 0 {
 			return returnValue, nil
 		}
@@ -20,75 +20,76 @@ func ExtractTemplateFilename(controllerFilePath string, root *sitter.Node, conte
 
 		templateFilePath, err := filepath.Abs(path.Join(controllerDirectory, relativeTemplatePath))
 		if err != nil {
-			return "", err
+			return file, err
 		}
 
 		if FileExists(templateFilePath) {
-			return templateFilePath, nil
+			returnValue.Template = templateFilePath
+			return returnValue, nil
 		}
 
-		return "", fmt.Errorf("Expected template file does not exist: %s", templateFilePath)
+		return file, fmt.Errorf("Unexpected template file does not exist: %s %s %s", relativeTemplatePath, controllerFilePath, templateFilePath)
 	}))
 }
 
-func ExtractPugUsages(state State, content []byte) (State, error) {
-	state, err := WithMatches(QueryAttribute, Pug, content, state, func(captures []sitter.QueryCapture, returnValue State) (State, error) {
+func ExtractPugUsages(file File, content []byte) (File, error) {
+	file, err := WithMatches(QueryAttribute, Pug, content, file, func(captures []sitter.QueryCapture, returnValue File) (File, error) {
 		name := []byte(captures[0].Node.Content(content))
 
 		isAttr, err := isAngularAttribute(name)
 
 		if err != nil {
-			return state, err
+			return file, err
 		}
 
 		if isAttr {
 			valueNode := captures[1].Node
 			value := []byte(valueNode.Content(content))
-			return extractIndentifierUsages(value, state)
+			return extractIndentifierUsages(value, file)
 		}
 
-		return state, nil
+		return file, nil
 	})
 
 	if err != nil {
-		return state, err
+		return file, err
 	}
 
-	return WithMatches(QueryContent, Pug, content, state, HandleMatch[State](func(captures []sitter.QueryCapture, returnValue State) (State, error) {
+	return WithMatches(QueryContent, Pug, content, file, HandleMatch[File](func(captures []sitter.QueryCapture, returnValue File) (File, error) {
 		tagContentNode := captures[0].Node
 		tagContent := []byte(tagContentNode.Content(content))
 
-		return WithMatches(QueryInterpolation, AngularContent, tagContent, state, func(captures []sitter.QueryCapture, returnValue State) (State, error) {
+		return WithMatches(QueryInterpolation, AngularContent, tagContent, file, func(captures []sitter.QueryCapture, returnValue File) (File, error) {
 			interpolationNode := captures[0].Node
 			interpolation := []byte(interpolationNode.Content(tagContent))
 
-			return extractIndentifierUsages(interpolation, state)
+			return extractIndentifierUsages(interpolation, file)
 		})
 	}))
 }
 
 // Intentionally only get `identifier`s instead of `property_identifier`s because only the `identifier` will exist on the controller
-func extractIndentifierUsages(text []byte, state State) (State, error) {
-	return WithMatches(QueryPropertyUsage, JavaScript, text, state, func(captures []sitter.QueryCapture, returnValue State) (State, error) {
+func extractIndentifierUsages(text []byte, file File) (File, error) {
+	return WithMatches(QueryPropertyUsage, JavaScript, text, file, func(captures []sitter.QueryCapture, returnValue File) (File, error) {
 		node := captures[0].Node
 		name := node.Content(text)
 		usageInstance := UsageInstance{ForeignAccess, node}
 
-		usage, ok := state.Usages[name]
+		usage, ok := file.Usages[name]
 		if ok {
 			existingUsages := usage
 			existingUsages.Access = CalculateNewAccessType(existingUsages.Access, usageInstance.Access)
 			existingUsages.Usages = append(existingUsages.Usages, usageInstance)
-			state.Usages[name] = existingUsages
+			file.Usages[name] = existingUsages
 		} else {
-			state.Usages[name] = Usage{
+			file.Usages[name] = Usage{
 				usageInstance.Access,
 				name,
 				[]UsageInstance{usageInstance},
 			}
 		}
 
-		return state, nil
+		return file, nil
 	})
 
 }

@@ -7,21 +7,20 @@ import (
 )
 
 type TextDocumentContentChangeEvent struct {
-  Text string `json:"text"`;
-};
+	Text string `json:"text"`
+}
 
 type DidChangeTextDocumentNotification struct {
 	Notification
-	TextDocument TextDocumentItem `json:"textDocument"`
-  ContentChanges []TextDocumentContentChangeEvent `json:"contentChanges"`
+	Params DidChangeTextDocumentNotificationParams `json:"params"`
+}
+
+type DidChangeTextDocumentNotificationParams struct {
+	TextDocument   TextDocumentItem                 `json:"textDocument"`
+	ContentChanges []TextDocumentContentChangeEvent `json:"contentChanges"`
 }
 
 func HandleDidChange(writer io.Writer, logger *log.Logger, state parser.State, request DidChangeTextDocumentNotification) parser.State {
-	if request.TextDocument.LanguageId == "typescript" {
-		state, _ = parser.HandleTypeScriptFile(request.TextDocument.Uri)
-	} else if request.TextDocument.LanguageId == "pug" {
-		state, _ = parser.HandlePugFile(request.TextDocument.Uri, state)
-	}
-
+	state, _ = parser.HandleFile(state, request.Params.TextDocument.Uri, request.Params.TextDocument.LanguageId, logger)
 	return state
 }

@@ -19,6 +19,8 @@ func Start() {
 
 	writer := os.Stdout
 
+	parser.InitQueries()
+
 	for scanner.Scan() {
 		msg := scanner.Bytes()
 		method, contents, err := rpc.DecodeMessage(msg)
@@ -27,7 +29,7 @@ func Start() {
 			continue
 		}
 
-		state := parser.NewState()
+		state := parser.State{}
 
 		handleMessage(logger, writer, state, method, contents)
 	}
