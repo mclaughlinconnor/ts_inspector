@@ -12,7 +12,7 @@ type textDocumentSyncKind struct {
 	Incremental int
 }
 
-var TextDocumentSyncKind = textDocumentSyncKind{1, 2, 3}
+var TextDocumentSyncKind = textDocumentSyncKind{0, 1, 2}
 
 type DidOpenTextDocumentNotification struct {
 	Notification
