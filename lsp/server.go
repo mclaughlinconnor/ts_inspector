@@ -2,6 +2,7 @@ package lsp
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -20,6 +21,7 @@ func Start() {
 	writer := os.Stdout
 
 	parser.InitQueries()
+	state := parser.State{}
 
 	for scanner.Scan() {
 		msg := scanner.Bytes()
@@ -29,9 +31,8 @@ func Start() {
 			continue
 		}
 
-		state := parser.State{}
+		state = handleMessage(logger, writer, state, method, contents)
 
-		handleMessage(logger, writer, state, method, contents)
 	}
 }
 
