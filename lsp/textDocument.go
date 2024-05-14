@@ -23,9 +23,9 @@ type Range struct {
 }
 
 type Position struct {
-	Line uint32
+	Line uint32 `json:"line"`
 
-	Character uint32
+	Character uint32 `json:"character"`
 }
 
 func PositionFromPoint(point sitter.Point) Position {
