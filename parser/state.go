@@ -81,6 +81,21 @@ func NewFile() File {
 	}
 }
 
+func (f File) GetGetters() []Definition {
+	return filterDefinitions(f, func(d Definition) bool { return d.Getter })
+}
+
+func filterDefinitions(f File, cond func(d Definition) bool) []Definition {
+	arr := []Definition{}
+	for _, definition := range f.Definitions {
+		if cond(definition) {
+			arr = append(arr, definition)
+		}
+	}
+
+	return arr
+}
+
 func CalculateAccessibilityFromString(a string) (accessibility, error) {
 	switch a {
 
