@@ -117,7 +117,7 @@ var typescriptMethodDefinition = []byte(`
       "get"? @get
       name: (property_identifier) @name
       ; "?" ; Unhandled
-    )
+    ) @definition
   )
 `)
 

@@ -37,6 +37,8 @@ func ExtractTypeScriptUsages(file File, root *sitter.Node, content []byte) (File
 func ExtractTypeScriptDefinitions(file File, root *sitter.Node, content []byte) (File, error) {
 	file, _ = WithMatches(QueryMethodDefinition, TypeScript, content, file, HandleMatch[File](func(captures []sitter.QueryCapture, returnValue File) (File, error) {
 		definition := Definition{}
+		definition.Decorators = []Decorator{}
+
 		for _, capture := range captures {
 			definition = handleDefinition(definition, capture.Node, content)
 		}
@@ -141,6 +143,8 @@ func handleDefinition(definition Definition, node *sitter.Node, content []byte) 
 		definition.Getter = true
 	} else if node.Type() == "property_identifier" {
 		definition.Name = node.Content(content)
+	} else if node.Type() == "method_definition" {
+		definition.Node = node
 	} else {
 		log.Println(node.Type())
 	}
