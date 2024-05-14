@@ -21,6 +21,15 @@ type DidChangeTextDocumentNotificationParams struct {
 }
 
 func HandleDidChange(writer io.Writer, logger *log.Logger, state parser.State, request DidChangeTextDocumentNotification) parser.State {
-	state, _ = parser.HandleFile(state, request.Params.TextDocument.Uri, request.Params.TextDocument.LanguageId, logger)
+	state, err := parser.HandleFile(state, request.Params.TextDocument.Uri, request.Params.TextDocument.LanguageId, request.Params.TextDocument.Version, logger)
+
+	if err != nil {
+		logger.Println(err)
+	} else {
+		for _, file := range state {
+			WriteResponse(writer, GenerateDiagnosticsForFile(file))
+		}
+	}
+
 	return state
 }
