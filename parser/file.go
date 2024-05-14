@@ -8,70 +8,90 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
-type parseCallback[V any] func(root *sitter.Node, content []byte, filename string, file V) (result V, ok bool)
+type parseCallback[V any] func(root *sitter.Node, content []byte, filename string, file V) (V, error)
 
-func HandleFile(state State, filename string, languageId string, _ *log.Logger) (State, bool) {
-	var file File = NewFile()
-	var ok bool
+func HandleFile(state State, uri string, languageId string, version int, logger *log.Logger) (State, error) {
+	previousFile := state[filenameFromUri(uri)]
 
-	filename = stripFileName(filename)
-
-	if languageId == "typescript" {
-		file, ok = HandleTypeScriptFile(filename, file)
-	} else if languageId == "pug" {
-		file, ok = HandlePugFile(filename, file)
+	var file File
+	if languageId == "" {
+		file = NewFile(uri, previousFile.Filetype, version)
+	} else {
+		file = NewFile(uri, languageId, version)
 	}
 
-	if ok {
+	var err error
+
+	filename := filenameFromUri(uri)
+	if file.Filetype == "typescript" {
+		file, err = HandleTypeScriptFile(filename, file, logger)
+	} else if file.Filetype == "pug" {
+		file, err = HandlePugFile(filename, file)
+	}
+
+	if err == nil {
 		state[filename] = file
 	}
 
 	templateFilename := file.Template
 	if templateFilename != "" {
-		pugFile := NewFile()
-		pugFile, ok = HandlePugFile(templateFilename, pugFile)
-		if ok {
+		existingPugFile, found := state[templateFilename]
+		var pugFile File
+
+		if found {
+			pugFile = NewFile(existingPugFile.URI, existingPugFile.Filetype, existingPugFile.Version)
+		} else {
+			filetype, err := FiletypeFromFilename(templateFilename)
+			if err != nil {
+				return state, err
+			}
+
+			pugFile = NewFile(uriFromFilename(templateFilename), filetype, 0)
+		}
+
+		pugFile, err = HandlePugFile(templateFilename, pugFile)
+		if err == nil {
 			state[templateFilename] = pugFile
 		}
 	}
 
-	return state, ok
+	return state, err
 }
 
-func HandleTypeScriptFile(filename string, file File) (File, bool) {
+func HandleTypeScriptFile(filename string, file File, logger *log.Logger) (File, error) {
 	return parseFileContent(filename, TypeScript, file,
-		parseCallback[File](func(root *sitter.Node, content []byte, filename string, file File) (result File, ok bool) {
+		parseCallback[File](func(root *sitter.Node, content []byte, filename string, file File) (File, error) {
 			file, err := ExtractTypeScriptUsages(file, root, content)
 			if err != nil {
-				log.Print(err)
+				return file, err
 			}
 
 			file, err = ExtractTypeScriptDefinitions(file, root, content)
 			if err != nil {
-				log.Print(err)
+				return file, err
 			}
 
 			file, err = ExtractTemplateFilename(file, filename, root, content)
 			if err != nil {
-				log.Fatal(err)
+				return file, err
 			}
 
-			return file, true
+			return file, nil
 		}))
 }
 
-func HandlePugFile(filename string, file File) (File, bool) {
+func HandlePugFile(filename string, file File) (File, error) {
 	return parseFileContent(filename, Pug, file,
-		parseCallback[File](func(root *sitter.Node, content []byte, filename string, file File) (result File, ok bool) {
+		parseCallback[File](func(root *sitter.Node, content []byte, filename string, file File) (File, error) {
 			file, err := ExtractPugUsages(file, content)
 			if err != nil {
-				return file, false
+				return file, err
 			}
-			return file, true
+			return file, nil
 		}))
 }
 
-func parseFileContent[V any](filename string, language string, file V, callback parseCallback[V]) (result V, ok bool) {
+func parseFileContent[V any](filename string, language string, file V, callback parseCallback[V]) (V, error) {
 	content := ReadFile(filename)
 
 	parser := sitter.NewParser()
@@ -87,6 +107,10 @@ func parseFileContent[V any](filename string, language string, file V, callback 
 	return callback(root, content, filename, file)
 }
 
-func stripFileName(filename string) string {
-	return strings.TrimPrefix(filename, `file://`)
+func filenameFromUri(uri string) string {
+	return strings.TrimPrefix(uri, `file://`)
+}
+
+func uriFromFilename(filename string) string {
+	return `file://` + filename
 }

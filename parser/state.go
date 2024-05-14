@@ -2,6 +2,7 @@ package parser
 
 import (
 	"fmt"
+	"strings"
 
 	sitter "github.com/smacker/go-tree-sitter"
 )
@@ -69,15 +70,21 @@ type State map[string]File
 
 type File struct {
 	Definitions Definitions
-	Usages      Usages
+	Filetype    string
 	Template    string
+	URI         string
+	Usages      Usages
+	Version     int
 }
 
-func NewFile() File {
+func NewFile(uri string, filetype string, version int) File {
 	return File{
 		Definitions{},
-		Usages{},
+		filetype,
 		"",
+		uri,
+		Usages{},
+		version,
 	}
 }
 
@@ -94,6 +101,16 @@ func filterDefinitions(f File, cond func(d Definition) bool) []Definition {
 	}
 
 	return arr
+}
+
+func FiletypeFromFilename(filename string) (string, error) {
+	if strings.HasSuffix(filename, ".pug") {
+		return "pug", nil
+	} else if strings.HasSuffix(filename, ".pug") {
+		return "typescript", nil
+	}
+
+	return "", fmt.Errorf("Couldn't determine filetype from filename: %s", filename)
 }
 
 func CalculateAccessibilityFromString(a string) (accessibility, error) {
