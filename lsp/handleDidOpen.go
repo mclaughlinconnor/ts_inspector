@@ -24,7 +24,14 @@ type DidOpenTextDocumentNotificationParams struct {
 }
 
 func HandleDidOpen(writer io.Writer, logger *log.Logger, state parser.State, request DidOpenTextDocumentNotification) parser.State {
-	state, err := parser.HandleFile(state, request.Params.TextDocument.Uri, request.Params.TextDocument.LanguageId, request.Params.TextDocument.Version, logger)
+	state, err := parser.HandleFile(
+		state,
+		request.Params.TextDocument.Uri,
+		request.Params.TextDocument.LanguageId,
+		request.Params.TextDocument.Version,
+		"", // no ContentChanges
+		logger,
+	)
 
 	if err != nil {
 		logger.Println(err)

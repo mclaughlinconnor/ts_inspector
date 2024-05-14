@@ -24,7 +24,14 @@ func main() {
 
 	parser.InitQueries()
 	state := parser.State{}
-	state, err = parser.HandleFile(state, `file://`+filename, "typescript", 0, log.New(os.Stdout, "[ts_inspector]", log.Ldate|log.Ltime|log.Lshortfile))
+	state, err = parser.HandleFile(
+		state,
+		parser.UriFromFilename(filename),
+		"typescript",
+		0,
+		"",
+		log.New(os.Stdout, "[ts_inspector]", log.Ldate|log.Ltime|log.Lshortfile),
+	)
 
 	if err != nil {
 		log.Fatal(err)

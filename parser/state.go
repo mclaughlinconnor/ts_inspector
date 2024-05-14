@@ -69,6 +69,7 @@ func CalculateNewAccessType(new access, old access) access {
 type State map[string]File
 
 type File struct {
+	Content     string
 	Definitions Definitions
 	Filetype    string
 	Template    string
@@ -79,6 +80,7 @@ type File struct {
 
 func NewFile(uri string, filetype string, version int) File {
 	return File{
+		"",
 		Definitions{},
 		filetype,
 		"",
@@ -86,6 +88,10 @@ func NewFile(uri string, filetype string, version int) File {
 		Usages{},
 		version,
 	}
+}
+
+func (f File) Filename() string {
+	return FilenameFromUri(f.URI)
 }
 
 func (f File) GetGetters() []Definition {

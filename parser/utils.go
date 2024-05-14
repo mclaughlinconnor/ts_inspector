@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"os"
+	"strings"
 
 	sitter "github.com/smacker/go-tree-sitter"
 )
@@ -89,4 +90,12 @@ var angularDecorators = map[string]bool{
 	"SkipSelf":        true,
 	"ViewChild":       true,
 	"ViewChildren":    true,
+}
+
+func FilenameFromUri(uri string) string {
+	return strings.TrimPrefix(uri, `file://`)
+}
+
+func UriFromFilename(filename string) string {
+	return `file://` + filename
 }

@@ -3,15 +3,14 @@ package parser
 import (
 	"context"
 	"log"
-	"strings"
 
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
 type parseCallback[V any] func(root *sitter.Node, content []byte, filename string, file V) (V, error)
 
-func HandleFile(state State, uri string, languageId string, version int, logger *log.Logger) (State, error) {
-	previousFile := state[filenameFromUri(uri)]
+func HandleFile(state State, uri string, languageId string, version int, content string, logger *log.Logger) (State, error) {
+	previousFile := state[FilenameFromUri(uri)]
 
 	var file File
 	if languageId == "" {
@@ -20,13 +19,15 @@ func HandleFile(state State, uri string, languageId string, version int, logger 
 		file = NewFile(uri, languageId, version)
 	}
 
+	file.Content = content
+
 	var err error
 
-	filename := filenameFromUri(uri)
+	filename := FilenameFromUri(uri)
 	if file.Filetype == "typescript" {
-		file, err = HandleTypeScriptFile(filename, file, logger)
+		file, err = HandleTypeScriptFile(file, logger)
 	} else if file.Filetype == "pug" {
-		file, err = HandlePugFile(filename, file)
+		file, err = HandlePugFile(file)
 	}
 
 	if err == nil {
@@ -46,10 +47,10 @@ func HandleFile(state State, uri string, languageId string, version int, logger 
 				return state, err
 			}
 
-			pugFile = NewFile(uriFromFilename(templateFilename), filetype, 0)
+			pugFile = NewFile(UriFromFilename(templateFilename), filetype, 0)
 		}
 
-		pugFile, err = HandlePugFile(templateFilename, pugFile)
+		pugFile, err = HandlePugFile(pugFile)
 		if err == nil {
 			state[templateFilename] = pugFile
 		}
@@ -58,8 +59,16 @@ func HandleFile(state State, uri string, languageId string, version int, logger 
 	return state, err
 }
 
-func HandleTypeScriptFile(filename string, file File, logger *log.Logger) (File, error) {
-	return parseFileContent(filename, TypeScript, file,
+func HandleTypeScriptFile(file File, logger *log.Logger) (File, error) {
+	fromDisk := file.Content == ""
+	var source string
+	if fromDisk {
+		source = file.Filename()
+	} else {
+		source = file.Content
+	}
+
+	return parseFile(fromDisk, source, TypeScript, file,
 		parseCallback[File](func(root *sitter.Node, content []byte, filename string, file File) (File, error) {
 			file, err := ExtractTypeScriptUsages(file, root, content)
 			if err != nil {
@@ -80,8 +89,16 @@ func HandleTypeScriptFile(filename string, file File, logger *log.Logger) (File,
 		}))
 }
 
-func HandlePugFile(filename string, file File) (File, error) {
-	return parseFileContent(filename, Pug, file,
+func HandlePugFile(file File) (File, error) {
+	fromDisk := file.Content == ""
+	var source string
+	if fromDisk {
+		source = file.Filename()
+	} else {
+		source = file.Content
+	}
+
+	return parseFile(fromDisk, source, Pug, file,
 		parseCallback[File](func(root *sitter.Node, content []byte, filename string, file File) (File, error) {
 			file, err := ExtractPugUsages(file, content)
 			if err != nil {
@@ -91,8 +108,13 @@ func HandlePugFile(filename string, file File) (File, error) {
 		}))
 }
 
-func parseFileContent[V any](filename string, language string, file V, callback parseCallback[V]) (V, error) {
-	content := ReadFile(filename)
+func parseFile[V any](fromDisk bool, source string, language string, file V, callback parseCallback[V]) (V, error) {
+	var content []byte
+	if fromDisk {
+		content = ReadFile(source)
+	} else {
+		content = []byte(source)
+	}
 
 	parser := sitter.NewParser()
 	parser.SetLanguage(GetLanguage(language))
@@ -104,13 +126,5 @@ func parseFileContent[V any](filename string, language string, file V, callback 
 
 	root := tree.RootNode()
 
-	return callback(root, content, filename, file)
-}
-
-func filenameFromUri(uri string) string {
-	return strings.TrimPrefix(uri, `file://`)
-}
-
-func uriFromFilename(filename string) string {
-	return `file://` + filename
+	return callback(root, content, source, file)
 }
