@@ -10,10 +10,10 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
-func ImplementAngularOnInit(state parser.State, file parser.File) (Edits, error) {
-	var edits = Edits{}
+func ImplementAngularOnInit(state parser.State, file parser.File) (utils.TextEdits, error) {
+	var edits = utils.TextEdits{}
 
-	return utils.ParseFile(false, file.Content, utils.TypeScript, edits, func(root *sitter.Node, content []byte, edits Edits) (Edits, error) {
+	return utils.ParseFile(false, file.Content, utils.TypeScript, edits, func(root *sitter.Node, content []byte, edits utils.TextEdits) (utils.TextEdits, error) {
 		implementResult, _ := utils.WithMatches(utils.QueryClassImplements, utils.TypeScript, content, implementParseResult{[]string{}, nil}, func(captures []sitter.QueryCapture, returnValue implementParseResult) (implementParseResult, error) {
 			for _, capture := range captures {
 				if capture.Node.Type() == "implements_clause" {
@@ -36,7 +36,7 @@ func ImplementAngularOnInit(state parser.State, file parser.File) (Edits, error)
 			editRange := utils.Range{Start: utils.PositionFromPoint(node.StartPoint()), End: utils.PositionFromPoint(node.EndPoint())}
 			editRange.Start.Character = editRange.Start.Character + uint32(len("implements "))
 
-			edits = append(edits, Edit{editRange, text})
+			edits = append(edits, utils.TextEdit{Range: editRange, NewText: text})
 		}
 
 		importResult, _ := utils.WithMatches(utils.QueryAngularImport, utils.TypeScript, content, importParseResult{[]string{}, nil}, func(captures []sitter.QueryCapture, returnValue importParseResult) (importParseResult, error) {
@@ -60,7 +60,7 @@ func ImplementAngularOnInit(state parser.State, file parser.File) (Edits, error)
 			node := importResult.Clause
 			editRange := utils.Range{Start: utils.PositionFromPoint(node.StartPoint()), End: utils.PositionFromPoint(node.EndPoint())}
 
-			edits = append(edits, Edit{editRange, text})
+			edits = append(edits, utils.TextEdit{Range: editRange, NewText: text})
 		}
 
 		return edits, nil
