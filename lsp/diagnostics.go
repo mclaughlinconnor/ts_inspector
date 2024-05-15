@@ -3,12 +3,13 @@ package lsp
 import (
 	"ts_inspector/analysis"
 	"ts_inspector/parser"
+	"ts_inspector/utils"
 
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
 type Diagnostic struct {
-	Range Range `json:"range"`
+	Range utils.Range `json:"range"`
 
 	Severity int `json:"severity"`
 
@@ -61,13 +62,13 @@ func GenerateDiagnosticsForFile(file parser.File) PublishDiagnosticsNotification
 }
 
 func NewDiagnostic(node *sitter.Node, severity int, source string, message string) Diagnostic {
-	r := Range{PositionFromPoint(node.StartPoint()), PositionFromPoint(node.EndPoint())}
+	r := utils.Range{Start: utils.PositionFromPoint(node.StartPoint()), End: utils.PositionFromPoint(node.EndPoint())}
 
 	return Diagnostic{r, severity, source, message}
 }
 
 func DiagnosticsFromAnalysis(analysis analysis.Analysis) Diagnostic {
-	r := Range{PositionFromPoint(analysis.Node.StartPoint()), PositionFromPoint(analysis.Node.EndPoint())}
+	r := utils.Range{Start: utils.PositionFromPoint(analysis.Node.StartPoint()), End: utils.PositionFromPoint(analysis.Node.EndPoint())}
 
 	return Diagnostic{r, analysis.Severity, analysis.Source, analysis.Message}
 }
@@ -76,7 +77,7 @@ func DiagnosticsFromAnalyses(analyses []analysis.Analysis) []Diagnostic {
 	diagnostics := []Diagnostic{}
 
 	for _, analysis := range analyses {
-		r := Range{PositionFromPoint(analysis.Node.StartPoint()), PositionFromPoint(analysis.Node.EndPoint())}
+		r := utils.Range{Start: utils.PositionFromPoint(analysis.Node.StartPoint()), End: utils.PositionFromPoint(analysis.Node.EndPoint())}
 		diagnostics = append(diagnostics, Diagnostic{r, analysis.Severity, analysis.Source, analysis.Message})
 	}
 

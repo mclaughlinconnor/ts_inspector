@@ -1,7 +1,5 @@
 package lsp
 
-import sitter "github.com/smacker/go-tree-sitter"
-
 type TextDocumentItem struct {
 	// The text document's URI.
 	Uri string `json:"uri"`
@@ -14,20 +12,4 @@ type TextDocumentItem struct {
 
 	// The content of the opened text document.
 	Text string `json:"text"`
-}
-
-type Range struct {
-	Start Position `json:"start"`
-
-	End Position `json:"end"`
-}
-
-type Position struct {
-	Line uint32 `json:"line"`
-
-	Character uint32 `json:"character"`
-}
-
-func PositionFromPoint(point sitter.Point) Position {
-	return Position{point.Row, point.Column}
 }
