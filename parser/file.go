@@ -3,6 +3,7 @@ package parser
 import (
 	"context"
 	"log"
+	"ts_inspector/utils"
 
 	sitter "github.com/smacker/go-tree-sitter"
 )
@@ -71,8 +72,8 @@ func HandleTypeScriptFile(file File, state State) (State, error) {
 		source = file.Content
 	}
 
-	return parseFile(fromDisk, source, TypeScript, state,
-		parseCallback[State](func(root *sitter.Node, content []byte, state State) (State, error) {
+	return utils.ParseFile(fromDisk, source, GetLanguage(TypeScript), state,
+		func(root *sitter.Node, content []byte, state State) (State, error) {
 			file.Content = CStr2GoStr(content)
 			state[file.Filename()] = file
 
@@ -92,7 +93,7 @@ func HandleTypeScriptFile(file File, state State) (State, error) {
 			}
 
 			return state, nil
-		}))
+		})
 }
 
 func HandlePugFile(file File, state State) (State, error) {
@@ -104,8 +105,8 @@ func HandlePugFile(file File, state State) (State, error) {
 		source = file.Content
 	}
 
-	return parseFile(fromDisk, source, Pug, state,
-		parseCallback[State](func(root *sitter.Node, content []byte, state State) (State, error) {
+	return utils.ParseFile(fromDisk, source, GetLanguage(Pug), state,
+		func(root *sitter.Node, content []byte, state State) (State, error) {
 			file.Content = CStr2GoStr(content)
 			state[file.Filename()] = file
 
@@ -115,26 +116,5 @@ func HandlePugFile(file File, state State) (State, error) {
 			}
 
 			return state, nil
-		}))
-}
-
-func parseFile[V any](fromDisk bool, source string, language string, file V, callback parseCallback[V]) (V, error) {
-	var content []byte
-	if fromDisk {
-		content = ReadFile(source)
-	} else {
-		content = []byte(source)
-	}
-
-	parser := sitter.NewParser()
-	parser.SetLanguage(GetLanguage(language))
-
-	tree, err := parser.ParseCtx(context.TODO(), nil, content)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	root := tree.RootNode()
-
-	return callback(root, content, file)
+		})
 }
