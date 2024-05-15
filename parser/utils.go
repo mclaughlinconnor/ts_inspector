@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"bytes"
 	"context"
 	"log"
 	"os"
@@ -98,4 +99,13 @@ func FilenameFromUri(uri string) string {
 
 func UriFromFilename(filename string) string {
 	return `file://` + filename
+}
+
+func CStr2GoStr(b []byte) string {
+	i := bytes.IndexByte(b, 0)
+	if i < 0 {
+		i = len(b)
+	}
+
+	return string(b[:i])
 }

@@ -36,6 +36,64 @@ type Definition struct {
 	Readonly       bool
 	Setter         bool
 	Static         bool
+	Usages         []UsageInstance
+}
+
+func (f File) AddDefinition(name string, definition Definition) File {
+	if definition.Usages == nil {
+		definition.Usages = []UsageInstance{}
+	}
+
+	if f.Definitions == nil {
+		f.Definitions = make(map[string]Definition)
+	}
+	f.Definitions[name] = definition
+
+	return f
+}
+
+func (f File) AppendDefinitionUsage(name string, usage UsageInstance) File {
+	definition, found := f.Definitions[name]
+	if !found {
+		return f
+	}
+
+	definition.Usages = append(definition.Usages, usage)
+	f.Definitions[name] = definition
+
+	return f
+}
+
+func (f File) AppendUsage(name string, usage UsageInstance) File {
+	usages, found := f.Usages[name]
+
+	if found {
+		usages.Usages = append(usages.Usages, usage)
+		f.Usages[name] = usages
+
+		return f
+	}
+
+	if !found {
+		if f.Usages == nil {
+			f.Usages = make(map[string]Usage)
+		}
+
+		f.Usages[name] = Usage{
+			usage.Access,
+			name,
+			[]UsageInstance{usage},
+		}
+	}
+
+	return f
+}
+
+func (f File) SetUsageAccessType(name string, access access) File {
+	usage := f.Usages[name]
+	usage.Access = CalculateNewAccessType(access, usage.Access)
+
+	return f
 }
 
 type Decorator struct {
@@ -70,6 +128,7 @@ type State map[string]File
 
 type File struct {
 	Content     string
+	Controller  string
 	Definitions Definitions
 	Filetype    string
 	Template    string
@@ -80,13 +139,14 @@ type File struct {
 
 func NewFile(uri string, filetype string, version int) File {
 	return File{
-		"",
-		Definitions{},
-		filetype,
-		"",
-		uri,
-		Usages{},
-		version,
+		"",            // Content
+		"",            // Controller
+		Definitions{}, // Definitions
+		filetype,      // Filetype
+		"",            // Template
+		uri,           // Uri
+		Usages{},      // Usages
+		version,       // Version
 	}
 }
 
@@ -134,5 +194,18 @@ func CalculateAccessibilityFromString(a string) (accessibility, error) {
 }
 
 func CreatePropertyDefinition(accessModifier accessibility, decorators []Decorator, name string, node *sitter.Node) Definition {
-	return Definition{accessModifier, false, decorators, false, false, name, node, false, false, false, false}
+	return Definition{
+		accessModifier,    // AccessModifier
+		false,             // Async
+		decorators,        // Decorators
+		false,             // Generator
+		false,             // Getter
+		name,              // Name
+		node,              // Node
+		false,             // Override
+		false,             // Readonly
+		false,             // Setter
+		false,             // Static
+		[]UsageInstance{}, // Usages
+	}
 }

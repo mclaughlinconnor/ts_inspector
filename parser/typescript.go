@@ -6,8 +6,8 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
-func ExtractTypeScriptUsages(file File, root *sitter.Node, content []byte) (File, error) {
-	file, _ = WithMatches(QueryPrototypeUsage, TypeScript, content, file, HandleMatch[File](func(captures []sitter.QueryCapture, returnValue File) (File, error) {
+func ExtractTypeScriptUsages(file File, state State, root *sitter.Node, content []byte) (State, error) {
+	state, _ = WithMatches(QueryPrototypeUsage, TypeScript, content, state, HandleMatch[State](func(captures []sitter.QueryCapture, returnValue State) (State, error) {
 		if len(captures) == 0 {
 			return returnValue, nil
 		}
@@ -15,12 +15,12 @@ func ExtractTypeScriptUsages(file File, root *sitter.Node, content []byte) (File
 		node := captures[2].Node
 		name := node.Content(content)
 
-		file = addUsage(file, name, node, content)
+		returnValue = addUsage(file, returnValue, name, node, content)
 
-		return file, nil
+		return returnValue, nil
 	}))
 
-	return WithMatches(QueryPropertyUsage, TypeScript, content, file, HandleMatch[File](func(captures []sitter.QueryCapture, returnValue File) (File, error) {
+	return WithMatches(QueryPropertyUsage, TypeScript, content, state, HandleMatch[State](func(captures []sitter.QueryCapture, returnValue State) (State, error) {
 		if len(captures) == 0 {
 			return returnValue, nil
 		}
@@ -28,14 +28,14 @@ func ExtractTypeScriptUsages(file File, root *sitter.Node, content []byte) (File
 		node := captures[0].Node
 		name := node.Content(content)
 
-		file = addUsage(file, name, node, content)
+		returnValue = addUsage(file, returnValue, name, node, content)
 
-		return file, nil
+		return returnValue, nil
 	}))
 }
 
-func ExtractTypeScriptDefinitions(file File, root *sitter.Node, content []byte) (File, error) {
-	file, _ = WithMatches(QueryMethodDefinition, TypeScript, content, file, HandleMatch[File](func(captures []sitter.QueryCapture, returnValue File) (File, error) {
+func ExtractTypeScriptDefinitions(file File, state State, root *sitter.Node, content []byte) (State, error) {
+	state, _ = WithMatches(QueryMethodDefinition, TypeScript, content, state, HandleMatch[State](func(captures []sitter.QueryCapture, returnValue State) (State, error) {
 		definition := Definition{}
 		definition.Decorators = []Decorator{}
 
@@ -43,12 +43,12 @@ func ExtractTypeScriptDefinitions(file File, root *sitter.Node, content []byte) 
 			definition = handleDefinition(definition, capture.Node, content)
 		}
 
-		file.Definitions[definition.Name] = definition
+		returnValue[file.Filename()].AddDefinition(definition.Name, definition)
 
 		return returnValue, nil
 	}))
 
-	return WithMatches(QueryPropertyDefinition, TypeScript, content, file, HandleMatch[File](func(captures []sitter.QueryCapture, returnValue File) (File, error) {
+	return WithMatches(QueryPropertyDefinition, TypeScript, content, state, HandleMatch[State](func(captures []sitter.QueryCapture, returnValue State) (State, error) {
 		var definitionNode *sitter.Node
 		var accessibilityNode *sitter.Node
 		var nameNode *sitter.Node
@@ -72,35 +72,28 @@ func ExtractTypeScriptDefinitions(file File, root *sitter.Node, content []byte) 
 			log.Fatal(err)
 		}
 
-		file.Definitions[name] = CreatePropertyDefinition(a, decorators, name, definitionNode)
+		returnValue[file.Filename()] = returnValue[file.Filename()].AddDefinition(name, CreatePropertyDefinition(a, decorators, name, definitionNode))
 
-		return file, nil
+		return returnValue, nil
 	}))
 }
 
-func addUsage(file File, name string, node *sitter.Node, content []byte) File {
+func addUsage(file File, state State, name string, node *sitter.Node, content []byte) State {
 	access := LocalAccess
 	if isInConstructor(node, content) {
 		access = ConstructorAccess
 	}
 
+	file = state[file.Filename()]
 	usageInstance := UsageInstance{access, node}
 
-	usage, ok := file.Usages[name]
-	if ok {
-		existingUsages := usage
-		existingUsages.Access = CalculateNewAccessType(existingUsages.Access, usageInstance.Access)
-		existingUsages.Usages = append(existingUsages.Usages, usageInstance)
-		file.Usages[name] = existingUsages
-	} else {
-		file.Usages[name] = Usage{
-			usageInstance.Access,
-			name,
-			[]UsageInstance{usageInstance},
-		}
-	}
+	file = file.SetUsageAccessType(name, usageInstance.Access)
+	file = file.AppendUsage(name, usageInstance)
+	file = file.AppendDefinitionUsage(name, usageInstance)
 
-	return file
+	state[file.Filename()] = file
+
+	return state
 }
 
 func isInConstructor(node *sitter.Node, content []byte) bool {

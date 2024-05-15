@@ -10,7 +10,7 @@ import (
 type parseCallback[V any] func(root *sitter.Node, content []byte, filename string, file V) (V, error)
 
 func HandleFile(state State, uri string, languageId string, version int, content string, logger *log.Logger) (State, error) {
-	previousFile := state[FilenameFromUri(uri)]
+	previousFile, found := state[FilenameFromUri(uri)]
 
 	var file File
 	if languageId == "" {
@@ -19,20 +19,23 @@ func HandleFile(state State, uri string, languageId string, version int, content
 		file = NewFile(uri, languageId, version)
 	}
 
-	file.Content = content
+	if !found {
+		state[file.Filename()] = file
+	}
+
+	if content != "" {
+		file.Content = content
+	}
 
 	var err error
 
-	filename := FilenameFromUri(uri)
 	if file.Filetype == "typescript" {
-		file, err = HandleTypeScriptFile(file, logger)
+		state, err = HandleTypeScriptFile(file, state)
 	} else if file.Filetype == "pug" {
-		file, err = HandlePugFile(file)
+		state, err = HandlePugFile(file, state)
 	}
 
-	if err == nil {
-		state[filename] = file
-	}
+	file = state[file.Filename()]
 
 	templateFilename := file.Template
 	if templateFilename != "" {
@@ -50,16 +53,16 @@ func HandleFile(state State, uri string, languageId string, version int, content
 			pugFile = NewFile(UriFromFilename(templateFilename), filetype, 0)
 		}
 
-		pugFile, err = HandlePugFile(pugFile)
-		if err == nil {
-			state[templateFilename] = pugFile
-		}
+		// Do it here as well as in `ExtractTemplateFilename` because the pug file might not exist yet
+		pugFile.Controller = file.Filename()
+		state[pugFile.Filename()] = pugFile
+		state, err = HandlePugFile(pugFile, state)
 	}
 
 	return state, err
 }
 
-func HandleTypeScriptFile(file File, logger *log.Logger) (File, error) {
+func HandleTypeScriptFile(file File, state State) (State, error) {
 	fromDisk := file.Content == ""
 	var source string
 	if fromDisk {
@@ -68,28 +71,31 @@ func HandleTypeScriptFile(file File, logger *log.Logger) (File, error) {
 		source = file.Content
 	}
 
-	return parseFile(fromDisk, source, TypeScript, file,
-		parseCallback[File](func(root *sitter.Node, content []byte, filename string, file File) (File, error) {
-			file, err := ExtractTypeScriptUsages(file, root, content)
+	return parseFile(fromDisk, source, TypeScript, state,
+		parseCallback[State](func(root *sitter.Node, content []byte, filename string, state State) (State, error) {
+			file.Content = CStr2GoStr(content)
+			state[file.Filename()] = file
+
+			state, err := ExtractTypeScriptDefinitions(file, state, root, content)
 			if err != nil {
-				return file, err
+				return state, err
 			}
 
-			file, err = ExtractTypeScriptDefinitions(file, root, content)
+			state, err = ExtractTypeScriptUsages(file, state, root, content)
 			if err != nil {
-				return file, err
+				return state, err
 			}
 
-			file, err = ExtractTemplateFilename(file, filename, root, content)
+			state, err = ExtractTemplateFilename(file, state, filename, root, content)
 			if err != nil {
-				return file, err
+				return state, err
 			}
 
-			return file, nil
+			return state, nil
 		}))
 }
 
-func HandlePugFile(file File) (File, error) {
+func HandlePugFile(file File, state State) (State, error) {
 	fromDisk := file.Content == ""
 	var source string
 	if fromDisk {
@@ -98,13 +104,17 @@ func HandlePugFile(file File) (File, error) {
 		source = file.Content
 	}
 
-	return parseFile(fromDisk, source, Pug, file,
-		parseCallback[File](func(root *sitter.Node, content []byte, filename string, file File) (File, error) {
-			file, err := ExtractPugUsages(file, content)
+	return parseFile(fromDisk, source, Pug, state,
+		parseCallback[State](func(root *sitter.Node, content []byte, filename string, state State) (State, error) {
+			file.Content = CStr2GoStr(content)
+			state[file.Filename()] = file
+
+			state, err := ExtractPugUsages(file, state, content)
 			if err != nil {
-				return file, err
+				return state, err
 			}
-			return file, nil
+
+			return state, nil
 		}))
 }
 

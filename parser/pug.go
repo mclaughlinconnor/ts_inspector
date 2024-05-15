@@ -9,91 +9,112 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
-func ExtractTemplateFilename(file File, controllerFilePath string, root *sitter.Node, content []byte) (File, error) {
-	return WithMatches(QueryComponentDecorator, TypeScript, content, file, HandleMatch[File](func(captures []sitter.QueryCapture, returnValue File) (File, error) {
+func ExtractTemplateFilename(controller File, state State, controllerStatePath string, root *sitter.Node, content []byte) (State, error) {
+	return WithMatches(QueryComponentDecorator, TypeScript, content, state, HandleMatch[State](func(captures []sitter.QueryCapture, returnValue State) (State, error) {
 		if len(captures) == 0 {
 			return returnValue, nil
 		}
 
 		relativeTemplatePath := captures[2].Node.Content(content)
-		controllerDirectory := filepath.Dir(controllerFilePath)
+		controllerDirectory := filepath.Dir(controllerStatePath)
 
 		templateFilePath, err := filepath.Abs(path.Join(controllerDirectory, relativeTemplatePath))
 		if err != nil {
-			return file, err
+			return returnValue, err
 		}
 
 		if FileExists(templateFilePath) {
-			returnValue.Template = templateFilePath
+			returnValue = assignTemplate(controller.Filename(), returnValue, templateFilePath)
+			returnValue = assignController(templateFilePath, returnValue, controller.Filename())
 			return returnValue, nil
 		}
 
-		return file, fmt.Errorf("Unexpected template file does not exist: %s %s %s", relativeTemplatePath, controllerFilePath, templateFilePath)
+		return returnValue, fmt.Errorf("Unexpected template state does not exist: %s %s %s", relativeTemplatePath, controllerStatePath, templateFilePath)
 	}))
 }
 
-func ExtractPugUsages(file File, content []byte) (File, error) {
-	file, err := WithMatches(QueryAttribute, Pug, content, file, func(captures []sitter.QueryCapture, returnValue File) (File, error) {
+func ExtractPugUsages(file File, state State, content []byte) (State, error) {
+	state, err := WithMatches(QueryAttribute, Pug, content, state, func(captures []sitter.QueryCapture, returnValue State) (State, error) {
 		name := []byte(captures[0].Node.Content(content))
 
 		isAttr, err := isAngularAttribute(name)
 
 		if err != nil {
-			return file, err
+			return state, err
 		}
 
 		if isAttr {
 			valueNode := captures[1].Node
 			value := []byte(valueNode.Content(content))
-			return extractIndentifierUsages(value, file)
+			return extractIndentifierUsages(value, file, returnValue)
 		}
 
-		return file, nil
+		return state, nil
 	})
 
 	if err != nil {
-		return file, err
+		return state, err
 	}
 
-	return WithMatches(QueryContent, Pug, content, file, HandleMatch[File](func(captures []sitter.QueryCapture, returnValue File) (File, error) {
+	return WithMatches(QueryContent, Pug, content, state, HandleMatch[State](func(captures []sitter.QueryCapture, returnValue State) (State, error) {
 		tagContentNode := captures[0].Node
 		tagContent := []byte(tagContentNode.Content(content))
 
-		return WithMatches(QueryInterpolation, AngularContent, tagContent, file, func(captures []sitter.QueryCapture, returnValue File) (File, error) {
+		return WithMatches(QueryInterpolation, AngularContent, tagContent, state, func(captures []sitter.QueryCapture, returnValue State) (State, error) {
 			interpolationNode := captures[0].Node
 			interpolation := []byte(interpolationNode.Content(tagContent))
 
-			return extractIndentifierUsages(interpolation, file)
+			return extractIndentifierUsages(interpolation, file, state)
 		})
 	}))
 }
 
 // Intentionally only get `identifier`s instead of `property_identifier`s because only the `identifier` will exist on the controller
-func extractIndentifierUsages(text []byte, file File) (File, error) {
-	return WithMatches(QueryPropertyUsage, JavaScript, text, file, func(captures []sitter.QueryCapture, returnValue File) (File, error) {
+func extractIndentifierUsages(text []byte, file File, state State) (State, error) {
+	return WithMatches(QueryPropertyUsage, JavaScript, text, state, func(captures []sitter.QueryCapture, returnValue State) (State, error) {
 		node := captures[0].Node
 		name := node.Content(text)
 		usageInstance := UsageInstance{ForeignAccess, node}
 
-		usage, ok := file.Usages[name]
-		if ok {
-			existingUsages := usage
-			existingUsages.Access = CalculateNewAccessType(existingUsages.Access, usageInstance.Access)
-			existingUsages.Usages = append(existingUsages.Usages, usageInstance)
-			file.Usages[name] = existingUsages
-		} else {
-			file.Usages[name] = Usage{
-				usageInstance.Access,
-				name,
-				[]UsageInstance{usageInstance},
-			}
-		}
+		template := state[file.Filename()]
+		controller := state[file.Controller]
 
-		return file, nil
+		template = template.SetUsageAccessType(name, usageInstance.Access)
+		template = template.AppendUsage(name, usageInstance)
+		controller = controller.AppendDefinitionUsage(name, usageInstance)
+
+		state[template.Filename()] = template
+		state[controller.Filename()] = controller
+
+		return state, nil
 	})
 
 }
 
 func isAngularAttribute(attribute []byte) (bool, error) {
 	return regexp.Match(`(\[[\w\.]+\])|(\([\w\.]+\))|(\*\w)`, attribute)
+}
+
+func assignTemplate(controller string, state State, template string) State {
+	f, found := state[controller]
+	if !found {
+		return state
+	}
+
+	f.Template = template
+	state[controller] = f
+
+	return state
+}
+
+func assignController(template string, state State, controller string) State {
+	f, found := state[template]
+	if !found {
+		return state
+	}
+
+	f.Controller = controller
+	state[template] = f
+
+	return state
 }
