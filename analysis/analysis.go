@@ -9,22 +9,21 @@ func Analyse(file parser.File) []Analysis {
 	analyses := []Analysis{}
 
 	getters := file.GetGetters()
-	usages := file.Usages
-	vars := file.Definitions
+	definitions := file.Definitions
 
 	for _, definition := range getters {
-		usage, used := usages[definition.Name]
-		if used && usage.Access == parser.ForeignAccess {
+		used := len(definition.Usages) != 0
+		if used && definition.UsageAccess == parser.ForeignAccess {
 			message := fmt.Sprintf("Getter used in template: %s", definition.Name)
 			analyses = append(analyses, Analysis{definition.Node, AnalysisSeverity.Hint, "ts_inspector", message})
 		}
 	}
 
-	for _, definition := range vars {
+	for _, definition := range definitions {
 		definitionIsPublic := definition.AccessModifier == parser.PublicAccessibility
-		usage, used := usages[definition.Name]
+		used := len(definition.Usages) != 0
 
-		if used && usage.Access == parser.ConstructorAccess {
+		if used && definition.UsageAccess == parser.ConstructorAccess {
 			message := fmt.Sprintf("Variable only used in constructor: %s", definition.Name)
 			analyses = append(analyses, Analysis{definition.Node, AnalysisSeverity.Warning, "ts_inspector", message})
 			continue
@@ -34,7 +33,7 @@ func Analyse(file parser.File) []Analysis {
 			if !used {
 				message := fmt.Sprintf("Unused public variable: %s", definition.Name)
 				analyses = append(analyses, Analysis{definition.Node, AnalysisSeverity.Warning, "ts_inspector", message})
-			} else if usage.Access != parser.ForeignAccess {
+			} else if definition.UsageAccess != parser.ForeignAccess {
 				message := fmt.Sprintf("Needlessly public variable: %s", definition.Name)
 				analyses = append(analyses, Analysis{definition.Node, AnalysisSeverity.Warning, "ts_inspector", message})
 			}
