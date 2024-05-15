@@ -12,9 +12,10 @@ type access struct {
 	precedence int
 }
 
-var ConstructorAccess = access{"constructor", 0}
-var LocalAccess = access{"local", 1}
-var ForeignAccess = access{"foreign", 2}
+var NoAccess = access{"none", 0}
+var ConstructorAccess = access{"constructor", 1}
+var LocalAccess = access{"local", 2}
+var ForeignAccess = access{"foreign", 3}
 
 type accessibility struct {
 	Modifier string
@@ -37,6 +38,7 @@ type Definition struct {
 	Setter         bool
 	Static         bool
 	Usages         []UsageInstance
+	UsageAccess    access
 }
 
 func (f File) AddDefinition(name string, definition Definition) File {
@@ -58,6 +60,7 @@ func (f File) AppendDefinitionUsage(name string, usage UsageInstance) File {
 		return f
 	}
 
+	definition.UsageAccess = CalculateNewAccessType(definition.UsageAccess, usage.Access)
 	definition.Usages = append(definition.Usages, usage)
 	f.Definitions[name] = definition
 
@@ -207,5 +210,6 @@ func CreatePropertyDefinition(accessModifier accessibility, decorators []Decorat
 		false,             // Setter
 		false,             // Static
 		[]UsageInstance{}, // Usages
+		NoAccess,          // Usage access
 	}
 }

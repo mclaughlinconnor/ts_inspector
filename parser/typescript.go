@@ -38,6 +38,7 @@ func ExtractTypeScriptDefinitions(file File, state State, root *sitter.Node, con
 	state, _ = WithMatches(QueryMethodDefinition, TypeScript, content, state, HandleMatch[State](func(captures []sitter.QueryCapture, returnValue State) (State, error) {
 		definition := Definition{}
 		definition.Decorators = []Decorator{}
+		definition.UsageAccess = NoAccess
 
 		for _, capture := range captures {
 			definition = handleDefinition(definition, capture.Node, content)
