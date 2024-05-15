@@ -19,7 +19,8 @@ type InitializeResult struct {
 }
 
 type ServerCapabilities struct {
-	TextDocumentSync int `json:"textDocumentSync"`
+	CodeActionProvider bool `json:"codeActionProvider"`
+	TextDocumentSync   int  `json:"textDocumentSync"`
 }
 
 func newInitializeResponse(id int) InitializeResponse {
@@ -30,7 +31,8 @@ func newInitializeResponse(id int) InitializeResponse {
 		},
 		Result: InitializeResult{
 			Capabilities: ServerCapabilities{
-				TextDocumentSync: TextDocumentSyncKind.Full,
+				CodeActionProvider: true,
+				TextDocumentSync:   TextDocumentSyncKind.Full,
 			},
 		},
 	}

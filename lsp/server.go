@@ -50,6 +50,9 @@ func handleMessage(logger *log.Logger, writer io.Writer, state parser.State, met
 	case "textDocument/didChange":
 		request := TryParseRequest[DidChangeTextDocumentNotification](logger, contents)
 		state = HandleDidChange(writer, logger, state, request)
+	case "textDocument/codeAction":
+		request := TryParseRequest[CodeActionRequest](logger, contents)
+		HandleCodeAction(writer, logger, state, request)
 	}
 
 	return state

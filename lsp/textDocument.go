@@ -1,5 +1,9 @@
 package lsp
 
+type TextDocumentIdentifier struct {
+	Uri string `json:"uri"`
+}
+
 type TextDocumentItem struct {
 	// The text document's URI.
 	Uri string `json:"uri"`
