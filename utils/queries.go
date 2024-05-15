@@ -19,6 +19,8 @@ const (
 	QueryMethodDefinition   = "query_method_definition"
 	QueryClassImplements    = "query_class_implements"
 	QueryAngularImport      = "query_angular_import"
+	QueryClassProperties    = "query_class_properties"
+	QueryClassBody          = "query_class_body"
 )
 
 var componentDecorator = []byte(`
@@ -142,6 +144,23 @@ var typescriptAngularImport = []byte(`
     (#eq? @package "@angular/core"))
 `)
 
+var typescriptClassProperties = []byte(`
+  (class_body
+    [
+      (((public_field_definition
+        name: [(property_identifier) (private_property_identifier)] @name) (";" @semi)?) @node)
+      ((method_definition
+        name: [(property_identifier) (private_property_identifier)] @name) @node)
+      (((method_signature
+        name: [(property_identifier) (private_property_identifier)] @name) (";" @semi)?) @node)
+      ((abstract_method_signature
+        name: [(property_identifier) (private_property_identifier)] @name) @node)
+    ]
+  )
+`)
+
+var typescriptClassBody = []byte(`(class_body) @body`)
+
 func registerQuery(name string, lang string, query []byte) {
 	_, ok := queries[lang]
 	if !ok {
@@ -176,4 +195,6 @@ func InitQueries() {
 	registerQuery(QueryMethodDefinition, TypeScript, typescriptMethodDefinition)
 	registerQuery(QueryClassImplements, TypeScript, typescriptClassImplements)
 	registerQuery(QueryAngularImport, TypeScript, typescriptAngularImport)
+	registerQuery(QueryClassProperties, TypeScript, typescriptClassProperties)
+	registerQuery(QueryClassBody, TypeScript, typescriptClassBody)
 }
