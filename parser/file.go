@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"context"
 	"log"
 	"ts_inspector/utils"
 
@@ -72,7 +71,7 @@ func HandleTypeScriptFile(file File, state State) (State, error) {
 		source = file.Content
 	}
 
-	return utils.ParseFile(fromDisk, source, GetLanguage(TypeScript), state,
+	return utils.ParseFile(fromDisk, source, utils.TypeScript, state,
 		func(root *sitter.Node, content []byte, state State) (State, error) {
 			file.Content = CStr2GoStr(content)
 			state[file.Filename()] = file
@@ -105,7 +104,7 @@ func HandlePugFile(file File, state State) (State, error) {
 		source = file.Content
 	}
 
-	return utils.ParseFile(fromDisk, source, GetLanguage(Pug), state,
+	return utils.ParseFile(fromDisk, source, utils.Pug, state,
 		func(root *sitter.Node, content []byte, state State) (State, error) {
 			file.Content = CStr2GoStr(content)
 			state[file.Filename()] = file

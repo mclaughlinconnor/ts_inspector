@@ -1,4 +1,4 @@
-package parser
+package utils
 
 import (
 	"ts_inspector/treesitter_parsers/angular_content"

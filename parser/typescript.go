@@ -2,12 +2,13 @@ package parser
 
 import (
 	"log"
+	"ts_inspector/utils"
 
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
 func ExtractTypeScriptUsages(file File, state State, root *sitter.Node, content []byte) (State, error) {
-	state, _ = WithMatches(QueryPrototypeUsage, TypeScript, content, state, HandleMatch[State](func(captures []sitter.QueryCapture, returnValue State) (State, error) {
+	state, _ = utils.WithMatches(utils.QueryPrototypeUsage, utils.TypeScript, content, state, func(captures []sitter.QueryCapture, returnValue State) (State, error) {
 		if len(captures) == 0 {
 			return returnValue, nil
 		}
@@ -18,9 +19,9 @@ func ExtractTypeScriptUsages(file File, state State, root *sitter.Node, content 
 		returnValue = addUsage(file, returnValue, name, node, content)
 
 		return returnValue, nil
-	}))
+	})
 
-	return WithMatches(QueryPropertyUsage, TypeScript, content, state, HandleMatch[State](func(captures []sitter.QueryCapture, returnValue State) (State, error) {
+	return utils.WithMatches(utils.QueryPropertyUsage, utils.TypeScript, content, state, func(captures []sitter.QueryCapture, returnValue State) (State, error) {
 		if len(captures) == 0 {
 			return returnValue, nil
 		}
@@ -31,11 +32,11 @@ func ExtractTypeScriptUsages(file File, state State, root *sitter.Node, content 
 		returnValue = addUsage(file, returnValue, name, node, content)
 
 		return returnValue, nil
-	}))
+	})
 }
 
 func ExtractTypeScriptDefinitions(file File, state State, root *sitter.Node, content []byte) (State, error) {
-	state, _ = WithMatches(QueryMethodDefinition, TypeScript, content, state, HandleMatch[State](func(captures []sitter.QueryCapture, returnValue State) (State, error) {
+	state, _ = utils.WithMatches(utils.QueryMethodDefinition, utils.TypeScript, content, state, func(captures []sitter.QueryCapture, returnValue State) (State, error) {
 		definition := Definition{}
 		definition.Decorators = []Decorator{}
 		definition.UsageAccess = NoAccess
@@ -47,9 +48,9 @@ func ExtractTypeScriptDefinitions(file File, state State, root *sitter.Node, con
 		returnValue[file.Filename()].AddDefinition(definition.Name, definition)
 
 		return returnValue, nil
-	}))
+	})
 
-	return WithMatches(QueryPropertyDefinition, TypeScript, content, state, HandleMatch[State](func(captures []sitter.QueryCapture, returnValue State) (State, error) {
+	return utils.WithMatches(utils.QueryPropertyDefinition, utils.TypeScript, content, state, func(captures []sitter.QueryCapture, returnValue State) (State, error) {
 		var definitionNode *sitter.Node
 		var accessibilityNode *sitter.Node
 		var nameNode *sitter.Node
@@ -76,7 +77,7 @@ func ExtractTypeScriptDefinitions(file File, state State, root *sitter.Node, con
 		returnValue[file.Filename()] = returnValue[file.Filename()].AddDefinition(name, CreatePropertyDefinition(a, decorators, name, definitionNode))
 
 		return returnValue, nil
-	}))
+	})
 }
 
 func addUsage(file File, state State, name string, node *sitter.Node, content []byte) State {

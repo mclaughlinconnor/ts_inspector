@@ -5,12 +5,13 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"ts_inspector/utils"
 
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
 func ExtractTemplateFilename(controller File, state State, controllerStatePath string, root *sitter.Node, content []byte) (State, error) {
-	return WithMatches(QueryComponentDecorator, TypeScript, content, state, HandleMatch[State](func(captures []sitter.QueryCapture, returnValue State) (State, error) {
+	return utils.WithMatches(utils.QueryComponentDecorator, utils.TypeScript, content, state, func(captures []sitter.QueryCapture, returnValue State) (State, error) {
 		if len(captures) == 0 {
 			return returnValue, nil
 		}
@@ -30,11 +31,11 @@ func ExtractTemplateFilename(controller File, state State, controllerStatePath s
 		}
 
 		return returnValue, fmt.Errorf("Unexpected template state does not exist: %s", relativeTemplatePath)
-	}))
+	})
 }
 
 func ExtractPugUsages(file File, state State, content []byte) (State, error) {
-	state, err := WithMatches(QueryAttribute, Pug, content, state, func(captures []sitter.QueryCapture, returnValue State) (State, error) {
+	state, err := utils.WithMatches(utils.QueryAttribute, utils.Pug, content, state, func(captures []sitter.QueryCapture, returnValue State) (State, error) {
 
 		name := []byte(captures[0].Node.Content(content))
 
@@ -57,22 +58,22 @@ func ExtractPugUsages(file File, state State, content []byte) (State, error) {
 		return state, err
 	}
 
-	return WithMatches(QueryContent, Pug, content, state, HandleMatch[State](func(captures []sitter.QueryCapture, returnValue State) (State, error) {
+	return utils.WithMatches(utils.QueryContent, utils.Pug, content, state, func(captures []sitter.QueryCapture, returnValue State) (State, error) {
 		tagContentNode := captures[0].Node
 		tagContent := []byte(tagContentNode.Content(content))
 
-		return WithMatches(QueryInterpolation, AngularContent, tagContent, state, func(captures []sitter.QueryCapture, returnValue State) (State, error) {
+		return utils.WithMatches(utils.QueryInterpolation, utils.AngularContent, tagContent, state, func(captures []sitter.QueryCapture, returnValue State) (State, error) {
 			interpolationNode := captures[0].Node
 			interpolation := []byte(interpolationNode.Content(tagContent))
 
 			return extractIndentifierUsages(interpolation, file, state)
 		})
-	}))
+	})
 }
 
 // Intentionally only get `identifier`s instead of `property_identifier`s because only the `identifier` will exist on the controller
 func extractIndentifierUsages(text []byte, file File, state State) (State, error) {
-	return WithMatches(QueryPropertyUsage, JavaScript, text, state, func(captures []sitter.QueryCapture, returnValue State) (State, error) {
+	return utils.WithMatches(utils.QueryPropertyUsage, utils.JavaScript, text, state, func(captures []sitter.QueryCapture, returnValue State) (State, error) {
 		node := captures[0].Node
 		name := node.Content(text)
 		usageInstance := UsageInstance{ForeignAccess, node}

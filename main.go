@@ -10,6 +10,7 @@ import (
 	"ts_inspector/analysis"
 	"ts_inspector/lsp"
 	"ts_inspector/parser"
+	"ts_inspector/utils"
 )
 
 func main() {
@@ -22,7 +23,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	parser.InitQueries()
+	utils.InitQueries()
 	state := parser.State{}
 	state, err = parser.HandleFile(
 		state,
