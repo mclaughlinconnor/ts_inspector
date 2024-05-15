@@ -58,7 +58,7 @@ func ImplementAngularOnInit(state parser.State, file parser.File) (actionEdits u
 
 		if !slices.Contains(importResult.Imports, "OnInit") {
 			importResult.Imports = append(importResult.Imports, "OnInit")
-			slices.Sort(implementResult.Implements)
+			slices.Sort(importResult.Imports)
 			text := "{" + strings.Join(importResult.Imports, ", ") + "}"
 
 			node := importResult.Clause
