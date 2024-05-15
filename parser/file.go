@@ -7,7 +7,7 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
-type parseCallback[V any] func(root *sitter.Node, content []byte, filename string, file V) (V, error)
+type parseCallback[V any] func(root *sitter.Node, content []byte, v V) (V, error)
 
 func HandleFile(state State, uri string, languageId string, version int, content string, logger *log.Logger) (State, error) {
 	previousFile, found := state[FilenameFromUri(uri)]
@@ -72,7 +72,7 @@ func HandleTypeScriptFile(file File, state State) (State, error) {
 	}
 
 	return parseFile(fromDisk, source, TypeScript, state,
-		parseCallback[State](func(root *sitter.Node, content []byte, filename string, state State) (State, error) {
+		parseCallback[State](func(root *sitter.Node, content []byte, state State) (State, error) {
 			file.Content = CStr2GoStr(content)
 			state[file.Filename()] = file
 
@@ -86,7 +86,7 @@ func HandleTypeScriptFile(file File, state State) (State, error) {
 				return state, err
 			}
 
-			state, err = ExtractTemplateFilename(file, state, filename, root, content)
+			state, err = ExtractTemplateFilename(file, state, file.Filename(), root, content)
 			if err != nil {
 				return state, err
 			}
@@ -105,7 +105,7 @@ func HandlePugFile(file File, state State) (State, error) {
 	}
 
 	return parseFile(fromDisk, source, Pug, state,
-		parseCallback[State](func(root *sitter.Node, content []byte, filename string, state State) (State, error) {
+		parseCallback[State](func(root *sitter.Node, content []byte, state State) (State, error) {
 			file.Content = CStr2GoStr(content)
 			state[file.Filename()] = file
 
@@ -136,5 +136,5 @@ func parseFile[V any](fromDisk bool, source string, language string, file V, cal
 
 	root := tree.RootNode()
 
-	return callback(root, content, source, file)
+	return callback(root, content, file)
 }

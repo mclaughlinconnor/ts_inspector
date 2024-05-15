@@ -29,7 +29,7 @@ func ExtractTemplateFilename(controller File, state State, controllerStatePath s
 			return returnValue, nil
 		}
 
-		return returnValue, fmt.Errorf("Unexpected template state does not exist: %s %s %s", relativeTemplatePath, controllerStatePath, templateFilePath)
+		return returnValue, fmt.Errorf("Unexpected template state does not exist: %s", relativeTemplatePath)
 	}))
 }
 
