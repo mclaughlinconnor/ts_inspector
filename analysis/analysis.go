@@ -29,7 +29,12 @@ func Analyse(file parser.File) []Analysis {
 			continue
 		}
 
-		if definitionIsPublic {
+		var hasAngularDecorator bool = false
+		for _, decorator := range definition.Decorators {
+			hasAngularDecorator = hasAngularDecorator || decorator.IsAngular
+		}
+
+		if definitionIsPublic && !hasAngularDecorator {
 			if !used {
 				message := fmt.Sprintf("Unused public variable: %s", definition.Name)
 				analyses = append(analyses, Analysis{definition.Node, AnalysisSeverity.Warning, "ts_inspector", message})
