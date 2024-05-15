@@ -35,12 +35,13 @@ func ExtractTemplateFilename(controller File, state State, controllerStatePath s
 
 func ExtractPugUsages(file File, state State, content []byte) (State, error) {
 	state, err := WithMatches(QueryAttribute, Pug, content, state, func(captures []sitter.QueryCapture, returnValue State) (State, error) {
+
 		name := []byte(captures[0].Node.Content(content))
 
 		isAttr, err := isAngularAttribute(name)
 
 		if err != nil {
-			return state, err
+			return returnValue, err
 		}
 
 		if isAttr {
@@ -49,7 +50,7 @@ func ExtractPugUsages(file File, state State, content []byte) (State, error) {
 			return extractIndentifierUsages(value, file, returnValue)
 		}
 
-		return state, nil
+		return returnValue, nil
 	})
 
 	if err != nil {
@@ -77,14 +78,16 @@ func extractIndentifierUsages(text []byte, file File, state State) (State, error
 		usageInstance := UsageInstance{ForeignAccess, node}
 
 		template := state[file.Filename()]
-		controller := state[file.Controller]
 
 		template = template.SetUsageAccessType(name, usageInstance.Access)
 		template = template.AppendUsage(name, usageInstance)
-		controller = controller.AppendDefinitionUsage(name, usageInstance)
-
 		state[template.Filename()] = template
-		state[controller.Filename()] = controller
+
+		if file.Controller != "" {
+			controller := state[file.Controller]
+			controller = controller.AppendDefinitionUsage(name, usageInstance)
+			state[controller.Filename()] = controller
+		}
 
 		return state, nil
 	})
