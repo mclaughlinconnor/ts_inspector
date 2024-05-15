@@ -10,10 +10,14 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
-func ImplementAngularOnInit(state parser.State, file parser.File) (utils.TextEdits, error) {
+func ImplementAngularOnInit(state parser.State, file parser.File) (actionEdits utils.TextEdits, allowed bool, err error) {
+	if file.Filetype != "typescript" {
+		return nil, false, nil
+	}
+
 	var edits = utils.TextEdits{}
 
-	return utils.ParseFile(false, file.Content, utils.TypeScript, edits, func(root *sitter.Node, content []byte, edits utils.TextEdits) (utils.TextEdits, error) {
+	action, err := utils.ParseFile(false, file.Content, utils.TypeScript, edits, func(root *sitter.Node, content []byte, edits utils.TextEdits) (utils.TextEdits, error) {
 		implementResult, _ := utils.WithMatches(utils.QueryClassImplements, utils.TypeScript, content, implementParseResult{[]string{}, nil}, func(captures []sitter.QueryCapture, returnValue implementParseResult) (implementParseResult, error) {
 			for _, capture := range captures {
 				if capture.Node.Type() == "implements_clause" {
@@ -65,6 +69,8 @@ func ImplementAngularOnInit(state parser.State, file parser.File) (utils.TextEdi
 
 		return edits, nil
 	})
+
+	return action, true, err
 }
 
 type implementParseResult struct {

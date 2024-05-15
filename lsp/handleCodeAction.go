@@ -66,9 +66,9 @@ func HandleCodeAction(writer io.Writer, logger *log.Logger, state parser.State, 
 
 	codeActions := []CodeAction{}
 
-	onInit, err := actions.ImplementAngularOnInit(state, file)
+	onInit, allowed, err := actions.ImplementAngularOnInit(state, file)
 
-	if err == nil {
+	if allowed && err == nil {
 		codeActions = append(codeActions, CodeAction{
 			Title: "Add OnInit",
 			Edit:  WorkspaceEditFromEdits(file, onInit),
