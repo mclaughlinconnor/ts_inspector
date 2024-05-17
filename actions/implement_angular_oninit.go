@@ -30,6 +30,11 @@ func ImplementAngularOnInit(state parser.State, file parser.File) (actionEdits u
 			return returnValue, nil
 		})
 
+		if implementResult.Clause == nil {
+			// TODO: add handling for classes without an implementation clause
+			return edits, fmt.Errorf("Could not find implementation clause")
+		}
+
 		if !slices.Contains(implementResult.Implements, "OnInit") {
 			implementResult.Implements = append(implementResult.Implements, "OnInit")
 			slices.Sort(implementResult.Implements)
@@ -55,6 +60,11 @@ func ImplementAngularOnInit(state parser.State, file parser.File) (actionEdits u
 
 			return returnValue, nil
 		})
+
+		if importResult.Clause == nil {
+			// TODO: add handling for classes without an implementation clause
+			return edits, fmt.Errorf("Could not find import clause")
+		}
 
 		if !slices.Contains(importResult.Imports, "OnInit") {
 			importResult.Imports = append(importResult.Imports, "OnInit")

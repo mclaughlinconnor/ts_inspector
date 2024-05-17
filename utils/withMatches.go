@@ -2,7 +2,6 @@ package utils
 
 import (
 	"context"
-	"log"
 
 	sitter "github.com/smacker/go-tree-sitter"
 )
@@ -15,10 +14,14 @@ func WithMatches[T any](query string, language string, content []byte, returnVal
 
 	tree, err := parser.ParseCtx(context.TODO(), nil, content)
 	if err != nil {
-		log.Fatal(err)
+		return returnValue, err
 	}
 
-	qc, q := GetQuery(query, language)
+	qc, q, err := GetQuery(query, language)
+	if err != nil {
+		return returnValue, err
+	}
+
 	qc.Exec(q, tree.RootNode())
 
 	for {

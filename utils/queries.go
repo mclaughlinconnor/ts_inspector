@@ -1,7 +1,7 @@
 package utils
 
 import (
-	"log"
+	"fmt"
 
 	sitter "github.com/smacker/go-tree-sitter"
 )
@@ -170,17 +170,17 @@ func registerQuery(name string, lang string, query []byte) {
 	queries[lang][name] = query
 }
 
-func GetQuery(name string, lang string) (*sitter.QueryCursor, *sitter.Query) {
+func GetQuery(name string, lang string) (*sitter.QueryCursor, *sitter.Query, error) {
 	q, ok := queries[lang][name]
 	if !ok {
-		log.Fatalf("No query '%s' found", name)
+		return nil, nil, fmt.Errorf("No query for '%s' found", name)
 	}
 	query, err := sitter.NewQuery(q, GetLanguage(lang))
 	if err != nil {
-		log.Fatal(err)
+		return nil, nil, err
 	}
 
-	return sitter.NewQueryCursor(), query
+	return sitter.NewQueryCursor(), query, nil
 }
 
 func InitQueries() {

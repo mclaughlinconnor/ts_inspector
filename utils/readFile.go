@@ -1,22 +1,21 @@
 package utils
 
 import (
-	"log"
 	"os"
 )
 
-func ReadFile(filename string) []byte {
+func ReadFile(filename string) ([]byte, error) {
 	file, err := os.Open(filename)
 	if err != nil {
-		log.Fatal(err)
+		return make([]byte, 0), err
 	}
 
 	data := make([]byte, 10240)
 
 	_, err = file.Read(data)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	return data
+	return data, nil
 }

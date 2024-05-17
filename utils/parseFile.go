@@ -2,7 +2,6 @@ package utils
 
 import (
 	"context"
-	"log"
 
 	sitter "github.com/smacker/go-tree-sitter"
 )
@@ -11,8 +10,12 @@ type parseCallback[V any] func(root *sitter.Node, content []byte, v V) (V, error
 
 func ParseFile[V any](fromDisk bool, source string, language string, v V, callback parseCallback[V]) (V, error) {
 	var content []byte
+	var err error
 	if fromDisk {
-		content = ReadFile(source)
+		content, err = ReadFile(source)
+		if err != nil {
+			return v, err
+		}
 	} else {
 		content = []byte(source)
 	}
@@ -22,7 +25,7 @@ func ParseFile[V any](fromDisk bool, source string, language string, v V, callba
 
 	tree, err := parser.ParseCtx(context.TODO(), nil, content)
 	if err != nil {
-		log.Fatal(err)
+		return v, err
 	}
 
 	root := tree.RootNode()

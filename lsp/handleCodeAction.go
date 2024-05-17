@@ -68,6 +68,10 @@ func HandleCodeAction(writer io.Writer, logger *log.Logger, state parser.State, 
 
 	onInit, allowed, err := actions.ImplementAngularOnInit(state, file)
 
+	if err != nil {
+		logger.Printf("Error: %s", err)
+	}
+
 	if allowed && err == nil {
 		codeActions = append(codeActions, CodeAction{
 			Title: "Add OnInit",

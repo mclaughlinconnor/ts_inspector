@@ -40,9 +40,13 @@ func ExtractTypeScriptDefinitions(file File, state State, root *sitter.Node, con
 		definition := Definition{}
 		definition.Decorators = []Decorator{}
 		definition.UsageAccess = NoAccess
+		var err error
 
 		for _, capture := range captures {
-			definition = handleDefinition(definition, capture.Node, content)
+			definition, err = handleDefinition(definition, capture.Node, content)
+			if err != nil {
+				return returnValue, err
+			}
 		}
 
 		returnValue[file.Filename()].AddDefinition(definition.Name, definition)
@@ -71,7 +75,7 @@ func ExtractTypeScriptDefinitions(file File, state State, root *sitter.Node, con
 
 		a, err := CalculateAccessibilityFromString(accessibility)
 		if err != nil {
-			log.Fatal(err)
+			return returnValue, err
 		}
 
 		returnValue[file.Filename()] = returnValue[file.Filename()].AddDefinition(name, CreatePropertyDefinition(a, decorators, name, definitionNode))
@@ -113,13 +117,13 @@ func isInConstructor(node *sitter.Node, content []byte) bool {
 	return false
 }
 
-func handleDefinition(definition Definition, node *sitter.Node, content []byte) Definition {
+func handleDefinition(definition Definition, node *sitter.Node, content []byte) (Definition, error) {
 	if node.Type() == "identifier" { // Should be safer. identifier doesn't just mean identifiers inside decorators
 		definition.Decorators = append(definition.Decorators, handleDecorator(node, content))
 	} else if node.Type() == "accessibility_modifier" {
 		a, err := CalculateAccessibilityFromString(node.Content(content))
 		if err != nil {
-			log.Fatal(err)
+			return definition, err
 		}
 		definition.AccessModifier = a
 	} else if node.Type() == "static" {
@@ -144,7 +148,7 @@ func handleDefinition(definition Definition, node *sitter.Node, content []byte) 
 		log.Println(node.Type())
 	}
 
-	return definition
+	return definition, nil
 }
 
 func handleDecorators(captures []sitter.QueryCapture, startIndex int, content []byte) ([]Decorator, int) {
