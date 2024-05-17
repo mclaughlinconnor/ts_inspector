@@ -50,7 +50,6 @@ func ImplementAngularOnInit(state parser.State, file parser.File) (actionEdits u
 
 		importResult, _ := utils.WithMatches(utils.QueryAngularImport, utils.TypeScript, content, importParseResult{[]string{}, nil}, func(captures []sitter.QueryCapture, returnValue importParseResult) (importParseResult, error) {
 			for _, capture := range captures {
-				fmt.Println(capture.Node.Type())
 				if capture.Node.Type() == "import_clause" {
 					returnValue.Clause = capture.Node
 				} else if capture.Node.Type() == "identifier" {
