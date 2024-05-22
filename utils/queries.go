@@ -158,14 +158,15 @@ var typescriptImport = []byte(`
 
 var typescriptClassProperties = []byte(`
   (class_body
+    ((comment) @comment)*
     [
-      ((comment)* @comment (public_field_definition
+      ((public_field_definition
         name: [(property_identifier) (private_property_identifier)] @name) @node (";" @semi)?)
-      ((comment)* @comment (method_definition
+      ((method_definition
         name: [(property_identifier) (private_property_identifier)] @name) @node)
-      ((comment)* @comment (method_signature
+      ((method_signature
         name: [(property_identifier) (private_property_identifier)] @name) @node (";" @semi)?)
-      ((comment)* @comment (abstract_method_signature
+      ((abstract_method_signature
         name: [(property_identifier) (private_property_identifier)] @name) @node)
     ]
   )
