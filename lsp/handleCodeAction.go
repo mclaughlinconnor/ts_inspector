@@ -72,10 +72,23 @@ func HandleCodeAction(writer io.Writer, logger *log.Logger, state parser.State, 
 		logger.Printf("Error: %s", err)
 	}
 
-	if allowed && err == nil {
+	if allowed && err == nil && len(onInit) > 0 {
 		codeActions = append(codeActions, CodeAction{
 			Title: "Add OnInit",
 			Edit:  WorkspaceEditFromEdits(file, onInit),
+		})
+	}
+
+	onChanges, allowed, err := actions.ImplementAngularOnChanges(state, file)
+
+	if err != nil {
+		logger.Printf("Error: %s", err)
+	}
+
+	if allowed && err == nil && len(onChanges) > 0 {
+		codeActions = append(codeActions, CodeAction{
+			Title: "Add OnChanges",
+			Edit:  WorkspaceEditFromEdits(file, onChanges),
 		})
 	}
 
