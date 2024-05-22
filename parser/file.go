@@ -51,7 +51,7 @@ func HandleFile(state State, uri string, languageId string, version int, content
 			}
 
 			// Do it here as well as in `ExtractTemplateFilename` because the pug file might not exist yet
-			pugFile = NewFile(UriFromFilename(templateFilename), filetype, 0, "", file.Filename())
+			pugFile = NewFile(UriFromFilename(templateFilename), filetype, 0, file.Filename(), "")
 		}
 
 		state[pugFile.Filename()] = pugFile
