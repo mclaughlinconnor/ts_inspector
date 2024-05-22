@@ -42,18 +42,43 @@ func ExtractImports(content []byte) (map[string]ImportParseResult, error) {
 	return result, err
 }
 
-func FindPackageImport(content []byte, packageName string) (ImportParseResult, bool, error) {
-	importResult, err := ExtractImports(content)
-
-	i, found := importResult[packageName]
+func FindPackageImport(importResults Imports, packageName string) *ImportParseResult {
+	i, found := importResults[packageName]
 	if !found {
-		return ImportParseResult{}, false, err
+		return nil
 	}
 
-	return i, true, err
+	return &i
 }
 
-func AddToImport(importResult ImportParseResult, toAdd string) utils.TextEdits {
+func AddToImport(importResults Imports, packageName string, toAdd string) utils.TextEdits {
+	importResult := FindPackageImport(importResults, packageName)
+
+	if importResult == nil {
+		var max uint32 = 0
+		var maxKey string
+		for key, i := range importResults {
+			if i.Clause.EndByte() > max {
+				max = i.Clause.EndByte()
+				maxKey = key
+			}
+		}
+
+		text := fmt.Sprintf("import {%s} from '%s'", toAdd, packageName)
+
+		var editRange utils.Range
+		if maxKey != "" {
+			lastPoint := importResults[maxKey].Clause.EndPoint()
+			editRange = utils.Range{Start: utils.PositionFromPoint(lastPoint), End: utils.PositionFromPoint(lastPoint)}
+		} else {
+			position := utils.Position{Line: 0, Character: 0}
+			editRange = utils.Range{Start: position, End: position}
+			text = text + "\n\n"
+		}
+
+		return utils.TextEdits{utils.TextEdit{Range: editRange, NewText: text}}
+	}
+
 	if !slices.Contains(importResult.Imports, toAdd) {
 		importResult.Imports = append(importResult.Imports, toAdd)
 		slices.Sort(importResult.Imports)
@@ -72,17 +97,12 @@ func AddToImport(importResult ImportParseResult, toAdd string) utils.TextEdits {
 func AddImportToFile(content []byte, packageName string, toAdd string) (utils.TextEdits, error) {
 	edits := utils.TextEdits{}
 
-	importResult, found, err := FindPackageImport(content, packageName)
+	importResults, err := ExtractImports(content)
 	if err != nil {
 		return edits, err
 	}
 
-	if !found {
-		// TODO: add handling for classes without an import
-		return edits, fmt.Errorf("Could not find import clause")
-	}
-
-	importEdits := AddToImport(importResult, "OnInit")
+	importEdits := AddToImport(importResults, packageName, toAdd)
 
 	return importEdits, nil
 
