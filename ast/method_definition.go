@@ -18,12 +18,28 @@ func ExtractMethodDefinitions(content []byte) ([]MethodDefinitionParseResult, er
 
 		node := captures["node"]
 		if node != nil {
-			result.Node = node[0]
+			result.Range = utils.Range{Start: utils.PositionFromPoint(node[0].StartPoint()), End: utils.PositionFromPoint(node[0].EndPoint())}
+			result.byteRange = byteRange{start: node[0].StartByte(), end: node[0].EndByte()}
 		}
 
 		semi := captures["semi"]
 		if semi != nil {
-			result.Node = node[0]
+			result.Range.End = utils.PositionFromPoint(node[0].EndPoint())
+			result.byteRange.end = node[0].EndByte()
+		}
+
+		comments := captures["comment"]
+		if comments != nil {
+			var min uint32 = comments[0].StartByte()
+			var minIndex int = 0
+			for _, comment := range comments {
+				if comment.StartByte() < min {
+					min = comment.StartByte()
+				}
+			}
+
+			result.Range.Start = utils.PositionFromPoint(comments[minIndex].StartPoint())
+			result.byteRange.start = comments[minIndex].StartByte()
 		}
 
 		return append(returnValue, result), nil
@@ -56,7 +72,7 @@ func FindMethodDefinition(methodDefinitionResults *[]MethodDefinitionParseResult
 
 func AddToMethodDefinition(methodResults *[]MethodDefinitionParseResult, classBodyNode *sitter.Node, toAdd string, name string) utils.TextEdits {
 	slices.SortFunc(*methodResults, func(a MethodDefinitionParseResult, b MethodDefinitionParseResult) int {
-		return int(a.Node.StartByte()) - int(b.Node.StartByte())
+		return int(a.byteRange.start) - int(b.byteRange.start)
 	})
 
 	insertionIndex := -1
@@ -77,7 +93,7 @@ func AddToMethodDefinition(methodResults *[]MethodDefinitionParseResult, classBo
 	}
 
 	if insertionIndex != -1 {
-		insertPosition := utils.PositionFromPoint((*methodResults)[insertionIndex].Node.StartPoint())
+		insertPosition := (*methodResults)[insertionIndex].Range.Start
 		insertPosition.Character = 0 // at the start of the line immediately following the node
 		editRange := utils.Range{Start: insertPosition, End: insertPosition}
 
@@ -112,10 +128,16 @@ func AddMethodDefinitionToFile(content []byte, toAdd string, name string) (utils
 
 }
 
+type byteRange struct {
+	start uint32
+	end   uint32
+}
+
 type MethodDefinitionParseResult struct {
-	Name string
-	Node *sitter.Node
-	Type string
+	Name      string
+	Range     utils.Range
+	byteRange byteRange
+	Type      string
 }
 
 type MethodDefinitions map[string]MethodDefinitionParseResult
