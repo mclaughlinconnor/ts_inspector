@@ -51,7 +51,7 @@ func FindPackageImport(importResults Imports, packageName string) *ImportParseRe
 	return &i
 }
 
-func AddToImport(importResults Imports, packageName string, toAdd string) utils.TextEdits {
+func AddToImport(importResults Imports, packageName string, toAdd []string) utils.TextEdits {
 	importResult := FindPackageImport(importResults, packageName)
 
 	if importResult == nil {
@@ -64,7 +64,7 @@ func AddToImport(importResults Imports, packageName string, toAdd string) utils.
 			}
 		}
 
-		text := fmt.Sprintf("import {%s} from '%s'", toAdd, packageName)
+		text := fmt.Sprintf("import {%s} from '%s'", strings.Join(toAdd, ", "), packageName)
 
 		var editRange utils.Range
 		if maxKey != "" {
@@ -79,10 +79,17 @@ func AddToImport(importResults Imports, packageName string, toAdd string) utils.
 		return utils.TextEdits{utils.TextEdit{Range: editRange, NewText: text}}
 	}
 
-	if !slices.Contains(importResult.Imports, toAdd) {
-		importResult.Imports = append(importResult.Imports, toAdd)
-		slices.Sort(importResult.Imports)
-		text := "{" + strings.Join(importResult.Imports, ", ") + "}"
+	hasAdded := false
+	for _, add := range toAdd {
+		if !slices.Contains(importResult.Imports, add) {
+			(*importResult).Imports = append(importResult.Imports, add)
+			hasAdded = true
+		}
+	}
+
+	if hasAdded {
+		slices.Sort((*importResult).Imports)
+		text := "{" + strings.Join((*importResult).Imports, ", ") + "}"
 
 		node := importResult.Clause
 		editRange := utils.Range{Start: utils.PositionFromPoint(node.StartPoint()), End: utils.PositionFromPoint(node.EndPoint())}
@@ -94,7 +101,7 @@ func AddToImport(importResults Imports, packageName string, toAdd string) utils.
 }
 
 // Should handle type imports
-func AddImportToFile(content []byte, packageName string, toAdd string) (utils.TextEdits, error) {
+func AddImportToFile(content []byte, packageName string, toAdd []string) (utils.TextEdits, error) {
 	edits := utils.TextEdits{}
 
 	importResults, err := ExtractImports(content)

@@ -8,7 +8,14 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
-func ImplementAngular(state parser.State, file parser.File, implements string, methodDefinition string, methodName string) (actionEdits utils.TextEdits, allowed bool, err error) {
+func ImplementAngular(
+	state parser.State,
+	file parser.File,
+	implements string,
+	imports []string,
+	methodDefinition string,
+	methodName string,
+) (actionEdits utils.TextEdits, allowed bool, err error) {
 	if file.Filetype != "typescript" {
 		return nil, false, nil
 	}
@@ -23,7 +30,7 @@ func ImplementAngular(state parser.State, file parser.File, implements string, m
 			edits = append(edits, implementEdits[0])
 		}
 
-		importEdits, err := ast.AddImportToFile(content, "@angular/core", implements)
+		importEdits, err := ast.AddImportToFile(content, "@angular/core", imports)
 		if err != nil {
 			return edits, err
 		} else if len(importEdits) == 1 {
