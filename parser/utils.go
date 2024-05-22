@@ -44,6 +44,24 @@ var angularDecorators = map[string]bool{
 	"ViewChildren":    true,
 }
 
+func IsAngularFunction(name string) bool {
+	_, found := angularFunctions[name]
+
+	return found
+}
+
+var angularFunctions = map[string]bool{
+	"ngAfterContentChecked": true,
+	"ngAfterContentInit":    true,
+	"ngAfterViewChecked":    true,
+	"ngAfterViewInit":       true,
+	"ngDoCheck":             true,
+	"ngOnChanges":           true,
+	"ngOnDestroy":           true,
+	"ngOnInit":              true,
+	"constructor":           true,
+}
+
 func FilenameFromUri(uri string) string {
 	return strings.TrimPrefix(uri, `file://`)
 }

@@ -26,25 +26,28 @@ var PrivateAccessibility = accessibility{"private"}
 var ProtectedAccessibility = accessibility{"protected"}
 
 type Definition struct {
-	AccessModifier accessibility
-	Async          bool
-	Decorators     []Decorator
-	Generator      bool
-	Getter         bool
-	Name           string
-	Node           *sitter.Node
-	Override       bool
-	Readonly       bool
-	Setter         bool
-	Static         bool
-	Usages         []UsageInstance
-	UsageAccess    access
+	AccessModifier  accessibility
+	Async           bool
+	Decorators      []Decorator
+	Generator       bool
+	Getter          bool
+	Name            string
+	Node            *sitter.Node
+	Override        bool
+	Readonly        bool
+	Setter          bool
+	Static          bool
+	UsageAccess     access
+	Usages          []UsageInstance
+	IsAngularMethod bool
 }
 
 func (f File) AddDefinition(name string, definition Definition) File {
 	if definition.Usages == nil {
 		definition.Usages = []UsageInstance{}
 	}
+
+	definition.IsAngularMethod = IsAngularFunction(name)
 
 	if f.Definitions == nil {
 		f.Definitions = make(map[string]Definition)
@@ -198,18 +201,19 @@ func CalculateAccessibilityFromString(a string) (accessibility, error) {
 
 func CreatePropertyDefinition(accessModifier accessibility, decorators []Decorator, name string, node *sitter.Node) Definition {
 	return Definition{
-		accessModifier,    // AccessModifier
-		false,             // Async
-		decorators,        // Decorators
-		false,             // Generator
-		false,             // Getter
-		name,              // Name
-		node,              // Node
-		false,             // Override
-		false,             // Readonly
-		false,             // Setter
-		false,             // Static
-		[]UsageInstance{}, // Usages
-		NoAccess,          // Usage access
+		AccessModifier:  accessModifier,
+		Async:           false,
+		Decorators:      decorators,
+		Generator:       false,
+		Getter:          false,
+		IsAngularMethod: false,
+		Name:            name,
+		Node:            node,
+		Override:        false,
+		Readonly:        false,
+		Setter:          false,
+		Static:          false,
+		UsageAccess:     access{},
+		Usages:          []UsageInstance{},
 	}
 }
