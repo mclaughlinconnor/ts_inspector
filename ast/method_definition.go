@@ -54,19 +54,25 @@ func FindMethodDefinition(methodDefinitionResults *[]MethodDefinitionParseResult
 	return nil, nil
 }
 
-func AddToMethodDefinition(methodResults *[]MethodDefinitionParseResult, classBodyNode *sitter.Node, toAdd string) utils.TextEdits {
+func AddToMethodDefinition(methodResults *[]MethodDefinitionParseResult, classBodyNode *sitter.Node, toAdd string, name string) utils.TextEdits {
 	slices.SortFunc(*methodResults, func(a MethodDefinitionParseResult, b MethodDefinitionParseResult) int {
 		return int(a.Node.StartByte()) - int(b.Node.StartByte())
 	})
 
 	insertionIndex := -1
 	for index, result := range *methodResults {
-		if result.Type != "public_field_definition" {
+		if result.Name == name {
+			return utils.TextEdits{}
+		}
+
+		if result.Type != "public_field_definition" && insertionIndex == -1 {
 			if index == len(*methodResults)-1 {
 				insertionIndex = len(*methodResults) - 1
 			} else {
 				insertionIndex = index
 			}
+
+			break
 		}
 	}
 
@@ -90,7 +96,7 @@ func AddToMethodDefinition(methodResults *[]MethodDefinitionParseResult, classBo
 }
 
 // Should handle type methoddefinitions
-func AddMethodDefinitionToFile(content []byte, toAdd string) (utils.TextEdits, error) {
+func AddMethodDefinitionToFile(content []byte, toAdd string, name string) (utils.TextEdits, error) {
 	edits := utils.TextEdits{}
 
 	definitionResults, err := ExtractMethodDefinitions(content)
@@ -100,7 +106,7 @@ func AddMethodDefinitionToFile(content []byte, toAdd string) (utils.TextEdits, e
 	}
 
 	classBodyNode := FindClassBody(content)
-	methoddefinitionEdits := AddToMethodDefinition(&definitionResults, classBodyNode, toAdd)
+	methoddefinitionEdits := AddToMethodDefinition(&definitionResults, classBodyNode, toAdd, name)
 
 	return methoddefinitionEdits, nil
 

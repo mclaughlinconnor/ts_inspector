@@ -32,7 +32,7 @@ func ImplementAngularOnInit(state parser.State, file parser.File) (actionEdits u
 			edits = append(edits, importEdits[0])
 		}
 
-		methodEdits, err := ast.AddMethodDefinitionToFile(content, onInitMethod)
+		methodEdits, err := ast.AddMethodDefinitionToFile(content, onInitMethod, "ngOnInit")
 		if err != nil {
 			return edits, err
 		} else if len(methodEdits) == 1 {
