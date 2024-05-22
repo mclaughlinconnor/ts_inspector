@@ -11,12 +11,12 @@ import (
 )
 
 func ExtractTemplateFilename(controller File, state State, controllerStatePath string, root *sitter.Node, content []byte) (State, error) {
-	return utils.WithMatches(utils.QueryComponentDecorator, utils.TypeScript, content, state, func(captures []sitter.QueryCapture, returnValue State) (State, error) {
+	return utils.WithMatches(utils.QueryComponentDecorator, utils.TypeScript, content, state, func(captures utils.Captures, returnValue State) (State, error) {
 		if len(captures) == 0 {
 			return returnValue, nil
 		}
 
-		relativeTemplatePath := captures[2].Node.Content(content)
+		relativeTemplatePath := captures["template"][0].Content(content)
 		controllerDirectory := filepath.Dir(controllerStatePath)
 
 		templateFilePath, err := filepath.Abs(path.Join(controllerDirectory, relativeTemplatePath))
@@ -35,9 +35,9 @@ func ExtractTemplateFilename(controller File, state State, controllerStatePath s
 }
 
 func ExtractPugUsages(file File, state State, content []byte) (State, error) {
-	state, err := utils.WithMatches(utils.QueryAttribute, utils.Pug, content, state, func(captures []sitter.QueryCapture, returnValue State) (State, error) {
+	state, err := utils.WithMatches(utils.QueryAttribute, utils.Pug, content, state, func(captures utils.Captures, returnValue State) (State, error) {
 
-		name := []byte(captures[0].Node.Content(content))
+		name := []byte(captures["name"][0].Content(content))
 
 		isAttr, err := isAngularAttribute(name)
 
@@ -46,7 +46,7 @@ func ExtractPugUsages(file File, state State, content []byte) (State, error) {
 		}
 
 		if isAttr {
-			valueNode := captures[1].Node
+			valueNode := captures["value"][0]
 			value := []byte(valueNode.Content(content))
 			return extractIndentifierUsages(value, file, returnValue)
 		}
@@ -58,12 +58,12 @@ func ExtractPugUsages(file File, state State, content []byte) (State, error) {
 		return state, err
 	}
 
-	return utils.WithMatches(utils.QueryContent, utils.Pug, content, state, func(captures []sitter.QueryCapture, returnValue State) (State, error) {
-		tagContentNode := captures[0].Node
+	return utils.WithMatches(utils.QueryContent, utils.Pug, content, state, func(captures utils.Captures, returnValue State) (State, error) {
+		tagContentNode := captures["content"][0]
 		tagContent := []byte(tagContentNode.Content(content))
 
-		return utils.WithMatches(utils.QueryInterpolation, utils.AngularContent, tagContent, state, func(captures []sitter.QueryCapture, returnValue State) (State, error) {
-			interpolationNode := captures[0].Node
+		return utils.WithMatches(utils.QueryInterpolation, utils.AngularContent, tagContent, state, func(captures utils.Captures, returnValue State) (State, error) {
+			interpolationNode := captures["interpolation"][0]
 			interpolation := []byte(interpolationNode.Content(tagContent))
 
 			return extractIndentifierUsages(interpolation, file, state)
@@ -73,8 +73,8 @@ func ExtractPugUsages(file File, state State, content []byte) (State, error) {
 
 // Intentionally only get `identifier`s instead of `property_identifier`s because only the `identifier` will exist on the controller
 func extractIndentifierUsages(text []byte, file File, state State) (State, error) {
-	return utils.WithMatches(utils.QueryPropertyUsage, utils.JavaScript, text, state, func(captures []sitter.QueryCapture, returnValue State) (State, error) {
-		node := captures[0].Node
+	return utils.WithMatches(utils.QueryPropertyUsage, utils.JavaScript, text, state, func(captures utils.Captures, returnValue State) (State, error) {
+		node := captures["name"][0]
 		name := node.Content(text)
 		usageInstance := UsageInstance{ForeignAccess, node}
 

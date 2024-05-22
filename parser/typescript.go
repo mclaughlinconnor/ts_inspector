@@ -1,19 +1,18 @@
 package parser
 
 import (
-	"log"
 	"ts_inspector/utils"
 
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
 func ExtractTypeScriptUsages(file File, state State, root *sitter.Node, content []byte) (State, error) {
-	state, _ = utils.WithMatches(utils.QueryPrototypeUsage, utils.TypeScript, content, state, func(captures []sitter.QueryCapture, returnValue State) (State, error) {
+	state, _ = utils.WithMatches(utils.QueryPrototypeUsage, utils.TypeScript, content, state, func(captures utils.Captures, returnValue State) (State, error) {
 		if len(captures) == 0 {
 			return returnValue, nil
 		}
 
-		node := captures[2].Node
+		node := captures["var"][0]
 		name := node.Content(content)
 
 		returnValue = addUsage(file, returnValue, name, node, content)
@@ -21,12 +20,12 @@ func ExtractTypeScriptUsages(file File, state State, root *sitter.Node, content 
 		return returnValue, nil
 	})
 
-	return utils.WithMatches(utils.QueryPropertyUsage, utils.TypeScript, content, state, func(captures []sitter.QueryCapture, returnValue State) (State, error) {
+	return utils.WithMatches(utils.QueryPropertyUsage, utils.TypeScript, content, state, func(captures utils.Captures, returnValue State) (State, error) {
 		if len(captures) == 0 {
 			return returnValue, nil
 		}
 
-		node := captures[0].Node
+		node := captures["var"][0]
 		name := node.Content(content)
 
 		returnValue = addUsage(file, returnValue, name, node, content)
@@ -36,17 +35,15 @@ func ExtractTypeScriptUsages(file File, state State, root *sitter.Node, content 
 }
 
 func ExtractTypeScriptDefinitions(file File, state State, root *sitter.Node, content []byte) (State, error) {
-	state, _ = utils.WithMatches(utils.QueryMethodDefinition, utils.TypeScript, content, state, func(captures []sitter.QueryCapture, returnValue State) (State, error) {
+	state, _ = utils.WithMatches(utils.QueryMethodDefinition, utils.TypeScript, content, state, func(captures utils.Captures, returnValue State) (State, error) {
 		definition := Definition{}
 		definition.Decorators = []Decorator{}
 		definition.UsageAccess = NoAccess
 		var err error
 
-		for _, capture := range captures {
-			definition, err = handleDefinition(definition, capture.Node, content)
-			if err != nil {
-				return returnValue, err
-			}
+		definition, err = handleDefinition(definition, captures, content)
+		if err != nil {
+			return returnValue, err
 		}
 
 		returnValue[file.Filename()].AddDefinition(definition.Name, definition)
@@ -54,24 +51,12 @@ func ExtractTypeScriptDefinitions(file File, state State, root *sitter.Node, con
 		return returnValue, nil
 	})
 
-	return utils.WithMatches(utils.QueryPropertyDefinition, utils.TypeScript, content, state, func(captures []sitter.QueryCapture, returnValue State) (State, error) {
-		var definitionNode *sitter.Node
-		var accessibilityNode *sitter.Node
-		var nameNode *sitter.Node
+	return utils.WithMatches(utils.QueryPropertyDefinition, utils.TypeScript, content, state, func(captures utils.Captures, returnValue State) (State, error) {
+		definitionNode := captures["definition"][0]
+		name := captures["var"][0].Content(content)
+		accessibility := captures["accessibility_modifier"][0].Content(content)
 
-		nodeIndex := 0
-		definitionNode = captures[nodeIndex].Node
-		nodeIndex++
-
-		decorators, nodeIndex := handleDecorators(captures, nodeIndex, content)
-
-		accessibilityNode = captures[nodeIndex].Node
-		nodeIndex++
-		nameNode = captures[nodeIndex].Node
-		nodeIndex++
-
-		name := nameNode.Content(content)
-		accessibility := accessibilityNode.Content(content)
+		decorators := handleDecorators(captures, content)
 
 		a, err := CalculateAccessibilityFromString(accessibility)
 		if err != nil {
@@ -117,50 +102,74 @@ func isInConstructor(node *sitter.Node, content []byte) bool {
 	return false
 }
 
-func handleDefinition(definition Definition, node *sitter.Node, content []byte) (Definition, error) {
-	if node.Type() == "identifier" { // Should be safer. identifier doesn't just mean identifiers inside decorators
-		definition.Decorators = append(definition.Decorators, handleDecorator(node, content))
-	} else if node.Type() == "accessibility_modifier" {
-		a, err := CalculateAccessibilityFromString(node.Content(content))
+func handleDefinition(definition Definition, captures utils.Captures, content []byte) (Definition, error) {
+	if captures["definition"] != nil {
+		definition.Node = captures["definition"][0]
+	}
+
+	if captures["decorator"] != nil {
+		definition.Decorators = append(definition.Decorators, handleDecorator(captures["decorator"][0], content))
+	}
+
+	if captures["accessibility_modifier"] != nil {
+		a, err := CalculateAccessibilityFromString(captures["accessibility_modifier"][0].Content(content))
 		if err != nil {
 			return definition, err
 		}
 		definition.AccessModifier = a
-	} else if node.Type() == "static" {
+	}
+
+	if captures["static"] != nil {
 		definition.Static = true
-	} else if node.Type() == "override_modifier" {
+	}
+
+	if captures["override_modifier"] != nil {
 		definition.Override = true
-	} else if node.Type() == "readonly" {
+	}
+
+	if captures["readonly"] != nil {
 		definition.Readonly = true
-	} else if node.Type() == "async" {
+	}
+
+	if captures["async"] != nil {
 		definition.Async = true
-	} else if node.Type() == "*" {
+	}
+
+	if captures["generator"] != nil {
 		definition.Generator = true
-	} else if node.Type() == "set" {
+	}
+
+	if captures["name"] != nil {
+		definition.Name = captures["name"][0].Content(content)
+	}
+
+	if captures["set"] != nil {
 		definition.Setter = true
-	} else if node.Type() == "get" {
+	}
+
+	if captures["get"] != nil {
 		definition.Getter = true
-	} else if node.Type() == "property_identifier" {
-		definition.Name = node.Content(content)
-	} else if node.Type() == "method_definition" {
-		definition.Node = node
-	} else {
-		log.Println(node.Type())
+	}
+
+	if captures["property_identifier"] != nil {
+		definition.Name = captures["property_identifier"][0].Content(content)
+	}
+
+	if captures["method_definition"] != nil {
+		definition.Node = captures["method_definition"][0]
 	}
 
 	return definition, nil
 }
 
-func handleDecorators(captures []sitter.QueryCapture, startIndex int, content []byte) ([]Decorator, int) {
+func handleDecorators(captures utils.Captures, content []byte) []Decorator {
 	decorators := []Decorator{}
-	nodeIndex := startIndex
 
-	for captures[nodeIndex].Node.Type() == "identifier" {
-		decorators = append(decorators, handleDecorator(captures[nodeIndex].Node, content))
-		nodeIndex++
+	for _, node := range captures["decorator"] {
+		decorators = append(decorators, handleDecorator(node, content))
 	}
 
-	return decorators, nodeIndex
+	return decorators
 }
 
 func handleDecorator(node *sitter.Node, content []byte) Decorator {

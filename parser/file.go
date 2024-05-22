@@ -14,9 +14,9 @@ func HandleFile(state State, uri string, languageId string, version int, content
 
 	var file File
 	if languageId == "" {
-		file = NewFile(uri, previousFile.Filetype, version)
+		file = NewFile(uri, previousFile.Filetype, version, previousFile.Controller, previousFile.Template)
 	} else {
-		file = NewFile(uri, languageId, version)
+		file = NewFile(uri, languageId, version, "", "")
 	}
 
 	if !found {
@@ -43,20 +43,40 @@ func HandleFile(state State, uri string, languageId string, version int, content
 		var pugFile File
 
 		if found {
-			pugFile = NewFile(existingPugFile.URI, existingPugFile.Filetype, existingPugFile.Version)
+			pugFile = NewFile(existingPugFile.URI, existingPugFile.Filetype, existingPugFile.Version, "", file.Filename())
 		} else {
 			filetype, err := FiletypeFromFilename(templateFilename)
 			if err != nil {
 				return state, err
 			}
 
-			pugFile = NewFile(UriFromFilename(templateFilename), filetype, 0)
+			// Do it here as well as in `ExtractTemplateFilename` because the pug file might not exist yet
+			pugFile = NewFile(UriFromFilename(templateFilename), filetype, 0, "", file.Filename())
 		}
 
-		// Do it here as well as in `ExtractTemplateFilename` because the pug file might not exist yet
-		pugFile.Controller = file.Filename()
 		state[pugFile.Filename()] = pugFile
 		state, err = HandlePugFile(pugFile, state)
+	}
+
+	controllerFilename := file.Controller
+	if controllerFilename != "" {
+		existingTsFile, found := state[controllerFilename]
+		var controllerFile File
+
+		if found {
+			controllerFile = NewFile(existingTsFile.URI, existingTsFile.Filetype, existingTsFile.Version, "", file.Filename())
+		} else {
+			filetype, err := FiletypeFromFilename(templateFilename)
+			if err != nil {
+				return state, err
+			}
+
+			// Do it here as well as in `ExtractTemplateFilename` because the pug file might not exist yet
+			controllerFile = NewFile(UriFromFilename(templateFilename), filetype, 0, "", file.Filename())
+		}
+
+		state[controllerFile.Filename()] = controllerFile
+		state, err = HandleTypeScriptFile(controllerFile, state)
 	}
 
 	return state, err

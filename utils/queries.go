@@ -19,11 +19,12 @@ const (
 	QueryMethodDefinition   = "query_method_definition"
 	QueryClassImplements    = "query_class_implements"
 	QueryAngularImport      = "query_angular_import"
+	QueryImport             = "query_imports"
 	QueryClassProperties    = "query_class_properties"
 	QueryClassBody          = "query_class_body"
 )
 
-var componentDecorator = []byte(`
+var typescriptComponentDecorator = []byte(`
   (decorator
     (call_expression
       function: (identifier) @decorator_name
@@ -83,7 +84,7 @@ var typescriptPrototypeUsage = []byte(`
   ]
 `)
 
-var typescriptPropetyDefinition = []byte(`
+var typescriptPropertyDefinition = []byte(`
   [
     (public_field_definition
       decorator: [
@@ -119,6 +120,7 @@ var typescriptMethodDefinition = []byte(`
       "readonly"? @readonly
       "async"? @async
       "get"? @get
+      "*"? @generator
       name: (property_identifier) @name
       ; "?" ; Unhandled
     ) @definition
@@ -142,6 +144,16 @@ var typescriptAngularImport = []byte(`
     source: (string
       (string_fragment) @package)
     (#eq? @package "@angular/core"))
+`)
+
+var typescriptImport = []byte(`
+  (import_statement
+    (import_clause
+      (named_imports
+        (import_specifier
+          name: (identifier) @identifier))) @clause
+    source: (string
+      (string_fragment) @package))
 `)
 
 var typescriptClassProperties = []byte(`
@@ -184,17 +196,18 @@ func GetQuery(name string, lang string) (*sitter.QueryCursor, *sitter.Query, err
 }
 
 func InitQueries() {
-	registerQuery(QueryComponentDecorator, TypeScript, componentDecorator)
+	registerQuery(QueryComponentDecorator, TypeScript, typescriptComponentDecorator)
 	registerQuery(QueryPropertyUsage, TypeScript, typescriptPropertyUsage)
 	registerQuery(QueryPropertyUsage, JavaScript, javascriptPropertyUsage)
 	registerQuery(QueryContent, Pug, pugContent)
 	registerQuery(QueryAttribute, Pug, pugAttribute)
 	registerQuery(QueryInterpolation, AngularContent, angularContentInterpolation)
 	registerQuery(QueryPrototypeUsage, TypeScript, typescriptPrototypeUsage)
-	registerQuery(QueryPropertyDefinition, TypeScript, typescriptPropetyDefinition)
+	registerQuery(QueryPropertyDefinition, TypeScript, typescriptPropertyDefinition)
 	registerQuery(QueryMethodDefinition, TypeScript, typescriptMethodDefinition)
 	registerQuery(QueryClassImplements, TypeScript, typescriptClassImplements)
 	registerQuery(QueryAngularImport, TypeScript, typescriptAngularImport)
+	registerQuery(QueryImport, TypeScript, typescriptImport)
 	registerQuery(QueryClassProperties, TypeScript, typescriptClassProperties)
 	registerQuery(QueryClassBody, TypeScript, typescriptClassBody)
 }

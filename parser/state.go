@@ -140,13 +140,13 @@ type File struct {
 	Version     int
 }
 
-func NewFile(uri string, filetype string, version int) File {
+func NewFile(uri string, filetype string, version int, controller string, template string) File {
 	return File{
 		"",            // Content
-		"",            // Controller
+		controller,    // Controller
 		Definitions{}, // Definitions
 		filetype,      // Filetype
-		"",            // Template
+		template,      // Template
 		uri,           // Uri
 		Usages{},      // Usages
 		version,       // Version
