@@ -8,6 +8,10 @@ import (
 func Analyse(file parser.File) []Analysis {
 	analyses := []Analysis{}
 
+	if true {
+		return analyses
+	}
+
 	getters := file.GetGetters()
 	definitions := file.Definitions
 
