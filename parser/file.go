@@ -13,10 +13,14 @@ func HandleFile(state State, uri string, languageId string, version int, content
 	previousFile, found := state[FilenameFromUri(uri)]
 
 	var file File
-	if languageId == "" {
-		file = NewFile(uri, previousFile.Filetype, version, previousFile.Controller, previousFile.Template)
+	if !found {
+		file = NewFile(uri, languageId, version, previousFile.Controller, previousFile.Template)
 	} else {
-		file = NewFile(uri, languageId, version, "", "")
+		f := state[previousFile.Filename()]
+		f.Definitions = make(Definitions)
+		f.Usages = make(Usages)
+		state[previousFile.Filename()] = f
+		file = f
 	}
 
 	if !found {
@@ -43,7 +47,8 @@ func HandleFile(state State, uri string, languageId string, version int, content
 		var pugFile File
 
 		if found {
-			pugFile = NewFile(existingPugFile.URI, existingPugFile.Filetype, existingPugFile.Version, "", file.Filename())
+			pugFile = NewFile(existingPugFile.URI, existingPugFile.Filetype, existingPugFile.Version, file.Filename(), "")
+			pugFile.Content = existingPugFile.Content
 		} else {
 			filetype, err := FiletypeFromFilename(templateFilename)
 			if err != nil {
@@ -65,6 +70,7 @@ func HandleFile(state State, uri string, languageId string, version int, content
 
 		if found {
 			controllerFile = NewFile(existingTsFile.URI, existingTsFile.Filetype, existingTsFile.Version, "", file.Filename())
+			controllerFile.Content = existingTsFile.Content
 		} else {
 			filetype, err := FiletypeFromFilename(templateFilename)
 			if err != nil {
@@ -77,6 +83,13 @@ func HandleFile(state State, uri string, languageId string, version int, content
 
 		state[controllerFile.Filename()] = controllerFile
 		state, err = HandleTypeScriptFile(controllerFile, state)
+		controllerFile = state[controllerFile.Filename()]
+
+		for _, usage := range file.Usages {
+			for _, use := range usage.Usages {
+				controllerFile = controllerFile.AppendDefinitionUsage(usage.Name, use)
+			}
+		}
 	}
 
 	return state, err

@@ -2,7 +2,6 @@ package lsp
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -33,7 +32,6 @@ func Start() {
 		}
 
 		state = handleMessage(logger, writer, state, method, contents)
-
 	}
 }
 
