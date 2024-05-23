@@ -92,5 +92,18 @@ func HandleCodeAction(writer io.Writer, logger *log.Logger, state parser.State, 
 		})
 	}
 
+	onDestroy, allowed, err := actions.ImplementAngularOnDestroy(state, file)
+
+	if err != nil {
+		logger.Printf("Error: %s", err)
+	}
+
+	if allowed && err == nil && len(onDestroy) > 0 {
+		codeActions = append(codeActions, CodeAction{
+			Title: "Add OnDestroy",
+			Edit:  WorkspaceEditFromEdits(file, onDestroy),
+		})
+	}
+
 	WriteResponse(writer, newCodeActionResponse(request.ID, codeActions))
 }
