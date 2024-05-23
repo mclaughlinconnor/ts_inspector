@@ -17,7 +17,7 @@ const (
 	QueryPrototypeUsage     = "query_prototype_usage"
 	QueryPropertyDefinition = "query_property_definition"
 	QueryMethodDefinition   = "query_method_definition"
-	QueryClassImplements    = "query_class_implements"
+	QueryClassDefinition    = "query_class_implements"
 	QueryAngularImport      = "query_angular_import"
 	QueryImport             = "query_imports"
 	QueryClassProperties    = "query_class_properties"
@@ -127,12 +127,14 @@ var typescriptMethodDefinition = []byte(`
   )
 `)
 
-var typescriptClassImplements = []byte(`
+var typescriptClassDefinition = []byte(`
   (class_declaration
-    name: (type_identifier)
+    name: (type_identifier) @name
+    type_parameters: (type_parameters)? @type_parameters
     (class_heritage
+      (extends_clause)? @extends_clause
       (implements_clause
-        (type_identifier) @implements) @clause))
+        (type_identifier) @identifier)? @implements_clause)?)
 `)
 
 var typescriptAngularImport = []byte(`
@@ -206,7 +208,7 @@ func InitQueries() {
 	registerQuery(QueryPrototypeUsage, TypeScript, typescriptPrototypeUsage)
 	registerQuery(QueryPropertyDefinition, TypeScript, typescriptPropertyDefinition)
 	registerQuery(QueryMethodDefinition, TypeScript, typescriptMethodDefinition)
-	registerQuery(QueryClassImplements, TypeScript, typescriptClassImplements)
+	registerQuery(QueryClassDefinition, TypeScript, typescriptClassDefinition)
 	registerQuery(QueryAngularImport, TypeScript, typescriptAngularImport)
 	registerQuery(QueryImport, TypeScript, typescriptImport)
 	registerQuery(QueryClassProperties, TypeScript, typescriptClassProperties)
