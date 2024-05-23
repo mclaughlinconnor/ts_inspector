@@ -87,8 +87,6 @@ func AddToMethodDefinition(methodResults *[]MethodDefinitionParseResult, classBo
 			} else {
 				insertionIndex = index
 			}
-
-			break
 		}
 	}
 
