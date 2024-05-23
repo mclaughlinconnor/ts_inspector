@@ -30,7 +30,7 @@ func ImplementAngular(
 			edits = append(edits, implementEdits[0])
 		}
 
-		importEdits, err := ast.AddImportToFile(content, "@angular/core", imports)
+		importEdits, err := ast.AddImportToFile(content, "@angular/core", []string{}, imports)
 		if err != nil {
 			return edits, err
 		} else if len(importEdits) == 1 {

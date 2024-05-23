@@ -18,7 +18,6 @@ const (
 	QueryPropertyDefinition = "query_property_definition"
 	QueryMethodDefinition   = "query_method_definition"
 	QueryClassDefinition    = "query_class_implements"
-	QueryAngularImport      = "query_angular_import"
 	QueryImport             = "query_imports"
 	QueryClassProperties    = "query_class_properties"
 	QueryClassBody          = "query_class_body"
@@ -137,25 +136,13 @@ var typescriptClassDefinition = []byte(`
         (type_identifier) @identifier)? @implements_clause)?)
 `)
 
-var typescriptAngularImport = []byte(`
-  (import_statement
-    (import_clause
-      (named_imports
-        (import_specifier
-          name: (identifier) @identifier))) @clause
-    source: (string
-      (string_fragment) @package)
-    (#eq? @package "@angular/core"))
-`)
-
 var typescriptImport = []byte(`
   (import_statement
+    "type"? @type
     (import_clause
-      (named_imports
-        (import_specifier
-          name: (identifier) @identifier))) @clause
+      (named_imports) @named_imports) @clause
     source: (string
-      (string_fragment) @package))
+      (string_fragment) @package)) @import
 `)
 
 var typescriptClassProperties = []byte(`
@@ -209,7 +196,6 @@ func InitQueries() {
 	registerQuery(QueryPropertyDefinition, TypeScript, typescriptPropertyDefinition)
 	registerQuery(QueryMethodDefinition, TypeScript, typescriptMethodDefinition)
 	registerQuery(QueryClassDefinition, TypeScript, typescriptClassDefinition)
-	registerQuery(QueryAngularImport, TypeScript, typescriptAngularImport)
 	registerQuery(QueryImport, TypeScript, typescriptImport)
 	registerQuery(QueryClassProperties, TypeScript, typescriptClassProperties)
 	registerQuery(QueryClassBody, TypeScript, typescriptClassBody)
