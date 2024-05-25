@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"ts_inspector/actions"
 	"ts_inspector/parser"
 	"ts_inspector/rpc"
 	"ts_inspector/utils"
@@ -21,6 +22,7 @@ func Start() {
 	writer := os.Stdout
 
 	utils.InitQueries()
+	actions.InitActions()
 	state := parser.State{}
 
 	for scanner.Scan() {

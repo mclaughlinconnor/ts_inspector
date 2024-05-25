@@ -64,59 +64,28 @@ func newCodeActionResponse(id int, codeActions []CodeAction) CodeActionRepsonse 
 func HandleCodeAction(writer io.Writer, logger *log.Logger, state parser.State, request CodeActionRequest) {
 	file := state[parser.FilenameFromUri(request.Params.TextDocument.Uri)]
 
-	codeActions := []CodeAction{}
-
-	onInit, allowed, err := actions.ImplementAngularOnInit(state, file)
-
-	if err != nil {
-		logger.Printf("Error: %s", err)
-	}
-
-	if allowed && err == nil && len(onInit) > 0 {
-		codeActions = append(codeActions, CodeAction{
-			Title: "Add OnInit",
-			Edit:  WorkspaceEditFromEdits(file, onInit),
-		})
-	}
-
-	onChanges, allowed, err := actions.ImplementAngularOnChanges(state, file)
-
-	if err != nil {
-		logger.Printf("Error: %s", err)
-	}
-
-	if allowed && err == nil && len(onChanges) > 0 {
-		codeActions = append(codeActions, CodeAction{
-			Title: "Add OnChanges",
-			Edit:  WorkspaceEditFromEdits(file, onChanges),
-		})
-	}
-
-	onDestroy, allowed, err := actions.ImplementAngularOnDestroy(state, file)
-
-	if err != nil {
-		logger.Printf("Error: %s", err)
-	}
-
-	if allowed && err == nil && len(onDestroy) > 0 {
-		codeActions = append(codeActions, CodeAction{
-			Title: "Add OnDestroy",
-			Edit:  WorkspaceEditFromEdits(file, onDestroy),
-		})
-	}
-
-	makeAsync, allowed, err := actions.MakeAsync(state, file, request.Params.Range)
-
-	if err != nil {
-		logger.Printf("Error: %s", err)
-	}
-
-	if allowed && err == nil && len(makeAsync) > 0 {
-		codeActions = append(codeActions, CodeAction{
-			Title: "Make async",
-			Edit:  WorkspaceEditFromEdits(file, makeAsync),
-		})
-	}
+	codeActions := GenerateActions(logger, state, file, request.Params.Range)
 
 	WriteResponse(writer, newCodeActionResponse(request.ID, codeActions))
+}
+
+func GenerateActions(logger *log.Logger, state parser.State, file parser.File, editRange utils.Range) []CodeAction {
+	codeActions := []CodeAction{}
+
+	for _, action := range actions.Actions {
+		edits, allowed, err := action.Perform(state, file, editRange)
+
+		if err != nil {
+			logger.Printf("Error: %s", err)
+		}
+
+		if allowed && err == nil && len(edits) > 0 {
+			codeActions = append(codeActions, CodeAction{
+				Title: action.Title,
+				Edit:  WorkspaceEditFromEdits(file, edits),
+			})
+		}
+	}
+
+	return codeActions
 }
