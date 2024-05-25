@@ -105,5 +105,18 @@ func HandleCodeAction(writer io.Writer, logger *log.Logger, state parser.State, 
 		})
 	}
 
+	makeAsync, allowed, err := actions.MakeAsync(state, file, request.Params.Range)
+
+	if err != nil {
+		logger.Printf("Error: %s", err)
+	}
+
+	if allowed && err == nil && len(makeAsync) > 0 {
+		codeActions = append(codeActions, CodeAction{
+			Title: "Make async",
+			Edit:  WorkspaceEditFromEdits(file, makeAsync),
+		})
+	}
+
 	WriteResponse(writer, newCodeActionResponse(request.ID, codeActions))
 }

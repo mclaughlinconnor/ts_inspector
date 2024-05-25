@@ -28,7 +28,7 @@ func HandleFile(state State, uri string, languageId string, version int, content
 	}
 
 	if content != "" {
-		file.Content = content
+		file = file.SetContent(content)
 	}
 
 	var err error
@@ -48,7 +48,7 @@ func HandleFile(state State, uri string, languageId string, version int, content
 
 		if found {
 			pugFile = NewFile(existingPugFile.URI, existingPugFile.Filetype, existingPugFile.Version, file.Filename(), "")
-			pugFile.Content = existingPugFile.Content
+			pugFile = pugFile.SetContent(existingPugFile.Content)
 		} else {
 			filetype, err := FiletypeFromFilename(templateFilename)
 			if err != nil {
@@ -70,7 +70,7 @@ func HandleFile(state State, uri string, languageId string, version int, content
 
 		if found {
 			controllerFile = NewFile(existingTsFile.URI, existingTsFile.Filetype, existingTsFile.Version, "", file.Filename())
-			controllerFile.Content = existingTsFile.Content
+			controllerFile = controllerFile.SetContent(existingTsFile.Content)
 		} else {
 			filetype, err := FiletypeFromFilename(templateFilename)
 			if err != nil {
@@ -106,7 +106,7 @@ func HandleTypeScriptFile(file File, state State) (State, error) {
 
 	return utils.ParseFile(fromDisk, source, utils.TypeScript, state,
 		func(root *sitter.Node, content []byte, state State) (State, error) {
-			file.Content = CStr2GoStr(content)
+			file = file.SetContent(CStr2GoStr(content))
 			state[file.Filename()] = file
 
 			state, err := ExtractTypeScriptDefinitions(file, state, root, content)
@@ -139,7 +139,7 @@ func HandlePugFile(file File, state State) (State, error) {
 
 	return utils.ParseFile(fromDisk, source, utils.Pug, state,
 		func(root *sitter.Node, content []byte, state State) (State, error) {
-			file.Content = CStr2GoStr(content)
+			file = file.SetContent(CStr2GoStr(content))
 			state[file.Filename()] = file
 
 			state, err := ExtractPugUsages(file, state, content)

@@ -3,6 +3,7 @@ package parser
 import (
 	"fmt"
 	"strings"
+	"ts_inspector/utils"
 
 	sitter "github.com/smacker/go-tree-sitter"
 )
@@ -137,6 +138,7 @@ type File struct {
 	Controller  string
 	Definitions Definitions
 	Filetype    string
+	LineOffsets []uint32
 	Template    string
 	URI         string
 	Usages      Usages
@@ -145,14 +147,15 @@ type File struct {
 
 func NewFile(uri string, filetype string, version int, controller string, template string) File {
 	return File{
-		"",            // Content
-		controller,    // Controller
-		Definitions{}, // Definitions
-		filetype,      // Filetype
-		template,      // Template
-		uri,           // Uri
-		Usages{},      // Usages
-		version,       // Version
+		Content:     "",
+		Controller:  controller,
+		Definitions: map[string]Definition{},
+		Filetype:    filetype,
+		LineOffsets: []uint32{},
+		Template:    template,
+		URI:         uri,
+		Usages:      map[string]Usage{},
+		Version:     version,
 	}
 }
 
@@ -162,6 +165,66 @@ func (f File) Filename() string {
 
 func (f File) GetGetters() []Definition {
 	return filterDefinitions(f, func(d Definition) bool { return d.Getter })
+}
+
+func getLineOffsets(text string) []uint32 {
+	var i uint32 = 0
+	offsets := []uint32{}
+	isLineStart := true
+	textLength := uint32(len(text))
+
+	for i < textLength {
+		if isLineStart {
+			offsets = append(offsets, i)
+			isLineStart = false
+		}
+
+		ch := text[i]
+		isLineStart = (ch == '\r' || ch == '\n')
+
+		if ch == '\r' && i+1 < textLength && text[i+1] == '\n' {
+			i++
+		}
+
+		i++
+	}
+
+	if isLineStart && textLength > 0 {
+		offsets = append(offsets, textLength)
+	}
+
+	return offsets
+}
+
+func (f File) SetContent(content string) File {
+	lineOffsets := getLineOffsets(content)
+	f.LineOffsets = lineOffsets
+	f.Content = content
+	return f
+}
+
+func (f File) GetOffsetForPosition(p utils.Position) uint32 {
+	lines := uint32(len(f.LineOffsets))
+
+	if p.Line >= lines {
+		return uint32(len(f.Content))
+	} else if p.Line < 0 {
+		return 0
+	}
+
+	lineOffset := f.LineOffsets[p.Line]
+	var nextLineOffset uint32
+	if p.Line+1 < lines {
+		nextLineOffset = f.LineOffsets[p.Line+1]
+	} else {
+		nextLineOffset = lines
+	}
+
+	return max(min(lineOffset+p.Character, nextLineOffset), lineOffset)
+}
+
+func (f File) GetOffsetsForRange(r utils.Range) (uint32, uint32) {
+	return f.GetOffsetForPosition(r.Start), f.GetOffsetForPosition(r.End)
 }
 
 func filterDefinitions(f File, cond func(d Definition) bool) []Definition {
