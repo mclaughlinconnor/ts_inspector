@@ -2,151 +2,117 @@ package parser
 
 import (
 	"log"
-	"ts_inspector/utils"
 
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
 type parseCallback[V any] func(root *sitter.Node, content []byte, v V) (V, error)
 
-func HandleFile(state State, uri string, languageId string, version int, content string, logger *log.Logger) (State, error) {
-	previousFile, found := state[FilenameFromUri(uri)]
-
-	var file File
-	if !found {
-		file = NewFile(uri, languageId, version, previousFile.Controller, previousFile.Template)
-	} else {
-		f := state[previousFile.Filename()]
-		f.Definitions = make(Definitions)
-		f.Usages = make(Usages)
-		state[previousFile.Filename()] = f
-		file = f
+func handleFile(uri string, languageId string, version int, content string, _ *log.Logger) (File, error) {
+	file, err := NewFile(uri, languageId, version)
+	if err != nil {
+		return file, err
 	}
 
-	if !found {
+	file = file.SetContent(content)
+
+	if languageId == "typescript" {
+		file, err = HandleTypeScriptFile(file)
+	} else if languageId == "pug" {
+		file, err = HandlePugFile(file)
+	}
+
+	return file, err
+}
+
+func HandleFile(state State, uri string, languageId string, version int, content string, logger *log.Logger) (State, error) {
+	if languageId == "" {
+		var err error
+		languageId, err = FiletypeFromFilename(FilenameFromUri(uri))
+		if err != nil {
+			return state, err
+		}
+	}
+
+	file, err := handleFile(uri, languageId, version, content, logger)
+	if err != nil {
+		return state, err
+	}
+
+	state[file.Filename()] = file
+
+	state, err = handleDependencies(file, state, logger)
+	if err != nil {
+		return state, err
+	}
+
+	state = reconcile(state)
+
+	return state, nil
+}
+
+func handleDependencies(file File, state State, logger *log.Logger) (State, error) {
+	filename := file.Filename()
+
+	for fn, f := range state {
+		var err error
+		if f.Template == filename || f.Controller == filename {
+			state, err = handleDependency(state, fn, logger)
+		}
+		if fn == filename {
+			if f.Template != "" {
+				state, err = handleDependency(state, f.Template, logger)
+			}
+			if f.Controller != "" {
+				state, err = handleDependency(state, f.Controller, logger)
+			}
+		}
+
+		if err != nil {
+			return state, err
+		}
+	}
+
+	for fn, f := range state {
+		if f.Template != "" {
+			t := state[f.Template]
+			t.Controller = fn
+			state[f.Template] = t
+		}
+	}
+
+	return state, nil
+}
+
+func handleDependency(state State, filename string, logger *log.Logger) (State, error) {
+	filetype, err := FiletypeFromFilename(filename)
+	if err != nil {
+		return state, err
+	}
+	df, err := handleFile(UriFromFilename(filename), filetype, 0, state[filename].Content, logger)
+	if err != nil {
+		return state, err
+	}
+	state[df.Filename()] = df
+	return state, nil
+}
+
+func reconcile(state State) State {
+	for _, file := range state {
+		// Skip if is a controller
+		if file.Controller != "" {
+			continue
+		}
+
+		template := state[file.Template]
+		for name, usage := range template.Usages {
+			for _, use := range usage.Usages {
+				file = file.AppendDefinitionUsage(name, use)
+			}
+		}
+
 		state[file.Filename()] = file
 	}
 
-	if content != "" {
-		file = file.SetContent(content)
-	}
-
-	var err error
-
-	if file.Filetype == "typescript" {
-		state, err = HandleTypeScriptFile(file, state)
-	} else if file.Filetype == "pug" {
-		state, err = HandlePugFile(file, state)
-	}
-
-	file = state[file.Filename()]
-
-	templateFilename := file.Template
-	if templateFilename != "" {
-		existingPugFile, found := state[templateFilename]
-		var pugFile File
-
-		if found {
-			pugFile = NewFile(existingPugFile.URI, existingPugFile.Filetype, existingPugFile.Version, file.Filename(), "")
-			pugFile = pugFile.SetContent(existingPugFile.Content)
-		} else {
-			filetype, err := FiletypeFromFilename(templateFilename)
-			if err != nil {
-				return state, err
-			}
-
-			// Do it here as well as in `ExtractTemplateFilename` because the pug file might not exist yet
-			pugFile = NewFile(UriFromFilename(templateFilename), filetype, 0, file.Filename(), "")
-		}
-
-		state[pugFile.Filename()] = pugFile
-		state, err = HandlePugFile(pugFile, state)
-	}
-
-	controllerFilename := file.Controller
-	if controllerFilename != "" {
-		existingTsFile, found := state[controllerFilename]
-		var controllerFile File
-
-		if found {
-			controllerFile = NewFile(existingTsFile.URI, existingTsFile.Filetype, existingTsFile.Version, "", file.Filename())
-			controllerFile = controllerFile.SetContent(existingTsFile.Content)
-		} else {
-			filetype, err := FiletypeFromFilename(templateFilename)
-			if err != nil {
-				return state, err
-			}
-
-			// Do it here as well as in `ExtractTemplateFilename` because the pug file might not exist yet
-			controllerFile = NewFile(UriFromFilename(templateFilename), filetype, 0, "", file.Filename())
-		}
-
-		state[controllerFile.Filename()] = controllerFile
-		state, err = HandleTypeScriptFile(controllerFile, state)
-		controllerFile = state[controllerFile.Filename()]
-
-		for _, usage := range file.Usages {
-			for _, use := range usage.Usages {
-				controllerFile = controllerFile.AppendDefinitionUsage(usage.Name, use)
-			}
-		}
-	}
-
-	return state, err
-}
-
-func HandleTypeScriptFile(file File, state State) (State, error) {
-	fromDisk := file.Content == ""
-	var source string
-	if fromDisk {
-		source = file.Filename()
-	} else {
-		source = file.Content
-	}
-
-	return utils.ParseFile(fromDisk, source, utils.TypeScript, state,
-		func(root *sitter.Node, content []byte, state State) (State, error) {
-			file = file.SetContent(CStr2GoStr(content))
-			state[file.Filename()] = file
-
-			state, err := ExtractTypeScriptDefinitions(file, state, root, content)
-			if err != nil {
-				return state, err
-			}
-
-			state, err = ExtractTypeScriptUsages(file, state, root, content)
-			if err != nil {
-				return state, err
-			}
-
-			state, err = ExtractTemplateFilename(file, state, file.Filename(), root, content)
-			if err != nil {
-				return state, err
-			}
-
-			return state, nil
-		})
-}
-
-func HandlePugFile(file File, state State) (State, error) {
-	fromDisk := file.Content == ""
-	var source string
-	if fromDisk {
-		source = file.Filename()
-	} else {
-		source = file.Content
-	}
-
-	return utils.ParseFile(fromDisk, source, utils.Pug, state,
-		func(root *sitter.Node, content []byte, state State) (State, error) {
-			file = file.SetContent(CStr2GoStr(content))
-			state[file.Filename()] = file
-
-			state, err := ExtractPugUsages(file, state, content)
-			if err != nil {
-				return state, err
-			}
-
-			return state, nil
-		})
+	return state
 }

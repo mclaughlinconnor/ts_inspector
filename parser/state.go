@@ -2,6 +2,9 @@ package parser
 
 import (
 	"fmt"
+	"os"
+	"path"
+	"path/filepath"
 	"strings"
 	"ts_inspector/utils"
 
@@ -145,18 +148,32 @@ type File struct {
 	Version     int
 }
 
-func NewFile(uri string, filetype string, version int, controller string, template string) File {
+func NewFile(uri string, filetype string, version int) (File, error) {
+	filename := FilenameFromUri(uri)
+
+	if !strings.HasPrefix(filename, "/") {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return File{}, err
+		}
+
+		filename, err = filepath.Abs(path.Join(cwd, filename)) // what?
+		if err != nil {
+			return File{}, err
+		}
+	}
+
 	return File{
 		Content:     "",
-		Controller:  controller,
+		Controller:  "",
 		Definitions: map[string]Definition{},
 		Filetype:    filetype,
 		LineOffsets: []uint32{},
-		Template:    template,
-		URI:         uri,
+		Template:    "",
+		URI:         UriFromFilename(filename),
 		Usages:      map[string]Usage{},
 		Version:     version,
-	}
+	}, nil
 }
 
 func (f File) Filename() string {

@@ -1,13 +1,71 @@
 package parser
 
 import (
+	"fmt"
+	"path"
+	"path/filepath"
 	"ts_inspector/utils"
 
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
-func ExtractTypeScriptUsages(file File, state State, root *sitter.Node, content []byte) (State, error) {
-	state, _ = utils.WithMatches(utils.QueryPrototypeUsage, utils.TypeScript, content, state, func(captures utils.Captures, returnValue State) (State, error) {
+func HandleTypeScriptFile(file File) (File, error) {
+	fromDisk := file.Content == ""
+	var source string
+	if fromDisk {
+		source = file.Filename()
+	} else {
+		source = file.Content
+	}
+
+	return utils.ParseFile(fromDisk, source, utils.TypeScript, file,
+		func(root *sitter.Node, content []byte, file File) (File, error) {
+			file = file.SetContent(CStr2GoStr(content))
+
+			file, err := ExtractTypeScriptDefinitions(file, root, content)
+			if err != nil {
+				return file, err
+			}
+
+			file, err = ExtractTypeScriptUsages(file, root, content)
+			if err != nil {
+				return file, err
+			}
+
+			file, err = ExtractTemplateFilename(file, root, content)
+			if err != nil {
+				return file, err
+			}
+
+			return file, nil
+		})
+}
+
+func ExtractTemplateFilename(file File, root *sitter.Node, content []byte) (File, error) {
+	return utils.WithMatches(utils.QueryComponentDecorator, utils.TypeScript, content, file, func(captures utils.Captures, returnValue File) (File, error) {
+		if len(captures) == 0 {
+			return returnValue, nil
+		}
+
+		relativeTemplatePath := captures["template"][0].Content(content)
+		controllerDirectory := filepath.Dir(file.Filename())
+
+		templateFilePath, err := filepath.Abs(path.Join(controllerDirectory, relativeTemplatePath))
+		if err != nil {
+			return returnValue, err
+		}
+
+		if FileExists(templateFilePath) {
+			returnValue.Template = templateFilePath
+			return returnValue, nil
+		}
+
+		return returnValue, fmt.Errorf("Unexpected template file does not exist: %s", relativeTemplatePath)
+	})
+}
+
+func ExtractTypeScriptUsages(file File, root *sitter.Node, content []byte) (File, error) {
+	file, _ = utils.WithMatches(utils.QueryPrototypeUsage, utils.TypeScript, content, file, func(captures utils.Captures, returnValue File) (File, error) {
 		if len(captures) == 0 {
 			return returnValue, nil
 		}
@@ -15,12 +73,12 @@ func ExtractTypeScriptUsages(file File, state State, root *sitter.Node, content 
 		node := captures["var"][0]
 		name := node.Content(content)
 
-		returnValue = addUsage(file, returnValue, name, node, content)
+		returnValue = addUsage(returnValue, name, node, content)
 
 		return returnValue, nil
 	})
 
-	return utils.WithMatches(utils.QueryPropertyUsage, utils.TypeScript, content, state, func(captures utils.Captures, returnValue State) (State, error) {
+	return utils.WithMatches(utils.QueryPropertyUsage, utils.TypeScript, content, file, func(captures utils.Captures, returnValue File) (File, error) {
 		if len(captures) == 0 {
 			return returnValue, nil
 		}
@@ -28,14 +86,14 @@ func ExtractTypeScriptUsages(file File, state State, root *sitter.Node, content 
 		node := captures["var"][0]
 		name := node.Content(content)
 
-		returnValue = addUsage(file, returnValue, name, node, content)
+		returnValue = addUsage(returnValue, name, node, content)
 
 		return returnValue, nil
 	})
 }
 
-func ExtractTypeScriptDefinitions(file File, state State, root *sitter.Node, content []byte) (State, error) {
-	state, _ = utils.WithMatches(utils.QueryMethodDefinition, utils.TypeScript, content, state, func(captures utils.Captures, returnValue State) (State, error) {
+func ExtractTypeScriptDefinitions(file File, root *sitter.Node, content []byte) (File, error) {
+	file, _ = utils.WithMatches(utils.QueryMethodDefinition, utils.TypeScript, content, file, func(captures utils.Captures, returnValue File) (File, error) {
 		definition := Definition{}
 		definition.Decorators = []Decorator{}
 		definition.UsageAccess = NoAccess
@@ -46,12 +104,12 @@ func ExtractTypeScriptDefinitions(file File, state State, root *sitter.Node, con
 			return returnValue, err
 		}
 
-		returnValue[file.Filename()].AddDefinition(definition.Name, definition)
+		returnValue = returnValue.AddDefinition(definition.Name, definition)
 
 		return returnValue, nil
 	})
 
-	return utils.WithMatches(utils.QueryPropertyDefinition, utils.TypeScript, content, state, func(captures utils.Captures, returnValue State) (State, error) {
+	return utils.WithMatches(utils.QueryPropertyDefinition, utils.TypeScript, content, file, func(captures utils.Captures, returnValue File) (File, error) {
 		definitionNode := captures["definition"][0]
 		name := captures["var"][0].Content(content)
 		accessibility := captures["accessibility_modifier"][0].Content(content)
@@ -63,28 +121,25 @@ func ExtractTypeScriptDefinitions(file File, state State, root *sitter.Node, con
 			return returnValue, err
 		}
 
-		returnValue[file.Filename()] = returnValue[file.Filename()].AddDefinition(name, CreatePropertyDefinition(a, decorators, name, definitionNode))
+		returnValue = returnValue.AddDefinition(name, CreatePropertyDefinition(a, decorators, name, definitionNode))
 
 		return returnValue, nil
 	})
 }
 
-func addUsage(file File, state State, name string, node *sitter.Node, content []byte) State {
+func addUsage(file File, name string, node *sitter.Node, content []byte) File {
 	access := LocalAccess
 	if isInConstructor(node, content) {
 		access = ConstructorAccess
 	}
 
-	file = state[file.Filename()]
 	usageInstance := UsageInstance{access, node}
 
 	file = file.SetUsageAccessType(name, usageInstance.Access)
 	file = file.AppendUsage(name, usageInstance)
 	file = file.AppendDefinitionUsage(name, usageInstance)
 
-	state[file.Filename()] = file
-
-	return state
+	return file
 }
 
 func isInConstructor(node *sitter.Node, content []byte) bool {
