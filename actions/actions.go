@@ -17,6 +17,7 @@ func registerAction(action Action) {
 }
 
 func InitActions() {
+	registerAction(Action{ImplementAngularAfterViewInit, "Add AfterViewInit"})
 	registerAction(Action{ImplementAngularOnChanges, "Add OnChanges"})
 	registerAction(Action{ImplementAngularOnDestroy, "Add OnDestroy"})
 	registerAction(Action{ImplementAngularOnInit, "Add OnInit"})
