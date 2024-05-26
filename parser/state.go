@@ -9,8 +9,8 @@ import (
 )
 
 type access struct {
-	modifier   string
-	precedence int
+	Modifier   string
+	Precedence int
 }
 
 var NoAccess = access{"none", 0}
@@ -124,7 +124,7 @@ type Usages map[string]Usage
 type Definitions map[string]Definition
 
 func CalculateNewAccessType(new access, old access) access {
-	if new.precedence > old.precedence {
+	if new.Precedence > old.Precedence {
 		return new
 	}
 
