@@ -241,7 +241,7 @@ func filterDefinitions(f File, cond func(d Definition) bool) []Definition {
 func FiletypeFromFilename(filename string) (string, error) {
 	if strings.HasSuffix(filename, ".pug") {
 		return "pug", nil
-	} else if strings.HasSuffix(filename, ".pug") {
+	} else if strings.HasSuffix(filename, ".ts") {
 		return "typescript", nil
 	}
 
