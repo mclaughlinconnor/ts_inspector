@@ -5,6 +5,7 @@
 *.so
 *.dylib
 ts_inspector
+test_project/node_modules/
 
 # Test binary, built with `go test -c`
 *.test
