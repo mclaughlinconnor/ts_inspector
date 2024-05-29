@@ -92,7 +92,7 @@ func MakeAsync(
 			}
 		}
 
-		if !hasAsync {
+		if !hasAsync && postAsyncNode != nil {
 			editRange := utils.Range{Start: utils.PositionFromPoint(postAsyncNode.StartPoint()), End: utils.PositionFromPoint(postAsyncNode.StartPoint())}
 			edits = append(edits, utils.TextEdit{Range: editRange, NewText: "async "})
 		}
