@@ -42,7 +42,8 @@ func visitAttributes(node *sitter.Node, state *State) {
 		nextSibling := cursor.CurrentNode()
 
 		if attributeValue != nil {
-			pushRange(state, "=", nil, nil)
+			r := offsetPreviousRange(state, 1)
+			pushRange(state, "=", &EQUALS, &r)
 			traverseTree(attributeValue, state)
 		} else if nextSibling.Content(content) == "=" {
 			// if "attr=" has been typed, we still want the = in case that's where the cursor is
