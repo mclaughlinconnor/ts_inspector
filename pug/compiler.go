@@ -168,6 +168,7 @@ func Parse(input string) (State, error) {
 		HtmlEnd:   uint32(len(state.HtmlText)),
 		PugStart:  (lastEnd) + 1,
 		PugEnd:    uint32(len(state.PugText)),
+		NodeType:  EMPTY,
 	})
 
 	return state, nil
