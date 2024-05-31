@@ -70,3 +70,53 @@ func offsetPreviousRange(state *State, offset int32) NodeRange {
 
 	return NodeRange{StartIndex: 0, EndIndex: 0}
 }
+
+func rangeAtPugLocation(charIndex uint32, state State) Range {
+	for _, r := range state.Ranges {
+		if r.PugStart <= charIndex && charIndex <= r.PugEnd {
+			return r
+		}
+	}
+
+	return Range{0, 0, 0, 0, EMPTY}
+}
+
+func rangeAtHtmlLocation(charIndex uint32, state State) Range {
+	for _, r := range state.Ranges {
+		if r.HtmlStart <= charIndex && charIndex <= r.HtmlEnd {
+			return r
+		}
+	}
+
+	return Range{0, 0, 0, 0, EMPTY}
+}
+
+func htmlLocationToPugLocation(charIndex uint32, state State) uint32 {
+	var closest *Range
+	for _, r := range state.Ranges {
+		if r.HtmlStart <= charIndex && charIndex <= r.HtmlEnd {
+			return min(r.PugStart+(charIndex-r.HtmlStart), uint32(len(state.PugText)))
+		}
+
+		if closest == nil && r.HtmlEnd > charIndex {
+			closest = &r
+		}
+	}
+
+	return min(closest.PugStart+(charIndex-closest.HtmlStart), uint32(len(state.PugText)))
+}
+
+func pugLocationToHtmlLocation(charIndex uint32, state State) uint32 {
+	var closest *Range
+	for _, r := range state.Ranges {
+		if r.PugStart <= charIndex && charIndex <= r.PugEnd {
+			return min(r.HtmlStart+(charIndex-r.PugStart), uint32(len(state.HtmlText)))
+		}
+
+		if closest == nil && r.PugEnd > charIndex {
+			closest = &r
+		}
+	}
+
+	return min(closest.HtmlStart+(charIndex-closest.PugStart), uint32(len(state.HtmlText)))
+}
