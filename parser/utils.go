@@ -60,6 +60,8 @@ var angularFunctions = map[string]bool{
 	"ngOnDestroy":           true,
 	"ngOnInit":              true,
 	"constructor":           true,
+	"writeValue":            true,
+	"normaliseWriteValue":   true,
 }
 
 func FilenameFromUri(uri string) string {
