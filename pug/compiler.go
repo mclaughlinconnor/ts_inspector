@@ -98,7 +98,7 @@ func traverseTree(node *sitter.Node, state *State) {
 				quote = "\""
 			}
 			r := getRange(node)
-			pushRangeSurround(state, text, r, quote, EMPTY)
+			pushRangeSurround(state, text, r, quote, JAVASCRIPT)
 		} else if nodeType == "quoted_attribute_value" {
 			r := getRange(node)
 			pushRange(state, node.Content(content), &ATTRIBUTE, &r)
