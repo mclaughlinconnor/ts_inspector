@@ -3,6 +3,7 @@ package ngserver
 import (
 	"os"
 	"ts_inspector/interfaces"
+	"ts_inspector/rpc"
 	"ts_inspector/utils"
 )
 
@@ -21,8 +22,12 @@ func HandleResponse(method string, contents []byte, msg []byte) {
 			Label: "ts_inspector",
 		}}
 		utils.WriteResponse(writer, response)
-		return
+	case "initialize":
+		response := utils.TryParseRequest[interfaces.InitializeResponse](logger, contents)
+		response.Result.Capabilities.TextDocumentSync = interfaces.TextDocumentSyncKind.Full
+		nmsg := rpc.EncodeMessage(response)
+		writer.Write([]byte(nmsg))
+	default:
+		writer.Write(msg)
 	}
-
-	writer.Write(msg)
 }

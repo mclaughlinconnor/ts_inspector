@@ -18,7 +18,33 @@ type InitializeResult struct {
 }
 
 type ServerCapabilities struct {
-	CodeActionProvider bool              `json:"codeActionProvider"`
-	CompletionProvider CompletionOptions `json:"completionProvider"`
-	TextDocumentSync   int               `json:"textDocumentSync"`
+	CodeActionProvider     bool                 `json:"codeActionProvider"` // angular uses CodeActionOptions, but I don't support that yet
+	CompletionProvider     CompletionOptions    `json:"completionProvider"`
+	TextDocumentSync       int                  `json:"textDocumentSync"`
+	CodeLensProvider       CodeLensOptions      `json:"codeLensProvider"`
+	DefinitionProvider     bool                 `json:"definitionProvider"`
+	FoldingRangeProvider   bool                 `json:"foldingRangeProvider"`
+	HoverProvider          bool                 `json:"hoverProvider"`
+	ReferencesProvider     bool                 `json:"referencesProvider"`
+	RenameOptions          RenameOptions        `json:"renameOptions"`
+	SignatureHelpProvider  SignatureHelpOptions `json:"signatureHelpProvider"`
+	TypeDefinitionProvider bool                 `json:"typeDefinitionProvider"`
+	Workspace              struct {
+		WorkspaceFolders struct {
+			Supported bool `json:"supported"`
+		} `json:"workspaceFolders"`
+	} `json:"workspace"`
+}
+
+type CodeLensOptions struct {
+	ResolveProvider bool `json:"resolveProvider"`
+}
+
+type RenameOptions struct {
+	PrepareProvider bool `json:"prepareProvider"`
+}
+
+type SignatureHelpOptions struct {
+	TriggerCharacters   []string `json:"triggerCharacters"`
+	RetriggerCharacters []string `json:"retriggerCharacters"`
 }
