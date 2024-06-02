@@ -3,24 +3,12 @@ package lsp
 import (
 	"io"
 	"log"
+	"ts_inspector/interfaces"
 	"ts_inspector/parser"
+	"ts_inspector/utils"
 )
 
-type TextDocumentContentChangeEvent struct {
-	Text string `json:"text"`
-}
-
-type DidChangeTextDocumentNotification struct {
-	Notification
-	Params DidChangeTextDocumentNotificationParams `json:"params"`
-}
-
-type DidChangeTextDocumentNotificationParams struct {
-	TextDocument   TextDocumentItem                 `json:"textDocument"`
-	ContentChanges []TextDocumentContentChangeEvent `json:"contentChanges"`
-}
-
-func HandleDidChange(writer io.Writer, logger *log.Logger, state parser.State, request DidChangeTextDocumentNotification) parser.State {
+func HandleDidChange(writer io.Writer, logger *log.Logger, state parser.State, request interfaces.DidChangeTextDocumentNotification) parser.State {
 	state, err := parser.HandleFile(
 		state,
 		request.Params.TextDocument.Uri,
@@ -34,7 +22,7 @@ func HandleDidChange(writer io.Writer, logger *log.Logger, state parser.State, r
 		logger.Println(err)
 	} else {
 		for _, file := range state {
-			WriteResponse(writer, GenerateDiagnosticsForFile(file))
+			utils.WriteResponse(writer, interfaces.GenerateDiagnosticsForFile(file))
 		}
 	}
 

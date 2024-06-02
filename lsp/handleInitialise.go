@@ -3,42 +3,26 @@ package lsp
 import (
 	"io"
 	"log"
+	"ts_inspector/interfaces"
 )
 
-type InitializeRequest struct {
-	Request
-}
-
-type InitializeResponse struct {
-	Response
-	Result InitializeResult `json:"result"`
-}
-
-type InitializeResult struct {
-	Capabilities ServerCapabilities `json:"capabilities"`
-}
-
-type ServerCapabilities struct {
-	CodeActionProvider bool `json:"codeActionProvider"`
-	TextDocumentSync   int  `json:"textDocumentSync"`
-}
-
-func newInitializeResponse(id int) InitializeResponse {
-	return InitializeResponse{
-		Response: Response{
+func newInitializeResponse(id int) interfaces.InitializeResponse {
+	return interfaces.InitializeResponse{
+		Response: interfaces.Response{
 			RPC: "2.0",
 			ID:  &id,
 		},
-		Result: InitializeResult{
-			Capabilities: ServerCapabilities{
+		Result: interfaces.InitializeResult{
+			Capabilities: interfaces.ServerCapabilities{
 				CodeActionProvider: true,
-				TextDocumentSync:   TextDocumentSyncKind.Full,
+				CompletionProvider: interfaces.CompletionOptions{},
+				TextDocumentSync:   interfaces.TextDocumentSyncKind.Full,
 			},
 		},
 	}
 }
 
-func HandleInitialise(writer io.Writer, logger *log.Logger, request InitializeRequest) {
+func HandleInitialise(writer io.Writer, logger *log.Logger, request interfaces.InitializeRequest) interfaces.InitializeResponse {
 	msg := newInitializeResponse(request.ID)
-	WriteResponse(writer, msg)
+	return msg
 }

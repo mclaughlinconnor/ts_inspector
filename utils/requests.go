@@ -1,4 +1,4 @@
-package lsp
+package utils
 
 import (
 	"encoding/json"

@@ -1,4 +1,4 @@
-package lsp
+package interfaces
 
 import (
 	"ts_inspector/analysis"
