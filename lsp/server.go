@@ -11,6 +11,7 @@ import (
 	"ts_inspector/interfaces"
 	"ts_inspector/ngserver"
 	"ts_inspector/parser"
+	"ts_inspector/pug"
 	"ts_inspector/rpc"
 	"ts_inspector/utils"
 )
@@ -66,7 +67,23 @@ func handleMessage(logger *log.Logger, writer io.Writer, state parser.State, met
 	case "textDocument/completion":
 		request := utils.TryParseRequest[interfaces.CompletionRequest](logger, contents)
 		ngserver.Requests[request.ID] = method
-		ngserver.SendToAngular(string(msg))
+
+		file := state[parser.FilenameFromUri(request.Params.TextDocument.Uri)]
+
+		parseResult, err := pug.Parse(file.Content)
+		if err != nil {
+			return state
+		}
+
+		pugOffset := file.GetOffsetForPosition(request.Params.Position)
+		htmlPosition := pug.PugLocationToHtmlLocation(pugOffset, parseResult)
+		htmlOffset := parser.GetPositionForOffset(parseResult.HtmlText, htmlPosition)
+
+		request.Params.Position = htmlOffset
+		request.Method = "cm/getAttrCompletion"
+
+		updatedMsg := rpc.EncodeMessage(request)
+		ngserver.SendToAngular(string(updatedMsg))
 	default:
 		ngserver.SendToAngular(string(msg))
 	}

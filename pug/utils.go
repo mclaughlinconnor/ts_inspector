@@ -91,7 +91,7 @@ func rangeAtHtmlLocation(charIndex uint32, state State) Range {
 	return Range{0, 0, 0, 0, EMPTY}
 }
 
-func htmlLocationToPugLocation(charIndex uint32, state State) uint32 {
+func HtmlLocationToPugLocation(charIndex uint32, state State) uint32 {
 	var closest *Range
 	for _, r := range state.Ranges {
 		if r.HtmlStart <= charIndex && charIndex <= r.HtmlEnd {
@@ -106,7 +106,7 @@ func htmlLocationToPugLocation(charIndex uint32, state State) uint32 {
 	return min(closest.PugStart+(charIndex-closest.HtmlStart), uint32(len(state.PugText)))
 }
 
-func pugLocationToHtmlLocation(charIndex uint32, state State) uint32 {
+func PugLocationToHtmlLocation(charIndex uint32, state State) uint32 {
 	var closest *Range
 	for _, r := range state.Ranges {
 		if r.PugStart <= charIndex && charIndex <= r.PugEnd {

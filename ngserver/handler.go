@@ -18,9 +18,6 @@ func HandleResponse(method string, contents []byte, msg []byte) {
 	switch m {
 	case "textDocument/completion":
 		response := utils.TryParseRequest[interfaces.CompletionResponse](logger, contents)
-		response.Result = []interfaces.CompletionItem{{
-			Label: "ts_inspector",
-		}}
 		utils.WriteResponse(writer, response)
 	case "initialize":
 		response := utils.TryParseRequest[interfaces.InitializeResponse](logger, contents)

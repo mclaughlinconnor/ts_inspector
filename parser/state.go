@@ -244,6 +244,32 @@ func (f File) GetOffsetsForRange(r utils.Range) (uint32, uint32) {
 	return f.GetOffsetForPosition(r.Start), f.GetOffsetForPosition(r.End)
 }
 
+func GetPositionForOffset(content string, offset uint32) utils.Position {
+	lineOffsets := getLineOffsets(content)
+
+	if offset >= uint32(len(content)) {
+		return utils.Position{Line: uint32(len(lineOffsets)), Character: 0}
+	} else if offset < 0 {
+		return utils.Position{Line: 0, Character: 0}
+	}
+
+	var line uint32
+	var character uint32
+	for index, lineOffset := range lineOffsets {
+		if lineOffset >= offset {
+			if index > 0 {
+				line = uint32(index - 1)
+				character = offset - lineOffsets[index-1]
+			} else {
+				line = 0
+				character = offset
+			}
+		}
+	}
+
+	return utils.Position{Line: line, Character: character}
+}
+
 func filterDefinitions(f File, cond func(d Definition) bool) []Definition {
 	arr := []Definition{}
 	for _, definition := range f.Definitions {

@@ -11,12 +11,14 @@ type completionTriggerKind struct {
 var CompletionTriggerKind = completionTriggerKind{0, 1, 2}
 
 type CompletionContext struct {
-	TriggerKind      completionTriggerKind `json:"triggerKind"`
-	TriggerCharacter *string               `json:"triggerCharacter,omitempty"`
+	TriggerKind      int     `json:"triggerKind"`
+	TriggerCharacter *string `json:"triggerCharacter,omitempty"`
 }
 
 type CompletionParams struct {
-	Context *CompletionContext `json:"context,omitempty"`
+	TextDocument TextDocumentIdentifier `json:"textDocument"`
+	Position     utils.Position         `json:"position"`
+	Context      *CompletionContext     `json:"context,omitempty"`
 }
 
 type CompletionRequest struct {
