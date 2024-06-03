@@ -25,7 +25,7 @@ func TestBasicTag(t *testing.T) {
 		t.Fatalf(`state.Ranges = %+v, want %+v`, state.Ranges, expectedRanges)
 	}
 
-	origin := htmlLocationToPugLocation(2, state)
+	origin := HtmlLocationToPugLocation(2, state)
 	var target uint32 = 1
 	if origin != target {
 		t.Fatalf(`Expected origin = %d to equal target %d`, origin, target)
@@ -57,7 +57,7 @@ div
 		t.Fatalf(`state.Ranges = %+v, want %+v`, state.Ranges, expectedRanges)
 	}
 
-	origin := htmlLocationToPugLocation(13, state)
+	origin := HtmlLocationToPugLocation(13, state)
 	var target uint32 = 6
 	if origin != target {
 		t.Fatalf(`Expected origin = %d to equal target %d`, origin, target)
@@ -91,7 +91,7 @@ div(attr=true)
 		t.Fatalf(`state.Ranges = %+v, want %+v`, state.Ranges, expectedRanges)
 	}
 
-	origin := htmlLocationToPugLocation(12, state)
+	origin := HtmlLocationToPugLocation(12, state)
 	var target uint32 = 11
 	if origin != target {
 		t.Fatalf(`Expected origin = %d to equal target %d`, origin, target)
@@ -130,7 +130,7 @@ div(attr=true, attr=false)
 		t.Fatalf(`state.Ranges = %+v, want %+v`, state.Ranges, expectedRanges)
 	}
 
-	origin := htmlLocationToPugLocation(25, state)
+	origin := HtmlLocationToPugLocation(25, state)
 	var target uint32 = 22
 	if origin != target {
 		t.Fatalf(`Expected origin = %d to equal target %d`, origin, target)
@@ -169,7 +169,7 @@ div(attr='"true"', attr=false+'24')
 		t.Fatalf(`state.Ranges = %+v, want %+v`, state.Ranges, expectedRanges)
 	}
 
-	origin := htmlLocationToPugLocation(31, state)
+	origin := HtmlLocationToPugLocation(31, state)
 	var target uint32 = 30
 	if origin != target {
 		t.Fatalf(`Expected origin = %d to equal target %d`, origin, target)
@@ -200,7 +200,7 @@ mixin name(one, two)
 		t.Fatalf(`state.Ranges = %+v, want %+v`, state.Ranges, expectedRanges)
 	}
 
-	origin := htmlLocationToPugLocation(27, state)
+	origin := HtmlLocationToPugLocation(27, state)
 	var target uint32 = 19
 	if origin != target {
 		t.Fatalf(`Expected origin = %d to equal target %d`, origin, target)
@@ -231,7 +231,7 @@ mixin name(one, two)
 		t.Fatalf(`state.Ranges = %+v, want %+v`, state.Ranges, expectedRanges)
 	}
 
-	origin := htmlLocationToPugLocation(27, state)
+	origin := HtmlLocationToPugLocation(27, state)
 	var target uint32 = 19
 	if origin != target {
 		t.Fatalf(`Expected origin = %d to equal target %d`, origin, target)
@@ -268,7 +268,7 @@ mixin name(one, two)
 		t.Fatalf(`state.Ranges = %+v, want %+v`, state.Ranges, expectedRanges)
 	}
 
-	origin := htmlLocationToPugLocation(27, state)
+	origin := HtmlLocationToPugLocation(27, state)
 	var target uint32 = 19
 	if origin != target {
 		t.Fatalf(`Expected origin = %d to equal target %d`, origin, target)
@@ -300,7 +300,7 @@ each x in [1, 2, 3]
 		t.Fatalf(`state.Ranges = %+v, want %+v`, state.Ranges, expectedRanges)
 	}
 
-	origin := htmlLocationToPugLocation(46, state)
+	origin := HtmlLocationToPugLocation(46, state)
 	var target uint32 = 15
 	if origin != target {
 		t.Fatalf(`Expected origin = %d to equal target %d`, origin, target)
@@ -327,7 +327,7 @@ script.
 		t.Fatalf(`state.Ranges = %+v, want %+v`, state.Ranges, expectedRanges)
 	}
 
-	origin := htmlLocationToPugLocation(16, state)
+	origin := HtmlLocationToPugLocation(16, state)
 	var target uint32 = 17
 	if origin != target {
 		t.Fatalf(`Expected origin = %d to equal target %d`, origin, target)
@@ -363,7 +363,7 @@ tag= 2+2
 		t.Fatalf(`state.Ranges = %+v, want %+v`, state.Ranges, expectedRanges)
 	}
 
-	origin := htmlLocationToPugLocation(63, state)
+	origin := HtmlLocationToPugLocation(63, state)
 	var target uint32 = 18
 	if origin != target {
 		t.Fatalf(`Expected origin = %d to equal target %d`, origin, target)
@@ -394,7 +394,7 @@ tag content
 		t.Fatalf(`state.Ranges = %+v, want %+v`, state.Ranges, expectedRanges)
 	}
 
-	origin := htmlLocationToPugLocation(19, state)
+	origin := HtmlLocationToPugLocation(19, state)
 	var target uint32 = 23
 	if origin != target {
 		t.Fatalf(`Expected origin = %d to equal target %d`, origin, target)
@@ -427,7 +427,7 @@ tag one #[tag two] three
 		t.Fatalf(`state.Ranges = %+v, want %+v`, state.Ranges, expectedRanges)
 	}
 
-	origin := htmlLocationToPugLocation(11, state)
+	origin := HtmlLocationToPugLocation(11, state)
 	var target uint32 = 16
 	if origin != target {
 		t.Fatalf(`Expected origin = %d to equal target %d`, origin, target)
@@ -462,7 +462,7 @@ append head
 		t.Fatalf(`state.Ranges = %+v, want %+v`, state.Ranges, expectedRanges)
 	}
 
-	origin := htmlLocationToPugLocation(11, state)
+	origin := HtmlLocationToPugLocation(11, state)
 	var target uint32 = 10
 	if origin != target {
 		t.Fatalf(`Expected origin = %d to equal target %d`, origin, target)
@@ -501,7 +501,7 @@ case data
 		t.Fatalf(`state.Ranges = %+v, want %+v`, state.Ranges, expectedRanges)
 	}
 
-	origin := htmlLocationToPugLocation(44, state)
+	origin := HtmlLocationToPugLocation(44, state)
 	var target uint32 = 18
 	if origin != target {
 		t.Fatalf(`Expected origin = %d to equal target %d`, origin, target)
