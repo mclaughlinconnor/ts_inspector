@@ -3,21 +3,11 @@ package pug
 import sitter "github.com/smacker/go-tree-sitter"
 
 func IsVoidElement(tag_name string) bool {
-	switch tag_name {
-	case "area":
-	case "base":
-	case "br":
-	case "col":
-	case "embed":
-	case "hr":
-	case "img":
-	case "input":
-	case "link":
-	case "meta":
-	case "param":
-	case "source":
-	case "track":
-	case "wbr":
+	if tag_name == "area" || tag_name == "base" || tag_name == "br" ||
+		tag_name == "col" || tag_name == "embed" || tag_name == "hr" ||
+		tag_name == "img" || tag_name == "input" || tag_name == "link" ||
+		tag_name == "meta" || tag_name == "param" || tag_name == "source" ||
+		tag_name == "track" || tag_name == "wbr" {
 		return true
 	}
 
