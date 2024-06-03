@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"ts_inspector/actions"
+	"ts_inspector/ast"
 	"ts_inspector/interfaces"
 	"ts_inspector/ngserver"
 	"ts_inspector/parser"
@@ -69,18 +70,24 @@ func handleMessage(logger *log.Logger, writer io.Writer, state parser.State, met
 		ngserver.Requests[request.ID] = method
 
 		file := state[parser.FilenameFromUri(request.Params.TextDocument.Uri)]
+		root, err := utils.GetRootNode(false, file.Content, utils.Pug)
 
-		parseResult, err := pug.Parse(file.Content)
-		if err != nil {
-			return state
+		offset := file.GetOffsetForPosition(request.Params.Position)
+		if err == nil && ast.HasNodeInHierarchy(root, "attributes", offset, offset) != nil {
+			parseResult, err := pug.Parse(file.Content)
+			if err != nil {
+				return state
+			}
+
+			pugOffset := file.GetOffsetForPosition(request.Params.Position)
+			htmlPosition := pug.PugLocationToHtmlLocation(pugOffset, parseResult)
+			htmlOffset := parser.GetPositionForOffset(parseResult.HtmlText, htmlPosition)
+
+			request.Params.Position = htmlOffset
+			request.Method = "cm/getAttrCompletion"
+		} else {
+			request.Method = "cm/getTagCompletion"
 		}
-
-		pugOffset := file.GetOffsetForPosition(request.Params.Position)
-		htmlPosition := pug.PugLocationToHtmlLocation(pugOffset, parseResult)
-		htmlOffset := parser.GetPositionForOffset(parseResult.HtmlText, htmlPosition)
-
-		request.Params.Position = htmlOffset
-		request.Method = "cm/getAttrCompletion"
 
 		updatedMsg := rpc.EncodeMessage(request)
 		ngserver.SendToAngular(string(updatedMsg))
