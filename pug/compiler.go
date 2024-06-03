@@ -10,6 +10,35 @@ import (
 
 var content []byte
 
+func visitJavascript(node *sitter.Node, state *State) {
+	text := node.Content(content)
+
+	nRanges := len(state.Ranges) - 1
+	isAttribute := nRanges >= 2 && state.Ranges[nRanges].NodeType == EQUALS && state.Ranges[nRanges-1].NodeType == ATTRIBUTE_NAME
+	isTemplateString := strings.ContainsRune(text, '`')
+	r := getRange(node)
+
+	quote := "'"
+	if strings.Contains(text, "'") {
+		quote = "\""
+	}
+
+	if nRanges < 1 || !isAttribute {
+		pushRangeSurround(state, text, r, quote, JAVASCRIPT)
+		return
+	}
+
+	if isTemplateString {
+		text = strings.ReplaceAll(text, "`", "")
+		pushRange(state, `"$any('`, nil, nil)
+		pushRange(state, text, &JAVASCRIPT, &r)
+		pushRange(state, `')"`, nil, nil)
+	} else {
+		pushRangeSurround(state, text, r, quote, JAVASCRIPT)
+	}
+
+}
+
 func traverseTree(node *sitter.Node, state *State) {
 	nodeType := node.Type()
 	ontent := node.Content(content)
@@ -92,13 +121,7 @@ func traverseTree(node *sitter.Node, state *State) {
 		} else if nodeType == "attribute_name" {
 			visitAttributeName(node, state)
 		} else if nodeType == "javascript" {
-			text := node.Content(content)
-			quote := "'"
-			if strings.Contains(text, "'") {
-				quote = "\""
-			}
-			r := getRange(node)
-			pushRangeSurround(state, text, r, quote, JAVASCRIPT)
+			visitJavascript(node, state)
 		} else if nodeType == "quoted_attribute_value" {
 			r := getRange(node)
 			pushRange(state, node.Content(content), &ATTRIBUTE, &r)

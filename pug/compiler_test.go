@@ -507,3 +507,14 @@ case data
 		t.Fatalf(`Expected origin = %d to equal target %d`, origin, target)
 	}
 }
+
+func TestJavascriptTemplateStringAttributes(t *testing.T) {
+	state, err := Parse(`
+input.form-control([placeholder]=` + "`hello`" + `)
+`)
+	got := strings.TrimSuffix(state.HtmlText, "\n")
+	want := `<input class='form-control' [placeholder]="$any('hello')"  />`
+	if got != want {
+		t.Fatalf(`state.HtmlText = '%s', '%v', want '%s'`, got, err, want)
+	}
+}
