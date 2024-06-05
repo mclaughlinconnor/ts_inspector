@@ -45,7 +45,7 @@ func Analyse(file parser.File) []Analysis {
 		}
 	}
 
-	CurrentAnalysis = analyses
+	CurrentAnalysis[file.URI] = analyses
 
 	return analyses
 }

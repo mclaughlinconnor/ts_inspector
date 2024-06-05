@@ -13,17 +13,20 @@ var Requests = map[int]string{}
 func HandleResponse(method string, contents []byte, msg []byte) {
 	var writer = os.Stdout
 
-	response := utils.TryParseRequest[interfaces.Request](logger, contents)
-	m := Requests[response.ID]
+	if method == "" {
+		response := utils.TryParseRequest[interfaces.Request](logger, contents)
+		method = Requests[response.ID]
+	}
 
-	switch m {
+	switch method {
 	case "textDocument/completion":
 		response := utils.TryParseRequest[interfaces.CompletionResponse](logger, contents)
 		utils.WriteResponse(writer, response)
 	case "textDocument/publishDiagnostics":
-		tsInspectorDiagnostics := interfaces.DiagnosticsFromAnalyses(analysis.CurrentAnalysis)
-		response := utils.TryParseRequest[interfaces.PublishDiagnosticsParams](logger, contents)
-		response.Diagnostics = append(response.Diagnostics, tsInspectorDiagnostics...)
+		// TOOD: cache diagnostics so I can resend them as part of ts_inspector's analysis
+		response := utils.TryParseRequest[interfaces.PublishDiagnosticsNotification](logger, contents)
+		tsInspectorDiagnostics := interfaces.DiagnosticsFromAnalyses(analysis.CurrentAnalysis[response.Params.Uri])
+		response.Params.Diagnostics = append(response.Params.Diagnostics, tsInspectorDiagnostics...)
 		utils.WriteResponse(writer, response)
 	case "initialize":
 		response := utils.TryParseRequest[interfaces.InitializeResponse](logger, contents)
