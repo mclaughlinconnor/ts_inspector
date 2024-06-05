@@ -2,6 +2,8 @@ package analysis
 
 import sitter "github.com/smacker/go-tree-sitter"
 
+var CurrentAnalysis = []Analysis{}
+
 type Analysis struct {
 	Node *sitter.Node
 

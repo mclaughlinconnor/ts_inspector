@@ -45,5 +45,7 @@ func Analyse(file parser.File) []Analysis {
 		}
 	}
 
+	CurrentAnalysis = analyses
+
 	return analyses
 }

@@ -1,5 +1,7 @@
 package interfaces
 
+import "ts_inspector/utils"
+
 type TextDocumentIdentifier struct {
 	Uri string `json:"uri"`
 }
@@ -16,4 +18,9 @@ type TextDocumentItem struct {
 
 	// The content of the opened text document.
 	Text string `json:"text"`
+}
+
+type Location struct {
+	Uri   string      `json:"url"`
+	Range utils.Range `json:"range"`
 }

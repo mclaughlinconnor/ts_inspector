@@ -2,6 +2,7 @@ package ngserver
 
 import (
 	"os"
+	"ts_inspector/analysis"
 	"ts_inspector/interfaces"
 	"ts_inspector/rpc"
 	"ts_inspector/utils"
@@ -18,6 +19,11 @@ func HandleResponse(method string, contents []byte, msg []byte) {
 	switch m {
 	case "textDocument/completion":
 		response := utils.TryParseRequest[interfaces.CompletionResponse](logger, contents)
+		utils.WriteResponse(writer, response)
+	case "textDocument/publishDiagnostics":
+		tsInspectorDiagnostics := interfaces.DiagnosticsFromAnalyses(analysis.CurrentAnalysis)
+		response := utils.TryParseRequest[interfaces.PublishDiagnosticsParams](logger, contents)
+		response.Diagnostics = append(response.Diagnostics, tsInspectorDiagnostics...)
 		utils.WriteResponse(writer, response)
 	case "initialize":
 		response := utils.TryParseRequest[interfaces.InitializeResponse](logger, contents)
