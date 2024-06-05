@@ -15,6 +15,8 @@ import (
 	"ts_inspector/pug"
 	"ts_inspector/rpc"
 	"ts_inspector/utils"
+
+	sitter "github.com/smacker/go-tree-sitter"
 )
 
 func Start() {
@@ -73,16 +75,38 @@ func handleMessage(logger *log.Logger, writer io.Writer, state parser.State, met
 		root, err := utils.GetRootNode(false, file.Content, utils.Pug)
 
 		offset := file.GetOffsetForPosition(request.Params.Position)
-		if err == nil && ast.HasNodeInHierarchy(root, "attributes", offset, offset) != nil {
-			parseResult, err := pug.Parse(file.Content)
-			if err != nil {
+		parseResult, err := pug.Parse(file.Content)
+		if err != nil {
+			return state
+		}
+
+		pugOffset := file.GetOffsetForPosition(request.Params.Position)
+		htmlPosition := pug.PugLocationToHtmlLocation(pugOffset, parseResult)
+		htmlOffset := parser.GetPositionForOffset(parseResult.HtmlText, htmlPosition)
+
+		quotedAttributeNode := ast.HasNodeInHierarchy(root, "quoted_attribute_value", offset, offset)
+		isInQuotedAttribute := quotedAttributeNode != nil
+		contentNode := ast.HasNodeInHierarchy(root, "content", offset, offset)
+		isInContent := contentNode != nil
+		attributesNode := ast.HasNodeInHierarchy(root, "attributes", offset, offset)
+		isInAttributes := attributesNode != nil
+
+		if isInQuotedAttribute {
+			request.Params.Position = htmlOffset
+			request.Method = "cm/getPropertyExpressionCompletion"
+		} else if isInContent {
+			isInInterpolation, _ := utils.ParseText([]byte(contentNode.Content([]byte(file.Content))), utils.AngularContent, false, func(root *sitter.Node, content []byte, isInInterpolation bool) (bool, error) {
+				angularOffset := offset - contentNode.StartByte()
+				return ast.HasNodeInHierarchy(root, "interpolation", angularOffset, angularOffset) != nil, nil
+			})
+
+			if !isInInterpolation {
 				return state
 			}
 
-			pugOffset := file.GetOffsetForPosition(request.Params.Position)
-			htmlPosition := pug.PugLocationToHtmlLocation(pugOffset, parseResult)
-			htmlOffset := parser.GetPositionForOffset(parseResult.HtmlText, htmlPosition)
-
+			request.Params.Position = htmlOffset
+			request.Method = "cm/getPropertyExpressionCompletion"
+		} else if isInAttributes {
 			request.Params.Position = htmlOffset
 			request.Method = "cm/getAttrCompletion"
 		} else {
