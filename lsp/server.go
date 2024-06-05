@@ -48,6 +48,13 @@ func Start() {
 var lastCompletionId int
 
 func handleMessage(logger *log.Logger, writer io.Writer, state parser.State, method string, contents []byte, msg []byte) parser.State {
+	defer func() {
+		if r := recover(); r != nil {
+			logger.Println("Panicked with: ", r)
+			return
+		}
+	}()
+
 	logger.Printf("Received msg with method: %s", method)
 
 	switch method {
@@ -71,7 +78,11 @@ func handleMessage(logger *log.Logger, writer io.Writer, state parser.State, met
 		request := utils.TryParseRequest[interfaces.CompletionRequest](logger, contents)
 		ngserver.Requests[request.ID] = method
 
-		file := state[parser.FilenameFromUri(request.Params.TextDocument.Uri)]
+		file, found := state[parser.FilenameFromUri(request.Params.TextDocument.Uri)]
+		if !found {
+			// should be found, but if there's a panic in open handling, this can cause infinite recursion
+			return state
+		}
 		root, err := utils.GetRootNode(false, file.Content, utils.Pug)
 
 		offset := file.GetOffsetForPosition(request.Params.Position)
