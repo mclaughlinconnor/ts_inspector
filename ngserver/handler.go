@@ -31,6 +31,7 @@ func HandleResponse(method string, contents []byte, msg []byte) {
 	case "initialize":
 		response := utils.TryParseRequest[interfaces.InitializeResponse](logger, contents)
 		response.Result.Capabilities.TextDocumentSync = interfaces.TextDocumentSyncKind.Full
+		response.Result.Capabilities.CodeActionProvider = true
 		nmsg := rpc.EncodeMessage(response)
 		writer.Write([]byte(nmsg))
 	default:
