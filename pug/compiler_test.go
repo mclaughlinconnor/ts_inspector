@@ -210,10 +210,11 @@ mixin name(one, two)
 func TestMixinDefinitionUse(t *testing.T) {
 	state, err := Parse(`
 mixin name(one, two)
-  tag
+  tag&attributes(attributes)
++name('one', 2)([attr]='value')
 `)
 	got := strings.TrimSuffix(state.HtmlText, "\n")
-	want := "<ng-template let-one let-two ><tag></tag></ng-template>"
+	want := "<ng-template let-one let-two ><tag  ></tag></ng-template>"
 	if got != want {
 		t.Fatalf(`state.HtmlText = '%s', '%v', want '%s'`, got, err, want)
 	}
@@ -223,8 +224,10 @@ mixin name(one, two)
 		{HtmlEnd: 28, HtmlStart: 25, PugEnd: 20, PugStart: 17, NodeType: ATTRIBUTE},
 		{HtmlEnd: 30, HtmlStart: 30, PugEnd: 24, PugStart: 24, NodeType: EMPTY},
 		{HtmlEnd: 34, HtmlStart: 31, PugEnd: 27, PugStart: 24, NodeType: TAG_NAME},
-		{HtmlEnd: 35, HtmlStart: 35, PugEnd: 27, PugStart: 27, NodeType: EMPTY},
-		{HtmlEnd: 56, HtmlStart: 55, PugEnd: 28, PugStart: 28, NodeType: EMPTY},
+		{HtmlEnd: 35, HtmlStart: 34, PugEnd: 27, PugStart: 27, NodeType: SPACE},
+		{HtmlEnd: 36, HtmlStart: 35, PugEnd: 50, PugStart: 49, NodeType: SPACE},
+		{HtmlEnd: 37, HtmlStart: 37, PugEnd: 50, PugStart: 50, NodeType: EMPTY},
+		{HtmlEnd: 58, HtmlStart: 57, PugEnd: 83, PugStart: 51, NodeType: EMPTY},
 	}
 
 	if !reflect.DeepEqual(state.Ranges, expectedRanges) {
@@ -242,6 +245,7 @@ func TestMixinDefinitionUseAngular(t *testing.T) {
 	state, err := Parse(`
 mixin name(one, two)
   tag([attr]='one')
++name('one', 'two')
 `)
 	got := strings.TrimSuffix(state.HtmlText, "\n")
 	want := "<ng-template let-one let-two ><tag [attr]='one'  ></tag></ng-template>"
@@ -261,7 +265,7 @@ mixin name(one, two)
 		{HtmlEnd: 48, HtmlStart: 47, PugEnd: 40, PugStart: 41, NodeType: SPACE},
 		{HtmlEnd: 49, HtmlStart: 48, PugEnd: 41, PugStart: 40, NodeType: SPACE},
 		{HtmlEnd: 50, HtmlStart: 50, PugEnd: 41, PugStart: 41, NodeType: EMPTY},
-		{HtmlEnd: 71, HtmlStart: 70, PugEnd: 42, PugStart: 42, NodeType: EMPTY},
+		{HtmlEnd: 71, HtmlStart: 70, PugEnd: 62, PugStart: 42, NodeType: EMPTY},
 	}
 
 	if !reflect.DeepEqual(state.Ranges, expectedRanges) {
