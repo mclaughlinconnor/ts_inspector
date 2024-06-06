@@ -19,6 +19,8 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
+var Shutdown = make(chan int, 1)
+
 func Start() {
 	logger := getLogger("/home/connor/Development/ts_inspector/log.txt")
 	logger.Println("Started")
@@ -62,6 +64,8 @@ func handleMessage(logger *log.Logger, writer io.Writer, state parser.State, met
 		ngserver.SendToAngular(string(msg))
 		request := utils.TryParseRequest[interfaces.InitializeRequest](logger, contents)
 		ngserver.Requests[request.ID] = method
+	case "shutdown":
+		Shutdown <- 1
 	case "textDocument/didOpen":
 		request := utils.TryParseRequest[interfaces.DidOpenTextDocumentNotification](logger, contents)
 		state = HandleDidOpen(writer, logger, state, request)

@@ -19,12 +19,20 @@ func main() {
 
 	done := make(chan bool, 1)
 
-	go func() {
-		<-sigs // block until SIGINT or SIGTERM
+	shutdown := func() {
 		ngserver.Stop()
 		done <- true
+	}
+
+	go func() {
+		select {
+		case <-sigs:
+			shutdown()
+		case <-lsp.Shutdown:
+			shutdown()
+		}
 	}()
 
-	<-done // block until done
+	<-done
 	fmt.Println("Exiting")
 }
