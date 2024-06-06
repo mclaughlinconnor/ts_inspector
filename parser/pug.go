@@ -79,7 +79,7 @@ func extractIndentifierUsages(text []byte, file File) (File, error) {
 }
 
 func isAngularAttribute(attribute []byte) (bool, error) {
-	return regexp.Match(`(\[[\w\.]+\])|(\([\w\.]+\))|(\*\w)`, attribute)
+	return regexp.Match(`(\[[\w\.-]+\])|(\([\w\.-]+\))|(\*\w)`, attribute)
 }
 
 func assignTemplate(controller string, state State, template string) State {
