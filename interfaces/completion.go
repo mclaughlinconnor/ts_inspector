@@ -35,6 +35,11 @@ type CompletionOptions struct {
 	} `json:"completionItem,omitempty"`
 }
 
+type CompletionItemRequest struct {
+	Request
+	Params CompletionItem `json:"params"`
+}
+
 type CompletionItem struct {
 	Label               string                      `json:"label"`
 	LabelDetails        *CompletionItemLabelDetails `json:"labelDetails,omitempty"`
@@ -54,7 +59,7 @@ type CompletionItem struct {
 	AdditionalTextEdits *[]TextEdit                 `json:"additionalTextEdits,omitempty"`
 	CommitCharacters    *[]string                   `json:"commitCharacters,omitempty"`
 	Command             *Command                    `json:"command,omitempty"`
-	Data                *any                        `json:"data,omitempty"`
+	Data                map[string]any              `json:"data,omitempty"`
 }
 
 type CompletionItemLabelDetails struct {

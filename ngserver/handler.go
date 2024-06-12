@@ -8,19 +8,30 @@ import (
 	"ts_inspector/utils"
 )
 
-var Requests = map[int]string{}
+type RequestData struct {
+	Method   string
+	Position *uint32
+}
+
+var Requests = map[int]RequestData{}
 
 func HandleResponse(method string, contents []byte, msg []byte) {
 	var writer = os.Stdout
 
 	if method == "" {
 		response := utils.TryParseRequest[interfaces.Request](logger, contents)
-		method = Requests[response.ID]
+		method = Requests[response.ID].Method
 	}
 
 	switch method {
 	case "textDocument/completion":
 		response := utils.TryParseRequest[interfaces.CompletionResponse](logger, contents)
+		data, found := Requests[*response.ID]
+		if found {
+			for i := range len(response.Result) {
+				response.Result[i].Data["CM_Position"] = data.Position
+			}
+		}
 		utils.WriteResponse(writer, response)
 	case "textDocument/publishDiagnostics":
 		// TOOD: cache diagnostics so I can resend them as part of ts_inspector's analysis

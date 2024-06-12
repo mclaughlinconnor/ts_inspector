@@ -63,7 +63,7 @@ func handleMessage(logger *log.Logger, writer io.Writer, state parser.State, met
 	case "initialize":
 		ngserver.SendToAngular(string(msg))
 		request := utils.TryParseRequest[interfaces.InitializeRequest](logger, contents)
-		ngserver.Requests[request.ID] = method
+		ngserver.Requests[request.ID] = ngserver.RequestData{Method: method}
 	case "shutdown":
 		Shutdown <- 1
 	case "textDocument/didOpen":
@@ -76,11 +76,36 @@ func handleMessage(logger *log.Logger, writer io.Writer, state parser.State, met
 		ngserver.SendToAngular(string(msg))
 	case "textDocument/codeAction":
 		request := utils.TryParseRequest[interfaces.CodeActionRequest](logger, contents)
-		ngserver.Requests[request.ID] = method
+		ngserver.Requests[request.ID] = ngserver.RequestData{Method: method}
 		HandleCodeAction(writer, logger, state, request)
+	case "completionItem/resolve":
+		request := utils.TryParseRequest[interfaces.CompletionItemRequest](logger, contents)
+		ngserver.Requests[request.ID] = ngserver.RequestData{Method: method}
+
+		file, found := state[request.Params.Data["filePath"].(string)]
+		if !found {
+			// should be found, but if there's a panic in open handling, this can cause infinite recursion
+			return state
+		}
+		_, _ = utils.GetRootNode(false, file.Content, utils.Pug)
+
+		parseResult, err := pug.Parse(file.Content)
+		if err != nil {
+			return state
+		}
+
+		pugOffset := uint32(request.Params.Data["CM_Position"].(float64))
+		htmlPosition := pug.PugLocationToHtmlLocation(pugOffset, parseResult) + 1
+		htmlOffset := parser.GetPositionForOffset(parseResult.HtmlText, htmlPosition)
+
+		request.Params.Data["position"] = htmlOffset
+
+		// In completionresolve, use this position if it exists
+
+		updatedMsg := rpc.EncodeMessage(request)
+		ngserver.SendToAngular(string(updatedMsg))
 	case "textDocument/completion":
 		request := utils.TryParseRequest[interfaces.CompletionRequest](logger, contents)
-		ngserver.Requests[request.ID] = method
 
 		file, found := state[parser.FilenameFromUri(request.Params.TextDocument.Uri)]
 		if !found {
@@ -98,6 +123,8 @@ func handleMessage(logger *log.Logger, writer io.Writer, state parser.State, met
 		pugOffset := file.GetOffsetForPosition(request.Params.Position)
 		htmlPosition := pug.PugLocationToHtmlLocation(pugOffset, parseResult)
 		htmlOffset := parser.GetPositionForOffset(parseResult.HtmlText, htmlPosition)
+
+		ngserver.Requests[request.ID] = ngserver.RequestData{Method: method, Position: &pugOffset}
 
 		quotedAttributeNode := ast.HasNodeInHierarchy(root, "quoted_attribute_value", offset, offset)
 		isInQuotedAttribute := quotedAttributeNode != nil
