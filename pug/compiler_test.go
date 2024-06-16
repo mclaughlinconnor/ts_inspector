@@ -259,7 +259,7 @@ mixin name(one, two)
 		{HtmlEnd: 30, HtmlStart: 30, PugEnd: 24, PugStart: 24, NodeType: EMPTY},
 		{HtmlEnd: 34, HtmlStart: 31, PugEnd: 27, PugStart: 24, NodeType: TAG_NAME},
 		{HtmlEnd: 35, HtmlStart: 34, PugEnd: 27, PugStart: 27, NodeType: SPACE},
-		{HtmlEnd: 41, HtmlStart: 35, PugEnd: 34, PugStart: 28, NodeType: ATTRIBUTE_NAME},
+		{HtmlEnd: 41, HtmlStart: 35, PugEnd: 34, PugStart: 28, NodeType: ANGULAR_ATTRIBUTE_NAME},
 		{HtmlEnd: 42, HtmlStart: 41, PugEnd: 35, PugStart: 35, NodeType: EQUALS},
 		{HtmlEnd: 47, HtmlStart: 42, PugEnd: 40, PugStart: 35, NodeType: ATTRIBUTE},
 		{HtmlEnd: 48, HtmlStart: 47, PugEnd: 40, PugStart: 41, NodeType: SPACE},
@@ -518,6 +518,17 @@ input.form-control([placeholder]=` + "`hello`" + `)
 `)
 	got := strings.TrimSuffix(state.HtmlText, "\n")
 	want := `<input class='form-control' [placeholder]="$any('hello')"  />`
+	if got != want {
+		t.Fatalf(`state.HtmlText = '%s', '%v', want '%s'`, got, err, want)
+	}
+}
+
+func TestJavascriptVariableAttributes(t *testing.T) {
+	state, err := Parse(`
+tag([input]=variable, attr=variable)
+`)
+	got := strings.TrimSuffix(state.HtmlText, "\n")
+	want := `<tag [input]="$any('variable')"  attr='variable'  ></tag>`
 	if got != want {
 		t.Fatalf(`state.HtmlText = '%s', '%v', want '%s'`, got, err, want)
 	}

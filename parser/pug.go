@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"regexp"
 	"ts_inspector/utils"
 
 	sitter "github.com/smacker/go-tree-sitter"
@@ -32,7 +31,7 @@ func ExtractPugUsages(file File, content []byte) (File, error) {
 
 		name := []byte(captures["name"][0].Content(content))
 
-		isAttr, err := isAngularAttribute(name)
+		isAttr, err := utils.IsAngularAttribute(name)
 
 		if err != nil {
 			return returnValue, err
@@ -76,10 +75,6 @@ func extractIndentifierUsages(text []byte, file File) (File, error) {
 		return file, nil
 	})
 
-}
-
-func isAngularAttribute(attribute []byte) (bool, error) {
-	return regexp.Match(`(\[[\w\.-]+\])|(\([\w\.-]+\))|(\*\w)`, attribute)
 }
 
 func assignTemplate(controller string, state State, template string) State {

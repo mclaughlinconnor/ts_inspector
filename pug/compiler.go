@@ -2,6 +2,7 @@ package pug
 
 import (
 	"context"
+	"regexp"
 	"strings"
 	"ts_inspector/utils"
 
@@ -14,8 +15,19 @@ func visitJavascript(node *sitter.Node, state *State) {
 	text := node.Content(content)
 
 	nRanges := len(state.Ranges) - 1
-	isAttribute := nRanges >= 2 && state.Ranges[nRanges].NodeType == EQUALS && state.Ranges[nRanges-1].NodeType == ATTRIBUTE_NAME
+	hasRanges := nRanges > 2
+	proceedsEquals := state.Ranges[nRanges].NodeType == EQUALS
+
+	isAttribute := hasRanges && proceedsEquals && state.Ranges[nRanges-1].NodeType == ATTRIBUTE_NAME
+	isAngularAttribute := hasRanges && proceedsEquals && state.Ranges[nRanges-1].NodeType == ANGULAR_ATTRIBUTE_NAME
+
 	isTemplateString := strings.ContainsRune(text, '`')
+	isString, err := regexp.Match(`("(?:[^'\\]|\\.))|('(?:[^'\\]|\\.)+)`, []byte(text))
+
+	if err != nil {
+		panic(err) // if my regex is broken
+	}
+
 	r := getRange(node)
 
 	quote := "'"
@@ -23,7 +35,7 @@ func visitJavascript(node *sitter.Node, state *State) {
 		quote = "\""
 	}
 
-	if nRanges < 1 || !isAttribute {
+	if nRanges < 1 || !(isAttribute || isAngularAttribute) {
 		pushRangeSurround(state, text, r, quote, JAVASCRIPT)
 		return
 	}
@@ -33,10 +45,16 @@ func visitJavascript(node *sitter.Node, state *State) {
 		pushRange(state, `"$any('`, nil, nil)
 		pushRange(state, text, &JAVASCRIPT, &r)
 		pushRange(state, `')"`, nil, nil)
+	} else if isString {
+		pushRangeSurround(state, text, r, quote, JAVASCRIPT)
+	} else if isAngularAttribute {
+		escaped := strings.ReplaceAll(strings.ReplaceAll(text, `"`, `\"`), `'`, `\'`)
+		pushRange(state, `"$any('`, nil, nil)
+		pushRange(state, escaped, &JAVASCRIPT, &r)
+		pushRange(state, `')"`, nil, nil)
 	} else {
 		pushRangeSurround(state, text, r, quote, JAVASCRIPT)
 	}
-
 }
 
 func traverseTree(node *sitter.Node, state *State) {

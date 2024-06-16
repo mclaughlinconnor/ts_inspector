@@ -1,12 +1,29 @@
 package pug
 
 import (
+	"ts_inspector/utils"
+
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
 func visitAttributeName(node *sitter.Node, state *State) {
 	r := getRange(node)
-	pushRange(state, node.Content(content), &ATTRIBUTE_NAME, &r)
+	text := node.Content(content)
+
+	isAngularAttribute, err := utils.IsAngularAttribute([]byte(text))
+	if err != nil {
+		panic(err) // I've messed up my regex
+	}
+
+	var t *NodeType
+
+	if isAngularAttribute {
+		t = &ANGULAR_ATTRIBUTE_NAME
+	} else {
+		t = &ATTRIBUTE_NAME
+	}
+
+	pushRange(state, text, t, &r)
 }
 
 func visitAttributes(node *sitter.Node, state *State) {

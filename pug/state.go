@@ -6,6 +6,7 @@ type NodeType struct {
 	name string
 }
 
+var ANGULAR_ATTRIBUTE_NAME = NodeType{"ANGULAR_ATTRIBUTE_NAME"}
 var ATTRIBUTE = NodeType{"ATTRIBUTE"}
 var ATTRIBUTE_NAME = NodeType{"ATTRIBUTE_NAME"}
 var CONTENT = NodeType{"CONTENT"}
