@@ -43,19 +43,29 @@ func Start() {
 			continue
 		}
 
-		state = handleMessage(logger, writer, state, method, contents, msg)
+		ns, ok := handleMessage(logger, writer, state, method, contents, msg)
+		if ok {
+			state = ns
+		}
 	}
 }
 
 var lastCompletionId int
 
-func handleMessage(logger *log.Logger, writer io.Writer, state parser.State, method string, contents []byte, msg []byte) parser.State {
-	defer func() {
+func handleMessage(logger *log.Logger, writer io.Writer, state parser.State, method string, contents []byte, msg []byte) (parser.State, bool) {
+	defer func() (parser.State, bool) {
 		if r := recover(); r != nil {
-			logger.Println("Panicked with: ", r)
-			return
+			logger.Println("Panicked with: ", r, "responding with empty response")
+			logger.Println("Stack: ", string(debug.Stack()))
+			utils.WriteResponse(writer, Response{RPC: "2.0", ID: &utils.MostRecentId})
+
 		}
+
+		return state, false
 	}()
+
+	r := utils.TryParseRequest[interfaces.InitializeRequest](logger, contents)
+	utils.MostRecentId = r.ID
 
 	logger.Printf("Received msg with method: %s", method)
 
@@ -85,13 +95,13 @@ func handleMessage(logger *log.Logger, writer io.Writer, state parser.State, met
 		file, found := state[request.Params.Data["filePath"].(string)]
 		if !found {
 			// should be found, but if there's a panic in open handling, this can cause infinite recursion
-			return state
+			return state, true
 		}
 		_, _ = utils.GetRootNode(false, file.Content, utils.Pug)
 
 		parseResult, err := pug.Parse(file.Content)
 		if err != nil {
-			return state
+			return state, true
 		}
 
 		pugOffset := uint32(request.Params.Data["CM_Position"].(float64))
@@ -110,14 +120,14 @@ func handleMessage(logger *log.Logger, writer io.Writer, state parser.State, met
 		file, found := state[parser.FilenameFromUri(request.Params.TextDocument.Uri)]
 		if !found {
 			// should be found, but if there's a panic in open handling, this can cause infinite recursion
-			return state
+			return state, true
 		}
 		root, err := utils.GetRootNode(false, file.Content, utils.Pug)
 
 		offset := file.GetOffsetForPosition(request.Params.Position)
 		parseResult, err := pug.Parse(file.Content)
 		if err != nil {
-			return state
+			return state, true
 		}
 
 		pugOffset := file.GetOffsetForPosition(request.Params.Position)
@@ -143,7 +153,7 @@ func handleMessage(logger *log.Logger, writer io.Writer, state parser.State, met
 			})
 
 			if !isInInterpolation {
-				return state
+				return state, true
 			}
 
 			request.Params.Position = htmlOffset
@@ -161,5 +171,5 @@ func handleMessage(logger *log.Logger, writer io.Writer, state parser.State, met
 		ngserver.SendToAngular(string(msg))
 	}
 
-	return state
+	return state, true
 }
