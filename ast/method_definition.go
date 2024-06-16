@@ -19,6 +19,7 @@ func ExtractMethodDefinitions(content []byte) ([]MethodDefinitionParseResult, er
 		node := captures["node"]
 		if node != nil {
 			result.Range = utils.Range{Start: utils.PositionFromPoint(node[0].StartPoint()), End: utils.PositionFromPoint(node[0].EndPoint())}
+			result.Type = node[0].Type()
 			result.byteRange = byteRange{start: node[0].StartByte(), end: node[0].EndByte()}
 		}
 
