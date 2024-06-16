@@ -2,10 +2,10 @@ package lsp
 
 import (
 	"bufio"
-	"fmt"
 	"io"
 	"log"
 	"os"
+	"runtime/debug"
 
 	"ts_inspector/actions"
 	"ts_inspector/ast"
@@ -22,7 +22,7 @@ import (
 var Shutdown = make(chan int, 1)
 
 func Start() {
-	logger := getLogger("/home/connor/Development/ts_inspector/log.txt")
+	logger := utils.GetLogger("ts_inspector")
 	logger.Println("Started")
 
 	scanner := bufio.NewScanner(os.Stdin)
@@ -162,13 +162,4 @@ func handleMessage(logger *log.Logger, writer io.Writer, state parser.State, met
 	}
 
 	return state
-}
-
-func getLogger(filename string) *log.Logger {
-	logfile, err := os.OpenFile(filename, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0666)
-	if err != nil {
-		panic(fmt.Sprintf("Invalid file: %s", filename))
-	}
-
-	return log.New(logfile, "[ts_inspector]", log.Ldate|log.Ltime|log.Lshortfile)
 }

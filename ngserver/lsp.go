@@ -17,7 +17,7 @@ func Stop() {
 	cancel()
 }
 
-var logger = utils.GetLogger("log-ngserver.txt")
+var logger = utils.GetLogger("ngserver")
 
 func Start() {
 	var ctx context.Context
