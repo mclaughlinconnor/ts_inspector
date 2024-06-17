@@ -21,8 +21,20 @@ func HandleDidOpen(writer io.Writer, logger *log.Logger, state parser.State, req
 	if err != nil {
 		logger.Println(err)
 	} else {
-		for _, file := range state {
-			utils.WriteResponse(writer, interfaces.GenerateDiagnosticsForFile(file))
+		file := state[parser.FilenameFromUri(request.Params.TextDocument.Uri)]
+
+		// My diagnostics only work on files with a controller or template
+		if file.Controller == "" && file.Template == "" {
+			return state
+		}
+
+		utils.WriteResponse(writer, interfaces.GenerateDiagnosticsForFile(file))
+
+		if file.Controller != "" {
+			utils.WriteResponse(writer, interfaces.GenerateDiagnosticsForFile(state[file.Controller]))
+		}
+		if file.Template != "" {
+			utils.WriteResponse(writer, interfaces.GenerateDiagnosticsForFile(state[file.Template]))
 		}
 	}
 

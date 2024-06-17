@@ -21,8 +21,13 @@ func HandleDidChange(writer io.Writer, logger *log.Logger, state parser.State, r
 	if err != nil {
 		logger.Println(err)
 	} else {
-
 		file := state[parser.FilenameFromUri(request.Params.TextDocument.Uri)]
+
+		// My diagnostics only work on files with a controller or template
+		if file.Controller == "" && file.Template == "" {
+			return state
+		}
+
 		utils.WriteResponse(writer, interfaces.GenerateDiagnosticsForFile(file))
 
 		if file.Controller != "" {
