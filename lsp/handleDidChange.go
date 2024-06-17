@@ -21,8 +21,15 @@ func HandleDidChange(writer io.Writer, logger *log.Logger, state parser.State, r
 	if err != nil {
 		logger.Println(err)
 	} else {
-		for _, file := range state {
-			utils.WriteResponse(writer, interfaces.GenerateDiagnosticsForFile(file))
+
+		file := state[parser.FilenameFromUri(request.Params.TextDocument.Uri)]
+		utils.WriteResponse(writer, interfaces.GenerateDiagnosticsForFile(file))
+
+		if file.Controller != "" {
+			utils.WriteResponse(writer, interfaces.GenerateDiagnosticsForFile(state[file.Controller]))
+		}
+		if file.Template != "" {
+			utils.WriteResponse(writer, interfaces.GenerateDiagnosticsForFile(state[file.Template]))
 		}
 	}
 
