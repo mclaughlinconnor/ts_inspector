@@ -7,7 +7,82 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
-func ExtractMethodDefinitions(content []byte) []MethodDefinitionParseResult {
+// field public static = 300 + 2 + 10
+// field protected static = 300 + 1 + 10
+// field private static = 300 + 0 + 10
+// field public = 300 + 2 + 0
+// field protected = 300 + 1 + 0
+// field private = 300 + 0 + 0
+// constructor = 200
+// property public = 100 + 2 + 0
+// property protected = 100 + 1 + 0
+// property private = 100 + 0 + 0
+// method public static = 0 + 2 + 10
+// method protected static = 0 + 1 + 10
+// method private static = 0 + 0 + 10
+// method public = 0 + 2
+// method protected = 0 + 1
+// method private = 0 + 0
+
+/*
+  private fifteen(): number {}
+  private get nine(): number {}
+  private six : number;
+  private static three : number;
+  private static twelve(): number {}
+  protected five : number;
+  protected fourteen(): number {}
+  protected get eight(): number {}
+  protected static eleven(): number {}
+  protected static two : number;
+  public constructor() {}
+  public four : number;
+  public get seven(): number {}
+  public static one : number;
+  public static ten(): number {}
+  public thirteen(): number {}
+*/
+
+func calculateSortScore(node *sitter.Node, content []byte) int {
+	name := node.ChildByFieldName("name")
+	if name.Content(content) == "constructor" {
+		return 200
+	}
+
+	score := 0
+
+	if node.Type() == "public_field_definition" {
+		score = score + 300
+	}
+
+	child := node.Child(0)
+	for child != nil {
+		if child.Type() == "accessibility_modifier" {
+			modifier := child.Content(content)
+			if modifier == "public" {
+				score = score + 2
+			} else if modifier == "protected" {
+				score = score + 1
+			} else if modifier == "private" {
+				score = score + 0
+			}
+		}
+
+		if child.Type() == "get" || child.Type() == "set" {
+			score = score + 100
+		}
+
+		if child.Type() == "static" {
+			score = score + 10
+		}
+
+		child = child.NextSibling()
+	}
+
+	return score
+}
+
+func ExtractDefinitions(content []byte) []MethodDefinitionParseResult {
 	node, _ := utils.ParseText(content, utils.TypeScript, nil, func(root *sitter.Node, content []byte, state *sitter.Node) (*sitter.Node, error) {
 		state = root
 		return state, nil
@@ -33,7 +108,10 @@ func ExtractMethodDefinitions(content []byte) []MethodDefinitionParseResult {
 		}
 
 		name := node.ChildByFieldName("name")
-		result.Name = name.Content(content)
+		nameContent := name.Content(content)
+		result.Name = nameContent
+
+		result.Score = calculateSortScore(node, content)
 
 		return append(state, result)
 	}
@@ -107,7 +185,8 @@ func AddToMethodDefinition(methodResults *[]MethodDefinitionParseResult, classBo
 func AddMethodDefinitionToFile(content []byte, toAdd string, name string) (utils.TextEdits, error) {
 	edits := utils.TextEdits{}
 
-	definitionResults := ExtractMethodDefinitions(content)
+	definitionResults := ExtractDefinitions(content)
+
 	definitionResult, err := FindMethodDefinition(&definitionResults, toAdd)
 	if err != nil || definitionResult != nil {
 		return edits, err
@@ -123,6 +202,8 @@ func AddMethodDefinitionToFile(content []byte, toAdd string, name string) (utils
 type MethodDefinitionParseResult struct {
 	Name  string
 	Range utils.Range
+	Score int
+	Text  string
 	Type  string
 }
 

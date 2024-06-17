@@ -22,4 +22,5 @@ func InitActions() {
 	registerAction(Action{ImplementAngularOnDestroy, "Add OnDestroy"})
 	registerAction(Action{ImplementAngularOnInit, "Add OnInit"})
 	registerAction(Action{MakeAsync, "Make surrounding method async"})
+	registerAction(Action{RearrangeClass, "Rearrange class"})
 }
