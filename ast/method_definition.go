@@ -1,52 +1,49 @@
 package ast
 
 import (
-	"slices"
+	walktypescript "ts_inspector/ast/walk_typescript"
 	"ts_inspector/utils"
 
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
-func ExtractMethodDefinitions(content []byte) ([]MethodDefinitionParseResult, error) {
-	result, err := utils.WithMatches(utils.QueryClassProperties, utils.TypeScript, content, []MethodDefinitionParseResult{}, func(captures utils.Captures, returnValue []MethodDefinitionParseResult) ([]MethodDefinitionParseResult, error) {
-		result := MethodDefinitionParseResult{}
-
-		name := captures["name"]
-		if name != nil {
-			result.Name = name[0].Content(content)
-		}
-
-		node := captures["node"]
-		if node != nil {
-			result.Range = utils.Range{Start: utils.PositionFromPoint(node[0].StartPoint()), End: utils.PositionFromPoint(node[0].EndPoint())}
-			result.Type = node[0].Type()
-			result.byteRange = byteRange{start: node[0].StartByte(), end: node[0].EndByte()}
-		}
-
-		semi := captures["semi"]
-		if semi != nil {
-			result.Range.End = utils.PositionFromPoint(node[0].EndPoint())
-			result.byteRange.end = node[0].EndByte()
-		}
-
-		comments := captures["comment"]
-		if comments != nil {
-			var min uint32 = comments[0].StartByte()
-			var minIndex int = 0
-			for _, comment := range comments {
-				if comment.StartByte() < min {
-					min = comment.StartByte()
-				}
-			}
-
-			result.Range.Start = utils.PositionFromPoint(comments[minIndex].StartPoint())
-			result.byteRange.start = comments[minIndex].StartByte()
-		}
-
-		return append(returnValue, result), nil
+func ExtractMethodDefinitions(content []byte) []MethodDefinitionParseResult {
+	node, _ := utils.ParseText(content, utils.TypeScript, nil, func(root *sitter.Node, content []byte, state *sitter.Node) (*sitter.Node, error) {
+		state = root
+		return state, nil
 	})
 
-	return result, err
+	funcMap := walktypescript.NewVisitorFuncsMap[[]MethodDefinitionParseResult]()
+
+	methodHandler := func(node *sitter.Node, state []MethodDefinitionParseResult, indexInParent int) []MethodDefinitionParseResult {
+		result := MethodDefinitionParseResult{}
+
+		result.Range = utils.Range{Start: utils.PositionFromPoint(node.StartPoint()), End: utils.PositionFromPoint(node.EndPoint())}
+		result.Type = node.Type()
+
+		possibleSemi := node.NextSibling()
+		if possibleSemi.Type() == ";" {
+			result.Range.End = utils.PositionFromPoint(node.EndPoint())
+		}
+
+		prev := node.PrevSibling()
+		for prev.Type() == "decorator" || prev.Type() == "comment" {
+			result.Range.Start = utils.PositionFromPoint(prev.StartPoint())
+			prev = prev.PrevSibling()
+		}
+
+		name := node.ChildByFieldName("name")
+		result.Name = name.Content(content)
+
+		return append(state, result)
+	}
+
+	funcMap["public_field_definition"] = methodHandler
+	funcMap["method_definition"] = methodHandler
+	funcMap["method_signature"] = methodHandler
+	funcMap["abstract_method_signature"] = methodHandler
+
+	return walktypescript.Walk(node, []MethodDefinitionParseResult{}, funcMap)
 }
 
 func FindClassBody(content []byte) *sitter.Node {
@@ -72,10 +69,6 @@ func FindMethodDefinition(methodDefinitionResults *[]MethodDefinitionParseResult
 }
 
 func AddToMethodDefinition(methodResults *[]MethodDefinitionParseResult, classBodyNode *sitter.Node, toAdd string, name string) utils.TextEdits {
-	slices.SortFunc(*methodResults, func(a MethodDefinitionParseResult, b MethodDefinitionParseResult) int {
-		return int(a.byteRange.start) - int(b.byteRange.start)
-	})
-
 	insertionIndex := -1
 	for index, result := range *methodResults {
 		if result.Name == name {
@@ -114,7 +107,7 @@ func AddToMethodDefinition(methodResults *[]MethodDefinitionParseResult, classBo
 func AddMethodDefinitionToFile(content []byte, toAdd string, name string) (utils.TextEdits, error) {
 	edits := utils.TextEdits{}
 
-	definitionResults, err := ExtractMethodDefinitions(content)
+	definitionResults := ExtractMethodDefinitions(content)
 	definitionResult, err := FindMethodDefinition(&definitionResults, toAdd)
 	if err != nil || definitionResult != nil {
 		return edits, err
@@ -127,16 +120,10 @@ func AddMethodDefinitionToFile(content []byte, toAdd string, name string) (utils
 
 }
 
-type byteRange struct {
-	start uint32
-	end   uint32
-}
-
 type MethodDefinitionParseResult struct {
-	Name      string
-	Range     utils.Range
-	byteRange byteRange
-	Type      string
+	Name  string
+	Range utils.Range
+	Type  string
 }
 
 type MethodDefinitions map[string]MethodDefinitionParseResult
