@@ -93,10 +93,15 @@ func handleMessage(logger *log.Logger, writer io.Writer, state parser.State, met
 		ngserver.Requests[request.ID] = ngserver.RequestData{Method: method}
 
 		file, found := state[request.Params.Data["filePath"].(string)]
-		if !found {
-			// should be found, but if there's a panic in open handling, this can cause infinite recursion
+		if !found || file.Filetype == "pug" {
+			response := interfaces.CompletionResponse{
+				Response: interfaces.Response{RPC: "2.0", ID: &request.ID},
+				Result:   []interfaces.CompletionItem{},
+			}
+			utils.WriteResponse(writer, response)
 			return state, true
 		}
+
 		_, _ = utils.GetRootNode(false, file.Content, utils.Pug)
 
 		parseResult, err := pug.Parse(file.Content)
@@ -118,10 +123,15 @@ func handleMessage(logger *log.Logger, writer io.Writer, state parser.State, met
 		request := utils.TryParseRequest[interfaces.CompletionRequest](logger, contents)
 
 		file, found := state[parser.FilenameFromUri(request.Params.TextDocument.Uri)]
-		if !found {
-			// should be found, but if there's a panic in open handling, this can cause infinite recursion
+		if !found || file.Filetype == "pug" {
+			response := interfaces.CompletionResponse{
+				Response: interfaces.Response{RPC: "2.0", ID: &request.ID},
+				Result:   []interfaces.CompletionItem{},
+			}
+			utils.WriteResponse(writer, response)
 			return state, true
 		}
+
 		root, err := utils.GetRootNode(false, file.Content, utils.Pug)
 
 		offset := file.GetOffsetForPosition(request.Params.Position)
