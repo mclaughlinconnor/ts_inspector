@@ -49,7 +49,7 @@ func MakeAsync(
 
 		for true {
 			currentNode = cursor.CurrentNode()
-			if currentNode.Type() == "method_definition" {
+			if currentNode.Type() == "method_definition" || currentNode.Type() == "function_declaration" || currentNode.Type() == "arrow_function" {
 				break
 			}
 
@@ -66,35 +66,51 @@ func MakeAsync(
 		var postAsyncNode *sitter.Node
 		hasAsync := false
 
-		for cursor.GoToNextSibling() {
-			fieldName := cursor.CurrentFieldName()
-			currentNode = cursor.CurrentNode()
-			if fieldName == "return_type" {
-				break
+		if currentNode.Type() == "method_definition" {
+			for cursor.GoToNextSibling() {
+				fieldName := cursor.CurrentFieldName()
+				currentNode = cursor.CurrentNode()
+				if fieldName == "return_type" {
+					break
+				}
+
+				if hasAsync {
+					continue
+				}
+
+				fieldType := currentNode.Type()
+				if fieldType == "async" {
+					hasAsync = true
+					continue
+				}
+
+				if fieldType == "get" || fieldType == "set" || fieldType == "*" {
+					postAsyncNode = cursor.CurrentNode()
+				}
+
+				if fieldName == "name" && postAsyncNode == nil {
+					postAsyncNode = cursor.CurrentNode()
+				}
 			}
 
-			if hasAsync {
-				continue
+			if !hasAsync && postAsyncNode != nil {
+				editRange := utils.Range{Start: utils.PositionFromPoint(postAsyncNode.StartPoint()), End: utils.PositionFromPoint(postAsyncNode.StartPoint())}
+				edits = append(edits, utils.TextEdit{Range: editRange, NewText: "async "})
+			}
+		} else {
+			nodeContent := currentNode.Content(content)
+			if !strings.HasPrefix(nodeContent, "async ") {
+				editRange := utils.Range{Start: utils.PositionFromPoint(currentNode.StartPoint()), End: utils.PositionFromPoint(currentNode.StartPoint())}
+				edits = append(edits, utils.TextEdit{Range: editRange, NewText: "async "})
 			}
 
-			fieldType := currentNode.Type()
-			if fieldType == "async" {
-				hasAsync = true
-				continue
+			for cursor.GoToNextSibling() {
+				fieldName := cursor.CurrentFieldName()
+				currentNode = cursor.CurrentNode()
+				if fieldName == "return_type" {
+					break
+				}
 			}
-
-			if fieldType == "get" || fieldType == "set" || fieldType == "*" {
-				postAsyncNode = cursor.CurrentNode()
-			}
-
-			if fieldName == "name" && postAsyncNode == nil {
-				postAsyncNode = cursor.CurrentNode()
-			}
-		}
-
-		if !hasAsync && postAsyncNode != nil {
-			editRange := utils.Range{Start: utils.PositionFromPoint(postAsyncNode.StartPoint()), End: utils.PositionFromPoint(postAsyncNode.StartPoint())}
-			edits = append(edits, utils.TextEdit{Range: editRange, NewText: "async "})
 		}
 
 		if cursor.CurrentNode().Type() == "type_annotation" {
