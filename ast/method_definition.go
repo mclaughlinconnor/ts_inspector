@@ -193,6 +193,9 @@ func AddMethodDefinitionToFile(content []byte, toAdd string, name string) (utils
 	}
 
 	classBodyNode := FindClassBody(content)
+	if classBodyNode == nil {
+		return edits, nil
+	}
 	methoddefinitionEdits := AddToMethodDefinition(&definitionResults, classBodyNode, toAdd, name)
 
 	return methoddefinitionEdits, nil
