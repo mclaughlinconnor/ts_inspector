@@ -15,6 +15,7 @@ func ImplementAngular(
 	imports []string,
 	methodDefinition string,
 	methodName string,
+	score int,
 ) (actionEdits utils.TextEdits, allowed bool, err error) {
 	if file.Filetype != "typescript" {
 		return nil, false, nil
@@ -37,7 +38,7 @@ func ImplementAngular(
 			edits = append(edits, importEdits[0])
 		}
 
-		methodEdits, err := ast.AddMethodDefinitionToFile(content, methodDefinition, methodName)
+		methodEdits, err := ast.AddMethodDefinitionToFile(content, methodDefinition, methodName, score)
 		if err != nil {
 			return edits, err
 		} else if len(methodEdits) == 1 {

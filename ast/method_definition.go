@@ -1,6 +1,8 @@
 package ast
 
 import (
+	"cmp"
+	"slices"
 	walktypescript "ts_inspector/ast/walk_typescript"
 	"ts_inspector/utils"
 
@@ -162,43 +164,77 @@ func FindMethodDefinition(methodDefinitionResults *[]MethodDefinitionParseResult
 	return nil, nil
 }
 
-func AddToMethodDefinition(methodResults *[]MethodDefinitionParseResult, classBodyNode *sitter.Node, toAdd string, name string) utils.TextEdits {
-	insertionIndex := -1
-	for index, result := range *methodResults {
-		if result.Name == name {
-			return utils.TextEdits{}
-		}
+func AddToMethodDefinition(methodResults *[]MethodDefinitionParseResult, classBodyNode *sitter.Node, toAdd string, name string, score int) utils.TextEdits {
+	fullySorted := slices.IsSortedFunc(*methodResults, func(a MethodDefinitionParseResult, b MethodDefinitionParseResult) int {
+		return cmp.Or(
+			cmp.Compare(b.Score, a.Score),
+			cmp.Compare(a.Name, b.Name),
+		)
+	})
 
-		if result.Type != "public_field_definition" && insertionIndex == -1 {
-			if index == len(*methodResults)-1 {
-				insertionIndex = len(*methodResults) - 1
-			} else {
+	typesSorted := slices.IsSortedFunc(*methodResults, func(a MethodDefinitionParseResult, b MethodDefinitionParseResult) int {
+		return cmp.Compare(b.Score, a.Score)
+	})
+
+	insertionIndex := -1
+	if !fullySorted && !typesSorted {
+		for index, result := range *methodResults {
+			if result.Name == name {
+				return utils.TextEdits{}
+			}
+
+			if result.Type != "public_field_definition" && insertionIndex == -1 {
+				if index == len(*methodResults)-1 {
+					insertionIndex = len(*methodResults) - 1
+				} else {
+					insertionIndex = index
+				}
+			}
+		}
+	} else if !fullySorted && typesSorted {
+		for index, result := range *methodResults {
+			if score <= result.Score {
+				insertionIndex = index
+				break
+			}
+		}
+	} else if fullySorted {
+		for index, result := range *methodResults {
+			if score <= result.Score && cmp.Compare(name, result.Name) == 1 {
 				insertionIndex = index
 			}
 		}
 	}
 
 	if insertionIndex != -1 {
-		insertPosition := (*methodResults)[insertionIndex].Range.Start
-		insertPosition.Character = 0 // at the start of the line immediately following the node
+		insertPosition := (*methodResults)[insertionIndex].Range.End
 		editRange := utils.Range{Start: insertPosition, End: insertPosition}
 
-		insertionText := toAdd + "\n\n"
+		insertionText := "\n\n" + toAdd
 
 		return utils.TextEdits{utils.TextEdit{Range: editRange, NewText: insertionText}}
 	}
 
 	if insertionIndex == -1 {
-		insertionText := "{\n" + toAdd + "\n}"
-		editRange := utils.Range{Start: utils.PositionFromPoint(classBodyNode.StartPoint()), End: utils.PositionFromPoint(classBodyNode.EndPoint())}
-		return utils.TextEdits{utils.TextEdit{Range: editRange, NewText: insertionText}}
+		if len(*methodResults) == 0 {
+			insertionText := "{\n" + toAdd + "\n}"
+			editRange := utils.Range{Start: utils.PositionFromPoint(classBodyNode.StartPoint()), End: utils.PositionFromPoint(classBodyNode.EndPoint())}
+			return utils.TextEdits{utils.TextEdit{Range: editRange, NewText: insertionText}}
+		} else {
+			insertPosition := (*methodResults)[0].Range.Start
+			insertPosition.Character = 0
+			editRange := utils.Range{Start: insertPosition, End: insertPosition}
+			insertionText := toAdd + "\n\n"
+
+			return utils.TextEdits{utils.TextEdit{Range: editRange, NewText: insertionText}}
+		}
 	}
 
 	return nil
 }
 
 // Should handle type methoddefinitions
-func AddMethodDefinitionToFile(content []byte, toAdd string, name string) (utils.TextEdits, error) {
+func AddMethodDefinitionToFile(content []byte, toAdd string, name string, score int) (utils.TextEdits, error) {
 	edits := utils.TextEdits{}
 
 	definitionResults := ExtractDefinitions(content)
@@ -212,7 +248,7 @@ func AddMethodDefinitionToFile(content []byte, toAdd string, name string) (utils
 	if classBodyNode == nil {
 		return edits, nil
 	}
-	methoddefinitionEdits := AddToMethodDefinition(&definitionResults, classBodyNode, toAdd, name)
+	methoddefinitionEdits := AddToMethodDefinition(&definitionResults, classBodyNode, toAdd, name, score)
 
 	return methoddefinitionEdits, nil
 
