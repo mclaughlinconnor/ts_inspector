@@ -3,6 +3,7 @@ package pug
 import (
 	"context"
 	"regexp"
+	"runtime/debug"
 	"strings"
 	"ts_inspector/utils"
 
@@ -10,6 +11,10 @@ import (
 )
 
 var content []byte
+
+var Depth = 0
+
+var Logger = utils.GetLogger("pug-log.txt")
 
 func visitJavascript(node *sitter.Node, state *State) {
 	text := node.Content(content)
@@ -58,6 +63,12 @@ func visitJavascript(node *sitter.Node, state *State) {
 }
 
 func traverseTree(node *sitter.Node, state *State) {
+	Depth = Depth + 1
+	if Depth > 100 {
+		Logger.Println("Overflow", string(debug.Stack()))
+		return
+	}
+
 	nodeType := node.Type()
 	ontent := node.Content(content)
 
@@ -194,6 +205,9 @@ func Parse(input string) (State, error) {
 		PugText:  input,
 		Ranges:   []Range{},
 	}
+
+	Depth = 0
+	Logger.Println(input, string(debug.Stack()))
 
 	traverseTree(rootNode, &state)
 
