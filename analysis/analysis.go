@@ -11,6 +11,11 @@ func Analyse(file parser.File) []Analysis {
 	getters := file.GetGetters()
 	definitions := file.Definitions
 
+	if file.Template == "" {
+		// No analysis for files that are not angular controllers
+		return analyses
+	}
+
 	for _, definition := range getters {
 		used := len(definition.Usages) != 0
 		if used && definition.UsageAccess == parser.ForeignAccess {
