@@ -124,7 +124,9 @@ func AddImportToFile(content []byte, packageName string, toAdd []string, toAddTy
 	}
 
 	importEdits := AddToImport(importResults, packageName, toAdd, false)
-	importEdits = AddToImport(importResults, packageName, toAddTypes, true)
+	for _, edit := range AddToImport(importResults, packageName, toAddTypes, true) {
+		importEdits = append(importEdits, edit)
+	}
 
 	return importEdits, nil
 }
