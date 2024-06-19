@@ -93,11 +93,12 @@ func handleMessage(logger *log.Logger, writer io.Writer, state parser.State, met
 		ngserver.Requests[request.ID] = ngserver.RequestData{Method: method}
 
 		file, found := state[request.Params.Data["filePath"].(string)]
-		if !found || file.Filetype == "pug" {
+		if !found || file.Filetype != "pug" {
 			response := interfaces.CompletionResponse{
 				Response: interfaces.Response{RPC: "2.0", ID: &request.ID},
 				Result:   []interfaces.CompletionItem{},
 			}
+			logger.Println("Is not pug file or is not found, nothing I can do", request.ID)
 			utils.WriteResponse(writer, response)
 			return state, true
 		}
@@ -123,11 +124,12 @@ func handleMessage(logger *log.Logger, writer io.Writer, state parser.State, met
 		request := utils.TryParseRequest[interfaces.CompletionRequest](logger, contents)
 
 		file, found := state[parser.FilenameFromUri(request.Params.TextDocument.Uri)]
-		if !found || file.Filetype == "pug" {
+		if !found || file.Filetype != "pug" {
 			response := interfaces.CompletionResponse{
 				Response: interfaces.Response{RPC: "2.0", ID: &request.ID},
 				Result:   []interfaces.CompletionItem{},
 			}
+			logger.Println("Is not pug file or is not found, nothing I can do", request.ID)
 			utils.WriteResponse(writer, response)
 			return state, true
 		}
