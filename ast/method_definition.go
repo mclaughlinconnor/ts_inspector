@@ -96,15 +96,31 @@ func ExtractDefinitions(content []byte) []MethodDefinitionParseResult {
 		result.Range = utils.Range{Start: utils.PositionFromPoint(node.StartPoint()), End: utils.PositionFromPoint(node.EndPoint())}
 		result.Type = node.Type()
 
-		possibleSemi := node.NextSibling()
-		if possibleSemi.Type() == ";" {
-			result.Range.End = utils.PositionFromPoint(node.EndPoint())
+		possibleSemiOrComment := node.NextSibling()
+		for {
+			if possibleSemiOrComment.Type() == ";" || possibleSemiOrComment.Type() == "comment" {
+				point := utils.PositionFromPoint(possibleSemiOrComment.EndPoint())
+				if result.Range.End.Line == point.Line {
+					result.Range.End = utils.PositionFromPoint(possibleSemiOrComment.EndPoint())
+					possibleSemiOrComment = possibleSemiOrComment.NextSibling()
+					continue
+				}
+
+			}
+
+			break
 		}
 
 		prev := node.PrevSibling()
 		for prev.Type() == "decorator" || prev.Type() == "comment" {
+			pprev := prev.PrevSibling()
+
+			if prev.StartPoint().Row == pprev.StartPoint().Row {
+				break // A comment or decorator on the same line as something else
+			}
+
 			result.Range.Start = utils.PositionFromPoint(prev.StartPoint())
-			prev = prev.PrevSibling()
+			prev = pprev
 		}
 
 		name := node.ChildByFieldName("name")
