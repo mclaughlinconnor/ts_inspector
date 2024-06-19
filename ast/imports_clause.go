@@ -65,6 +65,10 @@ func FindPackageImport(importResults []ImportParseResult, packageName string, is
 }
 
 func AddToImport(importResults []ImportParseResult, packageName string, toAdd []string, isType bool) utils.TextEdits {
+	if len(toAdd) == 0 {
+		return utils.TextEdits{}
+	}
+
 	importResult := FindPackageImport(importResults, packageName, isType)
 
 	if importResult == nil {
