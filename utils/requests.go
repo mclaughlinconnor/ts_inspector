@@ -12,8 +12,10 @@ var MostRecentId int
 func TryParseRequest[T any](logger *log.Logger, contents []byte) T {
 	var request T
 	if err := json.Unmarshal(contents, &request); err != nil {
-		logger.Printf("Could not parse: %s", err)
+		logger.Printf("Could not parse: %s\n%s", err, contents)
 	}
+
+	logger.Printf("Got request: %+v", request)
 
 	return request
 }
