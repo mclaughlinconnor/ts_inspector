@@ -9,6 +9,7 @@ import (
 
 	"ts_inspector/actions"
 	"ts_inspector/ast"
+	"ts_inspector/commands"
 	"ts_inspector/interfaces"
 	"ts_inspector/ngserver"
 	"ts_inspector/parser"
@@ -32,6 +33,7 @@ func Start() {
 
 	utils.InitQueries()
 	actions.InitActions()
+	commands.InitCommands()
 	state := parser.State{}
 
 	for scanner.Scan() {
@@ -88,6 +90,10 @@ func handleMessage(logger *log.Logger, writer io.Writer, state parser.State, met
 		request := utils.TryParseRequest[interfaces.CodeActionRequest](logger, contents)
 		ngserver.Requests[request.ID] = ngserver.RequestData{Method: method}
 		HandleCodeAction(writer, logger, state, request)
+	case "workspace/executeCommand":
+		request := utils.TryParseRequest[interfaces.ExecuteCommandRequest](logger, contents)
+		ngserver.Requests[request.ID] = ngserver.RequestData{Method: method}
+		HandleExecuteCommand(writer, logger, state, request)
 	case "completionItem/resolve":
 		request := utils.TryParseRequest[interfaces.CompletionItemRequest](logger, contents)
 		ngserver.Requests[request.ID] = ngserver.RequestData{Method: method}

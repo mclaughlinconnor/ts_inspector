@@ -18,17 +18,18 @@ type InitializeResult struct {
 }
 
 type ServerCapabilities struct {
-	CodeActionProvider     bool                 `json:"codeActionProvider"` // angular uses CodeActionOptions, but I don't support that yet
-	CompletionProvider     CompletionOptions    `json:"completionProvider"`
-	TextDocumentSync       int                  `json:"textDocumentSync"`
-	CodeLensProvider       CodeLensOptions      `json:"codeLensProvider"`
-	DefinitionProvider     bool                 `json:"definitionProvider"`
-	FoldingRangeProvider   bool                 `json:"foldingRangeProvider"`
-	HoverProvider          bool                 `json:"hoverProvider"`
-	ReferencesProvider     bool                 `json:"referencesProvider"`
-	RenameOptions          RenameOptions        `json:"renameOptions"`
-	SignatureHelpProvider  SignatureHelpOptions `json:"signatureHelpProvider"`
-	TypeDefinitionProvider bool                 `json:"typeDefinitionProvider"`
+	CodeActionProvider     bool                  `json:"codeActionProvider"` // angular uses CodeActionOptions, but I don't support that yet
+	CodeLensProvider       CodeLensOptions       `json:"codeLensProvider"`
+	CompletionProvider     CompletionOptions     `json:"completionProvider"`
+	DefinitionProvider     bool                  `json:"definitionProvider"`
+	ExecuteCommandProvider ExecuteCommandOptions `json:"executeCommandProvider"`
+	FoldingRangeProvider   bool                  `json:"foldingRangeProvider"`
+	HoverProvider          bool                  `json:"hoverProvider"`
+	ReferencesProvider     bool                  `json:"referencesProvider"`
+	RenameOptions          RenameOptions         `json:"renameOptions"`
+	SignatureHelpProvider  SignatureHelpOptions  `json:"signatureHelpProvider"`
+	TextDocumentSync       int                   `json:"textDocumentSync"`
+	TypeDefinitionProvider bool                  `json:"typeDefinitionProvider"`
 	Workspace              struct {
 		WorkspaceFolders struct {
 			Supported bool `json:"supported"`

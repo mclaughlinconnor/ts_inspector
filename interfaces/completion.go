@@ -128,12 +128,6 @@ type TextEdit struct {
 	NewText string      `json:"NewText"`
 }
 
-type Command struct {
-	Title     string `json:"title"`
-	Command   string `json:"command"`
-	Arguments *any   `json:"arguments,omitempty"`
-}
-
 type CompletionResponse struct {
 	Response
 	Result []CompletionItem `json:"result"` // no CompletionItemList here
