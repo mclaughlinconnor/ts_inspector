@@ -200,7 +200,13 @@ func AddToMethodDefinition(methodResults *[]MethodDefinitionParseResult, classBo
 		}
 	} else if fullySorted {
 		for index, result := range *methodResults {
-			if score <= result.Score && cmp.Compare(name, result.Name) == 1 {
+			if score <= result.Score {
+				if score == result.Score {
+					if cmp.Compare(name, result.Name) >= 0 {
+						continue
+					}
+				}
+
 				insertionIndex = index
 			}
 		}
