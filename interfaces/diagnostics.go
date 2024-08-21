@@ -17,7 +17,7 @@ type Diagnostic struct {
 
 	Severity *int `json:"severity"`
 
-	Code *int `json:"code"`
+	Code *any `json:"code"`
 
 	CodeDescription *CodeDescription `json:"codeDescription"`
 
