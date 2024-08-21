@@ -6,7 +6,9 @@ import sitter "github.com/smacker/go-tree-sitter"
 var CurrentAnalysis = map[string][]Analysis{}
 
 type Analysis struct {
-	Node *sitter.Node
+	HighlightNode *sitter.Node
+
+	ProblemNode *sitter.Node
 
 	Severity int
 

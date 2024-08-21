@@ -3,6 +3,8 @@ package analysis
 import (
 	"fmt"
 	"ts_inspector/parser"
+
+	sitter "github.com/smacker/go-tree-sitter"
 )
 
 func Analyse(file parser.File) []Analysis {
@@ -20,7 +22,7 @@ func Analyse(file parser.File) []Analysis {
 		used := len(definition.Usages) != 0
 		if used && definition.UsageAccess == parser.ForeignAccess {
 			message := fmt.Sprintf("Getter used in template: %s", definition.Name)
-			analyses = append(analyses, Analysis{definition.Node, AnalysisSeverity.Hint, "ts_inspector", message})
+			analyses = append(analyses, newAnalysisHighlightName(definition.Node, AnalysisSeverity.Hint, message))
 		}
 	}
 
@@ -30,7 +32,7 @@ func Analyse(file parser.File) []Analysis {
 
 		if used && definition.UsageAccess == parser.ConstructorAccess {
 			message := fmt.Sprintf("Variable only used in constructor: %s", definition.Name)
-			analyses = append(analyses, Analysis{definition.Node, AnalysisSeverity.Warning, "ts_inspector", message})
+			analyses = append(analyses, newAnalysisHighlightName(definition.Node, AnalysisSeverity.Warning, message))
 			continue
 		}
 
@@ -42,10 +44,10 @@ func Analyse(file parser.File) []Analysis {
 		if definitionIsPublic && !hasAngularDecorator && !definition.Static && !definition.IsAngularMethod {
 			if !used {
 				message := fmt.Sprintf("Unused public variable: %s", definition.Name)
-				analyses = append(analyses, Analysis{definition.Node, AnalysisSeverity.Warning, "ts_inspector", message})
+				analyses = append(analyses, newAnalysisHighlightName(definition.Node, AnalysisSeverity.Warning, message))
 			} else if definition.UsageAccess != parser.ForeignAccess {
 				message := fmt.Sprintf("Needlessly public variable: %s", definition.Name)
-				analyses = append(analyses, Analysis{definition.Node, AnalysisSeverity.Warning, "ts_inspector", message})
+				analyses = append(analyses, newAnalysisHighlightName(definition.Node, AnalysisSeverity.Warning, message))
 			}
 		}
 	}
@@ -53,4 +55,23 @@ func Analyse(file parser.File) []Analysis {
 	CurrentAnalysis[file.URI] = analyses
 
 	return analyses
+}
+
+func newAnalysisHighlightName(problemNode *sitter.Node, severity int, message string) Analysis {
+	var highlightNode *sitter.Node
+
+	nameNode := problemNode.ChildByFieldName("name")
+	if nameNode != nil {
+    fmt.Println(nameNode == nil)
+		highlightNode = nameNode
+	} else {
+    fmt.Println(nameNode == nil)
+		highlightNode = problemNode
+	}
+
+	return newAnalysis(highlightNode, problemNode, severity, message)
+}
+
+func newAnalysis(highlightNode *sitter.Node, problemNode *sitter.Node, severity int, message string) Analysis {
+	return Analysis{highlightNode, problemNode, severity, "ts_inspector", message}
 }

@@ -96,8 +96,11 @@ func NewDiagnostic(node *sitter.Node, severity int, source string, message strin
 	}
 }
 
-func DiagnosticsFromAnalysis(analysis analysis.Analysis) Diagnostic {
-	r := utils.Range{Start: utils.PositionFromPoint(analysis.Node.StartPoint()), End: utils.PositionFromPoint(analysis.Node.EndPoint())}
+func DiagnosticFromAnalysis(analysis analysis.Analysis) Diagnostic {
+	start := analysis.HighlightNode.StartPoint()
+	end := analysis.HighlightNode.EndPoint()
+
+	r := utils.Range{Start: utils.PositionFromPoint(start), End: utils.PositionFromPoint(end)}
 
 	return Diagnostic{
 		Range:    r,
@@ -111,13 +114,7 @@ func DiagnosticsFromAnalyses(analyses []analysis.Analysis) []Diagnostic {
 	diagnostics := []Diagnostic{}
 
 	for _, analysis := range analyses {
-		r := utils.Range{Start: utils.PositionFromPoint(analysis.Node.StartPoint()), End: utils.PositionFromPoint(analysis.Node.EndPoint())}
-		diagnostics = append(diagnostics, Diagnostic{
-			Range:    r,
-			Severity: &analysis.Severity,
-			Source:   &analysis.Source,
-			Message:  analysis.Message,
-		})
+		diagnostics = append(diagnostics, DiagnosticFromAnalysis(analysis))
 	}
 
 	return diagnostics
