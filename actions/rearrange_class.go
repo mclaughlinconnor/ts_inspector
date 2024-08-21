@@ -20,15 +20,22 @@ func RearrangeClass(
 		return utils.TextEdits{}, true, nil
 	}
 
-	start := definitions[0].Range.Start
-	end := definitions[len(definitions)-1].Range.End
-
-	slices.SortFunc(definitions, func(a ast.MethodDefinitionParseResult, b ast.MethodDefinitionParseResult) int {
+	var sortFunc = func(a ast.MethodDefinitionParseResult, b ast.MethodDefinitionParseResult) int {
 		return cmp.Or(
 			cmp.Compare(b.Score, a.Score),
 			cmp.Compare(a.Name, b.Name),
 		)
-	})
+	}
+
+	alreadySorted := slices.IsSortedFunc(definitions, sortFunc)
+	if alreadySorted {
+		return utils.TextEdits{}, false, nil
+	}
+
+	start := definitions[0].Range.Start
+	end := definitions[len(definitions)-1].Range.End
+
+	slices.SortFunc(definitions, sortFunc)
 
 	edit := utils.TextEdit{}
 	edit.Range.Start = start
