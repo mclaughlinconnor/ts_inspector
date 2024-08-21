@@ -23,10 +23,26 @@ type CodeActionContext struct {
 	Diagnostics []Diagnostic `json:"diagnostics"`
 }
 
+type codeActionKind struct {
+	Empty                 string
+	QuickFix              string
+	Refactor              string
+	RefactorExtract       string
+	RefactorInline        string
+	RefactorRewrite       string
+	Source                string
+	SourceOrganizeImports string
+	SourceFixAll          string
+}
+
+var CodeActionKind = codeActionKind{"", "quickfix", "refactor", "refactor.extract", "refactor.inline", "refactor.rewrite", "source", "source.organizeImports", "source.fixAll"}
+
 type CodeAction struct {
 	Title string `json:"title"`
 
 	Edit WorkspaceEdit `json:"edit"`
+
+  Kind string `json:"kind"`
 }
 
 type CodeActionRepsonse struct {

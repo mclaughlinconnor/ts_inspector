@@ -39,8 +39,9 @@ func GenerateActions(logger *log.Logger, state parser.State, file parser.File, e
 
 		if allowed && err == nil && len(edits) > 0 {
 			codeActions = append(codeActions, interfaces.CodeAction{
-				Title: action.Title,
 				Edit:  interfaces.WorkspaceEditFromEdits(file, edits),
+				Title: action.Title,
+				Kind:  interfaces.CodeActionKind.Source,
 			})
 		}
 	}
