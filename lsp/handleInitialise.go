@@ -17,6 +17,11 @@ func newInitializeResponse(id int) interfaces.InitializeResponse {
 				CodeActionProvider: true,
 				CompletionProvider: interfaces.CompletionOptions{},
 				TextDocumentSync:   interfaces.TextDocumentSyncKind.Full,
+				Workspace: interfaces.WorkspaceCapabilities{
+					WorkspaceFolders: interfaces.WorkspaceFolderCapabilities{
+						Supported: true,
+					},
+				},
 			},
 		},
 	}

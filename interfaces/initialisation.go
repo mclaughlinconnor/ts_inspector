@@ -30,11 +30,15 @@ type ServerCapabilities struct {
 	SignatureHelpProvider  SignatureHelpOptions  `json:"signatureHelpProvider"`
 	TextDocumentSync       int                   `json:"textDocumentSync"`
 	TypeDefinitionProvider bool                  `json:"typeDefinitionProvider"`
-	Workspace              struct {
-		WorkspaceFolders struct {
-			Supported bool `json:"supported"`
-		} `json:"workspaceFolders"`
-	} `json:"workspace"`
+	Workspace              WorkspaceCapabilities `json:"workspace"`
+}
+
+type WorkspaceCapabilities struct {
+	WorkspaceFolders WorkspaceFolderCapabilities `json:"workspaceFolders"`
+}
+
+type WorkspaceFolderCapabilities struct {
+	Supported bool `json:"supported"`
 }
 
 type CodeLensOptions struct {
