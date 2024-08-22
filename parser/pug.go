@@ -78,25 +78,25 @@ func extractIndentifierUsages(text []byte, file File) (File, error) {
 }
 
 func assignTemplate(controller string, state State, template string) State {
-	f, found := state[controller]
+	f, found := state.Files[controller]
 	if !found {
 		return state
 	}
 
 	f.Template = template
-	state[controller] = f
+	state.Files[controller] = f
 
 	return state
 }
 
 func assignController(template string, state State, controller string) State {
-	f, found := state[template]
+	f, found := state.Files[template]
 	if !found {
 		return state
 	}
 
 	f.Controller = controller
-	state[template] = f
+	state.Files[template] = f
 
 	return state
 }

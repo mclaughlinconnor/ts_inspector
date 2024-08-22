@@ -2,6 +2,11 @@ package interfaces
 
 type InitializeRequest struct {
 	Request
+	Params InitializeParams `json:"params"`
+}
+
+type InitializeParams struct {
+	RootUri string `json:"rootUri"`
 }
 
 type InitializeResponse struct {

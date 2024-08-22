@@ -134,7 +134,10 @@ func CalculateNewAccessType(new access, old access) access {
 	return old
 }
 
-type State map[string]File
+type State struct {
+	Files   map[string]File
+	RootURI string
+}
 
 type File struct {
 	Content     string

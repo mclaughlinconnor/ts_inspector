@@ -39,7 +39,7 @@ func HandleFile(state State, uri string, languageId string, version int, content
 		return state, err
 	}
 
-	state[file.Filename()] = file
+	state.Files[file.Filename()] = file
 
 	state, err = handleDependencies(file, state, logger)
 	if err != nil {
@@ -54,7 +54,7 @@ func HandleFile(state State, uri string, languageId string, version int, content
 func handleDependencies(file File, state State, logger *log.Logger) (State, error) {
 	filename := file.Filename()
 
-	for fn, f := range state {
+	for fn, f := range state.Files {
 		var err error
 		if f.Template == filename || f.Controller == filename {
 			state, err = handleDependency(state, fn, logger)
@@ -73,11 +73,11 @@ func handleDependencies(file File, state State, logger *log.Logger) (State, erro
 		}
 	}
 
-	for fn, f := range state {
+	for fn, f := range state.Files {
 		if f.Template != "" {
-			t := state[f.Template]
+			t := state.Files[f.Template]
 			t.Controller = fn
-			state[f.Template] = t
+			state.Files[f.Template] = t
 		}
 	}
 
@@ -89,29 +89,29 @@ func handleDependency(state State, filename string, logger *log.Logger) (State, 
 	if err != nil {
 		return state, err
 	}
-	df, err := handleFile(UriFromFilename(filename), filetype, 0, state[filename].Content, logger)
+	df, err := handleFile(UriFromFilename(filename), filetype, 0, state.Files[filename].Content, logger)
 	if err != nil {
 		return state, err
 	}
-	state[df.Filename()] = df
+	state.Files[df.Filename()] = df
 	return state, nil
 }
 
 func reconcile(state State) State {
-	for _, file := range state {
+	for _, file := range state.Files {
 		// Skip if is a controller
 		if file.Controller != "" {
 			continue
 		}
 
-		template := state[file.Template]
+		template := state.Files[file.Template]
 		for name, usage := range template.Usages {
 			for _, use := range usage.Usages {
 				file = file.AppendDefinitionUsage(name, use)
 			}
 		}
 
-		state[file.Filename()] = file
+		state.Files[file.Filename()] = file
 	}
 
 	return state

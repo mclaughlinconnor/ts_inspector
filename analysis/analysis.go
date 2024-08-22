@@ -62,10 +62,10 @@ func newAnalysisHighlightName(problemNode *sitter.Node, severity int, message st
 
 	nameNode := problemNode.ChildByFieldName("name")
 	if nameNode != nil {
-    fmt.Println(nameNode == nil)
+		fmt.Println(nameNode == nil)
 		highlightNode = nameNode
 	} else {
-    fmt.Println(nameNode == nil)
+		fmt.Println(nameNode == nil)
 		highlightNode = problemNode
 	}
 

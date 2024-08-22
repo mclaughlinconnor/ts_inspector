@@ -42,7 +42,7 @@ type CodeAction struct {
 
 	Edit WorkspaceEdit `json:"edit"`
 
-  Kind string `json:"kind"`
+	Kind string `json:"kind"`
 }
 
 type CodeActionRepsonse struct {

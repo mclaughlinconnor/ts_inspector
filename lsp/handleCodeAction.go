@@ -20,7 +20,7 @@ func newCodeActionResponse(id int, codeActions []interfaces.CodeAction) interfac
 }
 
 func HandleCodeAction(writer io.Writer, logger *log.Logger, state parser.State, request interfaces.CodeActionRequest) {
-	file := state[parser.FilenameFromUri(request.Params.TextDocument.Uri)]
+	file := state.Files[parser.FilenameFromUri(request.Params.TextDocument.Uri)]
 
 	codeActions := GenerateActions(logger, state, file, request.Params.Range)
 

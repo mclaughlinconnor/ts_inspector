@@ -34,7 +34,7 @@ func Start() {
 	utils.InitQueries()
 	actions.InitActions()
 	commands.InitCommands()
-	state := parser.State{}
+	state := parser.State{Files: map[string]parser.File{}}
 
 	for scanner.Scan() {
 		msg := scanner.Bytes()
@@ -75,6 +75,7 @@ func handleMessage(logger *log.Logger, writer io.Writer, state parser.State, met
 	case "initialize":
 		ngserver.SendToAngular(string(msg))
 		request := utils.TryParseRequest[interfaces.InitializeRequest](logger, contents)
+		state.RootURI = request.Params.RootUri
 		ngserver.Requests[request.ID] = ngserver.RequestData{Method: method}
 	case "shutdown":
 		Shutdown <- 1
@@ -98,7 +99,7 @@ func handleMessage(logger *log.Logger, writer io.Writer, state parser.State, met
 		request := utils.TryParseRequest[interfaces.CompletionItemRequest](logger, contents)
 		ngserver.Requests[request.ID] = ngserver.RequestData{Method: method}
 
-		file, found := state[request.Params.Data["filePath"].(string)]
+		file, found := state.Files[request.Params.Data["filePath"].(string)]
 		if !found || file.Filetype != "pug" {
 			response := interfaces.CompletionResponse{
 				Response: interfaces.Response{RPC: "2.0", ID: &request.ID},
@@ -129,7 +130,7 @@ func handleMessage(logger *log.Logger, writer io.Writer, state parser.State, met
 	case "textDocument/completion":
 		request := utils.TryParseRequest[interfaces.CompletionRequest](logger, contents)
 
-		file, found := state[parser.FilenameFromUri(request.Params.TextDocument.Uri)]
+		file, found := state.Files[parser.FilenameFromUri(request.Params.TextDocument.Uri)]
 		if !found || file.Filetype != "pug" {
 			response := interfaces.CompletionResponse{
 				Response: interfaces.Response{RPC: "2.0", ID: &request.ID},
