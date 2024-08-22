@@ -7,6 +7,7 @@ type VisitorFuncMap[T any] map[string]visitorFunction[T]
 
 func NewVisitorFuncsMap[T any]() VisitorFuncMap[T] {
 	var visitorFuncs VisitorFuncMap[T] = VisitorFuncMap[T]{
+		"ERROR":                                 dummyVisitor[T],
 		"_primary_type":                         dummyVisitor[T],
 		"abstract_class_declaration":            dummyVisitor[T],
 		"abstract_method_signature":             dummyVisitor[T],
