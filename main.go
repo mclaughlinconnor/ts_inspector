@@ -5,11 +5,39 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"ts_inspector/actions"
+	traversetypescriptfiles "ts_inspector/ast/indexing"
+	"ts_inspector/commands"
 	"ts_inspector/lsp"
 	"ts_inspector/ngserver"
+	"ts_inspector/parser"
+	"ts_inspector/utils"
 )
 
 func main() {
+	if len(os.Args) == 0 {
+		startLsp()
+	}
+
+	logger := utils.GetLogger("indexing")
+
+	utils.InitQueries()
+	actions.InitActions()
+	commands.InitCommands()
+
+	files := traversetypescriptfiles.Index(os.Args[1])
+
+	state := parser.State{Files: map[string]parser.File{}}
+	var err error
+	for _, file := range files {
+		state, err = parser.HandleFile(state, file, "", 0, "", logger)
+		if err != nil {
+			logger.Fatal(err)
+		}
+	}
+}
+
+func startLsp() {
 	go ngserver.Start()
 	go lsp.Start()
 

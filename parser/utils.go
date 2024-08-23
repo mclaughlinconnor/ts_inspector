@@ -2,17 +2,8 @@ package parser
 
 import (
 	"bytes"
-	"os"
 	"strings"
 )
-
-func FileExists(filename string) bool {
-	stat, err := os.Stat(filename)
-	if err != nil {
-		return false
-	}
-	return !stat.IsDir()
-}
 
 func IsAngularDecorator(name string) bool {
 	_, found := angularDecorators[name]

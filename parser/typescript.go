@@ -55,7 +55,7 @@ func ExtractTemplateFilename(file File, root *sitter.Node, content []byte) (File
 			return returnValue, err
 		}
 
-		if FileExists(templateFilePath) {
+		if utils.FileExists(templateFilePath) {
 			returnValue.Template = templateFilePath
 			return returnValue, nil
 		}
