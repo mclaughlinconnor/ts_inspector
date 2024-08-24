@@ -1,9 +1,12 @@
 package main
 
 import (
+	"flag"
 	"fmt"
+	"log"
 	"os"
 	"os/signal"
+	"runtime/pprof"
 	"syscall"
 	"ts_inspector/actions"
 	traversetypescriptfiles "ts_inspector/ast/indexing"
@@ -19,15 +22,28 @@ func main() {
 		startLsp()
 	}
 
-	logger := utils.GetLogger("indexing")
+	var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
+
+	flag.Parse()
+	if *cpuprofile != "" {
+		f, err := os.Create(*cpuprofile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
+	}
 
 	utils.InitQueries()
 	actions.InitActions()
 	commands.InitCommands()
 
-	files := traversetypescriptfiles.Index(os.Args[1])
+	logger := utils.GetLogger("indexing")
 
-	state := parser.State{Files: map[string]parser.File{}, RootURI: os.Args[1]}
+	file := "../angular-tour-of-heroes"
+	files := traversetypescriptfiles.Index(file)
+	state := parser.State{Files: map[string]parser.File{}, RootURI: file}
+
 	var err error
 	for _, file := range files {
 		state, err = parser.HandleFile(state, file, "", 0, "", logger)
