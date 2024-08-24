@@ -2,7 +2,8 @@ package utils
 
 import "os"
 
-func FileExists(filename string) bool {
+// Is a var for replacing in tests
+var FileExists = func(filename string) bool {
 	stat, err := os.Stat(filename)
 	if err != nil {
 		return false
