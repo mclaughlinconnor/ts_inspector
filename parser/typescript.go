@@ -1,9 +1,9 @@
 package parser
 
 import (
-	"fmt"
 	"path"
 	"path/filepath"
+	"ts_inspector/ast/walk"
 	"ts_inspector/utils"
 
 	sitter "github.com/smacker/go-tree-sitter"
@@ -42,26 +42,90 @@ func HandleTypeScriptFile(file File) (File, error) {
 }
 
 func ExtractTemplateFilename(file File, root *sitter.Node, content []byte) (File, error) {
-	return utils.WithMatches(utils.QueryComponentDecorator, utils.TypeScript, content, file, func(captures utils.Captures, returnValue File) (File, error) {
-		if len(captures) == 0 {
-			return returnValue, nil
+	type state struct {
+		InDecorator bool
+		File
+	}
+
+	funcMap := walk.NewVisitorFuncsMap[state]()
+	funcMap["decorator"] = func(node *sitter.Node, state state, indexInParent int, funcMap walk.VisitorFuncMap[state]) state {
+		call := node.NamedChild(0)
+		if call.Type() != "call_expression" {
+			return state
 		}
 
-		relativeTemplatePath := captures["template"][0].Content(content)
+		decoratorNameNode := call.ChildByFieldName("function")
+		if decoratorNameNode == nil {
+			return state
+		}
+
+		decoratorName := decoratorNameNode.Content(content)
+		if decoratorName != "Component" {
+			return state
+		}
+
+		state.InDecorator = true
+
+		for childIndex := range node.NamedChildCount() {
+			state = walk.VisitNode(node.NamedChild(int(childIndex)), state, indexInParent, funcMap)
+		}
+
+		state.InDecorator = false
+
+		return state
+	}
+
+	funcMap["pair"] = func(node *sitter.Node, state state, indexInParent int, funcMap walk.VisitorFuncMap[state]) state {
+		if !state.InDecorator {
+			for childIndex := range node.NamedChildCount() {
+				state = walk.VisitNode(node.NamedChild(int(childIndex)), state, indexInParent, funcMap)
+			}
+			return state
+		}
+
+		keyNode := node.ChildByFieldName("key")
+		if keyNode == nil {
+			return state
+		}
+
+		if keyNode.Content(content) != "templateUrl" {
+			return state
+		}
+
+		valueNode := node.ChildByFieldName("value")
+		if valueNode == nil {
+			return state
+		}
+
+		relativeTemplatePathNode := valueNode.NamedChild(0)
+		if relativeTemplatePathNode == nil {
+			return state
+		}
+
+		relativeTemplatePath := relativeTemplatePathNode.Content(content)
+		if relativeTemplatePath == "" {
+			return state
+		}
+
 		controllerDirectory := filepath.Dir(file.Filename())
 
 		templateFilePath, err := filepath.Abs(path.Join(controllerDirectory, relativeTemplatePath))
 		if err != nil {
-			return returnValue, err
+			return state
 		}
 
 		if utils.FileExists(templateFilePath) {
-			returnValue.Template = templateFilePath
-			return returnValue, nil
+			state.Template = templateFilePath
+			return state
 		}
 
-		return returnValue, fmt.Errorf("Unexpected template file does not exist: %s", relativeTemplatePath)
-	})
+		return state
+	}
+
+	s := state{InDecorator: false, File: file}
+	s = walk.Walk(root, s, funcMap)
+
+	return s.File, nil
 }
 
 func ExtractTypeScriptUsages(file File, root *sitter.Node, content []byte) (File, error) {

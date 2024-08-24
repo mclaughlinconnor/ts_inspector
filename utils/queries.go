@@ -10,7 +10,6 @@ import (
 var queries = map[string]map[string]*sitter.Query{}
 
 const (
-	QueryComponentDecorator = "query_component_decorator"
 	QueryPropertyUsage      = "query_property_usage"
 	QueryPrototypeUsage     = "query_prototype_usage"
 	QueryPropertyDefinition = "query_property_definition"
@@ -19,23 +18,6 @@ const (
 	QueryImport             = "query_imports"
 	QueryClassBody          = "query_class_body"
 )
-
-var typescriptComponentDecorator = []byte(`
-  (decorator
-    (call_expression
-      function: (identifier) @decorator_name
-      arguments: (arguments
-        (object
-          (pair
-             key: (property_identifier) @key_name
-             value: (string (string_fragment) @template)
-          )
-        )
-      )
-    )
-    (#eq? @key_name "templateUrl")
-    (#eq? @decorator_name "Component"))
-`)
 
 var typescriptPropertyUsage = []byte(`
   (member_expression
@@ -149,7 +131,6 @@ func GetQuery(name string, lang string) (*sitter.QueryCursor, *sitter.Query, err
 }
 
 func InitQueries() {
-	registerQuery(QueryComponentDecorator, TypeScript, typescriptComponentDecorator)
 	registerQuery(QueryPropertyUsage, TypeScript, typescriptPropertyUsage)
 	registerQuery(QueryPrototypeUsage, TypeScript, typescriptPrototypeUsage)
 	registerQuery(QueryPropertyDefinition, TypeScript, typescriptPropertyDefinition)
