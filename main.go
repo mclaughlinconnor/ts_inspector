@@ -27,7 +27,7 @@ func main() {
 
 	files := traversetypescriptfiles.Index(os.Args[1])
 
-	state := parser.State{Files: map[string]parser.File{}}
+	state := parser.State{Files: map[string]parser.File{}, RootURI: os.Args[1]}
 	var err error
 	for _, file := range files {
 		state, err = parser.HandleFile(state, file, "", 0, "", logger)
@@ -35,6 +35,8 @@ func main() {
 			logger.Fatal(err)
 		}
 	}
+
+	fmt.Print(state)
 }
 
 func startLsp() {
