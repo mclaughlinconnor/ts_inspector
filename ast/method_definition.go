@@ -3,7 +3,7 @@ package ast
 import (
 	"cmp"
 	"slices"
-	walktypescript "ts_inspector/ast/walk_typescript"
+	"ts_inspector/ast/walk"
 	"ts_inspector/utils"
 
 	sitter "github.com/smacker/go-tree-sitter"
@@ -90,7 +90,7 @@ func ExtractDefinitions(content []byte) []MethodDefinitionParseResult {
 		return state, nil
 	})
 
-	funcMap := walktypescript.NewVisitorFuncsMap[[]MethodDefinitionParseResult]()
+	funcMap := walk.NewVisitorFuncsMap[[]MethodDefinitionParseResult]()
 
 	methodHandler := func(node *sitter.Node, state []MethodDefinitionParseResult, indexInParent int) []MethodDefinitionParseResult {
 		result := MethodDefinitionParseResult{}
@@ -139,7 +139,7 @@ func ExtractDefinitions(content []byte) []MethodDefinitionParseResult {
 	funcMap["method_signature"] = methodHandler
 	funcMap["abstract_method_signature"] = methodHandler
 
-	return walktypescript.Walk(node, []MethodDefinitionParseResult{}, funcMap)
+	return walk.Walk(node, []MethodDefinitionParseResult{}, funcMap)
 }
 
 func FindClassBody(content []byte) *sitter.Node {

@@ -1,4 +1,4 @@
-package walktypescript
+package walk
 
 import sitter "github.com/smacker/go-tree-sitter"
 
@@ -11,9 +11,15 @@ func Walk[T any](node *sitter.Node, state T, visitorFuncMap VisitorFuncMap[T]) T
 }
 
 func VisitNode[T any](node *sitter.Node, state T, indexInParent int) T {
+	funcMap := currentFuncMap.(VisitorFuncMap[T])
 	t := node.Type()
-	f := currentFuncMap.(VisitorFuncMap[T])[t]
-	state = f(node, state, indexInParent)
+
+	function, found := funcMap[t]
+	if !found {
+		function = funcMap[DefaultVisitorFuncKey]
+	}
+
+	state = function(node, state, indexInParent)
 
 	return state
 }

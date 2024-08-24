@@ -3,14 +3,14 @@ package indexing
 import (
 	"path/filepath"
 	"strings"
-	walktypescript "ts_inspector/ast/walk_typescript"
+	"ts_inspector/ast/walk"
 	"ts_inspector/utils"
 
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
 func extractImportsFromFile(filename string) ([]string, error) {
-	funcMap := walktypescript.NewVisitorFuncsMap[[]string]()
+	funcMap := walk.NewVisitorFuncsMap[[]string]()
 
 	return utils.ParseFile(true, filename, utils.TypeScript, []string{}, func(root *sitter.Node, content []byte, state []string) ([]string, error) {
 		funcMap["import_statement"] = func(node *sitter.Node, state []string, indexInParent int) []string {
@@ -38,7 +38,7 @@ func extractImportsFromFile(filename string) ([]string, error) {
 			return state
 		}
 
-		state = walktypescript.Walk(root, state, funcMap)
+		state = walk.Walk(root, state, funcMap)
 
 		return state, nil
 	})
