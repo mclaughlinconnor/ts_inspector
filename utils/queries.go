@@ -2,11 +2,12 @@ package utils
 
 import (
 	"fmt"
+	"log"
 
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
-var queries = map[string]map[string][]byte{}
+var queries = map[string]map[string]*sitter.Query{}
 
 const (
 	QueryComponentDecorator = "query_component_decorator"
@@ -19,7 +20,6 @@ const (
 	QueryMethodDefinition   = "query_method_definition"
 	QueryClassDefinition    = "query_class_implements"
 	QueryImport             = "query_imports"
-	QueryClassProperties    = "query_class_properties"
 	QueryClassBody          = "query_class_body"
 )
 
@@ -145,41 +145,26 @@ var typescriptImport = []byte(`
       (string_fragment) @package)) @import
 `)
 
-var typescriptClassProperties = []byte(`
-  (class_body
-    ((comment) @comment)*
-    [
-      ((public_field_definition
-        name: [(property_identifier) (private_property_identifier)] @name) @node (";" @semi)?)
-      ((method_definition
-        name: [(property_identifier) (private_property_identifier)] @name) @node)
-      ((method_signature
-        name: [(property_identifier) (private_property_identifier)] @name) @node (";" @semi)?)
-      ((abstract_method_signature
-        name: [(property_identifier) (private_property_identifier)] @name) @node)
-    ]
-  )
-`)
-
 var typescriptClassBody = []byte(`(class_body) @body`)
 
-func registerQuery(name string, lang string, query []byte) {
+func registerQuery(name string, lang string, queryString []byte) {
 	_, ok := queries[lang]
 	if !ok {
-		queries[lang] = make(map[string][]byte, 0)
+		queries[lang] = make(map[string]*sitter.Query, 0)
+	}
+
+	query, err := sitter.NewQuery(queryString, GetLanguage(lang))
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	queries[lang][name] = query
 }
 
 func GetQuery(name string, lang string) (*sitter.QueryCursor, *sitter.Query, error) {
-	q, ok := queries[lang][name]
+	query, ok := queries[lang][name]
 	if !ok {
 		return nil, nil, fmt.Errorf("No query for '%s' found", name)
-	}
-	query, err := sitter.NewQuery(q, GetLanguage(lang))
-	if err != nil {
-		return nil, nil, err
 	}
 
 	return sitter.NewQueryCursor(), query, nil
@@ -197,6 +182,5 @@ func InitQueries() {
 	registerQuery(QueryMethodDefinition, TypeScript, typescriptMethodDefinition)
 	registerQuery(QueryClassDefinition, TypeScript, typescriptClassDefinition)
 	registerQuery(QueryImport, TypeScript, typescriptImport)
-	registerQuery(QueryClassProperties, TypeScript, typescriptClassProperties)
 	registerQuery(QueryClassBody, TypeScript, typescriptClassBody)
 }
