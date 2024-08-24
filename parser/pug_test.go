@@ -3,6 +3,7 @@ package parser
 import (
 	"os"
 	"reflect"
+	"slices"
 	"testing"
 	"ts_inspector/utils"
 )
@@ -15,6 +16,8 @@ func extractUsageNames(usages Usages) []string {
 		keys[i] = k
 		i++
 	}
+
+	slices.Sort(keys)
 
 	return keys
 }
@@ -102,8 +105,8 @@ func TestExtractPugUsagesAngularAttributes(t *testing.T) {
 		t.Fatalf(`Expected origin = %+v to equal target []`, file.Definitions)
 	}
 
-  target := []string{"onChange", "$event", "clazz", "value"}	
-  if !reflect.DeepEqual(extractUsageNames(file.Usages), target) {
+	target := []string{"$event", "clazz", "onChange", "value"}
+	if !reflect.DeepEqual(extractUsageNames(file.Usages), target) {
 		t.Fatalf(`Expected origin = %+v to equal target %+v`, extractUsageNames(file.Usages), target)
 	}
 }
@@ -123,7 +126,7 @@ func TestExtractPugUsagesAngularContent(t *testing.T) {
 		t.Fatalf(`Expected origin = %+v to equal target []`, file.Definitions)
 	}
 
-  target := []string{"one", "two", "three", "four"}
+	target := []string{"four", "one", "three", "two"}
 	if !reflect.DeepEqual(extractUsageNames(file.Usages), target) {
 		t.Fatalf(`Expected origin = %+v to equal target %+v`, extractUsageNames(file.Usages), target)
 	}
