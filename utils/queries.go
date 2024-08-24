@@ -13,7 +13,6 @@ const (
 	QueryComponentDecorator = "query_component_decorator"
 	QueryPropertyUsage      = "query_property_usage"
 	QueryContent            = "query_content"
-	QueryAttribute          = "query_attribute"
 	QueryInterpolation      = "query_interpolation"
 	QueryPrototypeUsage     = "query_prototype_usage"
 	QueryPropertyDefinition = "query_property_definition"
@@ -48,13 +47,6 @@ var typescriptPropertyUsage = []byte(`
 
 var javascriptPropertyUsage = []byte(`
   (identifier) @name
-`)
-
-var pugAttribute = []byte(`
-  (attribute
-    (attribute_name) @name
-    (quoted_attribute_value
-      (attribute_value) @value))
 `)
 
 var pugContent = []byte(`
@@ -175,7 +167,6 @@ func InitQueries() {
 	registerQuery(QueryPropertyUsage, TypeScript, typescriptPropertyUsage)
 	registerQuery(QueryPropertyUsage, JavaScript, javascriptPropertyUsage)
 	registerQuery(QueryContent, Pug, pugContent)
-	registerQuery(QueryAttribute, Pug, pugAttribute)
 	registerQuery(QueryInterpolation, AngularContent, angularContentInterpolation)
 	registerQuery(QueryPrototypeUsage, TypeScript, typescriptPrototypeUsage)
 	registerQuery(QueryPropertyDefinition, TypeScript, typescriptPropertyDefinition)

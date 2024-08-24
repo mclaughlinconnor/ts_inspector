@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"ts_inspector/ast/walk"
 	"ts_inspector/utils"
 
 	sitter "github.com/smacker/go-tree-sitter"
@@ -27,28 +28,47 @@ func HandlePugFile(file File) (File, error) {
 }
 
 func ExtractPugUsages(file File, content []byte) (File, error) {
-	file, err := utils.WithMatches(utils.QueryAttribute, utils.Pug, content, file, func(captures utils.Captures, returnValue File) (File, error) {
+	funcMap := walk.NewVisitorFuncsMap[File]()
+	funcMap["attribute"] = func(node *sitter.Node, state File, indexInParent int) File {
+		var nameNode *sitter.Node
+		var valueNode *sitter.Node
 
-		name := []byte(captures["name"][0].Content(content))
-
-		isAttr, err := utils.IsAngularAttribute(name)
-
-		if err != nil {
-			return returnValue, err
+		for childIndex := range node.NamedChildCount() {
+			child := node.NamedChild(int(childIndex))
+			if child.Type() == "attribute_name" {
+				nameNode = child
+			} else if child.Type() == "quoted_attribute_value" {
+				v := child.NamedChild(0)
+				if v != nil && v.Type() == "attribute_value" {
+					valueNode = v
+				}
+			}
 		}
 
-		if isAttr {
-			valueNode := captures["value"][0]
-			value := []byte(valueNode.Content(content))
-			return extractIndentifierUsages(value, returnValue)
+    if nameNode == nil || valueNode == nil {
+      return state
+    }
+
+		attrName := nameNode.Content(content)
+		isAttr, err := utils.IsAngularAttribute([]byte(attrName))
+
+		if err != nil || !isAttr {
+			return state
 		}
 
-		return returnValue, nil
-	})
+		value := []byte(valueNode.Content(content))
+		state, _ = extractIndentifierUsages(value, state)
 
-	if err != nil {
-		return file, err
+		return state
 	}
+
+  root, err := utils.GetRootNode(false, string(content), utils.Pug)
+  if err != nil {
+    return file, err
+  }
+
+	file = walk.Walk(root, file, funcMap)
+
 
 	return utils.WithMatches(utils.QueryContent, utils.Pug, content, file, func(captures utils.Captures, returnValue File) (File, error) {
 		tagContentNode := captures["content"][0]
