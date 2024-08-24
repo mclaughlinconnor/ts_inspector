@@ -28,73 +28,40 @@ func HandlePugFile(file File) (File, error) {
 }
 
 func ExtractPugUsages(file File, content []byte) (File, error) {
-	funcMap := walk.NewVisitorFuncsMap[File]()
-	funcMap["attribute"] = func(node *sitter.Node, state File, indexInParent int) File {
-		var nameNode *sitter.Node
-		var valueNode *sitter.Node
+	pugFuncMap := walk.NewVisitorFuncsMap[File]()
+	pugFuncMap["attribute"] = visitAttribute(content)
+	pugFuncMap["content"] = visitContent(content)
 
-		for childIndex := range node.NamedChildCount() {
-			child := node.NamedChild(int(childIndex))
-			if child.Type() == "attribute_name" {
-				nameNode = child
-			} else if child.Type() == "quoted_attribute_value" {
-				v := child.NamedChild(0)
-				if v != nil && v.Type() == "attribute_value" {
-					valueNode = v
-				}
-			}
-		}
-
-    if nameNode == nil || valueNode == nil {
-      return state
-    }
-
-		attrName := nameNode.Content(content)
-		isAttr, err := utils.IsAngularAttribute([]byte(attrName))
-
-		if err != nil || !isAttr {
-			return state
-		}
-
-		value := []byte(valueNode.Content(content))
-		state, _ = extractIndentifierUsages(value, state)
-
-		return state
+	root, err := utils.GetRootNode(false, string(content), utils.Pug)
+	if err != nil {
+		return file, err
 	}
 
-  root, err := utils.GetRootNode(false, string(content), utils.Pug)
-  if err != nil {
-    return file, err
-  }
+	file = walk.Walk(root, file, pugFuncMap)
 
-	file = walk.Walk(root, file, funcMap)
-
-
-	return utils.WithMatches(utils.QueryContent, utils.Pug, content, file, func(captures utils.Captures, returnValue File) (File, error) {
-		tagContentNode := captures["content"][0]
-		tagContent := []byte(tagContentNode.Content(content))
-
-		return utils.WithMatches(utils.QueryInterpolation, utils.AngularContent, tagContent, file, func(captures utils.Captures, returnValue File) (File, error) {
-			interpolationNode := captures["interpolation"][0]
-			interpolation := []byte(interpolationNode.Content(tagContent))
-
-			return extractIndentifierUsages(interpolation, returnValue)
-		})
-	})
+	return file, nil
 }
 
 // Intentionally only get `identifier`s instead of `property_identifier`s because only the `identifier` will exist on the controller
 func extractIndentifierUsages(text []byte, file File) (File, error) {
-	return utils.WithMatches(utils.QueryPropertyUsage, utils.JavaScript, text, file, func(captures utils.Captures, returnValue File) (File, error) {
-		node := captures["name"][0]
+	root, err := utils.GetRootNode(false, string(text), utils.JavaScript)
+	if err != nil {
+		return file, err
+	}
+
+	funcMap := walk.NewVisitorFuncsMap[File]()
+	funcMap["identifier"] = func(node *sitter.Node, state File, indexInParent int, _ walk.VisitorFuncMap[File]) File {
 		name := node.Content(text)
 		usageInstance := UsageInstance{ForeignAccess, node}
 
 		file = file.SetUsageAccessType(name, usageInstance.Access).AppendUsage(name, usageInstance)
 
-		return file, nil
-	})
+		return file
+	}
 
+	file = walk.Walk(root, file, funcMap)
+
+	return file, nil
 }
 
 func assignTemplate(controller string, state State, template string) State {
@@ -119,4 +86,60 @@ func assignController(template string, state State, controller string) State {
 	state.Files[template] = f
 
 	return state
+}
+
+func visitAttribute(content []byte) walk.VisitorFunction[File] {
+	return func(node *sitter.Node, state File, indexInParent int, _ walk.VisitorFuncMap[File]) File {
+		var nameNode *sitter.Node
+		var valueNode *sitter.Node
+
+		for childIndex := range node.NamedChildCount() {
+			child := node.NamedChild(int(childIndex))
+			if child.Type() == "attribute_name" {
+				nameNode = child
+			} else if child.Type() == "quoted_attribute_value" {
+				v := child.NamedChild(0)
+				if v != nil && v.Type() == "attribute_value" {
+					valueNode = v
+				}
+			}
+		}
+
+		if nameNode == nil || valueNode == nil {
+			return state
+		}
+
+		attrName := nameNode.Content(content)
+		isAttr, err := utils.IsAngularAttribute([]byte(attrName))
+
+		if err != nil || !isAttr {
+			return state
+		}
+
+		value := []byte(valueNode.Content(content))
+		state, _ = extractIndentifierUsages(value, state)
+
+		return state
+	}
+}
+
+func visitContent(content []byte) walk.VisitorFunction[File] {
+	return func(node *sitter.Node, state File, indexInParent int, _ walk.VisitorFuncMap[File]) File {
+		tagContent := []byte(node.Content(content))
+
+		angularContentFuncMap := walk.NewVisitorFuncsMap[File]()
+		angularContentFuncMap["interpolation"] = func(node *sitter.Node, state File, indexInParent int, _ walk.VisitorFuncMap[File]) File {
+			interpolation := []byte(node.Content(tagContent))
+			state, _ = extractIndentifierUsages(interpolation, state)
+			return state
+		}
+
+		angularRoot, err := utils.GetRootNode(false, string(tagContent), utils.AngularContent)
+		if err != nil {
+			return state
+		}
+
+		state = walk.Walk(angularRoot, state, angularContentFuncMap)
+		return state
+	}
 }
