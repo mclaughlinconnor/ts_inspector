@@ -13,7 +13,7 @@ func extractImportsFromFile(filename string) ([]string, error) {
 	funcMap := walk.NewVisitorFuncsMap[[]string]()
 
 	return utils.ParseFile(true, filename, utils.TypeScript, []string{}, func(root *sitter.Node, content []byte, state []string) ([]string, error) {
-		funcMap["import_statement"] = func(node *sitter.Node, state []string, indexInParent int) []string {
+		funcMap["import_statement"] = func(node *sitter.Node, state []string, indexInParent int, _ walk.VisitorFuncMap[[]string]) []string {
 			source := node.ChildByFieldName("source")
 			if source == nil {
 				return state

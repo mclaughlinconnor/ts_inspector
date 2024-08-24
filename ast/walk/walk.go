@@ -2,24 +2,20 @@ package walk
 
 import sitter "github.com/smacker/go-tree-sitter"
 
-var currentFuncMap any
-
 func Walk[T any](node *sitter.Node, state T, visitorFuncMap VisitorFuncMap[T]) T {
-	currentFuncMap = visitorFuncMap
-	s := VisitNode(node, state, 0)
+	s := VisitNode(node, state, 0, visitorFuncMap)
 	return s
 }
 
-func VisitNode[T any](node *sitter.Node, state T, indexInParent int) T {
-	funcMap := currentFuncMap.(VisitorFuncMap[T])
+func VisitNode[T any](node *sitter.Node, state T, indexInParent int, visitorFuncMap VisitorFuncMap[T]) T {
 	t := node.Type()
 
-	function, found := funcMap[t]
+	function, found := visitorFuncMap[t]
 	if !found {
-		function = funcMap[DefaultVisitorFuncKey]
+		function = visitorFuncMap[DefaultVisitorFuncKey]
 	}
 
-	state = function(node, state, indexInParent)
+	state = function(node, state, indexInParent, visitorFuncMap)
 
 	return state
 }

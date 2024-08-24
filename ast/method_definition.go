@@ -92,7 +92,7 @@ func ExtractDefinitions(content []byte) []MethodDefinitionParseResult {
 
 	funcMap := walk.NewVisitorFuncsMap[[]MethodDefinitionParseResult]()
 
-	methodHandler := func(node *sitter.Node, state []MethodDefinitionParseResult, indexInParent int) []MethodDefinitionParseResult {
+	methodHandler := func(node *sitter.Node, state []MethodDefinitionParseResult, indexInParent int, _ walk.VisitorFuncMap[[]MethodDefinitionParseResult]) []MethodDefinitionParseResult {
 		result := MethodDefinitionParseResult{}
 
 		result.Range = utils.Range{Start: utils.PositionFromPoint(node.StartPoint()), End: utils.PositionFromPoint(node.EndPoint())}
