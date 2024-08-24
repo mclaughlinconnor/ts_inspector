@@ -12,8 +12,6 @@ var queries = map[string]map[string]*sitter.Query{}
 const (
 	QueryComponentDecorator = "query_component_decorator"
 	QueryPropertyUsage      = "query_property_usage"
-	QueryContent            = "query_content"
-	QueryInterpolation      = "query_interpolation"
 	QueryPrototypeUsage     = "query_prototype_usage"
 	QueryPropertyDefinition = "query_property_definition"
 	QueryMethodDefinition   = "query_method_definition"
@@ -43,18 +41,6 @@ var typescriptPropertyUsage = []byte(`
   (member_expression
     object: (this)
     property: (property_identifier) @var)
-`)
-
-var javascriptPropertyUsage = []byte(`
-  (identifier) @name
-`)
-
-var pugContent = []byte(`
-  (content) @content
-`)
-
-var angularContentInterpolation = []byte(`
-  (interpolation) @interpolation
 `)
 
 var typescriptPrototypeUsage = []byte(`
@@ -165,9 +151,6 @@ func GetQuery(name string, lang string) (*sitter.QueryCursor, *sitter.Query, err
 func InitQueries() {
 	registerQuery(QueryComponentDecorator, TypeScript, typescriptComponentDecorator)
 	registerQuery(QueryPropertyUsage, TypeScript, typescriptPropertyUsage)
-	registerQuery(QueryPropertyUsage, JavaScript, javascriptPropertyUsage)
-	registerQuery(QueryContent, Pug, pugContent)
-	registerQuery(QueryInterpolation, AngularContent, angularContentInterpolation)
 	registerQuery(QueryPrototypeUsage, TypeScript, typescriptPrototypeUsage)
 	registerQuery(QueryPropertyDefinition, TypeScript, typescriptPropertyDefinition)
 	registerQuery(QueryMethodDefinition, TypeScript, typescriptMethodDefinition)
