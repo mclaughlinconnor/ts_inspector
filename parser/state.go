@@ -289,6 +289,8 @@ func FiletypeFromFilename(filename string) (string, error) {
 		return "pug", nil
 	} else if strings.HasSuffix(filename, ".ts") {
 		return "typescript", nil
+	} else if strings.HasSuffix(filename, ".html") {
+		return "html", nil
 	}
 
 	return "", fmt.Errorf("Couldn't determine filetype from filename: %s", filename)
