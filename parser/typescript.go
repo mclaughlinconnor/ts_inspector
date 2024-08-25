@@ -66,8 +66,9 @@ func ExtractTemplateFilename(file File, root *sitter.Node, content []byte) (File
 
 		state.InDecorator = true
 
-		for childIndex := range node.NamedChildCount() {
-			state = walk.VisitNode(node.NamedChild(int(childIndex)), state, indexInParent, funcMap)
+		for i := range node.NamedChildCount() {
+			index := int(i)
+			state = walk.VisitNode(node.NamedChild(index), state, index, funcMap)
 		}
 
 		state.InDecorator = false
@@ -77,9 +78,11 @@ func ExtractTemplateFilename(file File, root *sitter.Node, content []byte) (File
 
 	funcMap["pair"] = func(node *sitter.Node, state typescriptWalkState, indexInParent int, funcMap walk.VisitorFuncMap[typescriptWalkState]) typescriptWalkState {
 		if !state.InDecorator {
-			for childIndex := range node.NamedChildCount() {
-				state = walk.VisitNode(node.NamedChild(int(childIndex)), state, indexInParent, funcMap)
+			for i := range node.NamedChildCount() {
+				index := int(i)
+				state = walk.VisitNode(node.NamedChild(index), state, index, funcMap)
 			}
+
 			return state
 		}
 
