@@ -10,38 +10,12 @@ import (
 var queries = map[string]map[string]*sitter.Query{}
 
 const (
-	QueryPropertyUsage      = "query_property_usage"
-	QueryPrototypeUsage     = "query_prototype_usage"
 	QueryPropertyDefinition = "query_property_definition"
 	QueryMethodDefinition   = "query_method_definition"
 	QueryClassDefinition    = "query_class_implements"
 	QueryImport             = "query_imports"
 	QueryClassBody          = "query_class_body"
 )
-
-var typescriptPropertyUsage = []byte(`
-  (member_expression
-    object: (this)
-    property: (property_identifier) @var)
-`)
-
-var typescriptPrototypeUsage = []byte(`
-  [
-    (member_expression
-      object: (member_expression
-        object: (identifier) @class
-        property: (property_identifier) @prototype)
-      property: (property_identifier) @var)
-    (subscript_expression
-      object: (member_expression
-        object: (identifier) @class
-        property: (property_identifier) @prototype)
-      index: (string
-        (string_fragment) @var))
-    (#eq? @prototype "prototype")
-    ; (#eq? @class "class") ; add later when class checking is supported
-  ]
-`)
 
 var typescriptPropertyDefinition = []byte(`
   [
@@ -131,8 +105,6 @@ func GetQuery(name string, lang string) (*sitter.QueryCursor, *sitter.Query, err
 }
 
 func InitQueries() {
-	registerQuery(QueryPropertyUsage, TypeScript, typescriptPropertyUsage)
-	registerQuery(QueryPrototypeUsage, TypeScript, typescriptPrototypeUsage)
 	registerQuery(QueryPropertyDefinition, TypeScript, typescriptPropertyDefinition)
 	registerQuery(QueryMethodDefinition, TypeScript, typescriptMethodDefinition)
 	registerQuery(QueryClassDefinition, TypeScript, typescriptClassDefinition)

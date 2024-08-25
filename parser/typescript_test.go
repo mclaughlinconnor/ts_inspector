@@ -97,7 +97,7 @@ func TestExtractTypeScriptUsages(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	content := `class Class {constructor() {Class.prototype.one; Class.prototype["two"]; this.three; four; Class.five}}`
+	content := `class Class {constructor() {Class.prototype.one; Class.prototype["two"]; this.three; this["four"]; five; Class.six}}`
 	root, err := utils.GetRootNode(false, content, utils.TypeScript)
 
 	if err != nil {
@@ -119,7 +119,7 @@ func TestExtractTypeScriptUsages(t *testing.T) {
 		t.Fatalf(`Expected origin = %+v to equal target []`, file.Definitions)
 	}
 
-	expectedUsages := []string{"one", "three", "two"}
+	expectedUsages := []string{"four", "one", "three", "two"}
 	if !reflect.DeepEqual(extractUsageNames(file.Usages), expectedUsages) {
 		t.Fatalf(`Expected origin = %+v to equal target %+v`, extractUsageNames(file.Usages), expectedUsages)
 	}

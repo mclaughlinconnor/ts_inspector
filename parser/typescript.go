@@ -9,6 +9,11 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
+type typescriptWalkState struct {
+	InDecorator bool
+	File
+}
+
 func HandleTypeScriptFile(file File) (File, error) {
 	fromDisk := file.Content == ""
 	var source string
@@ -42,13 +47,8 @@ func HandleTypeScriptFile(file File) (File, error) {
 }
 
 func ExtractTemplateFilename(file File, root *sitter.Node, content []byte) (File, error) {
-	type state struct {
-		InDecorator bool
-		File
-	}
-
-	funcMap := walk.NewVisitorFuncsMap[state]()
-	funcMap["decorator"] = func(node *sitter.Node, state state, indexInParent int, funcMap walk.VisitorFuncMap[state]) state {
+	funcMap := walk.NewVisitorFuncsMap[typescriptWalkState]()
+	funcMap["decorator"] = func(node *sitter.Node, state typescriptWalkState, indexInParent int, funcMap walk.VisitorFuncMap[typescriptWalkState]) typescriptWalkState {
 		call := node.NamedChild(0)
 		if call.Type() != "call_expression" {
 			return state
@@ -75,7 +75,7 @@ func ExtractTemplateFilename(file File, root *sitter.Node, content []byte) (File
 		return state
 	}
 
-	funcMap["pair"] = func(node *sitter.Node, state state, indexInParent int, funcMap walk.VisitorFuncMap[state]) state {
+	funcMap["pair"] = func(node *sitter.Node, state typescriptWalkState, indexInParent int, funcMap walk.VisitorFuncMap[typescriptWalkState]) typescriptWalkState {
 		if !state.InDecorator {
 			for childIndex := range node.NamedChildCount() {
 				state = walk.VisitNode(node.NamedChild(int(childIndex)), state, indexInParent, funcMap)
@@ -122,38 +122,21 @@ func ExtractTemplateFilename(file File, root *sitter.Node, content []byte) (File
 		return state
 	}
 
-	s := state{InDecorator: false, File: file}
+	s := typescriptWalkState{InDecorator: false, File: file}
 	s = walk.Walk(root, s, funcMap)
 
 	return s.File, nil
 }
 
 func ExtractTypeScriptUsages(file File, root *sitter.Node, content []byte) (File, error) {
-	file, _ = utils.WithMatches(utils.QueryPrototypeUsage, utils.TypeScript, content, file, func(captures utils.Captures, returnValue File) (File, error) {
-		if len(captures) == 0 {
-			return returnValue, nil
-		}
+	funcMap := walk.NewVisitorFuncsMap[typescriptWalkState]()
+	funcMap["member_expression"] = visitUsageExpression(content)
+	funcMap["subscript_expression"] = visitUsageExpression(content)
 
-		node := captures["var"][0]
-		name := node.Content(content)
+	s := typescriptWalkState{File: file}
+	s = walk.Walk(root, s, funcMap)
 
-		returnValue = addUsage(returnValue, name, node, content)
-
-		return returnValue, nil
-	})
-
-	return utils.WithMatches(utils.QueryPropertyUsage, utils.TypeScript, content, file, func(captures utils.Captures, returnValue File) (File, error) {
-		if len(captures) == 0 {
-			return returnValue, nil
-		}
-
-		node := captures["var"][0]
-		name := node.Content(content)
-
-		returnValue = addUsage(returnValue, name, node, content)
-
-		return returnValue, nil
-	})
+	return s.File, nil
 }
 
 func ExtractTypeScriptDefinitions(file File, root *sitter.Node, content []byte) (File, error) {
@@ -295,4 +278,33 @@ func handleDecorator(node *sitter.Node, content []byte) Decorator {
 	decoratorName := node.Content(content)
 	isAngularDecorator := IsAngularDecorator(decoratorName)
 	return Decorator{isAngularDecorator, decoratorName}
+}
+
+func visitUsageExpression(content []byte) walk.VisitorFunction[typescriptWalkState] {
+	return func(node *sitter.Node, state typescriptWalkState, indexInParent int, funcMap walk.VisitorFuncMap[typescriptWalkState]) typescriptWalkState {
+		objectNode := node.ChildByFieldName("object")
+
+		// Only keep going if it's a this.abc or a Class.prototype.abc
+		if objectNode.Type() != "this" {
+			prototypeNode := objectNode.ChildByFieldName("property")
+			if prototypeNode == nil || prototypeNode.Content(content) != "prototype" {
+				return state
+			}
+		}
+
+		varNode := node.ChildByFieldName("property")
+		if varNode == nil {
+			varNode = node.ChildByFieldName("index")
+			varNode = varNode.NamedChild(0)
+
+			if varNode == nil || varNode.Type() != "string_fragment" {
+				return state
+			}
+		}
+
+		varName := varNode.Content(content)
+		state.File = addUsage(state.File, varName, node, content)
+
+		return state
+	}
 }
