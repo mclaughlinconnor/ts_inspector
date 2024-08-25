@@ -96,7 +96,7 @@ func TestExtractPugUsagesAngularAttributes(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	file, err = ExtractPugUsages(file, []byte("tag((change)='onChange($event)', [ngClass]='clazz', [(ngModel)]='value')"))
+	file, err = ExtractPugUsages(file, []byte("tag((change)='onChange($event)', [ngClass]='clazz', [(ngModel)]='value', *ngIf='toShow')"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,7 +105,7 @@ func TestExtractPugUsagesAngularAttributes(t *testing.T) {
 		t.Fatalf(`Expected origin = %+v to equal target []`, file.Definitions)
 	}
 
-	target := []string{"$event", "clazz", "onChange", "value"}
+	target := []string{"$event", "clazz", "onChange", "toShow", "value"}
 	if !reflect.DeepEqual(extractUsageNames(file.Usages), target) {
 		t.Fatalf(`Expected origin = %+v to equal target %+v`, extractUsageNames(file.Usages), target)
 	}
