@@ -10,7 +10,8 @@ import (
 )
 
 type typescriptWalkState struct {
-	InDecorator bool
+	DefinitionStack utils.Stack[Definition]
+	InDecorator     bool
 	File
 }
 
@@ -143,38 +144,103 @@ func ExtractTypeScriptUsages(file File, root *sitter.Node, content []byte) (File
 }
 
 func ExtractTypeScriptDefinitions(file File, root *sitter.Node, content []byte) (File, error) {
-	file, _ = utils.WithMatches(utils.QueryMethodDefinition, utils.TypeScript, content, file, func(captures utils.Captures, returnValue File) (File, error) {
-		definition := Definition{}
-		definition.Decorators = []Decorator{}
-		definition.UsageAccess = NoAccess
-		var err error
+	funcMap := walk.NewVisitorFuncsMap[typescriptWalkState]()
+	funcMap["method_definition"] = visitDefinition(content)
+	funcMap["public_field_definition"] = visitDefinition(content)
+	funcMap["required_parameter"] = visitDefinition(content)
 
-		definition, err = handleDefinition(definition, captures, content)
-		if err != nil {
-			return returnValue, err
+	funcMap["decorator"] = func(node *sitter.Node, state typescriptWalkState, indexInParent int, funcMap walk.VisitorFuncMap[typescriptWalkState]) typescriptWalkState {
+		if state.DefinitionStack.IsEmpty() {
+			return state
 		}
 
-		returnValue = returnValue.AddDefinition(definition.Name, definition)
+		state.DefinitionStack.Peek().Decorators = append(state.DefinitionStack.Peek().Decorators, handleDecorator(node, content))
 
-		return returnValue, nil
-	})
+		return state
+	}
 
-	return utils.WithMatches(utils.QueryPropertyDefinition, utils.TypeScript, content, file, func(captures utils.Captures, returnValue File) (File, error) {
-		definitionNode := captures["definition"][0]
-		name := captures["var"][0].Content(content)
-		accessibility := captures["accessibility_modifier"][0].Content(content)
-
-		decorators := handleDecorators(captures, content)
-
-		a, err := CalculateAccessibilityFromString(accessibility)
-		if err != nil {
-			return returnValue, err
+	funcMap["accessibility_modifier"] = func(node *sitter.Node, state typescriptWalkState, indexInParent int, funcMap walk.VisitorFuncMap[typescriptWalkState]) typescriptWalkState {
+		if state.DefinitionStack.IsEmpty() {
+			return state
 		}
 
-		returnValue = returnValue.AddDefinition(name, CreatePropertyDefinition(a, decorators, name, definitionNode))
+		a, err := CalculateAccessibilityFromString(node.Content(content))
+		if err != nil {
+			return state
+		}
 
-		return returnValue, nil
-	})
+		state.DefinitionStack.Peek().AccessModifier = a
+
+		return state
+	}
+
+	funcMap["static"] = func(node *sitter.Node, state typescriptWalkState, indexInParent int, funcMap walk.VisitorFuncMap[typescriptWalkState]) typescriptWalkState {
+		if state.DefinitionStack.IsEmpty() {
+			return state
+		}
+
+		state.DefinitionStack.Peek().Static = true
+		return state
+	}
+
+	funcMap["override_modifier"] = func(node *sitter.Node, state typescriptWalkState, indexInParent int, funcMap walk.VisitorFuncMap[typescriptWalkState]) typescriptWalkState {
+		if state.DefinitionStack.IsEmpty() {
+			return state
+		}
+
+		state.DefinitionStack.Peek().Override = true
+		return state
+	}
+
+	funcMap["readonly"] = func(node *sitter.Node, state typescriptWalkState, indexInParent int, funcMap walk.VisitorFuncMap[typescriptWalkState]) typescriptWalkState {
+		if state.DefinitionStack.IsEmpty() {
+			return state
+		}
+
+		state.DefinitionStack.Peek().Readonly = true
+		return state
+	}
+
+	funcMap["async"] = func(node *sitter.Node, state typescriptWalkState, indexInParent int, funcMap walk.VisitorFuncMap[typescriptWalkState]) typescriptWalkState {
+		if state.DefinitionStack.IsEmpty() {
+			return state
+		}
+
+		state.DefinitionStack.Peek().Async = true
+		return state
+	}
+
+	funcMap["generator"] = func(node *sitter.Node, state typescriptWalkState, indexInParent int, funcMap walk.VisitorFuncMap[typescriptWalkState]) typescriptWalkState {
+		if state.DefinitionStack.IsEmpty() {
+			return state
+		}
+
+		state.DefinitionStack.Peek().Generator = true
+		return state
+	}
+
+	funcMap["set"] = func(node *sitter.Node, state typescriptWalkState, indexInParent int, funcMap walk.VisitorFuncMap[typescriptWalkState]) typescriptWalkState {
+		if state.DefinitionStack.IsEmpty() {
+			return state
+		}
+
+		state.DefinitionStack.Peek().Setter = true
+		return state
+	}
+
+	funcMap["get"] = func(node *sitter.Node, state typescriptWalkState, indexInParent int, funcMap walk.VisitorFuncMap[typescriptWalkState]) typescriptWalkState {
+		if state.DefinitionStack.IsEmpty() {
+			return state
+		}
+
+		state.DefinitionStack.Peek().Getter = true
+		return state
+	}
+
+	s := typescriptWalkState{File: file}
+	s = walk.Walk(root, s, funcMap)
+
+	return s.File, nil
 }
 
 func addUsage(file File, name string, node *sitter.Node, content []byte) File {
@@ -207,76 +273,6 @@ func isInConstructor(node *sitter.Node, content []byte) bool {
 	return false
 }
 
-func handleDefinition(definition Definition, captures utils.Captures, content []byte) (Definition, error) {
-	if captures["definition"] != nil {
-		definition.Node = captures["definition"][0]
-	}
-
-	if captures["decorator"] != nil {
-		definition.Decorators = append(definition.Decorators, handleDecorator(captures["decorator"][0], content))
-	}
-
-	if captures["accessibility_modifier"] != nil {
-		a, err := CalculateAccessibilityFromString(captures["accessibility_modifier"][0].Content(content))
-		if err != nil {
-			return definition, err
-		}
-		definition.AccessModifier = a
-	}
-
-	if captures["static"] != nil {
-		definition.Static = true
-	}
-
-	if captures["override_modifier"] != nil {
-		definition.Override = true
-	}
-
-	if captures["readonly"] != nil {
-		definition.Readonly = true
-	}
-
-	if captures["async"] != nil {
-		definition.Async = true
-	}
-
-	if captures["generator"] != nil {
-		definition.Generator = true
-	}
-
-	if captures["name"] != nil {
-		definition.Name = captures["name"][0].Content(content)
-	}
-
-	if captures["set"] != nil {
-		definition.Setter = true
-	}
-
-	if captures["get"] != nil {
-		definition.Getter = true
-	}
-
-	if captures["property_identifier"] != nil {
-		definition.Name = captures["property_identifier"][0].Content(content)
-	}
-
-	if captures["method_definition"] != nil {
-		definition.Node = captures["method_definition"][0]
-	}
-
-	return definition, nil
-}
-
-func handleDecorators(captures utils.Captures, content []byte) []Decorator {
-	decorators := []Decorator{}
-
-	for _, node := range captures["decorator"] {
-		decorators = append(decorators, handleDecorator(node, content))
-	}
-
-	return decorators
-}
-
 func handleDecorator(node *sitter.Node, content []byte) Decorator {
 	decoratorName := node.Content(content)
 	isAngularDecorator := IsAngularDecorator(decoratorName)
@@ -307,6 +303,40 @@ func visitUsageExpression(content []byte) walk.VisitorFunction[typescriptWalkSta
 
 		varName := varNode.Content(content)
 		state.File = addUsage(state.File, varName, node, content)
+
+		return state
+	}
+}
+
+func visitDefinition(content []byte) walk.VisitorFunction[typescriptWalkState] {
+	return func(node *sitter.Node, state typescriptWalkState, indexInParent int, funcMap walk.VisitorFuncMap[typescriptWalkState]) typescriptWalkState {
+		state.DefinitionStack.Push(Definition{})
+		state.DefinitionStack.Peek().Decorators = []Decorator{}
+		state.DefinitionStack.Peek().UsageAccess = NoAccess
+
+		state.DefinitionStack.Peek().Node = node
+
+		nameNode := node.ChildByFieldName("name")
+		if nameNode != nil {
+			state.DefinitionStack.Peek().Name = nameNode.Content(content)
+		} else {
+			nameNode := node.ChildByFieldName("pattern")
+			if nameNode != nil {
+				state.DefinitionStack.Peek().Name = nameNode.Content(content)
+			}
+		}
+
+		if state.DefinitionStack.Peek().Name == "" {
+			return state
+		}
+
+		for i := range node.NamedChildCount() {
+			index := int(i)
+			state = walk.VisitNode(node.NamedChild(index), state, index, funcMap)
+		}
+
+		definition := state.DefinitionStack.Pop()
+		state.File.AddDefinition(definition.Name, *definition)
 
 		return state
 	}

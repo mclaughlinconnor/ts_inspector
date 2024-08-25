@@ -10,55 +10,10 @@ import (
 var queries = map[string]map[string]*sitter.Query{}
 
 const (
-	QueryPropertyDefinition = "query_property_definition"
-	QueryMethodDefinition   = "query_method_definition"
-	QueryClassDefinition    = "query_class_implements"
-	QueryImport             = "query_imports"
-	QueryClassBody          = "query_class_body"
+	QueryClassDefinition = "query_class_implements"
+	QueryImport          = "query_imports"
+	QueryClassBody       = "query_class_body"
 )
-
-var typescriptPropertyDefinition = []byte(`
-  [
-    (public_field_definition
-      decorator: [
-        (decorator
-          (call_expression
-            function: (identifier) @decorator))
-        (decorator (identifier) @decorator)
-      ]*
-      (accessibility_modifier) @accessibility_modifier
-      name: (property_identifier) @var) @definition
-    (required_parameter
-      decorator: (decorator
-        (call_expression
-          function: (identifier) @decorator))*
-      (accessibility_modifier) @accessibility_modifier
-      pattern: (identifier) @var) @definition
-  ]
-`)
-
-var typescriptMethodDefinition = []byte(`
-  (
-    [
-      (decorator
-        (call_expression
-          function: (identifier) @decorator))
-      (decorator (identifier) @decorator)
-    ]*
-    .
-    (method_definition
-      (accessibility_modifier)? @accessibility_modifier
-      "static"? @static
-      (override_modifier)? @override
-      "readonly"? @readonly
-      "async"? @async
-      "get"? @get
-      "*"? @generator
-      name: (property_identifier) @name
-      ; "?" ; Unhandled
-    ) @definition
-  )
-`)
 
 var typescriptClassDefinition = []byte(`
   (class_declaration
@@ -105,8 +60,6 @@ func GetQuery(name string, lang string) (*sitter.QueryCursor, *sitter.Query, err
 }
 
 func InitQueries() {
-	registerQuery(QueryPropertyDefinition, TypeScript, typescriptPropertyDefinition)
-	registerQuery(QueryMethodDefinition, TypeScript, typescriptMethodDefinition)
 	registerQuery(QueryClassDefinition, TypeScript, typescriptClassDefinition)
 	registerQuery(QueryImport, TypeScript, typescriptImport)
 	registerQuery(QueryClassBody, TypeScript, typescriptClassBody)
