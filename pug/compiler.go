@@ -185,6 +185,8 @@ func traverseTree(node *sitter.Node, state *State) {
 			// Unhandled node type
 		}
 	}
+
+	Depth = Depth - 1
 }
 
 func Parse(input string) (State, error) {
