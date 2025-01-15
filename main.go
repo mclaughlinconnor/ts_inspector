@@ -12,7 +12,6 @@ import (
 	traversetypescriptfiles "ts_inspector/ast/indexing"
 	"ts_inspector/commands"
 	"ts_inspector/lsp"
-	"ts_inspector/ngserver"
 	"ts_inspector/parser"
 	"ts_inspector/utils"
 )
@@ -20,6 +19,7 @@ import (
 func main() {
 	if len(os.Args) == 1 {
 		startLsp()
+		return
 	}
 
 	var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
@@ -56,7 +56,6 @@ func main() {
 }
 
 func startLsp() {
-	go ngserver.Start()
 	go lsp.Start()
 
 	sigs := make(chan os.Signal, 1)
@@ -66,7 +65,6 @@ func startLsp() {
 	done := make(chan bool, 1)
 
 	shutdown := func() {
-		ngserver.Stop()
 		done <- true
 	}
 

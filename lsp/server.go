@@ -11,7 +11,6 @@ import (
 	"ts_inspector/ast"
 	"ts_inspector/commands"
 	"ts_inspector/interfaces"
-	"ts_inspector/ngserver"
 	"ts_inspector/parser"
 	"ts_inspector/pug"
 	"ts_inspector/rpc"
@@ -73,31 +72,26 @@ func handleMessage(logger *log.Logger, writer io.Writer, state parser.State, met
 
 	switch method {
 	case "initialize":
-		ngserver.SendToAngular(string(msg))
 		request := utils.TryParseRequest[interfaces.InitializeRequest](logger, contents)
 		state.RootURI = request.Params.RootUri
-		ngserver.Requests[request.ID] = ngserver.RequestData{Method: method}
+		response := HandleInitialise(writer, logger, request)
+		utils.WriteResponse(writer, response)
 	case "shutdown":
 		Shutdown <- 1
 	case "textDocument/didOpen":
 		request := utils.TryParseRequest[interfaces.DidOpenTextDocumentNotification](logger, contents)
 		state = HandleDidOpen(writer, logger, state, request)
-		ngserver.SendToAngular(string(msg))
 	case "textDocument/didChange":
 		request := utils.TryParseRequest[interfaces.DidChangeTextDocumentNotification](logger, contents)
 		state = HandleDidChange(writer, logger, state, request)
-		ngserver.SendToAngular(string(msg))
 	case "textDocument/codeAction":
 		request := utils.TryParseRequest[interfaces.CodeActionRequest](logger, contents)
-		ngserver.Requests[request.ID] = ngserver.RequestData{Method: method}
 		HandleCodeAction(writer, logger, state, request)
 	case "workspace/executeCommand":
 		request := utils.TryParseRequest[interfaces.ExecuteCommandRequest](logger, contents)
-		ngserver.Requests[request.ID] = ngserver.RequestData{Method: method}
 		HandleExecuteCommand(writer, logger, state, request)
 	case "completionItem/resolve":
 		request := utils.TryParseRequest[interfaces.CompletionItemRequest](logger, contents)
-		ngserver.Requests[request.ID] = ngserver.RequestData{Method: method}
 
 		file, found := state.Files[request.Params.Data["filePath"].(string)]
 		if !found || file.Filetype != "pug" {
@@ -122,11 +116,7 @@ func handleMessage(logger *log.Logger, writer io.Writer, state parser.State, met
 		htmlOffset := parser.GetPositionForOffset(parseResult.HtmlText, htmlPosition)
 
 		request.Params.Data["position"] = htmlOffset
-
-		// In completionresolve, use this position if it exists
-
-		updatedMsg := rpc.EncodeMessage(request)
-		ngserver.SendToAngular(string(updatedMsg))
+		// Do nothing
 	case "textDocument/completion":
 		request := utils.TryParseRequest[interfaces.CompletionRequest](logger, contents)
 
@@ -152,8 +142,6 @@ func handleMessage(logger *log.Logger, writer io.Writer, state parser.State, met
 		pugOffset := file.GetOffsetForPosition(request.Params.Position)
 		htmlPosition := pug.PugLocationToHtmlLocation(pugOffset, parseResult)
 		htmlOffset := parser.GetPositionForOffset(parseResult.HtmlText, htmlPosition)
-
-		ngserver.Requests[request.ID] = ngserver.RequestData{Method: method, Position: &pugOffset}
 
 		quotedAttributeNode := ast.HasNodeInHierarchy(root, "quoted_attribute_value", offset, offset)
 		isInQuotedAttribute := quotedAttributeNode != nil
@@ -184,10 +172,7 @@ func handleMessage(logger *log.Logger, writer io.Writer, state parser.State, met
 			request.Method = "cm/getTagCompletion"
 		}
 
-		updatedMsg := rpc.EncodeMessage(request)
-		ngserver.SendToAngular(string(updatedMsg))
-	default:
-		ngserver.SendToAngular(string(msg))
+		// Do nothing
 	}
 
 	return state, true
