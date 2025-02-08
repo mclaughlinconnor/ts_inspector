@@ -332,9 +332,9 @@ func visitDefinition(content []byte) walk.VisitorFunction[typescriptWalkState] {
 			return state
 		}
 
-		for i := range node.NamedChildCount() {
+		for i := range node.ChildCount() {
 			index := int(i)
-			state = walk.VisitNode(node.NamedChild(index), state, index, funcMap)
+			state = walk.VisitNode(node.Child(index), state, index, funcMap)
 		}
 
 		definition := state.DefinitionStack.Pop()
