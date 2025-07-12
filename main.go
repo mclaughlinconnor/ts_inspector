@@ -208,8 +208,8 @@ func createPartialsFromRoot(root *sitter.Node, content []byte) cutWalkState {
 		middleEnd := node.EndByte()
 
 		prefix := content[fileStart:middleStart]
-		middle := content[middleStart : middleEnd-1]
-		suffix := content[middleEnd-1 : fileEnd]
+		middle := content[middleStart:middleEnd]
+		suffix := content[middleEnd:fileEnd]
 
 		if string(prefix)+string(middle)+string(suffix) == string(content) {
 			partial := partial{prefix: prefix, suffix: suffix, middle: middle}
