@@ -2,10 +2,10 @@ package pug
 
 import (
 	"context"
+	"dataset_gen/utils"
 	"regexp"
 	"runtime/debug"
 	"strings"
-	"ts_inspector/utils"
 
 	sitter "github.com/smacker/go-tree-sitter"
 )

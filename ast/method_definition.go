@@ -2,9 +2,9 @@ package ast
 
 import (
 	"cmp"
+	"dataset_gen/ast/walk"
+	"dataset_gen/utils"
 	"slices"
-	"ts_inspector/ast/walk"
-	"ts_inspector/utils"
 
 	sitter "github.com/smacker/go-tree-sitter"
 )

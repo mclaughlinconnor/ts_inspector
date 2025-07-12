@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/mclaughlinconnor/ts_inspector/parser/javascript"
+	"github.com/mclaughlinconnor/dataset_gen/parser/javascript"
 	sitter "github.com/smacker/go-tree-sitter"
 	"github.com/stretchr/testify/assert"
 )

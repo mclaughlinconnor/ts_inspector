@@ -1,11 +1,11 @@
 package parser
 
 import (
+	"dataset_gen/utils"
 	"os"
 	"reflect"
 	"slices"
 	"testing"
-	"ts_inspector/utils"
 )
 
 func extractUsageNames(usages Usages) []string {

@@ -1,10 +1,10 @@
 package parser
 
 import (
+	"dataset_gen/ast/walk"
+	"dataset_gen/utils"
 	"path"
 	"path/filepath"
-	"ts_inspector/ast/walk"
-	"ts_inspector/utils"
 
 	sitter "github.com/smacker/go-tree-sitter"
 )

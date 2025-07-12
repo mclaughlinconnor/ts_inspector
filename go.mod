@@ -1,4 +1,4 @@
-module ts_inspector
+module dataset_gen
 
 go 1.22.2
 

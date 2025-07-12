@@ -1,9 +1,9 @@
 package ast
 
 import (
+	"dataset_gen/utils"
 	"slices"
 	"strings"
-	"ts_inspector/utils"
 
 	sitter "github.com/smacker/go-tree-sitter"
 )

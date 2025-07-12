@@ -1,8 +1,8 @@
 package parser
 
 import (
-	"ts_inspector/ast/walk"
-	"ts_inspector/utils"
+	"dataset_gen/ast/walk"
+	"dataset_gen/utils"
 
 	sitter "github.com/smacker/go-tree-sitter"
 )

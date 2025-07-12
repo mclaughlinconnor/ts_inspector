@@ -1,9 +1,9 @@
 package interfaces
 
 import (
-	"ts_inspector/analysis"
-	"ts_inspector/parser"
-	"ts_inspector/utils"
+	"dataset_gen/analysis"
+	"dataset_gen/parser"
+	"dataset_gen/utils"
 
 	sitter "github.com/smacker/go-tree-sitter"
 )

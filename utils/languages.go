@@ -1,10 +1,10 @@
 package utils
 
 import (
-	"ts_inspector/treesitter_parsers/angular_content"
-	"ts_inspector/treesitter_parsers/javascript"
-	"ts_inspector/treesitter_parsers/pug"
-	"ts_inspector/treesitter_parsers/typescript"
+	"dataset_gen/treesitter_parsers/angular_content"
+	"dataset_gen/treesitter_parsers/javascript"
+	"dataset_gen/treesitter_parsers/pug"
+	"dataset_gen/treesitter_parsers/typescript"
 
 	sitter "github.com/smacker/go-tree-sitter"
 )

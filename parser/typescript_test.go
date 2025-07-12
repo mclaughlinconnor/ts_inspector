@@ -1,13 +1,13 @@
 package parser
 
 import (
+	"dataset_gen/utils"
 	"fmt"
 	"path"
 	"path/filepath"
 	"reflect"
 	"slices"
 	"testing"
-	"ts_inspector/utils"
 )
 
 func extractDeclarationNames(definitions Definitions) []string {

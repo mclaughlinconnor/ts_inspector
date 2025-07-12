@@ -1,6 +1,6 @@
 package interfaces
 
-import "ts_inspector/utils"
+import "dataset_gen/utils"
 
 type completionTriggerKind struct {
 	Invoked                         int

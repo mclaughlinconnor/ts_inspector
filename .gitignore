@@ -4,7 +4,7 @@
 *.dll
 *.so
 *.dylib
-ts_inspector
+dataset_gen
 test_project/node_modules/
 
 # Test binary, built with `go test -c`

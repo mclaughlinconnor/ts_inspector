@@ -1,7 +1,7 @@
 package pug
 
 import (
-	"ts_inspector/utils"
+	"dataset_gen/utils"
 
 	sitter "github.com/smacker/go-tree-sitter"
 )

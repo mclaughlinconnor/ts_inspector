@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/mclaughlinconnor/ts_inspector/parser/angular_content"
+	"github.com/mclaughlinconnor/dataset_gen/parser/angular_content"
 	sitter "github.com/smacker/go-tree-sitter"
 	"github.com/stretchr/testify/assert"
 )
