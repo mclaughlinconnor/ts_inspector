@@ -36,9 +36,10 @@ type filePair struct {
 }
 
 type walkState struct {
-	fileContent []byte
-	filePath    string
-	pairs       []filePair
+	classContent []byte
+	fileContent  []byte
+	filePath     string
+	pairs        []filePair
 }
 
 type output struct {
@@ -100,6 +101,8 @@ func walkTypeScript(state walkState) walkState {
 		if decorator == nil {
 			return state
 		}
+
+		state.classContent = []byte(node.Content(state.fileContent))
 
 		for i := range decorator.NamedChildCount() {
 			index := int(i)
@@ -172,7 +175,7 @@ func walkTypeScript(state walkState) walkState {
 		}
 
 		pugFile := file{content: parser.CStr2GoStr(pugContent), path: fullTemplateFilepath}
-		tsFile := file{content: parser.CStr2GoStr(state.fileContent), path: state.filePath}
+		tsFile := file{content: parser.CStr2GoStr(state.classContent), path: state.filePath}
 
 		filePair := filePair{ts: tsFile, pug: pugFile}
 
