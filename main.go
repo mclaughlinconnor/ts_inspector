@@ -4,6 +4,7 @@ import (
 	"dataset_gen/ast/walk"
 	"dataset_gen/parser"
 	"dataset_gen/utils"
+	"fmt"
 	"io/fs"
 	"log"
 	"path"
@@ -78,7 +79,6 @@ func main() {
 	for _, pair := range state.pairs {
 		_, err := utils.ParseFile(true, pair.pug.path, utils.Pug, state,
 			func(root *sitter.Node, content []byte, state walkState) (walkState, error) {
-				println("Creating partials for", pair.pug.path)
 				partials := createPartialsFromRoot(root, content)
 				pair.pugPartials = partials.partials
 
@@ -211,19 +211,23 @@ func createPartialsFromRoot(root *sitter.Node, content []byte) cutWalkState {
 		middle := content[middleStart : middleEnd-1]
 		suffix := content[middleEnd-1 : fileEnd]
 
-		partial := partial{prefix: prefix, suffix: suffix, middle: middle}
-		state.partials = append(state.partials, partial)
+		if string(prefix)+string(middle)+string(suffix) == string(content) {
+			partial := partial{prefix: prefix, suffix: suffix, middle: middle}
+			state.partials = append(state.partials, partial)
+		}
 
-		if string(prefix)+string(middle)+string(suffix) != string(content) {
-			println("wrong")
+		for i := range node.NamedChildCount() {
+			index := int(i)
+			state = walk.VisitNode(node.NamedChild(index), state, index, funcMap)
 		}
 
 		return state
 	}
 
 	funcMap["tag"] = extractor
-	// funcMap["attributes"] = extractor
-	// funcMap["attribute"] = extractor
+	funcMap["attributes"] = extractor
+	funcMap["attribute"] = extractor
+	funcMap["attribute_value"] = extractor
 
 	state := cutWalkState{partials: make([]partial, 0)}
 
@@ -237,10 +241,9 @@ func generateOutputStrings(pair filePair) []output {
 
 	base := "<filename>" + path.Base(pair.ts.path) + "\n" + pair.ts.content + "\n<filename>" + path.Base(pair.pug.path) + "\n"
 	for _, partial := range pair.pugPartials {
-		prompt := base + "<fim_suffix>" + parser.CStr2GoStr(partial.suffix) + "<fim_prefix>" + parser.CStr2GoStr(partial.prefix) + "<fim_middle>"
-		output := output{prompt: prompt, expected: string(partial.middle)}
-
-		outputs = append(outputs, output)
+		prompt := base + "<fim_suffix>" + parser.CStr2GoStr(partial.suffix) + "<fim_prefix>" + parser.CStr2GoStr(partial.prefix) + "<fim_middle>" + parser.CStr2GoStr(partial.middle)
+		escaped := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(prompt, "\\", "\\\\"), "\"", "\\\""), "\n", "\\n")
+		fmt.Println("{\"text\": \"" + escaped + "\"}")
 	}
 
 	return outputs
