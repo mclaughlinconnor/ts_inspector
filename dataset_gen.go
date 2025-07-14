@@ -214,14 +214,40 @@ func createPartialsFromRoot(root *sitter.Node, content []byte) cutWalkState {
 		middle := content[middleStart:middleEnd]
 		suffix := content[middleEnd:fileEnd]
 
-		if string(prefix)+string(middle)+string(suffix) == string(content) {
-			partial := partial{prefix: prefix, suffix: suffix, middle: middle}
-			state.partials = append(state.partials, partial)
+		if string(prefix)+string(middle)+string(suffix) != string(content) {
+			for i := range node.NamedChildCount() {
+				index := int(i)
+				state = walk.VisitNode(node.NamedChild(index), state, index, funcMap)
+			}
+
+			return state
 		}
 
-		for i := range node.NamedChildCount() {
-			index := int(i)
-			state = walk.VisitNode(node.NamedChild(index), state, index, funcMap)
+		p := partial{prefix: prefix, suffix: suffix, middle: middle}
+		state.partials = append(state.partials, p)
+
+		strMiddle := string(middle)
+
+		if strings.Contains(strMiddle, "\n") {
+			lines := strings.Split(strMiddle, "\n")
+			for i := range lines {
+				beforeLines := make([]string, 0)
+				theLine := ""
+
+				for j, line := range lines {
+					if j < i {
+						beforeLines = append(beforeLines, line)
+					}
+					if j == i {
+						theLine = line
+						break
+					}
+				}
+
+				newPrefix := string(prefix) + "\n" + strings.Join(beforeLines, "\n")
+				p := partial{prefix: []byte(newPrefix), suffix: suffix, middle: []byte(theLine)}
+				state.partials = append(state.partials, p)
+			}
 		}
 
 		return state
