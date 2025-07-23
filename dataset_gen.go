@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/fs"
 	"log"
+	"math/rand"
 	"path"
 	"path/filepath"
 	"strings"
@@ -47,10 +48,30 @@ type output struct {
 	expected string
 }
 
+var model = "qwen" // "mellum" or "qwen"
+var includeFullText = true
+
+var filename_token = ""
+var fim_suffix_token = ""
+var fim_prefix_token = ""
+var fim_middle_token = ""
+
 func dataset_gen() {
 	utils.InitQueries()
 
-	root := "../../angular-tour-of-heroes"
+	if model == "mellum" {
+		filename_token = "<filename>"
+		fim_suffix_token = "<fim_suffix>"
+		fim_prefix_token = "<fim_prefix>"
+		fim_middle_token = "<fim_middle>"
+	} else if model == "qwen" {
+		filename_token = "<|file_sep|>"
+		fim_suffix_token = "<|fim_suffix|>"
+		fim_prefix_token = "<|fim_prefix|>"
+		fim_middle_token = "<|fim_middle|>"
+	}
+
+	root := "../../development"
 
 	state := walkState{fileContent: []byte(""), pairs: make([]filePair, 0)}
 
@@ -84,6 +105,9 @@ func dataset_gen() {
 				pair.pugPartials = partials.partials
 
 				generateOutputStrings(pair)
+
+				base := filename_token + path.Base(pair.ts.path) + "\n" + pair.ts.content + "\n" + filename_token + path.Base(pair.pug.path) + "\n"
+				fmt.Println("{\"text\": \"" + escape(base) + escape(pair.pug.content) + "\"}")
 
 				return state, nil
 			})
@@ -229,6 +253,31 @@ func createPartialsFromRoot(root *sitter.Node, content []byte) cutWalkState {
 
 		strMiddle := string(middle)
 
+		middleLength := len(strMiddle)
+
+		if middleLength > 5 {
+			midwayPoint := int(middleLength / 2)
+
+			startRandomOffsetOne := rand.Intn(midwayPoint)
+			startRandomOffsetTwo := rand.Intn(midwayPoint)
+
+			endRandomOffsetOne := rand.Intn(midwayPoint)
+			endRandomOffsetTwo := rand.Intn(midwayPoint)
+
+			partialWithPartial := func(midStart int, midEnd int) {
+				strContent := string(content)
+				pre := substring(strContent, int(fileStart), int(midStart))
+				mid := substring(strContent, int(midStart), int(midEnd))
+				suf := substring(strContent, int(midEnd), int(fileEnd))
+
+				state.partials = append(state.partials, partial{prefix: []byte(pre), suffix: []byte(suf), middle: []byte(mid)})
+			}
+
+			partialWithPartial(int(middleStart)+startRandomOffsetOne, int(middleEnd))
+			partialWithPartial(int(middleStart), int(middleEnd)-endRandomOffsetOne)
+			partialWithPartial(int(middleStart)+startRandomOffsetTwo, int(middleEnd)-endRandomOffsetTwo)
+		}
+
 		if strings.Contains(strMiddle, "\n") {
 			lines := strings.Split(strMiddle, "\n")
 			for i := range lines {
@@ -245,10 +294,28 @@ func createPartialsFromRoot(root *sitter.Node, content []byte) cutWalkState {
 					}
 				}
 
+				if len(theLine) == 0 {
+					continue
+				}
+
 				newPrefix := string(prefix) + "\n" + strings.Join(beforeLines, "\n")
 				p := partial{prefix: []byte(newPrefix), suffix: suffix, middle: []byte(theLine)}
 				state.partials = append(state.partials, p)
+
+				if len(theLine) <= 5 {
+					continue
+				}
+
+				randomOffset := uint32(rand.Intn(len(theLine) / 2))
+				p.prefix = []byte(newPrefix + theLine[0:randomOffset])
+				p.middle = []byte(theLine[randomOffset:])
+				state.partials = append(state.partials, p)
 			}
+		}
+
+		for i := range node.NamedChildCount() {
+			index := int(i)
+			state = walk.VisitNode(node.NamedChild(index), state, index, funcMap)
 		}
 
 		return state
@@ -266,14 +333,28 @@ func createPartialsFromRoot(root *sitter.Node, content []byte) cutWalkState {
 	return state
 }
 
+func escape(text string) string {
+	return strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(text, "\\", "\\\\"), "\"", "\\\""), "\n", "\\n")
+}
+
 func generateOutputStrings(pair filePair) []output {
 	outputs := make([]output, 0)
 
-	base := "<filename>" + path.Base(pair.ts.path) + "\n" + pair.ts.content + "\n<filename>" + path.Base(pair.pug.path) + "\n"
+	base := filename_token + path.Base(pair.ts.path) + "\n" + pair.ts.content + "\n" + filename_token + path.Base(pair.pug.path) + "\n"
 	for _, partial := range pair.pugPartials {
-		prompt := base + "<fim_suffix>" + parser.CStr2GoStr(partial.suffix) + "<fim_prefix>" + parser.CStr2GoStr(partial.prefix) + "<fim_middle>" + parser.CStr2GoStr(partial.middle)
-		escaped := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(prompt, "\\", "\\\\"), "\"", "\\\""), "\n", "\\n")
-		fmt.Println("{\"text\": \"" + escaped + "\"}")
+		sft_text := ""
+		prompt := ""
+		output := ""
+		if model == "mellum" {
+			prompt = base + fim_suffix_token + parser.CStr2GoStr(partial.suffix) + fim_prefix_token + parser.CStr2GoStr(partial.prefix) + fim_middle_token
+		} else if model == "qwen" {
+			prompt = base + fim_prefix_token + parser.CStr2GoStr(partial.prefix) + fim_suffix_token + parser.CStr2GoStr(partial.suffix) + fim_middle_token
+		}
+
+		output = parser.CStr2GoStr(partial.middle)
+		sft_text = prompt + output
+
+		fmt.Println("{\"text\": \"" + escape(sft_text) + "\", \"answer\": \"" + escape(output) + "\", \"prompt\": \"" + escape(prompt) + "\"}")
 	}
 
 	return outputs
@@ -380,4 +461,20 @@ func extractSignatures(root *sitter.Node, content []byte) string {
 	state = walk.Walk(root, state, funcMap)
 
 	return state.body
+}
+
+// https://stackoverflow.com/a/38537764
+func substring(s string, start int, end int) string {
+	start_str_idx := 0
+	i := 0
+	for j := range s {
+		if i == start {
+			start_str_idx = j
+		}
+		if i == end {
+			return s[start_str_idx:j]
+		}
+		i++
+	}
+	return s[start_str_idx:]
 }
