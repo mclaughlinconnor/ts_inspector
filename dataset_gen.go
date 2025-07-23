@@ -102,8 +102,6 @@ func walkTypeScript(state walkState) walkState {
 			return state
 		}
 
-		state.classContent = []byte(node.Content(state.fileContent))
-
 		for i := range decorator.NamedChildCount() {
 			index := int(i)
 			state = walk.VisitNode(decorator.NamedChild(index), state, index, funcMap)
@@ -187,6 +185,9 @@ func walkTypeScript(state walkState) walkState {
 	state, err := utils.ParseFile(true, state.filePath, utils.TypeScript, state,
 		func(root *sitter.Node, content []byte, state walkState) (walkState, error) {
 			state.fileContent = content
+
+			state.classContent = []byte(extractSignatures(root, []byte(content)))
+
 			state = walk.Walk(root, state, funcMap)
 
 			return state, nil
@@ -276,4 +277,107 @@ func generateOutputStrings(pair filePair) []output {
 	}
 
 	return outputs
+}
+
+type classExtractState struct {
+	body string
+}
+
+func extractSignatures(root *sitter.Node, content []byte) string {
+	funcMap := walk.NewVisitorFuncsMap[classExtractState]()
+
+	verbatim := func(node *sitter.Node, state classExtractState, indexInParent int, funcMap walk.VisitorFuncMap[classExtractState]) classExtractState {
+		state.body = state.body + node.Content(content) + "\n"
+		return state
+	}
+
+	comment := func(node *sitter.Node, state classExtractState, indexInParent int, funcMap walk.VisitorFuncMap[classExtractState]) classExtractState {
+		sibling := node.NextSibling()
+
+		if sibling == nil || (sibling.Type() != "public_field_definition" && sibling.Type() != "method_definition") {
+			state.body = state.body + node.Content(content) + "\n"
+			return state
+		}
+
+		for childIndex := range sibling.NamedChildCount() {
+			childNode := sibling.NamedChild(int(childIndex))
+			if childNode.Type() == "accessibility_modifier" && childNode.Content(content) == "private" {
+				return state
+			}
+		}
+
+		state.body = state.body + node.Content(content) + "\n"
+		return state
+	}
+
+	skipPrivate := func(node *sitter.Node, state classExtractState, indexInParent int, funcMap walk.VisitorFuncMap[classExtractState]) classExtractState {
+		body := state.body
+		for childIndex := range node.ChildCount() {
+			childNode := node.Child(int(childIndex))
+			childContent := childNode.Content(content)
+			if childNode.Type() == "accessibility_modifier" && childContent == "private" {
+				return state
+			}
+
+			body = body + childContent + " "
+		}
+
+		state.body = body + " \n"
+		return state
+	}
+
+	skipPrivateAndBody := func(node *sitter.Node, state classExtractState, indexInParent int, funcMap walk.VisitorFuncMap[classExtractState]) classExtractState {
+		body := state.body
+		for childIndex := range node.ChildCount() {
+			childNode := node.Child(int(childIndex))
+			childContent := childNode.Content(content)
+			if childNode.Type() == "accessibility_modifier" && childContent == "private" {
+				return state
+			}
+
+			if node.FieldNameForChild(int(childIndex)) == "body" {
+				continue
+			}
+
+			body = body + childContent + " "
+		}
+
+		state.body = body + " \n"
+		return state
+	}
+
+	classVisitor := func(node *sitter.Node, state classExtractState, indexInParent int, funcMap walk.VisitorFuncMap[classExtractState]) classExtractState {
+		for childIndex := range node.ChildCount() {
+			if node.FieldNameForChild(int(childIndex)) == "body" {
+				state.body = state.body + "{\n"
+				state = walk.VisitNode(node.Child(int(childIndex)), state, int(childIndex), funcMap)
+
+				continue
+			}
+
+			state.body = state.body + node.Child(int(childIndex)).Content(content) + " "
+		}
+
+		return state
+	}
+
+	funcMap["decorator"] = verbatim
+	funcMap["enum_declaration"] = verbatim
+	funcMap["function_declaration"] = verbatim
+	funcMap["interface_declaration"] = verbatim
+	funcMap["lexical_declaration"] = verbatim
+	funcMap["type_alias_declaration"] = verbatim
+
+	funcMap["public_field_definition"] = skipPrivate
+	funcMap["method_definition"] = skipPrivateAndBody
+
+	funcMap["class_declaration"] = classVisitor
+
+	funcMap["comment"] = comment
+
+	state := classExtractState{body: ""}
+
+	state = walk.Walk(root, state, funcMap)
+
+	return state.body
 }
