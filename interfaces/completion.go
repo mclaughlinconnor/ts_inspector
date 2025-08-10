@@ -132,3 +132,43 @@ type CompletionResponse struct {
 	Response
 	Result []CompletionItem `json:"result"` // no CompletionItemList here
 }
+
+type InlineCompletionRequest struct {
+	Request
+	Params InlineCompletionParams `json:"params"`
+}
+
+type inlineCompletionTriggerKind struct {
+	Invoked   int
+	Automatic int
+}
+
+var InlineCompletionTriggerKind = inlineCompletionTriggerKind{1, 2}
+
+type SelectedCompletionInfo struct {
+	Range utils.Range `json:"range"`
+	Text  string      `json:"text"`
+}
+
+type InlineCompletionContext struct {
+	TriggerKind            int                     `json:"triggerKind"`
+	SelectedCompletionInfo *SelectedCompletionInfo `json:"selectedCompletionInfo"`
+}
+
+type InlineCompletionParams struct {
+	TextDocument TextDocumentIdentifier  `json:"textDocument"`
+	Position     utils.Position          `json:"position"`
+	Context      InlineCompletionContext `json:"context"`
+}
+
+type InlineCompletionItem struct {
+	InsertText string       `json:"insertText"`
+	FilterText *string      `json:"filterText"`
+	Range      *utils.Range `json:"range"`
+	Command    *Command     `json:"command"`
+}
+
+type InlineCompletionResponse struct {
+	Response
+	Result []InlineCompletionItem `json:"result"`
+}
