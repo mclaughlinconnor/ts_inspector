@@ -69,6 +69,7 @@ func handleMessage(logger *log.Logger, writer io.Writer, state parser.State, met
 	utils.MostRecentId = r.ID
 
 	logger.Printf("Received msg with method: %s", method)
+	logger.Printf("Received msg with body: %s", contents)
 
 	switch method {
 	case "initialize":

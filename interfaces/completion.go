@@ -151,8 +151,8 @@ type SelectedCompletionInfo struct {
 }
 
 type InlineCompletionContext struct {
-	TriggerKind            int                     `json:"triggerKind"`
-	SelectedCompletionInfo *SelectedCompletionInfo `json:"selectedCompletionInfo"`
+	TriggerKind            int `json:"triggerKind"`
+	SelectedCompletionInfo any `json:"selectedCompletionInfo"` // vscode seems to be off-spec sending an array
 }
 
 type InlineCompletionParams struct {
@@ -171,4 +171,33 @@ type InlineCompletionItem struct {
 type InlineCompletionResponse struct {
 	Response
 	Result []InlineCompletionItem `json:"result"`
+}
+
+type MLXServerCompletionResult struct {
+	Id                string                            `json:"id"`
+	SystemFingerprint string                            `json:"system_fingerprint"`
+	Object            string                            `json:"object"`
+	Model             string                            `json:"model"`
+	Created           int                               `json:"created"`
+	Choices           []MLXServerCompletionResultChoice `json:"choices"`
+	Usage             MLXServerCompletionResultUsage    `json:"usage"`
+}
+
+type MLXServerCompletionResultUsage struct {
+	PromptTokens     int `json:"prompt_tokens"`
+	CompletionTokens int `json:"completion_tokens"`
+	TotalTokens      int `json:"total_tokens"`
+}
+
+type MLXServerCompletionResultChoice struct {
+	Index        int                                     `json:"index"`
+	FinishReason string                                  `json:"finish_reason"`
+	LogProbs     MLXServerCompletionResultChoiceLogProbs `json:"logprobs"`
+	Text         string                                  `json:"text"`
+}
+
+type MLXServerCompletionResultChoiceLogProbs struct {
+	TokenLogProbs []float32 `json:"token_logprobs"`
+	TopLogProbs   []float32 `json:"top_logprobs"`
+	Tokens        []float32 `json:"tokens"`
 }

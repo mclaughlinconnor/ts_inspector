@@ -1,10 +1,13 @@
 package lsp
 
 import (
+	"bytes"
+	"encoding/json"
 	"io"
 	"log"
 	"net/http"
 	"path"
+	"strings"
 	"ts_inspector/interfaces"
 	"ts_inspector/parser"
 	"ts_inspector/utils"
@@ -55,6 +58,10 @@ func buildLLMContext(templateFile parser.File, controllerFile parser.File, posit
 	return tsContext + pugContext
 }
 
+func escape(text string) string {
+	return strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(text, "\\", "\\\\"), "\"", "\\\""), "\n", "\\n")
+}
+
 func HandleInlineCompletion(writer io.Writer, logger *log.Logger, state parser.State, request interfaces.InlineCompletionRequest) {
 	filename := parser.FilenameFromUri(request.Params.TextDocument.Uri)
 	if path.Ext(filename) != ".pug" {
@@ -69,22 +76,35 @@ func HandleInlineCompletion(writer io.Writer, logger *log.Logger, state parser.S
 	contextfulString := buildLLMContext(templateFile, controllerFile, position)
 	logger.Println(contextfulString)
 
-	resp, err := http.Get("http://localhost:8088/completions.txt")
+	jsonPrompt := "{\"prompt\": \"" + escape(contextfulString) + "\"}"
+
+	resp, err := http.Post("http://localhost:8080/v1/completions", "application/json", bytes.NewBufferString(jsonPrompt))
 	if err != nil {
 		logger.Print(err)
 		return
 	}
 
 	defer resp.Body.Close()
-	results, err := io.ReadAll(resp.Body)
+	responseString, err := io.ReadAll(resp.Body)
 	if err != nil {
 		logger.Print(err)
 		return
 	}
 
-	item := interfaces.InlineCompletionItem{InsertText: string(results)}
+	var responseJson interfaces.MLXServerCompletionResult
+	err = json.Unmarshal(responseString, &responseJson)
+	if err != nil {
+		logger.Print(err)
+		return
+	}
+
+	replaceRange := utils.Range{Start: position, End: position}
+
 	items := make([]interfaces.InlineCompletionItem, 0)
-	items = append(items, item)
+	for _, choice := range responseJson.Choices {
+		item := interfaces.InlineCompletionItem{InsertText: choice.Text, Range: &replaceRange}
+		items = append(items, item)
+	}
 
 	utils.WriteResponse(writer, newInlineCompletionResponse(request.ID, items))
 }
