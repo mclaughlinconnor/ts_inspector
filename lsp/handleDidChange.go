@@ -5,7 +5,7 @@ import (
 	"log"
 	"ts_inspector/interfaces"
 	"ts_inspector/parser"
-	"ts_inspector/utils"
+	// "ts_inspector/utils"
 )
 
 func HandleDidChange(writer io.Writer, logger *log.Logger, state parser.State, request interfaces.DidChangeTextDocumentNotification) parser.State {
@@ -28,14 +28,14 @@ func HandleDidChange(writer io.Writer, logger *log.Logger, state parser.State, r
 			return state
 		}
 
-		utils.WriteResponse(writer, interfaces.GenerateDiagnosticsForFile(file))
-
-		if file.Controller != "" {
-			utils.WriteResponse(writer, interfaces.GenerateDiagnosticsForFile(state.Files[file.Controller]))
-		}
-		if file.Template != "" {
-			utils.WriteResponse(writer, interfaces.GenerateDiagnosticsForFile(state.Files[file.Template]))
-		}
+		// utils.WriteResponse(writer, interfaces.GenerateDiagnosticsForFile(file))
+		//
+		// if file.Controller != "" {
+		// 	utils.WriteResponse(writer, interfaces.GenerateDiagnosticsForFile(state.Files[file.Controller]))
+		// }
+		// if file.Template != "" {
+		// 	utils.WriteResponse(writer, interfaces.GenerateDiagnosticsForFile(state.Files[file.Template]))
+		// }
 	}
 
 	return state

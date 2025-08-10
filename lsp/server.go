@@ -89,7 +89,7 @@ func handleMessage(logger *log.Logger, writer io.Writer, state parser.State, met
 		HandleCodeAction(writer, logger, state, request)
 	case "textDocument/inlineCompletion":
 		request := utils.TryParseRequest[interfaces.InlineCompletionRequest](logger, contents)
-		HandleInlineCompletion(writer, logger, request)
+		HandleInlineCompletion(writer, logger, state, request)
 	case "workspace/executeCommand":
 		request := utils.TryParseRequest[interfaces.ExecuteCommandRequest](logger, contents)
 		HandleExecuteCommand(writer, logger, state, request)

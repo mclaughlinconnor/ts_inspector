@@ -233,14 +233,8 @@ func (f File) GetOffsetForPosition(p utils.Position) uint32 {
 	}
 
 	lineOffset := f.LineOffsets[p.Line]
-	var nextLineOffset uint32
-	if p.Line+1 < lines {
-		nextLineOffset = f.LineOffsets[p.Line+1]
-	} else {
-		nextLineOffset = lines
-	}
 
-	return max(min(lineOffset+p.Character, nextLineOffset), lineOffset)
+	return lineOffset + p.Character
 }
 
 func (f File) GetOffsetsForRange(r utils.Range) (uint32, uint32) {
