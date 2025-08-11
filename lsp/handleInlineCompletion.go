@@ -50,10 +50,18 @@ func buildLLMContext(templateFile parser.File, controllerFile parser.File, posit
 		tsContext = filename_token + controllerFile.Filename() + "\n" + controllerFile.Content + "\n"
 	}
 
-	pugContext := filename_token + templateFile.Filename() + "\n" +
-		fim_prefix_token + utils.Substring(templateFile.Content, 0, int(templateOffset)) +
-		fim_suffix_token + utils.Substring(templateFile.Content, int(templateOffset), len(templateFile.Content)) +
-		fim_middle_token
+	pugContext := ""
+	if model == "mellum" {
+		pugContext = filename_token + templateFile.Filename() + "\n" +
+			fim_suffix_token + utils.Substring(templateFile.Content, int(templateOffset), len(templateFile.Content)) +
+			fim_prefix_token + utils.Substring(templateFile.Content, 0, int(templateOffset)) +
+			fim_middle_token
+	} else if model == "qwen" {
+		pugContext = filename_token + templateFile.Filename() + "\n" +
+			fim_prefix_token + utils.Substring(templateFile.Content, 0, int(templateOffset)) +
+			fim_suffix_token + utils.Substring(templateFile.Content, int(templateOffset), len(templateFile.Content)) +
+			fim_middle_token
+	}
 
 	return tsContext + pugContext
 }
