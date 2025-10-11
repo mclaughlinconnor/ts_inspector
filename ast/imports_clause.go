@@ -89,6 +89,30 @@ func AddToImport(importResults []ImportParseResult, packageName string, toAdd []
 			editRange = utils.Range{Start: position, End: position}
 			text = text + "\n\n"
 		} else {
+			packageIsRelative := strings.HasPrefix(packageName, ".")
+
+			for index, result := range importResults {
+				resultIsRelative := strings.HasPrefix(result.Package, ".")
+
+				if packageIsRelative && !resultIsRelative {
+					continue
+				}
+
+				r := result
+
+				if (!packageIsRelative && resultIsRelative) || (result.Package > packageName) {
+					if !packageIsRelative && resultIsRelative {
+						r = importResults[index-1]
+					}
+
+					lastPoint := r.Import.EndPoint()
+					editRange = utils.Range{Start: utils.PositionFromPoint(lastPoint), End: utils.PositionFromPoint(lastPoint)}
+					text = "\n" + text
+
+					return utils.TextEdits{utils.TextEdit{Range: editRange, NewText: text}}
+				}
+			}
+
 			lastPoint := importResults[len(importResults)-1].Import.EndPoint()
 			editRange = utils.Range{Start: utils.PositionFromPoint(lastPoint), End: utils.PositionFromPoint(lastPoint)}
 			text = "\n" + text
