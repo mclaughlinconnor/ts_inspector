@@ -289,6 +289,11 @@ func visitUsageExpression(content []byte) walk.VisitorFunction[typescriptWalkSta
 		if objectNode.Type() != "this" {
 			prototypeNode := objectNode.ChildByFieldName("property")
 			if prototypeNode == nil || prototypeNode.Content(content) != "prototype" {
+				for i := range node.NamedChildCount() {
+					index := int(i)
+					state = walk.VisitNode(node.NamedChild(index), state, index, funcMap)
+				}
+
 				return state
 			}
 		}
@@ -299,12 +304,22 @@ func visitUsageExpression(content []byte) walk.VisitorFunction[typescriptWalkSta
 			varNode = varNode.NamedChild(0)
 
 			if varNode == nil || varNode.Type() != "string_fragment" {
+				for i := range node.NamedChildCount() {
+					index := int(i)
+					state = walk.VisitNode(node.NamedChild(index), state, index, funcMap)
+				}
+
 				return state
 			}
 		}
 
 		varName := varNode.Content(content)
 		state.File = addUsage(state.File, varName, node, content)
+
+		for i := range node.NamedChildCount() {
+			index := int(i)
+			state = walk.VisitNode(node.NamedChild(index), state, index, funcMap)
+		}
 
 		return state
 	}
