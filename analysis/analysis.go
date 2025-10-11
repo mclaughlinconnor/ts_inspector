@@ -59,6 +59,11 @@ func Analyse(file parser.File) []Analysis {
 				analyses = append(analyses, newAnalysisHighlightName(definition.Node, AnalysisSeverity.Warning, message))
 			}
 		}
+
+		if hasAngularDecorator && !definitionIsPublic {
+			message := fmt.Sprintf("Angular property should be public: %s", definition.Name)
+			analyses = append(analyses, newAnalysisHighlightName(definition.Node, AnalysisSeverity.Warning, message))
+		}
 	}
 
 	CurrentAnalysis[file.URI] = analyses
