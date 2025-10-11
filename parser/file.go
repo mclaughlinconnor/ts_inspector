@@ -8,8 +8,20 @@ import (
 
 type parseCallback[V any] func(root *sitter.Node, content []byte, v V) (V, error)
 
+var lastSeenDocumentVersion = make(map[string]int, 0)
+
 func handleFile(uri string, languageId string, version int, content string, _ *log.Logger) (File, error) {
-	file, err := NewFile(uri, languageId, version)
+	v := version
+	if v == 0 {
+		lastSeenVersion, found := lastSeenDocumentVersion[uri]
+		if found {
+			v = lastSeenVersion
+		}
+	} else {
+		lastSeenDocumentVersion[uri] = v
+	}
+
+	file, err := NewFile(uri, languageId, v)
 	if err != nil {
 		return file, err
 	}
