@@ -33,7 +33,6 @@ func Analyse(file parser.File) []Analysis {
 		if used && definition.UsageAccess == parser.ConstructorAccess {
 			message := fmt.Sprintf("Variable only used in constructor: %s", definition.Name)
 			analyses = append(analyses, newAnalysisHighlightName(definition.Node, AnalysisSeverity.Warning, message))
-			continue
 		}
 
 		var hasAngularDecorator bool = false
@@ -47,6 +46,16 @@ func Analyse(file parser.File) []Analysis {
 				analyses = append(analyses, newAnalysisHighlightName(definition.Node, AnalysisSeverity.Warning, message))
 			} else if definition.UsageAccess != parser.ForeignAccess {
 				message := fmt.Sprintf("Needlessly public variable: %s", definition.Name)
+				analyses = append(analyses, newAnalysisHighlightName(definition.Node, AnalysisSeverity.Warning, message))
+			}
+		}
+
+		if hasAngularDecorator && len(definition.Usages) == 0 {
+			if definition.Override {
+				message := fmt.Sprintf("Angular property never used in this component: %s. Check the parent class.", definition.Name)
+				analyses = append(analyses, newAnalysisHighlightName(definition.Node, AnalysisSeverity.Hint, message))
+			} else {
+				message := fmt.Sprintf("Angular property never used in this component: %s", definition.Name)
 				analyses = append(analyses, newAnalysisHighlightName(definition.Node, AnalysisSeverity.Warning, message))
 			}
 		}
