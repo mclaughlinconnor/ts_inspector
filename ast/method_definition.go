@@ -97,6 +97,7 @@ func ExtractDefinitions(content []byte) []MethodDefinitionParseResult {
 
 		result.Range = utils.Range{Start: utils.PositionFromPoint(node.StartPoint()), End: utils.PositionFromPoint(node.EndPoint())}
 		result.Type = node.Type()
+		result.DefinitionNode = node
 
 		possibleSemiOrComment := node.NextSibling()
 		for {
@@ -154,7 +155,7 @@ func FindClassBody(content []byte) *sitter.Node {
 	return node
 }
 
-func FindMethodDefinition(methodDefinitionResults *[]MethodDefinitionParseResult, methodName string) (*MethodDefinitionParseResult, error) {
+func FindDefinition(methodDefinitionResults *[]MethodDefinitionParseResult, methodName string) (*MethodDefinitionParseResult, error) {
 	for _, definition := range *methodDefinitionResults {
 		if definition.Name == methodName {
 			return &definition, nil
@@ -245,7 +246,7 @@ func AddMethodDefinitionToFile(content []byte, toAdd string, name string, score 
 
 	definitionResults := ExtractDefinitions(content)
 
-	definitionResult, err := FindMethodDefinition(&definitionResults, toAdd)
+	definitionResult, err := FindDefinition(&definitionResults, toAdd)
 	if err != nil || definitionResult != nil {
 		return edits, err
 	}
@@ -261,11 +262,12 @@ func AddMethodDefinitionToFile(content []byte, toAdd string, name string, score 
 }
 
 type MethodDefinitionParseResult struct {
-	Name  string
-	Range utils.Range
-	Score int
-	Text  string
-	Type  string
+	DefinitionNode *sitter.Node
+	Name           string
+	Range          utils.Range
+	Score          int
+	Text           string
+	Type           string
 }
 
 type MethodDefinitions map[string]MethodDefinitionParseResult

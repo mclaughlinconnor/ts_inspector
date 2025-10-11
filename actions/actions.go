@@ -17,6 +17,7 @@ func registerAction(action Action) {
 }
 
 func InitActions() {
+	registerAction(Action{AddDestroyedObservable, "Add _destroyed$ observable"})
 	registerAction(Action{ImplementAngularAfterViewInit, "Add AfterViewInit"})
 	registerAction(Action{ImplementAngularOnChanges, "Add OnChanges"})
 	registerAction(Action{ImplementAngularOnDestroy, "Add OnDestroy"})
