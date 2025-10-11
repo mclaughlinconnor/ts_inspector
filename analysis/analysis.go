@@ -40,7 +40,7 @@ func Analyse(file parser.File) []Analysis {
 			hasAngularDecorator = hasAngularDecorator || decorator.IsAngular
 		}
 
-		if definitionIsPublic && !hasAngularDecorator && !definition.Static && !definition.IsAngularMethod {
+		if definitionIsPublic && !hasAngularDecorator && !definition.Static && !definition.IsAngularMethod && !definition.Override {
 			if !used {
 				message := fmt.Sprintf("Unused public variable: %s", definition.Name)
 				analyses = append(analyses, newAnalysisHighlightName(definition.Node, AnalysisSeverity.Warning, message))
