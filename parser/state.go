@@ -30,26 +30,33 @@ var PrivateAccessibility = accessibility{"private"}
 var ProtectedAccessibility = accessibility{"protected"}
 
 type Definition struct {
-	AccessModifier  accessibility
-	Async           bool
-	Decorators      []Decorator
-	Generator       bool
-	Getter          bool
-	Name            string
-	Node            *sitter.Node
-	Override        bool
-	Readonly        bool
-	Setter          bool
-	Static          bool
-	UsageAccess     access
-	Usages          []UsageInstance
-	IsAngularMethod bool
+	AccessModifier     accessibility
+	Async              bool
+	Decorators         []Decorator
+	Generator          bool
+	Getter             bool
+	OriginFunctionName string
+	IsAngularMethod    bool
+	Name               string
+	Node               *sitter.Node
+	Override           bool
+	Readonly           bool
+	Setter             bool
+	Static             bool
+	UsageAccess        access
+	Usages             []UsageInstance
 }
 
-func (f File) AddDefinition(name string, definition Definition) File {
+func (def Definition) IsConstructorParam() bool {
+	return def.OriginFunctionName == "constructor"
+}
+
+func (f File) AddDefinition(definition Definition) File {
 	if definition.Usages == nil {
 		definition.Usages = []UsageInstance{}
 	}
+
+	name := definition.Name
 
 	definition.IsAngularMethod = IsAngularFunction(name)
 

@@ -327,11 +327,23 @@ func visitUsageExpression(content []byte) walk.VisitorFunction[typescriptWalkSta
 
 func visitDefinition(content []byte) walk.VisitorFunction[typescriptWalkState] {
 	return func(node *sitter.Node, state typescriptWalkState, indexInParent int, funcMap walk.VisitorFuncMap[typescriptWalkState]) typescriptWalkState {
-		state.DefinitionStack.Push(Definition{})
-		state.DefinitionStack.Peek().Decorators = []Decorator{}
-		state.DefinitionStack.Peek().UsageAccess = NoAccess
+		parentDefinition := state.DefinitionStack.Peek()
+		var parentName string
+		if parentDefinition != nil {
+			parentName = parentDefinition.Name
+		}
 
-		state.DefinitionStack.Peek().Node = node
+		definition := Definition{
+			Decorators:  []Decorator{},
+			Node:        node,
+			UsageAccess: NoAccess,
+		}
+
+		if node.Type() == "required_parameter" {
+			definition.OriginFunctionName = parentName
+		}
+
+		state.DefinitionStack.Push(definition)
 
 		nameNode := node.ChildByFieldName("name")
 		if nameNode != nil {
@@ -352,8 +364,8 @@ func visitDefinition(content []byte) walk.VisitorFunction[typescriptWalkState] {
 			state = walk.VisitNode(node.Child(index), state, index, funcMap)
 		}
 
-		definition := state.DefinitionStack.Pop()
-		state.File.AddDefinition(definition.Name, *definition)
+		finalDefinition := state.DefinitionStack.Pop()
+		state.File.AddDefinition(*finalDefinition)
 
 		return state
 	}

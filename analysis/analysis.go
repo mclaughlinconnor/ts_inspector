@@ -30,7 +30,7 @@ func Analyse(file parser.File) []Analysis {
 		definitionIsPublic := definition.AccessModifier == parser.PublicAccessibility
 		used := len(definition.Usages) != 0
 
-		if used && definition.UsageAccess == parser.ConstructorAccess {
+		if used && definition.IsConstructorParam() && definition.UsageAccess == parser.ConstructorAccess {
 			message := fmt.Sprintf("Variable only used in constructor: %s", definition.Name)
 			analyses = append(analyses, newAnalysisHighlightName(definition.Node, AnalysisSeverity.Warning, message))
 		}
