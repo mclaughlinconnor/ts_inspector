@@ -276,7 +276,14 @@ func isInConstructor(node *sitter.Node, content []byte) bool {
 func handleDecorator(node *sitter.Node, content []byte) Decorator {
 	functionExpression := node.NamedChild(0)
 	decoratorNameNode := functionExpression.ChildByFieldName("function")
-	decoratorName := decoratorNameNode.Content(content)
+
+	var decoratorName string
+	if decoratorNameNode != nil { // @Decorator()
+		decoratorName = decoratorNameNode.Content(content)
+	} else { // @Decorator
+		decoratorName = functionExpression.Content(content)
+	}
+
 	isAngularDecorator := IsAngularDecorator(decoratorName)
 	return Decorator{isAngularDecorator, decoratorName}
 }
