@@ -23,6 +23,9 @@ func Start() {
 
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Split(rpc.Split)
+	big := 1024 * 1024 // 1 mb
+	buf := make([]byte, big)
+	scanner.Buffer(buf, big)
 
 	writer := os.Stdout
 
@@ -32,7 +35,9 @@ func Start() {
 	state := parser.State{Files: map[string]parser.File{}}
 
 	for scanner.Scan() {
+		logger.Println("Scanner found the next message")
 		msg := scanner.Bytes()
+		logger.Println("Received msg", msg)
 		method, contents, err := rpc.DecodeMessage(msg)
 		logger.Println(method)
 		if err != nil {
@@ -44,6 +49,12 @@ func Start() {
 		if ok {
 			state = ns
 		}
+	}
+
+	logger.Println("LSP event loop finished")
+
+	if err := scanner.Err(); err != nil {
+		logger.Fatal(err)
 	}
 }
 
@@ -59,7 +70,7 @@ func handleMessage(logger *log.Logger, writer io.Writer, state parser.State, met
 		return state, false
 	}()
 
-	r := utils.TryParseRequest[interfaces.InitializeRequest](logger, contents)
+	r := utils.TryParseRequest[interfaces.Request](logger, contents)
 	utils.MostRecentId = r.ID
 
 	logger.Printf("Received msg with method: %s", method)
@@ -86,6 +97,12 @@ func handleMessage(logger *log.Logger, writer io.Writer, state parser.State, met
 		HandleExecuteCommand(writer, logger, state, request)
 	case "initialized": {}
 	default:
+		if utils.MostRecentId == 0 || method == "" {
+			break
+		}
+
+		log.Println("Not handling request for:", method)
+
 		utils.WriteResponse(writer, Response{RPC: "2.0", ID: &utils.MostRecentId})
 	}
 
