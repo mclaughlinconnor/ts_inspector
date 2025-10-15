@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"strings"
 	"ts_inspector/ast/walk"
 	"ts_inspector/utils"
 
@@ -102,6 +103,8 @@ func visitAttribute(content []byte) walk.VisitorFunction[File] {
 				if v != nil && v.Type() == "attribute_value" {
 					valueNode = v
 				}
+			} else if child.Type() == "javascript" {
+				valueNode = child
 			}
 		}
 
@@ -117,6 +120,9 @@ func visitAttribute(content []byte) walk.VisitorFunction[File] {
 		}
 
 		value := []byte(valueNode.Content(content))
+		if valueNode.Type() == "javascript" && strings.HasPrefix(string(value), "`") && strings.HasSuffix(string(value), "`") {
+			value = value[1 : len(value)-1]
+		}
 		state, _ = extractIndentifierUsages(value, state)
 
 		return state
