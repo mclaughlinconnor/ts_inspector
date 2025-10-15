@@ -166,6 +166,12 @@ func FindDefinition(methodDefinitionResults *[]MethodDefinitionParseResult, meth
 }
 
 func AddToMethodDefinition(methodResults *[]MethodDefinitionParseResult, classBodyNode *sitter.Node, toAdd string, name string, score int) utils.TextEdits {
+	for _, method := range *methodResults {
+		if method.Name == name {
+			return []utils.TextEdit{}
+		}
+	}
+
 	fullySorted := slices.IsSortedFunc(*methodResults, func(a MethodDefinitionParseResult, b MethodDefinitionParseResult) int {
 		return cmp.Or(
 			cmp.Compare(b.Score, a.Score),
@@ -193,11 +199,21 @@ func AddToMethodDefinition(methodResults *[]MethodDefinitionParseResult, classBo
 			}
 		}
 	} else if !fullySorted && typesSorted {
+		foundTypeBlock := false
 		for index, result := range *methodResults {
 			if score <= result.Score {
+				foundTypeBlock = true
+				continue
+			}
+
+			if foundTypeBlock && score <= result.Score {
 				insertionIndex = index
 				break
 			}
+		}
+
+		if insertionIndex == -1 {
+			insertionIndex = len(*methodResults) - 1
 		}
 	} else if fullySorted {
 		for index, result := range *methodResults {
