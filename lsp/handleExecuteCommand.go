@@ -21,18 +21,18 @@ func HandleExecuteCommand(writer io.Writer, logger *log.Logger, state parser.Sta
 	command, ok := commands.CommandMap[commandName]
 	if !ok {
 		logger.Printf("Error: could not find command %s", commandName)
-		response(writer, request.ID);
+		response(writer, request.ID)
 		return
 	}
 
 	changes, err := command.Perform(state, args)
 	if err != nil {
 		logger.Printf("Error: %s", err)
-		response(writer, request.ID);
+		response(writer, request.ID)
 		return
 	}
 
-	response(writer, request.ID);
+	response(writer, request.ID)
 
 	utils.WriteResponse(
 		writer,

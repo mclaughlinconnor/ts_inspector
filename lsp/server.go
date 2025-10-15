@@ -95,7 +95,9 @@ func handleMessage(logger *log.Logger, writer io.Writer, state parser.State, met
 	case "workspace/executeCommand":
 		request := utils.TryParseRequest[interfaces.ExecuteCommandRequest](logger, contents)
 		HandleExecuteCommand(writer, logger, state, request)
-	case "initialized": {}
+	case "initialized":
+		{
+		}
 	default:
 		if utils.MostRecentId == 0 || method == "" {
 			break
