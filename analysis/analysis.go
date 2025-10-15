@@ -65,6 +65,11 @@ func Analyse(file parser.File) []Analysis {
 			message := fmt.Sprintf("Angular property should be public: %s", definition.Name)
 			analyses = append(analyses, newAnalysisHighlightName(definition.Node, AnalysisSeverity.Warning, message))
 		}
+
+		if definition.IsAngularMethod && definition.Async {
+			message := fmt.Sprintf("Angular method must not be async")
+			analyses = append(analyses, newAnalysisHighlightName(definition.Node, AnalysisSeverity.Error, message))
+		}
 	}
 
 	CurrentAnalysis[file.URI] = analyses
