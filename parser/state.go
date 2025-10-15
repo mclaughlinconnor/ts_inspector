@@ -25,6 +25,7 @@ type accessibility struct {
 	Modifier string
 }
 
+var NoAccessibility = accessibility{""}
 var PublicAccessibility = accessibility{"public"}
 var PrivateAccessibility = accessibility{"private"}
 var ProtectedAccessibility = accessibility{"protected"}

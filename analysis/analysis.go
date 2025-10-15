@@ -28,6 +28,7 @@ func Analyse(file parser.File) []Analysis {
 
 	for _, definition := range definitions {
 		definitionIsPublic := definition.AccessModifier == parser.PublicAccessibility
+		definitionIsLocalParam := definition.AccessModifier == parser.NoAccessibility
 		used := len(definition.Usages) != 0
 
 		if used && definition.IsConstructorParam() && definition.UsageAccess == parser.ConstructorAccess {
@@ -50,7 +51,7 @@ func Analyse(file parser.File) []Analysis {
 			}
 		}
 
-		if hasAngularDecorator && len(definition.Usages) == 0 {
+		if hasAngularDecorator && len(definition.Usages) == 0 && !definitionIsLocalParam {
 			if definition.Override {
 				message := fmt.Sprintf("Angular property never used in this component: %s. Check the parent class.", definition.Name)
 				analyses = append(analyses, newAnalysisHighlightName(definition.Node, AnalysisSeverity.Hint, message))
@@ -60,7 +61,7 @@ func Analyse(file parser.File) []Analysis {
 			}
 		}
 
-		if hasAngularDecorator && !definitionIsPublic {
+		if hasAngularDecorator && !definitionIsPublic && !definitionIsLocalParam {
 			message := fmt.Sprintf("Angular property should be public: %s", definition.Name)
 			analyses = append(analyses, newAnalysisHighlightName(definition.Node, AnalysisSeverity.Warning, message))
 		}

@@ -340,6 +340,7 @@ func visitDefinition(content []byte) walk.VisitorFunction[typescriptWalkState] {
 			parentName = parentDefinition.Name
 		}
 
+		// TODO: should use CreatePropertyDefinition
 		definition := Definition{
 			Decorators:  []Decorator{},
 			Node:        node,
