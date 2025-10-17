@@ -24,17 +24,14 @@ func HandleDidChange(writer io.Writer, logger *log.Logger, state parser.State, r
 		file := state.Files[parser.FilenameFromUri(request.Params.TextDocument.Uri)]
 
 		// My diagnostics only work on files with a controller or template
-		if file.Controller == "" && file.Template == "" {
-			return state
-		}
+		// if file.Controller == "" && file.Template == "" {
+		// 	return state
+		// }
 
 		utils.WriteResponse(writer, interfaces.GenerateDiagnosticsForFile(file))
 
-		if file.Controller != "" {
-			utils.WriteResponse(writer, interfaces.GenerateDiagnosticsForFile(state.Files[file.Controller]))
-		}
-		if file.Template != "" {
-			utils.WriteResponse(writer, interfaces.GenerateDiagnosticsForFile(state.Files[file.Template]))
+		for _, depFile := range file.GetDependencies() {
+			utils.WriteResponse(writer, interfaces.GenerateDiagnosticsForFile(state.Files[depFile]))
 		}
 	}
 

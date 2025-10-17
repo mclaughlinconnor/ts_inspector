@@ -53,6 +53,10 @@ func HandleFile(state State, uri string, languageId string, version int, content
 
 	state.Files[file.Filename()] = file
 
+	for _, class := range file.Classes {
+		state.Classes[class.Id()] = *class
+	}
+
 	state, err = handleDependencies(file, state, logger)
 	if err != nil {
 		return state, err
@@ -64,34 +68,22 @@ func HandleFile(state State, uri string, languageId string, version int, content
 }
 
 func handleDependencies(file File, state State, logger *log.Logger) (State, error) {
-	filename := file.Filename()
-
-	for fn, f := range state.Files {
-		var err error
-		if f.Template == filename || f.Controller == filename {
-			state, err = handleDependency(state, fn, logger)
-		}
-		if fn == filename {
-			if f.Template != "" {
-				state, err = handleDependency(state, f.Template, logger)
-			}
-			if f.Controller != "" {
-				state, err = handleDependency(state, f.Controller, logger)
-			}
-		}
+	dependencies := file.GetDependencies()
+	for _, depFile := range dependencies {
+		state, err := handleDependency(state, depFile, logger)
 
 		if err != nil {
 			return state, err
 		}
 	}
 
-	for fn, f := range state.Files {
-		if f.Template != "" {
-			t := state.Files[f.Template]
-			t.Controller = fn
-			state.Files[f.Template] = t
-		}
-	}
+	// for fn, f := range state.Files {
+	// 	if f.Template != "" {
+	// 		t := state.Files[f.Template]
+	// 		t.Controller = fn
+	// 		state.Files[f.Template] = t
+	// 	}
+	// }
 
 	return state, nil
 }
@@ -106,24 +98,31 @@ func handleDependency(state State, filename string, logger *log.Logger) (State, 
 		return state, err
 	}
 	state.Files[df.Filename()] = df
+
+	for _, class := range df.Classes {
+		state.Classes[class.Id()] = *class
+	}
+
 	return state, nil
 }
 
 func reconcile(state State) State {
 	for _, file := range state.Files {
-		// Skip if is a controller
-		if file.Controller != "" {
-			continue
-		}
-
-		template := state.Files[file.Template]
-		for name, usage := range template.Usages {
-			for _, use := range usage.Usages {
-				file = file.AppendDefinitionUsage(name, use)
+		for _, class := range file.Classes {
+			if class.Template != "" {
+				c := state.Classes[class.Template]
+				c.Controllers = append(c.Controllers, class.Id())
 			}
 		}
 
-		state.Files[file.Filename()] = file
+		// template := state.Files[file.Template]
+		// for name, usage := range template.Usages {
+		// 	for _, use := range usage.Usages {
+		// 		file = file.AppendDefinitionUsage(name, use)
+		// 	}
+		// }
+
+		// state.Files[file.Filename()] = file
 	}
 
 	return state

@@ -52,7 +52,7 @@ func (def Definition) IsConstructorParam() bool {
 	return def.OriginFunctionName == "constructor"
 }
 
-func (f File) AddDefinition(definition Definition) File {
+func (c Class) AddDefinition(definition Definition) Class {
 	if definition.Usages == nil {
 		definition.Usages = []UsageInstance{}
 	}
@@ -61,57 +61,57 @@ func (f File) AddDefinition(definition Definition) File {
 
 	definition.IsAngularMethod = IsAngularFunction(name)
 
-	if f.Definitions == nil {
-		f.Definitions = make(map[string]Definition)
+	if c.Definitions == nil {
+		c.Definitions = make(map[string]Definition)
 	}
-	f.Definitions[name] = definition
+	c.Definitions[name] = definition
 
-	return f
+	return c
 }
 
-func (f File) AppendDefinitionUsage(name string, usage UsageInstance) File {
-	definition, found := f.Definitions[name]
+func (c Class) AppendDefinitionUsage(name string, usage UsageInstance) Class {
+	definition, found := c.Definitions[name]
 	if !found {
-		return f
+		return c
 	}
 
 	definition.UsageAccess = CalculateNewAccessType(definition.UsageAccess, usage.Access)
 	definition.Usages = append(definition.Usages, usage)
-	f.Definitions[name] = definition
+	c.Definitions[name] = definition
 
-	return f
+	return c
 }
 
-func (f File) AppendUsage(name string, usage UsageInstance) File {
-	usages, found := f.Usages[name]
+func (c Class) AppendUsage(name string, usage UsageInstance) Class {
+	usages, found := c.Usages[name]
 
 	if found {
 		usages.Usages = append(usages.Usages, usage)
-		f.Usages[name] = usages
+		c.Usages[name] = usages
 
-		return f
+		return c
 	}
 
 	if !found {
-		if f.Usages == nil {
-			f.Usages = make(map[string]Usage)
+		if c.Usages == nil {
+			c.Usages = make(map[string]Usage)
 		}
 
-		f.Usages[name] = Usage{
+		c.Usages[name] = Usage{
 			usage.Access,
 			name,
 			[]UsageInstance{usage},
 		}
 	}
 
-	return f
+	return c
 }
 
-func (f File) SetUsageAccessType(name string, access access) File {
-	usage := f.Usages[name]
+func (c Class) SetUsageAccessType(name string, access access) Class {
+	usage := c.Usages[name]
 	usage.Access = CalculateNewAccessType(access, usage.Access)
 
-	return f
+	return c
 }
 
 type Decorator struct {
@@ -143,20 +143,33 @@ func CalculateNewAccessType(new access, old access) access {
 }
 
 type State struct {
+	Classes map[string]Class
 	Files   map[string]File
 	RootURI string
 }
 
 type File struct {
+	Classes     [](*Class)
 	Content     string
-	Controller  string
-	Definitions Definitions
 	Filetype    string
 	LineOffsets []uint32
-	Template    string
 	URI         string
-	Usages      Usages
 	Version     int
+}
+
+type Class struct {
+	Content     string
+	Controllers []string
+	Definitions Definitions
+	File        *File
+	Name        string
+	Node        *sitter.Node
+	Template    string
+	Usages      Usages
+}
+
+func (c Class) Id() string {
+	return c.File.URI + "-" + c.Name
 }
 
 func NewFile(uri string, filetype string, version int) (File, error) {
@@ -175,14 +188,11 @@ func NewFile(uri string, filetype string, version int) (File, error) {
 	}
 
 	return File{
+		Classes:     []*Class{},
 		Content:     "",
-		Controller:  "",
-		Definitions: map[string]Definition{},
 		Filetype:    filetype,
 		LineOffsets: []uint32{},
-		Template:    "",
 		URI:         UriFromFilename(filename),
-		Usages:      map[string]Usage{},
 		Version:     version,
 	}, nil
 }
@@ -191,8 +201,20 @@ func (f File) Filename() string {
 	return FilenameFromUri(f.URI)
 }
 
-func (f File) GetGetters() []Definition {
-	return filterDefinitions(f, func(d Definition) bool { return d.Getter })
+func (f File) GetDependencies() []string {
+	dependents := make([]string, 0)
+	for _, class := range f.Classes {
+		dependents = append(dependents, class.Controllers...)
+		if class.Template != "" {
+			dependents = append(dependents, class.Template)
+		}
+	}
+
+	return dependents
+}
+
+func (c Class) GetGetters() []Definition {
+	return filterDefinitions(c, func(d Definition) bool { return d.Getter })
 }
 
 func getLineOffsets(text string) []uint32 {
@@ -275,15 +297,17 @@ func GetPositionForOffset(content string, offset uint32) utils.Position {
 				line = 0
 				character = offset
 			}
+
+			break
 		}
 	}
 
 	return utils.Position{Line: line, Character: character}
 }
 
-func filterDefinitions(f File, cond func(d Definition) bool) []Definition {
+func filterDefinitions(c Class, cond func(d Definition) bool) []Definition {
 	arr := []Definition{}
-	for _, definition := range f.Definitions {
+	for _, definition := range c.Definitions {
 		if cond(definition) {
 			arr = append(arr, definition)
 		}

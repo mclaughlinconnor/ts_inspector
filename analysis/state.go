@@ -1,20 +1,17 @@
 package analysis
 
-import sitter "github.com/smacker/go-tree-sitter"
-
-// uri: analysis
-var CurrentAnalysis = map[string][]Analysis{}
+import (
+	"ts_inspector/utils"
+)
 
 type Analysis struct {
-	HighlightNode *sitter.Node
+	Message string
 
-	ProblemNode *sitter.Node
+	Range utils.Range
 
 	Severity int
 
 	Source string
-
-	Message string
 }
 
 type severity struct {

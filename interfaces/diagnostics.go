@@ -97,13 +97,8 @@ func NewDiagnostic(node *sitter.Node, severity int, source string, message strin
 }
 
 func DiagnosticFromAnalysis(analysis analysis.Analysis) Diagnostic {
-	start := analysis.HighlightNode.StartPoint()
-	end := analysis.HighlightNode.EndPoint()
-
-	r := utils.Range{Start: utils.PositionFromPoint(start), End: utils.PositionFromPoint(end)}
-
 	return Diagnostic{
-		Range:    r,
+		Range:    analysis.Range,
 		Severity: &analysis.Severity,
 		Source:   &analysis.Source,
 		Message:  analysis.Message,
