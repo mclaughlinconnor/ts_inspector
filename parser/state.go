@@ -160,13 +160,77 @@ type File struct {
 }
 
 type Class struct {
-	Content             string
-	Definitions         Definitions
-	File                *File
-	Name                string
-	Node                *sitter.Node
-	AngularTemplateFile *File
-	Usages              Usages
+	AngularTemplateFile  *File
+	Content              string
+	Definitions          Definitions
+	Extends              []*Class
+	ExtendsIdentNames    []string
+	File                 *File
+	Implements           []*Class
+	ImplementsIdentNames []string
+	Name                 string
+	Node                 *sitter.Node
+	Usages               Usages
+}
+
+func (c *Class) Postprocess(state *State) {
+	c.resolveExtendsImplements(state)
+}
+
+func (c *Class) resolveExtendsImplements(state *State) {
+	file := c.File
+
+	extends := resolveIdentFromImports(c.ExtendsIdentNames, file, state)
+	implements := resolveIdentFromImports(c.ImplementsIdentNames, file, state)
+
+	c.Extends = extends
+	c.Implements = implements
+}
+
+func resolveIdentFromImports(idents []string, file *File, state *State) []*Class {
+	resolved := make([]*Class, len(idents))
+
+	for _, ident := range idents {
+		importPath := file.FindImportPath(ident)
+
+		if importPath == "" {
+			continue
+		}
+
+		absolutePath, err := filepath.Abs(path.Join(filepath.Dir(FilenameFromUri(file.URI)), importPath))
+		if err != nil {
+			continue
+		}
+
+		importedFile, found := state.Files[absolutePath+".ts"]
+		if !found {
+			importedFile, found = state.Files[absolutePath+".js"]
+
+			if !found {
+				continue
+			}
+		}
+
+		for i, class := range importedFile.Classes {
+			if class.Name == ident {
+				resolved[i] = class
+			}
+		}
+	}
+
+	return resolved
+}
+
+func (f *File) FindImportPath(identifier string) string {
+	for _, importClause := range f.Imports {
+		for _, imp := range importClause.Imports {
+			if imp.LocalIdentifier == identifier {
+				return importClause.Package
+			}
+		}
+	}
+
+	return ""
 }
 
 func (c Class) Id() string {

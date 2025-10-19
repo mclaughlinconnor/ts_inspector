@@ -10,6 +10,12 @@ type parseCallback[V any] func(root *sitter.Node, content []byte, v V) (V, error
 
 var lastSeenDocumentVersion = make(map[string]int, 0)
 
+func PostprocessClasses(state *State) {
+	for _, class := range state.Classes {
+		class.Postprocess(state)
+	}
+}
+
 func handleFile(state *State, uri string, languageId string, version int, content string, _ *log.Logger) (File, error) {
 	v := version
 	if v == 0 {

@@ -51,7 +51,7 @@ func HandleTypeScriptFile(state *State, file File) (File, error) {
 
 				class, err := utils.ParseFile(false, class.Content, utils.TypeScript, class,
 					func(classRoot *sitter.Node, content []byte, class Class) (Class, error) {
-						class, err := ExtractClassName(class, classRoot, []byte(class.Content))
+						class, err := ExtractMetadata(&class, classRoot, []byte(class.Content))
 						if err != nil {
 							return class, err
 						}
@@ -190,20 +190,59 @@ func ExtractTemplateFilename(class Class, root *sitter.Node, content []byte) (st
 	return s.TemplateFilename, nil
 }
 
-func ExtractClassName(class Class, root *sitter.Node, content []byte) (Class, error) {
-	funcMap := walk.NewVisitorFuncsMap[string]()
-	funcMap["class_declaration"] = func(node *sitter.Node, state string, indexInParent int, funcMap walk.VisitorFuncMap[string]) string {
+func ExtractMetadata(class *Class, root *sitter.Node, content []byte) (Class, error) {
+	funcMap := walk.NewVisitorFuncsMap[*Class]()
+	funcMap["class_declaration"] = func(node *sitter.Node, state *Class, indexInParent int, funcMap walk.VisitorFuncMap[*Class]) *Class {
 		nameNode := node.ChildByFieldName("name")
 		if nameNode == nil {
-			return ""
+			return state
 		}
 
-		return nameNode.Content(content)
+		state.Name = nameNode.Content(content)
+
+		for i := range node.NamedChildCount() {
+			child := node.NamedChild(int(i))
+			t := child.Type()
+
+			if t != "class_heritage" {
+				continue
+			}
+
+			for i := range child.NamedChildCount() {
+				clause := child.NamedChild(int(i))
+				jt := clause.Type()
+
+				if jt == "extends_clause" {
+					extendsClause := clause
+					identCount := int(extendsClause.NamedChildCount())
+					extendsIdentifiers := make([]string, identCount)
+
+					for i := range identCount {
+						extendsIdentifiers[i] = extendsClause.NamedChild(i).Content(content)
+					}
+
+					state.ExtendsIdentNames = extendsIdentifiers
+				} else if jt == "implements_clause" {
+					implementsClause := clause
+					identCount := int(implementsClause.NamedChildCount())
+					implementsIdentifiers := make([]string, identCount)
+
+					for i := range identCount {
+						implementsIdentifiers[i] = implementsClause.NamedChild(i).Content(content)
+					}
+
+					state.ImplementsIdentNames = implementsIdentifiers
+				}
+			}
+
+		}
+
+		return state
 	}
 
-	class.Name = walk.Walk(root, "", funcMap)
+	walk.Walk(root, class, funcMap)
 
-	return class, nil
+	return *class, nil
 }
 
 func ExtractTypeScriptUsages(class Class, root *sitter.Node, content []byte) (Class, error) {

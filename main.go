@@ -52,6 +52,8 @@ func main() {
 		}
 	}
 
+	parser.PostprocessClasses(&state)
+
 	fmt.Print(state)
 }
 
