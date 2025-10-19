@@ -8,29 +8,33 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
-func HandlePugFile(file File) (File, error) {
-	fromDisk := file.Content == ""
-	var source string
-	if fromDisk {
-		source = file.Filename()
-	} else {
-		source = file.Content
+func HandlePugFile(state *State, class Class, uri string) (Class, error) {
+	f, err := NewFile(uri, "pug", 0)
+	if err != nil {
+		return class, err
 	}
 
-	return utils.ParseFile(fromDisk, source, utils.Pug, file, func(root *sitter.Node, content []byte, file File) (File, error) {
-		file = file.SetContent(CStr2GoStr(content))
+	filename := f.Filename()
+	state.Files[filename] = &f
 
-		class := Class{File: &file}
+	file := state.Files[filename]
+	class.AngularTemplateFile = file
+
+	class, err = utils.ParseFile(true, uri, utils.Pug, class, func(root *sitter.Node, content []byte, class Class) (Class, error) {
+		file.SetContent(CStr2GoStr(content))
+
 		class, err := ExtractPugUsages(class, content)
 
 		if err != nil {
-			return file, err
+			return class, err
 		}
 
 		file.Classes = append(file.Classes, &class)
 
-		return file, nil
+		return class, nil
 	})
+
+	return class, err
 }
 
 func ExtractPugUsages(file Class, content []byte) (Class, error) {
@@ -58,7 +62,7 @@ func extractIndentifierUsages(text []byte, class Class) (Class, error) {
 	funcMap := walk.NewVisitorFuncsMap[Class]()
 	funcMap["identifier"] = func(node *sitter.Node, state Class, indexInParent int, _ walk.VisitorFuncMap[Class]) Class {
 		name := node.Content(text)
-		usageInstance := UsageInstance{ForeignAccess, node}
+		usageInstance := UsageInstance{TemplateAccess, node}
 
 		class = class.SetUsageAccessType(name, usageInstance.Access).AppendUsage(name, usageInstance)
 

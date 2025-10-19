@@ -28,10 +28,10 @@ func HandleDidChange(writer io.Writer, logger *log.Logger, state parser.State, r
 		// 	return state
 		// }
 
-		utils.WriteResponse(writer, interfaces.GenerateDiagnosticsForFile(file))
+		utils.WriteResponse(writer, interfaces.GenerateDiagnosticsForFile(*file))
 
 		for _, depFile := range file.GetDependencies() {
-			utils.WriteResponse(writer, interfaces.GenerateDiagnosticsForFile(state.Files[depFile]))
+			utils.WriteResponse(writer, interfaces.GenerateDiagnosticsForFile(*state.Files[depFile]))
 		}
 	}
 

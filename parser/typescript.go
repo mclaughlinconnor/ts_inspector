@@ -10,12 +10,13 @@ import (
 )
 
 type typescriptWalkState struct {
-	DefinitionStack utils.Stack[Definition]
-	InDecorator     bool
+	DefinitionStack  utils.Stack[Definition]
+	InDecorator      bool
+	TemplateFilename string
 	Class
 }
 
-func HandleTypeScriptFile(file File) (File, error) {
+func HandleTypeScriptFile(state *State, file File) (File, error) {
 	fromDisk := file.Content == ""
 	var source string
 	if fromDisk {
@@ -26,14 +27,14 @@ func HandleTypeScriptFile(file File) (File, error) {
 
 	return utils.ParseFile(fromDisk, source, utils.TypeScript, file,
 		func(root *sitter.Node, content []byte, file File) (File, error) {
-			file = file.SetContent(CStr2GoStr(content))
+			file.SetContent(CStr2GoStr(content))
 
-			visitor := func(node *sitter.Node, state []*Class, indexInParent int, funcMap walk.VisitorFuncMap[[]*Class]) []*Class {
+			visitor := func(node *sitter.Node, classes []*Class, indexInParent int, funcMap walk.VisitorFuncMap[[]*Class]) []*Class {
 				if node.Type() == "export_statement" {
 					declaration := node.ChildByFieldName("declaration")
 					if declaration != nil {
 						if declaration.Type() != "class_declaration" {
-							return state
+							return classes
 						}
 					}
 				}
@@ -57,19 +58,26 @@ func HandleTypeScriptFile(file File) (File, error) {
 							return class, err
 						}
 
-						class, err = ExtractTemplateFilename(class, classRoot, content)
+						templateFilename, err := ExtractTemplateFilename(class, classRoot, content)
 						if err != nil {
 							return class, err
+						}
+
+						if templateFilename != "" {
+							class, err = HandleTemplate(state, class, templateFilename)
+							if err != nil {
+								return class, err
+							}
 						}
 
 						return class, nil
 					})
 
 				if err != nil {
-					return state
+					return classes
 				}
 
-				return append(state, &class)
+				return append(classes, &class)
 			}
 
 			funcMap := walk.NewVisitorFuncsMap[[]*Class]()
@@ -85,7 +93,11 @@ func HandleTypeScriptFile(file File) (File, error) {
 		})
 }
 
-func ExtractTemplateFilename(class Class, root *sitter.Node, content []byte) (Class, error) {
+func HandleTemplate(state *State, class Class, templateFilename string) (Class, error) {
+	return HandlePugFile(state, class, templateFilename)
+}
+
+func ExtractTemplateFilename(class Class, root *sitter.Node, content []byte) (string, error) {
 	funcMap := walk.NewVisitorFuncsMap[typescriptWalkState]()
 	funcMap["decorator"] = func(node *sitter.Node, state typescriptWalkState, indexInParent int, funcMap walk.VisitorFuncMap[typescriptWalkState]) typescriptWalkState {
 		call := node.NamedChild(0)
@@ -157,7 +169,7 @@ func ExtractTemplateFilename(class Class, root *sitter.Node, content []byte) (Cl
 		}
 
 		if utils.FileExists(templateFilePath) {
-			state.Template = templateFilePath
+			state.TemplateFilename = templateFilePath
 			return state
 		}
 
@@ -167,7 +179,7 @@ func ExtractTemplateFilename(class Class, root *sitter.Node, content []byte) (Cl
 	s := typescriptWalkState{InDecorator: false, Class: class}
 	s = walk.Walk(root, s, funcMap)
 
-	return s.Class, nil
+	return s.TemplateFilename, nil
 }
 
 func ExtractClassName(class Class, root *sitter.Node, content []byte) (Class, error) {

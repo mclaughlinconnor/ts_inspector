@@ -19,7 +19,7 @@ type access struct {
 var NoAccess = access{"none", 0}
 var ConstructorAccess = access{"constructor", 1}
 var LocalAccess = access{"local", 2}
-var ForeignAccess = access{"foreign", 3}
+var TemplateAccess = access{"template", 3}
 
 type accessibility struct {
 	Modifier string
@@ -143,8 +143,8 @@ func CalculateNewAccessType(new access, old access) access {
 }
 
 type State struct {
-	Classes map[string]Class
-	Files   map[string]File
+	Classes map[string]*Class
+	Files   map[string]*File
 	RootURI string
 }
 
@@ -158,14 +158,13 @@ type File struct {
 }
 
 type Class struct {
-	Content     string
-	Controllers []string
-	Definitions Definitions
-	File        *File
-	Name        string
-	Node        *sitter.Node
-	Template    string
-	Usages      Usages
+	Content             string
+	Definitions         Definitions
+	File                *File
+	Name                string
+	Node                *sitter.Node
+	AngularTemplateFile *File
+	Usages              Usages
 }
 
 func (c Class) Id() string {
@@ -203,12 +202,12 @@ func (f File) Filename() string {
 
 func (f File) GetDependencies() []string {
 	dependents := make([]string, 0)
-	for _, class := range f.Classes {
-		dependents = append(dependents, class.Controllers...)
-		if class.Template != "" {
-			dependents = append(dependents, class.Template)
-		}
-	}
+	// for _, class := range f.Classes {
+	// 	dependents = append(dependents, class.Controllers...)
+	// 	if class.Template != "" {
+	// 		dependents = append(dependents, class.Template)
+	// 	}
+	// }
 
 	return dependents
 }
@@ -246,12 +245,28 @@ func getLineOffsets(text string) []uint32 {
 	return offsets
 }
 
-func (f File) SetContent(content string) File {
+func (f *File) SetContent(content string) {
 	lineOffsets := getLineOffsets(content)
 	f.LineOffsets = lineOffsets
 	f.Content = content
-	return f
 }
+
+// func (f File) SetContent(content string) File {
+// 	lineOffsets := getLineOffsets(content)
+// 	f.LineOffsets = lineOffsets
+// 	f.Content = content
+// 	return f
+// }
+
+// func (s State) GetClassForTemplate(uri string) *Class {
+// 	for _, class := range s.Classes {
+// 		if class.AngularTemplateFile != nil && class.AngularTemplateFile.URI == uri {
+// 			return &class
+// 		}
+// 	}
+//
+// 	return nil
+// }
 
 func (f File) GetOffsetForPosition(p utils.Position) uint32 {
 	lines := uint32(len(f.LineOffsets))

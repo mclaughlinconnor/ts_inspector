@@ -32,7 +32,7 @@ func Start() {
 	utils.InitQueries()
 	actions.InitActions()
 	commands.InitCommands()
-	state := parser.State{Classes: map[string]parser.Class{}, Files: map[string]parser.File{}}
+	state := parser.State{Classes: map[string]*parser.Class{}, Files: map[string]*parser.File{}}
 
 	for scanner.Scan() {
 		logger.Println("Scanner found the next message")

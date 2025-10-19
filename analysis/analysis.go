@@ -24,14 +24,14 @@ func analyseClass(class parser.Class) []Analysis {
 	getters := class.GetGetters()
 	definitions := class.Definitions
 
-	if class.Template == "" {
+	if class.AngularTemplateFile == nil {
 		// No analysis for files that are not angular controllers
 		return analyses
 	}
 
 	for _, definition := range getters {
 		used := len(definition.Usages) != 0
-		if used && definition.UsageAccess == parser.ForeignAccess {
+		if used && definition.UsageAccess == parser.TemplateAccess {
 			message := fmt.Sprintf("Getter used in template: %s", definition.Name)
 			analyses = append(analyses, newAnalysisHighlightName(definition.Node, class, AnalysisSeverity.Hint, message))
 		}
@@ -56,7 +56,7 @@ func analyseClass(class parser.Class) []Analysis {
 			if !used {
 				message := fmt.Sprintf("Unused public variable: %s", definition.Name)
 				analyses = append(analyses, newAnalysisHighlightName(definition.Node, class, AnalysisSeverity.Warning, message))
-			} else if definition.UsageAccess != parser.ForeignAccess {
+			} else if definition.UsageAccess != parser.TemplateAccess {
 				message := fmt.Sprintf("Needlessly public variable: %s", definition.Name)
 				analyses = append(analyses, newAnalysisHighlightName(definition.Node, class, AnalysisSeverity.Warning, message))
 			}
