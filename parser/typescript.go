@@ -3,6 +3,7 @@ package parser
 import (
 	"path"
 	"path/filepath"
+	"strings"
 	"ts_inspector/ast"
 	"ts_inspector/ast/walk"
 	"ts_inspector/utils"
@@ -52,6 +53,11 @@ func HandleTypeScriptFile(state *State, file File) (File, error) {
 				class, err := utils.ParseFile(false, class.Content, utils.TypeScript, class,
 					func(classRoot *sitter.Node, content []byte, class Class) (Class, error) {
 						class, err := ExtractClassName(class, classRoot, []byte(class.Content))
+						if err != nil {
+							return class, err
+						}
+
+						class, err = ExtractExtendsImplements(class, classRoot, []byte(class.Content))
 						if err != nil {
 							return class, err
 						}
@@ -202,6 +208,33 @@ func ExtractClassName(class Class, root *sitter.Node, content []byte) (Class, er
 	}
 
 	class.Name = walk.Walk(root, "", funcMap)
+
+	return class, nil
+}
+
+func ExtractExtendsImplements(class Class, root *sitter.Node, content []byte) (Class, error) {
+	classResult, err := ast.ExtractClassDefinition(content)
+	if err != nil {
+		return class, err
+	}
+
+	if classResult == nil {
+		return class, nil
+	}
+
+	// Extract extends clause
+	if classResult.ExtendsClause != nil {
+		extendsClauseContent := classResult.ExtendsClause.Content(content)
+		// Remove the "extends " prefix
+		if len(extendsClauseContent) > 8 {
+			class.ExtendsClauseName = strings.TrimSpace(extendsClauseContent[8:])
+		}
+	}
+
+	// Extract implements clause
+	if len(classResult.ImplementedIdentifiers) > 0 {
+		class.ImplementsClauseNames = classResult.ImplementedIdentifiers
+	}
 
 	return class, nil
 }

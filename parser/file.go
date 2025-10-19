@@ -60,6 +60,8 @@ func HandleFile(state State, uri string, languageId string, version int, content
 		return state, err
 	}
 
+	state.ResolveClassRelationships()
+
 	return state, nil
 }
 

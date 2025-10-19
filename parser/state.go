@@ -160,17 +160,49 @@ type File struct {
 }
 
 type Class struct {
-	Content             string
-	Definitions         Definitions
-	File                *File
-	Name                string
-	Node                *sitter.Node
-	AngularTemplateFile *File
-	Usages              Usages
+	Content              string
+	Definitions          Definitions
+	File                 *File
+	Name                 string
+	Node                 *sitter.Node
+	AngularTemplateFile  *File
+	Usages               Usages
+	Extends              *Class
+	Implements           []*Class
+	ExtendsClauseName    string
+	ImplementsClauseNames []string
 }
 
 func (c Class) Id() string {
 	return c.File.URI + "-" + c.Name
+}
+
+func (s *State) ResolveClassRelationships() {
+	// Create a map of class names to class pointers for quick lookup
+	classMap := make(map[string]*Class)
+	for id, class := range s.Classes {
+		classMap[class.Name] = s.Classes[id]
+	}
+
+	// Resolve extends and implements relationships
+	for _, class := range s.Classes {
+		// Resolve extends
+		if class.ExtendsClauseName != "" {
+			if parentClass, found := classMap[class.ExtendsClauseName]; found {
+				class.Extends = parentClass
+			}
+		}
+
+		// Resolve implements
+		if len(class.ImplementsClauseNames) > 0 {
+			class.Implements = make([]*Class, 0, len(class.ImplementsClauseNames))
+			for _, implName := range class.ImplementsClauseNames {
+				if implClass, found := classMap[implName]; found {
+					class.Implements = append(class.Implements, implClass)
+				}
+			}
+		}
+	}
 }
 
 func NewFile(uri string, filetype string, version int) (File, error) {
