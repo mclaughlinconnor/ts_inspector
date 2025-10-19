@@ -6,6 +6,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"ts_inspector/ast"
 	"ts_inspector/utils"
 
 	sitter "github.com/smacker/go-tree-sitter"
@@ -149,6 +150,7 @@ type State struct {
 }
 
 type File struct {
+	Imports     [](*ast.ImportParseResult)
 	Classes     [](*Class)
 	Content     string
 	Filetype    string
@@ -190,6 +192,7 @@ func NewFile(uri string, filetype string, version int) (File, error) {
 		Classes:     []*Class{},
 		Content:     "",
 		Filetype:    filetype,
+		Imports:     []*ast.ImportParseResult{},
 		LineOffsets: []uint32{},
 		URI:         UriFromFilename(filename),
 		Version:     version,

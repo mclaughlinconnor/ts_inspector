@@ -3,6 +3,7 @@ package parser
 import (
 	"path"
 	"path/filepath"
+	"ts_inspector/ast"
 	"ts_inspector/ast/walk"
 	"ts_inspector/utils"
 
@@ -28,6 +29,13 @@ func HandleTypeScriptFile(state *State, file File) (File, error) {
 	return utils.ParseFile(fromDisk, source, utils.TypeScript, file,
 		func(root *sitter.Node, content []byte, file File) (File, error) {
 			file.SetContent(CStr2GoStr(content))
+
+			imports, err := ast.ExtractImports(root, content)
+			if err != nil {
+				return file, err
+			}
+
+			file.Imports = append(file.Imports, imports...)
 
 			visitor := func(node *sitter.Node, classes []*Class, indexInParent int, funcMap walk.VisitorFuncMap[[]*Class]) []*Class {
 				if node.Type() == "export_statement" {
