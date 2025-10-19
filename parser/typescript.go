@@ -3,7 +3,6 @@ package parser
 import (
 	"path"
 	"path/filepath"
-	"strings"
 	"ts_inspector/ast"
 	"ts_inspector/ast/walk"
 	"ts_inspector/utils"
@@ -213,29 +212,43 @@ func ExtractClassName(class Class, root *sitter.Node, content []byte) (Class, er
 }
 
 func ExtractExtendsImplements(class Class, root *sitter.Node, content []byte) (Class, error) {
-	classResult, err := ast.ExtractClassDefinition(content)
-	if err != nil {
-		return class, err
-	}
-
-	if classResult == nil {
-		return class, nil
-	}
-
-	// Extract extends clause
-	if classResult.ExtendsClause != nil {
-		extendsClauseContent := classResult.ExtendsClause.Content(content)
-		// Remove the "extends " prefix
-		if len(extendsClauseContent) > 8 {
-			class.ExtendsClauseName = strings.TrimSpace(extendsClauseContent[8:])
+	funcMap := walk.NewVisitorFuncsMap[Class]()
+	
+	funcMap["class_heritage"] = func(node *sitter.Node, state Class, indexInParent int, funcMap walk.VisitorFuncMap[Class]) Class {
+		// Process children to find extends_clause and implements_clause
+		for i := range node.NamedChildCount() {
+			child := node.NamedChild(int(i))
+			if child == nil {
+				continue
+			}
+			
+			if child.Type() == "extends_clause" {
+				// Find the identifier in extends_clause
+				for j := range child.NamedChildCount() {
+					grandchild := child.NamedChild(int(j))
+					if grandchild != nil && (grandchild.Type() == "identifier" || grandchild.Type() == "type_identifier") {
+						state.ExtendsClauseName = grandchild.Content(content)
+						break
+					}
+				}
+			} else if child.Type() == "implements_clause" {
+				// Find all type_identifiers in implements_clause
+				implementsNames := []string{}
+				for j := range child.NamedChildCount() {
+					grandchild := child.NamedChild(int(j))
+					if grandchild != nil && grandchild.Type() == "type_identifier" {
+						implementsNames = append(implementsNames, grandchild.Content(content))
+					}
+				}
+				state.ImplementsClauseNames = implementsNames
+			}
 		}
+		
+		return state
 	}
-
-	// Extract implements clause
-	if len(classResult.ImplementedIdentifiers) > 0 {
-		class.ImplementsClauseNames = classResult.ImplementedIdentifiers
-	}
-
+	
+	class = walk.Walk(root, class, funcMap)
+	
 	return class, nil
 }
 
