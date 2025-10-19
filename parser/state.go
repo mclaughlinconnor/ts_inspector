@@ -178,17 +178,12 @@ func (c Class) Id() string {
 }
 
 func (s *State) ResolveClassRelationships() {
-	// Create a map of class names to class pointers for quick lookup
-	classMap := make(map[string]*Class)
-	for id, class := range s.Classes {
-		classMap[class.Name] = s.Classes[id]
-	}
-
 	// Resolve extends and implements relationships
 	for _, class := range s.Classes {
 		// Resolve extends
 		if class.ExtendsClauseName != "" {
-			if parentClass, found := classMap[class.ExtendsClauseName]; found {
+			parentClass := s.resolveClassFromIdentifier(class.File, class.ExtendsClauseName)
+			if parentClass != nil {
 				class.Extends = parentClass
 			}
 		}
@@ -197,12 +192,96 @@ func (s *State) ResolveClassRelationships() {
 		if len(class.ImplementsClauseNames) > 0 {
 			class.Implements = make([]*Class, 0, len(class.ImplementsClauseNames))
 			for _, implName := range class.ImplementsClauseNames {
-				if implClass, found := classMap[implName]; found {
+				implClass := s.resolveClassFromIdentifier(class.File, implName)
+				if implClass != nil {
 					class.Implements = append(class.Implements, implClass)
 				}
 			}
 		}
 	}
+}
+
+func (s *State) resolveClassFromIdentifier(file *File, identifier string) *Class {
+	// First, check if the identifier is defined in the same file
+	for _, class := range file.Classes {
+		if class.Name == identifier {
+			return class
+		}
+	}
+
+	// If not in the same file, check imports
+	for _, importResult := range file.Imports {
+		for _, imp := range importResult.Imports {
+			// Check if this import matches the identifier
+			if imp.LocalIdentifier == identifier {
+				// Resolve the package path to a file
+				targetFile := s.resolveImportToFile(file, importResult.Package)
+				if targetFile == nil {
+					continue
+				}
+
+				// Find the class with the foreign identifier name in the target file
+				for _, class := range targetFile.Classes {
+					if class.Name == imp.ForeignIdentifier {
+						return class
+					}
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+func (s *State) resolveImportToFile(currentFile *File, packagePath string) *File {
+	// Only handle relative imports for now (same as determineFilename logic)
+	if !strings.HasPrefix(packagePath, ".") {
+		return nil
+	}
+
+	// Get the directory of the current file
+	currentFilePath := FilenameFromUri(currentFile.URI)
+	currentDir := filepath.Dir(currentFilePath)
+
+	// Join with the package path
+	targetPath := filepath.Join(currentDir, packagePath)
+
+	// Try to resolve the file (check with and without extensions)
+	resolvedPath, found := determineFilename(targetPath)
+	if !found {
+		return nil
+	}
+
+	// Convert to URI and look up in state
+	targetURI := UriFromFilename(resolvedPath)
+	if file, found := s.Files[resolvedPath]; found {
+		return file
+	}
+
+	// Also try with the URI as key
+	if file, found := s.Files[targetURI]; found {
+		return file
+	}
+
+	return nil
+}
+
+func determineFilename(baseFilename string) (string, bool) {
+	if utils.FileExists(baseFilename) {
+		return baseFilename, true
+	}
+
+	typescript := baseFilename + ".ts"
+	if utils.FileExists(typescript) {
+		return typescript, true
+	}
+
+	javascript := baseFilename + ".js"
+	if utils.FileExists(javascript) {
+		return javascript, true
+	}
+
+	return "", false
 }
 
 func NewFile(uri string, filetype string, version int) (File, error) {
