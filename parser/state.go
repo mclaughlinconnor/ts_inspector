@@ -150,10 +150,11 @@ type State struct {
 }
 
 type File struct {
-	Imports     [](*ast.ImportParseResult)
 	Classes     [](*Class)
 	Content     string
+	Exports     [](*Export)
 	Filetype    string
+	Imports     [](*ast.ImportParseResult)
 	LineOffsets []uint32
 	URI         string
 	Version     int
@@ -171,6 +172,15 @@ type Class struct {
 	Name                 string
 	Node                 *sitter.Node
 	Usages               Usages
+}
+
+type Export struct {
+	Class *Class
+	Name  string
+	Node  *sitter.Node
+
+	// Variable *Variable
+	// ...
 }
 
 func (c *Class) Postprocess(state *State) {
@@ -255,6 +265,7 @@ func NewFile(uri string, filetype string, version int) (File, error) {
 	return File{
 		Classes:     []*Class{},
 		Content:     "",
+		Exports:     []*Export{},
 		Filetype:    filetype,
 		Imports:     []*ast.ImportParseResult{},
 		LineOffsets: []uint32{},

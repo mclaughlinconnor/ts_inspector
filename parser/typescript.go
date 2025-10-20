@@ -17,6 +17,11 @@ type typescriptWalkState struct {
 	Class
 }
 
+type classWalkState struct {
+	Classes []*Class
+	Exports []*Export
+}
+
 func HandleTypeScriptFile(state *State, file File) (File, error) {
 	fromDisk := file.Content == ""
 	var source string
@@ -37,7 +42,7 @@ func HandleTypeScriptFile(state *State, file File) (File, error) {
 
 			file.Imports = append(file.Imports, imports...)
 
-			visitor := func(node *sitter.Node, classes []*Class, indexInParent int, funcMap walk.VisitorFuncMap[[]*Class]) []*Class {
+			visitor := func(node *sitter.Node, classes classWalkState, indexInParent int, funcMap walk.VisitorFuncMap[classWalkState]) classWalkState {
 				if node.Type() == "export_statement" {
 					declaration := node.ChildByFieldName("declaration")
 					if declaration != nil {
@@ -85,17 +90,27 @@ func HandleTypeScriptFile(state *State, file File) (File, error) {
 					return classes
 				}
 
-				return append(classes, &class)
+				classes.Classes = append(classes.Classes, &class)
+
+				if node.Type() == "export_statement" {
+					export := Export{Node: node, Name: class.Name, Class: &class}
+					classes.Exports = append(classes.Exports, &export)
+				}
+
+				return classes
 			}
 
-			funcMap := walk.NewVisitorFuncsMap[[]*Class]()
+			funcMap := walk.NewVisitorFuncsMap[classWalkState]()
 
 			funcMap["class_declaration"] = visitor
 			funcMap["export_statement"] = visitor
 
-			classes := walk.Walk(root, file.Classes, funcMap)
+			state := classWalkState{Classes: file.Classes, Exports: file.Exports}
 
-			file.Classes = classes
+			state = walk.Walk(root, state, funcMap)
+
+			file.Classes = state.Classes
+			file.Exports = state.Exports
 
 			return file, nil
 		})
