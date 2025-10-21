@@ -102,8 +102,8 @@ func HandleTypeScriptFile(state *State, file File) (File, error) {
 				return classes
 			}
 
-			funcMap["class_declaration"] = classVisitor
 			funcMap["abstract_class_declaration"] = classVisitor
+			funcMap["class_declaration"] = classVisitor
 			funcMap["interface_declaration"] = classVisitor
 
 			state := classWalkState{Classes: file.Classes, Exports: file.Exports}
@@ -259,6 +259,7 @@ func ExtractMetadata(class *Class, root *sitter.Node, content []byte) (Class, er
 
 	funcMap["abstract_class_declaration"] = classVisitor
 	funcMap["class_declaration"] = classVisitor
+	funcMap["interface_declaration"] = classVisitor
 
 	walk.Walk(root, class, funcMap)
 
@@ -279,6 +280,8 @@ func ExtractTypeScriptUsages(class Class, root *sitter.Node, content []byte) (Cl
 func ExtractTypeScriptDefinitions(class Class, root *sitter.Node, content []byte) (Class, error) {
 	funcMap := walk.NewVisitorFuncsMap[typescriptWalkState]()
 	funcMap["method_definition"] = visitDefinition(content)
+	funcMap["method_signature"] = visitDefinition(content)
+	funcMap["property_definition"] = visitDefinition(content)
 	funcMap["public_field_definition"] = visitDefinition(content)
 	funcMap["required_parameter"] = visitDefinition(content)
 
