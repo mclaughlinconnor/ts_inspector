@@ -41,18 +41,18 @@ func handleFile(state *State, uri string, languageId string, version int, conten
 	return file, err
 }
 
-func HandleFile(state State, uri string, languageId string, version int, content string, logger *log.Logger) (State, error) {
+func HandleFile(state *State, uri string, languageId string, version int, content string, logger *log.Logger) error {
 	if languageId == "" {
 		var err error
 		languageId, err = FiletypeFromFilename(FilenameFromUri(uri))
 		if err != nil {
-			return state, err
+			return err
 		}
 	}
 
-	file, err := handleFile(&state, uri, languageId, version, content, logger)
+	file, err := handleFile(state, uri, languageId, version, content, logger)
 	if err != nil {
-		return state, err
+		return err
 	}
 
 	state.Files[file.Filename()] = &file
@@ -61,35 +61,35 @@ func HandleFile(state State, uri string, languageId string, version int, content
 		state.Classes[class.Id()] = class
 	}
 
-	state, err = handleDependencies(file, state, logger)
+	err = handleDependencies(file, state, logger)
 	if err != nil {
-		return state, err
+		return err
 	}
 
-	return state, nil
+	return nil
 }
 
-func handleDependencies(file File, state State, logger *log.Logger) (State, error) {
+func handleDependencies(file File, state *State, logger *log.Logger) error {
 	dependencies := file.GetDependencies()
 	for _, depFile := range dependencies {
-		state, err := handleDependency(state, depFile, logger)
+		err := handleDependency(state, depFile, logger)
 
 		if err != nil {
-			return state, err
+			return err
 		}
 	}
 
-	return state, nil
+	return nil
 }
 
-func handleDependency(state State, filename string, logger *log.Logger) (State, error) {
+func handleDependency(state *State, filename string, logger *log.Logger) error {
 	filetype, err := FiletypeFromFilename(filename)
 	if err != nil {
-		return state, err
+		return err
 	}
-	df, err := handleFile(&state, UriFromFilename(filename), filetype, 0, state.Files[filename].Content, logger)
+	df, err := handleFile(state, UriFromFilename(filename), filetype, 0, state.Files[filename].Content, logger)
 	if err != nil {
-		return state, err
+		return err
 	}
 	state.Files[df.Filename()] = &df
 
@@ -97,5 +97,5 @@ func handleDependency(state State, filename string, logger *log.Logger) (State, 
 		state.Classes[class.Id()] = class
 	}
 
-	return state, nil
+	return nil
 }

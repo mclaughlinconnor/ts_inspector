@@ -9,8 +9,8 @@ import (
 )
 
 func HandleDidOpen(writer io.Writer, logger *log.Logger, state parser.State, request interfaces.DidOpenTextDocumentNotification) parser.State {
-	state, err := parser.HandleFile(
-		state,
+	err := parser.HandleFile(
+		&state,
 		request.Params.TextDocument.Uri,
 		request.Params.TextDocument.LanguageId,
 		request.Params.TextDocument.Version,

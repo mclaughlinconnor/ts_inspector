@@ -152,7 +152,7 @@ type State struct {
 type File struct {
 	Classes     [](*Class)
 	Content     string
-	Exports     [](*Export)
+	Exports     [](*Reference)
 	Filetype    string
 	Imports     [](*ast.ImportParseResult)
 	LineOffsets []uint32
@@ -164,17 +164,17 @@ type Class struct {
 	AngularTemplateFile  *File
 	Content              string
 	Definitions          Definitions
-	Extends              []*Class
+	Extends              []*Reference
 	ExtendsIdentNames    []string
 	File                 *File
-	Implements           []*Class
+	Implements           []*Reference
 	ImplementsIdentNames []string
 	Name                 string
 	Node                 *sitter.Node
 	Usages               Usages
 }
 
-type Export struct {
+type Reference struct {
 	Class *Class
 	Name  string
 	Node  *sitter.Node
@@ -182,6 +182,8 @@ type Export struct {
 	// Variable *Variable
 	// ...
 }
+
+var logger = utils.GetLogger("parser_state")
 
 func (c *Class) Postprocess(state *State) {
 	c.resolveExtendsImplements(state)
@@ -197,33 +199,111 @@ func (c *Class) resolveExtendsImplements(state *State) {
 	c.Implements = implements
 }
 
-func resolveIdentFromImports(idents []string, file *File, state *State) []*Class {
-	resolved := make([]*Class, len(idents))
+func getFileByPath(state *State, path string) *File {
+	file, found := state.Files[path]
+	if found {
+		return file
+	}
 
-	for _, ident := range idents {
+	if !utils.FileExists(path) {
+		return nil
+	}
+
+	HandleFile(state, UriFromFilename(path), "", 0, "", logger)
+	file, found = state.Files[path]
+	if found {
+		return file
+	}
+
+	return nil
+}
+
+func resolveProjectImportPath(state *State, currentFile *File, importPath string) *File {
+	absolutePath, err := filepath.Abs(path.Join(filepath.Dir(FilenameFromUri(currentFile.URI)), importPath))
+	if err != nil {
+		logger.Println(err)
+
+		return nil
+	}
+
+	resolvedFile := getFileByPath(state, absolutePath)
+	if resolvedFile != nil {
+		return resolvedFile
+	}
+
+	return nil
+}
+
+func resolveNodeModulesImportPath(state *State, currentFile *File, importPath string) *File {
+	currentPath := filepath.Dir(FilenameFromUri(currentFile.URI))
+
+	for currentPath != "." && currentPath != "/" {
+		nmPath := path.Join(currentPath, "node_modules")
+		stat, err := os.Stat(nmPath)
+		if err != nil {
+			currentPath = path.Dir(currentPath)
+			continue
+		}
+
+		if stat.IsDir() {
+			resolvedFile := getFileByPath(state, path.Join(nmPath, importPath))
+			if resolvedFile != nil {
+				return resolvedFile
+			}
+		}
+
+		currentPath = path.Dir(currentPath)
+	}
+
+	resolvedFile := getFileByPath(state, currentPath)
+	if resolvedFile != nil {
+		return resolvedFile
+	}
+
+	return nil
+}
+
+func resolveIdentFromImports(idents []string, file *File, state *State) []*Reference {
+	resolved := make([]*Reference, len(idents))
+
+	for identIndex, ident := range idents {
 		importPath := file.FindImportPath(ident)
 
 		if importPath == "" {
 			continue
 		}
 
-		absolutePath, err := filepath.Abs(path.Join(filepath.Dir(FilenameFromUri(file.URI)), importPath))
-		if err != nil {
-			continue
-		}
+		var importedFile *File
 
-		importedFile, found := state.Files[absolutePath+".ts"]
-		if !found {
-			importedFile, found = state.Files[absolutePath+".js"]
+		extensions := []string{".ts", ".d.ts", ".js"}
+		joinSuffixes := []string{"", "index"}
 
-			if !found {
-				continue
+		for _, join := range joinSuffixes {
+			ip := path.Join(importPath, join)
+			for _, extension := range extensions {
+				importedFile = resolveProjectImportPath(state, file, ip+extension)
+				if importedFile != nil {
+					break
+				}
+			}
+
+			if importedFile == nil {
+				for _, extension := range extensions {
+					importedFile = resolveNodeModulesImportPath(state, file, ip+extension)
+					if importedFile != nil {
+						break
+					}
+				}
+			}
+
+			if importedFile != nil {
+				break
 			}
 		}
 
-		for i, class := range importedFile.Classes {
-			if class.Name == ident {
-				resolved[i] = class
+		for _, export := range importedFile.Exports {
+			if export.Name == ident {
+				resolved[identIndex] = export
 			}
 		}
 	}
@@ -265,7 +345,7 @@ func NewFile(uri string, filetype string, version int) (File, error) {
 	return File{
 		Classes:     []*Class{},
 		Content:     "",
-		Exports:     []*Export{},
+		Exports:     []*Reference{},
 		Filetype:    filetype,
 		Imports:     []*ast.ImportParseResult{},
 		LineOffsets: []uint32{},

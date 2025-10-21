@@ -18,8 +18,9 @@ type typescriptWalkState struct {
 }
 
 type classWalkState struct {
-	Classes []*Class
-	Exports []*Export
+	IsExport bool
+	Classes  []*Class
+	Exports  []*Reference
 }
 
 func HandleTypeScriptFile(state *State, file File) (File, error) {
@@ -42,16 +43,17 @@ func HandleTypeScriptFile(state *State, file File) (File, error) {
 
 			file.Imports = append(file.Imports, imports...)
 
-			visitor := func(node *sitter.Node, classes classWalkState, indexInParent int, funcMap walk.VisitorFuncMap[classWalkState]) classWalkState {
-				if node.Type() == "export_statement" {
-					declaration := node.ChildByFieldName("declaration")
-					if declaration != nil {
-						if declaration.Type() != "class_declaration" {
-							return classes
-						}
-					}
-				}
+			funcMap := walk.NewVisitorFuncsMap[classWalkState]()
 
+			funcMap["export_statement"] = func(node *sitter.Node, state classWalkState, indexInParent int, funcMap walk.VisitorFuncMap[classWalkState]) classWalkState {
+				state.IsExport = true
+				state = walk.VisitNamedChildren(node, state, funcMap)
+				state.IsExport = false
+
+				return state
+			}
+
+			classVisitor := func(node *sitter.Node, classes classWalkState, indexInParent int, funcMap walk.VisitorFuncMap[classWalkState]) classWalkState {
 				class := Class{Content: node.Content(content), File: &file, Node: node}
 
 				class, err := utils.ParseFile(false, class.Content, utils.TypeScript, class,
@@ -92,18 +94,17 @@ func HandleTypeScriptFile(state *State, file File) (File, error) {
 
 				classes.Classes = append(classes.Classes, &class)
 
-				if node.Type() == "export_statement" {
-					export := Export{Node: node, Name: class.Name, Class: &class}
+				if classes.IsExport {
+					export := Reference{Node: node, Name: class.Name, Class: &class}
 					classes.Exports = append(classes.Exports, &export)
 				}
 
 				return classes
 			}
 
-			funcMap := walk.NewVisitorFuncsMap[classWalkState]()
-
-			funcMap["class_declaration"] = visitor
-			funcMap["export_statement"] = visitor
+			funcMap["class_declaration"] = classVisitor
+			funcMap["abstract_class_declaration"] = classVisitor
+			funcMap["interface_declaration"] = classVisitor
 
 			state := classWalkState{Classes: file.Classes, Exports: file.Exports}
 
@@ -207,7 +208,8 @@ func ExtractTemplateFilename(class Class, root *sitter.Node, content []byte) (st
 
 func ExtractMetadata(class *Class, root *sitter.Node, content []byte) (Class, error) {
 	funcMap := walk.NewVisitorFuncsMap[*Class]()
-	funcMap["class_declaration"] = func(node *sitter.Node, state *Class, indexInParent int, funcMap walk.VisitorFuncMap[*Class]) *Class {
+
+	classVisitor := func(node *sitter.Node, state *Class, indexInParent int, funcMap walk.VisitorFuncMap[*Class]) *Class {
 		nameNode := node.ChildByFieldName("name")
 		if nameNode == nil {
 			return state
@@ -254,6 +256,9 @@ func ExtractMetadata(class *Class, root *sitter.Node, content []byte) (Class, er
 
 		return state
 	}
+
+	funcMap["abstract_class_declaration"] = classVisitor
+	funcMap["class_declaration"] = classVisitor
 
 	walk.Walk(root, class, funcMap)
 

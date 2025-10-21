@@ -19,3 +19,21 @@ func VisitNode[T any](node *sitter.Node, state T, indexInParent int, visitorFunc
 
 	return state
 }
+
+func VisitNamedChildren[T any](node *sitter.Node, state T, funcMap VisitorFuncMap[T]) T {
+	for i := range node.NamedChildCount() {
+		index := int(i)
+		state = VisitNode(node.NamedChild(index), state, index, funcMap)
+	}
+
+	return state
+}
+
+func VisitChildren[T any](node *sitter.Node, state T, funcMap VisitorFuncMap[T]) T {
+	for i := range node.ChildCount() {
+		index := int(i)
+		state = VisitNode(node.Child(index), state, index, funcMap)
+	}
+
+	return state
+}

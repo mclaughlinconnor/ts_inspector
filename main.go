@@ -46,7 +46,7 @@ func main() {
 
 	var err error
 	for _, file := range files {
-		state, err = parser.HandleFile(state, file, "", 0, "", logger)
+		err = parser.HandleFile(&state, file, "", 0, "", logger)
 		if err != nil {
 			logger.Fatal(err)
 		}
