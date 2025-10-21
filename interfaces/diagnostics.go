@@ -97,7 +97,10 @@ func NewDiagnostic(node *sitter.Node, severity int, source string, message strin
 }
 
 func DiagnosticFromAnalysis(analysis analysis.Analysis) Diagnostic {
+	code := any(analysis.Code)
+
 	return Diagnostic{
+		Code:     &code,
 		Range:    analysis.Range,
 		Severity: &analysis.Severity,
 		Source:   &analysis.Source,

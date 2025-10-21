@@ -8,6 +8,7 @@ import (
 	"runtime/debug"
 
 	"ts_inspector/actions"
+	"ts_inspector/analysis"
 	"ts_inspector/commands"
 	"ts_inspector/interfaces"
 	"ts_inspector/parser"
@@ -32,6 +33,8 @@ func Start() {
 	utils.InitQueries()
 	actions.InitActions()
 	commands.InitCommands()
+	analysis.InitAnalysers()
+
 	state := parser.State{Classes: map[string]*parser.Class{}, Files: map[string]*parser.File{}}
 
 	for scanner.Scan() {

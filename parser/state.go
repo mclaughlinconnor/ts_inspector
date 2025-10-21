@@ -135,6 +135,36 @@ type Usages map[string]Usage
 
 type Definitions map[string]Definition
 
+func (d *Definition) IsLocalParam() bool {
+	return d.AccessModifier == NoAccessibility
+}
+
+func (d *Definition) IsUsed() bool {
+	return len(d.Usages) != 0
+}
+
+func (d *Definition) HasAngularDecorator() bool {
+	for _, decorator := range d.Decorators {
+		if decorator.IsAngular {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (d *Definition) IsPublic() bool {
+	return d.AccessModifier == PublicAccessibility
+}
+
+func (d *Definition) IsPrivate() bool {
+	return d.AccessModifier == PrivateAccessibility
+}
+
+func (d *Definition) IsProtected() bool {
+	return d.AccessModifier == ProtectedAccessibility
+}
+
 func CalculateNewAccessType(new access, old access) access {
 	if new.Precedence > old.Precedence {
 		return new

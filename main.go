@@ -9,6 +9,7 @@ import (
 	"runtime/pprof"
 	"syscall"
 	"ts_inspector/actions"
+	"ts_inspector/analysis"
 	traversetypescriptfiles "ts_inspector/ast/indexing"
 	"ts_inspector/commands"
 	"ts_inspector/lsp"
@@ -37,6 +38,7 @@ func main() {
 	utils.InitQueries()
 	actions.InitActions()
 	commands.InitCommands()
+	analysis.InitAnalysers()
 
 	logger := utils.GetLogger("indexing")
 

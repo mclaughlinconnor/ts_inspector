@@ -8,85 +8,35 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
+type analyser = (func(file parser.File) []Analysis)
+
+var Analysers [](analyser) = []analyser{}
+
+func registerAnalyser(analyser analyser) {
+	Analysers = append(Analysers, analyser)
+}
+
 func Analyse(file parser.File) []Analysis {
 	analyses := []Analysis{}
 
-	for _, class := range file.Classes {
-		analyses = append(analyses, analyseClass(*class)...)
+	for _, analyser := range Analysers {
+		analyses = append(analyses, analyser(file)...)
 	}
 
 	return analyses
 }
 
-func analyseClass(class parser.Class) []Analysis {
+func analyseClasses(file parser.File, analyse func(class parser.Class) []Analysis) []Analysis {
 	analyses := []Analysis{}
 
-	getters := class.GetGetters()
-	definitions := class.Definitions
-
-	if class.AngularTemplateFile == nil {
-		// No analysis for files that are not angular controllers
-		return analyses
-	}
-
-	for _, definition := range getters {
-		used := len(definition.Usages) != 0
-		if used && definition.UsageAccess == parser.TemplateAccess {
-			message := fmt.Sprintf("Getter used in template: %s", definition.Name)
-			analyses = append(analyses, newAnalysisHighlightName(definition.Node, class, AnalysisSeverity.Hint, message))
-		}
-	}
-
-	for _, definition := range definitions {
-		definitionIsPublic := definition.AccessModifier == parser.PublicAccessibility
-		definitionIsLocalParam := definition.AccessModifier == parser.NoAccessibility
-		used := len(definition.Usages) != 0
-
-		if used && definition.IsConstructorParam() && definition.UsageAccess == parser.ConstructorAccess {
-			message := fmt.Sprintf("Variable only used in constructor: %s", definition.Name)
-			analyses = append(analyses, newAnalysisHighlightName(definition.Node, class, AnalysisSeverity.Warning, message))
-		}
-
-		var hasAngularDecorator bool = false
-		for _, decorator := range definition.Decorators {
-			hasAngularDecorator = hasAngularDecorator || decorator.IsAngular
-		}
-
-		if definitionIsPublic && !hasAngularDecorator && !definition.Static && !definition.IsAngularMethod && !definition.Override {
-			if !used {
-				message := fmt.Sprintf("Unused public variable: %s", definition.Name)
-				analyses = append(analyses, newAnalysisHighlightName(definition.Node, class, AnalysisSeverity.Warning, message))
-			} else if definition.UsageAccess != parser.TemplateAccess {
-				message := fmt.Sprintf("Needlessly public variable: %s", definition.Name)
-				analyses = append(analyses, newAnalysisHighlightName(definition.Node, class, AnalysisSeverity.Warning, message))
-			}
-		}
-
-		if hasAngularDecorator && len(definition.Usages) == 0 && !definitionIsLocalParam {
-			if definition.Override {
-				message := fmt.Sprintf("Angular property never used in this component: %s. Check the parent class.", definition.Name)
-				analyses = append(analyses, newAnalysisHighlightName(definition.Node, class, AnalysisSeverity.Hint, message))
-			} else {
-				message := fmt.Sprintf("Angular property never used in this component: %s", definition.Name)
-				analyses = append(analyses, newAnalysisHighlightName(definition.Node, class, AnalysisSeverity.Warning, message))
-			}
-		}
-
-		if hasAngularDecorator && !definitionIsPublic && !definitionIsLocalParam {
-			message := fmt.Sprintf("Angular property should be public: %s", definition.Name)
-			analyses = append(analyses, newAnalysisHighlightName(definition.Node, class, AnalysisSeverity.Warning, message))
-		}
-
-		if definition.IsAngularMethod && definition.Async {
-			message := "Angular method must not be async"
-			analyses = append(analyses, newAnalysisHighlightName(definition.Node, class, AnalysisSeverity.Error, message))
-		}
+	for _, class := range file.Classes {
+		analyses = append(analyses, analyse(*class)...)
 	}
 
 	return analyses
 }
 
-func newAnalysisHighlightName(problemNode *sitter.Node, class parser.Class, severity int, message string) Analysis {
+func newAnalysisHighlightName(problemNode *sitter.Node, class parser.Class, severity int, code string, message string) Analysis {
 	var highlightNode *sitter.Node
 
 	nameNode := problemNode.ChildByFieldName("name")
@@ -107,14 +57,18 @@ func newAnalysisHighlightName(problemNode *sitter.Node, class parser.Class, seve
 	startPosition := parser.GetPositionForOffset(class.File.Content, startByte)
 	endPosition := parser.GetPositionForOffset(class.File.Content, endByte)
 
-	return newAnalysis(utils.Range{Start: startPosition, End: endPosition}, severity, message)
+	return newAnalysis(code, utils.Range{Start: startPosition, End: endPosition}, severity, message)
 }
 
-func newAnalysis(highlightRange utils.Range, severity int, message string) Analysis {
-	return Analysis{
-		message,
-		highlightRange,
-		severity,
-		"ts_inspector",
-	}
+func newAnalysis(code string, highlightRange utils.Range, severity int, message string) Analysis {
+	return Analysis{code, message, highlightRange, severity, "ts_inspector"}
+}
+
+func InitAnalysers() {
+	registerAnalyser(asyncAngular)
+	registerAnalyser(constructorOnlyProperty)
+	registerAnalyser(getterUsedInTemplate)
+	registerAnalyser(nonPublicAngular)
+	registerAnalyser(unnecessaryPublic)
+	registerAnalyser(unusedAngular)
 }

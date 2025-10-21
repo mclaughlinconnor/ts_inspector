@@ -5,6 +5,8 @@ import (
 )
 
 type Analysis struct {
+	Code string
+
 	Message string
 
 	Range utils.Range
