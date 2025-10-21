@@ -10,8 +10,8 @@ import (
 )
 
 func MakeAsync(
-	state parser.State,
-	file parser.File,
+	state *parser.State,
+	file *parser.File,
 	editRange utils.Range,
 ) (actionEdits utils.TextEdits, allowed bool, err error) {
 	if file.Filetype != "typescript" {

@@ -54,7 +54,7 @@ func HandleTypeScriptFile(state *State, file File) (File, error) {
 			}
 
 			classVisitor := func(node *sitter.Node, classes classWalkState, indexInParent int, funcMap walk.VisitorFuncMap[classWalkState]) classWalkState {
-				class := Class{Content: node.Content(content), File: &file, Node: node}
+				class := NewClass(node.Content(content), &file, node)
 
 				class, err := utils.ParseFile(false, class.Content, utils.TypeScript, class,
 					func(classRoot *sitter.Node, content []byte, class Class) (Class, error) {

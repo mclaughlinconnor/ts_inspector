@@ -9,7 +9,7 @@ func asyncAngular(file parser.File) []Analysis {
 		analyses := []Analysis{}
 
 		for _, definition := range class.Definitions {
-			if definition.IsAngularMethod && definition.Async {
+			if definition.IsAngularesqueMethod && definition.Async {
 				message := "Angular method must not be async"
 				analyses = append(analyses, newAnalysisHighlightName(definition.Node, class, AnalysisSeverity.Error, "async-angular", message))
 			}

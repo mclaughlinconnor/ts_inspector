@@ -10,7 +10,7 @@ func unnecessaryPublic(file parser.File) []Analysis {
 		analyses := []Analysis{}
 
 		for _, definition := range class.Definitions {
-			if definition.IsPublic() && !definition.HasAngularDecorator() && !definition.Static && !definition.IsAngularMethod && !definition.Override {
+			if definition.IsPublic() && !definition.HasAngularDecorator() && !definition.Static && !definition.IsAngularesqueMethod && !definition.Override {
 				code := "unnecessary-public"
 				if !definition.IsUsed() {
 					message := fmt.Sprintf("Unused public variable: %s", definition.Name)

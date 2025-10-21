@@ -9,7 +9,7 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
-func AddImport(state parser.State, args *[]any) (map[string]utils.TextEdits, error) {
+func AddImport(state *parser.State, args *[]any) (map[string]utils.TextEdits, error) {
 	changes := map[string]utils.TextEdits{}
 	slice := *args
 

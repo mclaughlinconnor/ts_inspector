@@ -16,6 +16,12 @@ func PostprocessClasses(state *State) {
 	}
 }
 
+func (f *File) PostprocessClasses(state *State) {
+	for _, class := range f.Classes {
+		class.Postprocess(state)
+	}
+}
+
 func handleFile(state *State, uri string, languageId string, version int, content string, _ *log.Logger) (File, error) {
 	v := version
 	if v == 0 {

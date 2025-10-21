@@ -8,7 +8,7 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
-func AddDestroyedObservable(state parser.State, file parser.File, _ utils.Range) (actionEdits utils.TextEdits, allowed bool, err error) {
+func AddDestroyedObservable(state *parser.State, file *parser.File, _ utils.Range) (actionEdits utils.TextEdits, allowed bool, err error) {
 	if file.Filetype != "typescript" {
 		return nil, false, nil
 	}

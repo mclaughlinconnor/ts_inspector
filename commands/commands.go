@@ -8,7 +8,7 @@ import (
 
 type Command struct {
 	interfaces.Command
-	Perform func(parser.State, *[]any) (commandEdits map[string]utils.TextEdits, err error)
+	Perform func(*parser.State, *[]any) (commandEdits map[string]utils.TextEdits, err error)
 }
 
 var Commands []Command

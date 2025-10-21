@@ -8,7 +8,7 @@ import (
 var Actions []Action
 
 type Action struct {
-	Perform func(parser.State, parser.File, utils.Range) (actionEdits []utils.TextEdit, allowed bool, err error)
+	Perform func(*parser.State, *parser.File, utils.Range) (actionEdits []utils.TextEdit, allowed bool, err error)
 	Title   string
 }
 

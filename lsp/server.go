@@ -48,10 +48,7 @@ func Start() {
 			continue
 		}
 
-		ns, ok := handleMessage(logger, writer, state, method, contents)
-		if ok {
-			state = ns
-		}
+		handleMessage(logger, writer, &state, method, contents)
 	}
 
 	logger.Println("LSP event loop finished")
@@ -61,16 +58,13 @@ func Start() {
 	}
 }
 
-func handleMessage(logger *log.Logger, writer io.Writer, state parser.State, method string, contents []byte) (parser.State, bool) {
-	defer func() (parser.State, bool) {
+func handleMessage(logger *log.Logger, writer io.Writer, state *parser.State, method string, contents []byte) {
+	defer func() {
 		if r := recover(); r != nil {
 			logger.Println("Panicked with: ", r, "responding with empty response")
 			logger.Println("Stack: ", string(debug.Stack()))
 			utils.WriteResponse(writer, Response{RPC: "2.0", ID: &utils.MostRecentId})
-
 		}
-
-		return state, false
 	}()
 
 	r := utils.TryParseRequest[interfaces.Request](logger, contents)
@@ -88,10 +82,10 @@ func handleMessage(logger *log.Logger, writer io.Writer, state parser.State, met
 		Shutdown <- 1
 	case "textDocument/didOpen":
 		request := utils.TryParseRequest[interfaces.DidOpenTextDocumentNotification](logger, contents)
-		state = HandleDidOpen(writer, logger, state, request)
+		HandleDidOpen(writer, logger, state, request)
 	case "textDocument/didChange":
 		request := utils.TryParseRequest[interfaces.DidChangeTextDocumentNotification](logger, contents)
-		state = HandleDidChange(writer, logger, state, request)
+		HandleDidChange(writer, logger, state, request)
 	case "textDocument/codeAction":
 		request := utils.TryParseRequest[interfaces.CodeActionRequest](logger, contents)
 		HandleCodeAction(writer, logger, state, request)
@@ -110,6 +104,4 @@ func handleMessage(logger *log.Logger, writer io.Writer, state parser.State, met
 
 		utils.WriteResponse(writer, Response{RPC: "2.0", ID: &utils.MostRecentId})
 	}
-
-	return state, true
 }

@@ -8,9 +8,9 @@ import (
 	"ts_inspector/utils"
 )
 
-func HandleDidOpen(writer io.Writer, logger *log.Logger, state parser.State, request interfaces.DidOpenTextDocumentNotification) parser.State {
+func HandleDidOpen(writer io.Writer, logger *log.Logger, state *parser.State, request interfaces.DidOpenTextDocumentNotification) {
 	err := parser.HandleFile(
-		&state,
+		state,
 		request.Params.TextDocument.Uri,
 		request.Params.TextDocument.LanguageId,
 		request.Params.TextDocument.Version,
@@ -22,11 +22,7 @@ func HandleDidOpen(writer io.Writer, logger *log.Logger, state parser.State, req
 		logger.Println(err)
 	} else {
 		file := state.Files[parser.FilenameFromUri(request.Params.TextDocument.Uri)]
-
-		// My diagnostics only work on files with a controller or template
-		// if file.Controller == "" && file.Template == "" {
-		// 	return state
-		// }
+		file.PostprocessClasses(state)
 
 		utils.WriteResponse(writer, interfaces.GenerateDiagnosticsForFile(*file))
 
@@ -34,6 +30,4 @@ func HandleDidOpen(writer io.Writer, logger *log.Logger, state parser.State, req
 			utils.WriteResponse(writer, interfaces.GenerateDiagnosticsForFile(*state.Files[depFile]))
 		}
 	}
-
-	return state
 }

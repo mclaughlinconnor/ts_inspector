@@ -71,4 +71,5 @@ func InitAnalysers() {
 	registerAnalyser(nonPublicAngular)
 	registerAnalyser(unnecessaryPublic)
 	registerAnalyser(unusedAngular)
+	registerAnalyser(angularMethodNoImplements)
 }

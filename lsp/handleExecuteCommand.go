@@ -14,7 +14,7 @@ func response(writer io.Writer, id int) {
 	utils.WriteResponse(writer, Response{RPC: "2.0", ID: &id})
 }
 
-func HandleExecuteCommand(writer io.Writer, logger *log.Logger, state parser.State, request interfaces.ExecuteCommandRequest) {
+func HandleExecuteCommand(writer io.Writer, logger *log.Logger, state *parser.State, request interfaces.ExecuteCommandRequest) {
 	commandName := request.Params.Command
 	args := request.Params.Arguments
 

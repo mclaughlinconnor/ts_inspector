@@ -55,7 +55,7 @@ type WorkspaceEdit struct {
 	Changes map[string]utils.TextEdits `json:"changes"`
 }
 
-func WorkspaceEditFromEdits(file parser.File, edits utils.TextEdits) WorkspaceEdit {
+func WorkspaceEditFromEdits(file *parser.File, edits utils.TextEdits) WorkspaceEdit {
 	filename := parser.UriFromFilename(file.Filename())
 	return WorkspaceEdit{
 		Changes: map[string]utils.TextEdits{

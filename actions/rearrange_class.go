@@ -10,8 +10,8 @@ import (
 )
 
 func RearrangeClass(
-	state parser.State,
-	file parser.File,
+	state *parser.State,
+	file *parser.File,
 	editRange utils.Range,
 ) (actionEdits utils.TextEdits, allowed bool, err error) {
 	definitions := ast.ExtractDefinitions([]byte(file.Content))

@@ -19,15 +19,15 @@ func newCodeActionResponse(id int, codeActions []interfaces.CodeAction) interfac
 	}
 }
 
-func HandleCodeAction(writer io.Writer, logger *log.Logger, state parser.State, request interfaces.CodeActionRequest) {
+func HandleCodeAction(writer io.Writer, logger *log.Logger, state *parser.State, request interfaces.CodeActionRequest) {
 	file := state.Files[parser.FilenameFromUri(request.Params.TextDocument.Uri)]
 
-	codeActions := GenerateActions(logger, state, *file, request.Params.Range)
+	codeActions := GenerateActions(logger, state, file, request.Params.Range)
 
 	utils.WriteResponse(writer, newCodeActionResponse(request.ID, codeActions))
 }
 
-func GenerateActions(logger *log.Logger, state parser.State, file parser.File, editRange utils.Range) []interfaces.CodeAction {
+func GenerateActions(logger *log.Logger, state *parser.State, file *parser.File, editRange utils.Range) []interfaces.CodeAction {
 	codeActions := []interfaces.CodeAction{}
 
 	for _, action := range actions.Actions {

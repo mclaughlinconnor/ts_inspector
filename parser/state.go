@@ -32,25 +32,29 @@ var PrivateAccessibility = accessibility{"private"}
 var ProtectedAccessibility = accessibility{"protected"}
 
 type Definition struct {
-	AccessModifier     accessibility
-	Async              bool
-	Decorators         []Decorator
-	Generator          bool
-	Getter             bool
-	OriginFunctionName string
-	IsAngularMethod    bool
-	Name               string
-	Node               *sitter.Node
-	Override           bool
-	Readonly           bool
-	Setter             bool
-	Static             bool
-	UsageAccess        access
-	Usages             []UsageInstance
+	AccessModifier       accessibility
+	Async                bool
+	Decorators           []Decorator
+	Generator            bool
+	Getter               bool
+	OriginFunctionName   string
+	IsAngularesqueMethod bool
+	Name                 string
+	Node                 *sitter.Node
+	Override             bool
+	Readonly             bool
+	Setter               bool
+	Static               bool
+	UsageAccess          access
+	Usages               []UsageInstance
 }
 
 func (def Definition) IsConstructorParam() bool {
 	return def.OriginFunctionName == "constructor"
+}
+
+func (d *Definition) IsAngularMethod() bool {
+	return strings.HasPrefix(d.Name, "ng") && IsAngularFunction(d.Name)
 }
 
 func (c Class) AddDefinition(definition Definition) Class {
@@ -60,7 +64,7 @@ func (c Class) AddDefinition(definition Definition) Class {
 
 	name := definition.Name
 
-	definition.IsAngularMethod = IsAngularFunction(name)
+	definition.IsAngularesqueMethod = IsAngularFunction(name)
 
 	if c.Definitions == nil {
 		c.Definitions = make(map[string]Definition)
@@ -194,14 +198,28 @@ type Class struct {
 	AngularTemplateFile  *File
 	Content              string
 	Definitions          Definitions
-	Extends              []*Reference
+	Extends              References // Extends may have nil references if resolution failed
 	ExtendsIdentNames    []string
 	File                 *File
-	Implements           []*Reference
+	Implements           References // Implements may have nil references if resolution failed
 	ImplementsIdentNames []string
 	Name                 string
 	Node                 *sitter.Node
 	Usages               Usages
+}
+
+type References []*Reference
+
+func (r *References) IterateResolved(yield func(*Reference) bool) {
+	for _, v := range *r {
+		if v == nil {
+			continue
+		}
+
+		if !yield(v) {
+			return
+		}
+	}
 }
 
 type Reference struct {
@@ -213,10 +231,35 @@ type Reference struct {
 	// ...
 }
 
+func NewClass(content string, file *File, node *sitter.Node) Class {
+	return Class{
+		Content:              content,
+		Definitions:          make(map[string]Definition),
+		Extends:              []*Reference{},
+		ExtendsIdentNames:    []string{},
+		File:                 file,
+		Implements:           []*Reference{},
+		ImplementsIdentNames: []string{},
+		Name:                 "",
+		Node:                 node,
+		Usages:               make(map[string]Usage),
+	}
+}
+
 var logger = utils.GetLogger("parser_state")
 
 func (c *Class) Postprocess(state *State) {
 	c.resolveExtendsImplements(state)
+}
+
+func (c *Class) HasDefinition(name string) bool {
+	for _, d := range c.Definitions {
+		if d.Name == name {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (c *Class) resolveExtendsImplements(state *State) {
@@ -547,19 +590,19 @@ func CalculateAccessibilityFromString(a string) (accessibility, error) {
 
 func CreatePropertyDefinition(accessModifier accessibility, decorators []Decorator, name string, node *sitter.Node) Definition {
 	return Definition{
-		AccessModifier:  accessModifier,
-		Async:           false,
-		Decorators:      decorators,
-		Generator:       false,
-		Getter:          false,
-		IsAngularMethod: false,
-		Name:            name,
-		Node:            node,
-		Override:        false,
-		Readonly:        false,
-		Setter:          false,
-		Static:          false,
-		UsageAccess:     access{},
-		Usages:          []UsageInstance{},
+		AccessModifier:       accessModifier,
+		Async:                false,
+		Decorators:           decorators,
+		Generator:            false,
+		Getter:               false,
+		IsAngularesqueMethod: false,
+		Name:                 name,
+		Node:                 node,
+		Override:             false,
+		Readonly:             false,
+		Setter:               false,
+		Static:               false,
+		UsageAccess:          access{},
+		Usages:               []UsageInstance{},
 	}
 }

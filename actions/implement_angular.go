@@ -9,8 +9,8 @@ import (
 )
 
 func ImplementAngular(
-	state parser.State,
-	file parser.File,
+	state *parser.State,
+	file *parser.File,
 	implements string,
 	imports []string,
 	methodDefinition string,
