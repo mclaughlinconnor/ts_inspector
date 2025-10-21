@@ -40,7 +40,7 @@ func Start() {
 	for scanner.Scan() {
 		logger.Println("Scanner found the next message")
 		msg := scanner.Bytes()
-		logger.Println("Received msg", msg)
+		logger.Println("Received msg", string(msg))
 		method, contents, err := rpc.DecodeMessage(msg)
 		logger.Println(method)
 		if err != nil {
@@ -48,7 +48,7 @@ func Start() {
 			continue
 		}
 
-		ns, ok := handleMessage(logger, writer, state, method, contents, msg)
+		ns, ok := handleMessage(logger, writer, state, method, contents)
 		if ok {
 			state = ns
 		}
@@ -61,7 +61,7 @@ func Start() {
 	}
 }
 
-func handleMessage(logger *log.Logger, writer io.Writer, state parser.State, method string, contents []byte, msg []byte) (parser.State, bool) {
+func handleMessage(logger *log.Logger, writer io.Writer, state parser.State, method string, contents []byte) (parser.State, bool) {
 	defer func() (parser.State, bool) {
 		if r := recover(); r != nil {
 			logger.Println("Panicked with: ", r, "responding with empty response")
