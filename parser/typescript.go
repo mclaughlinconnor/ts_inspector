@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"log"
 	"path"
 	"path/filepath"
 	"ts_inspector/ast"
@@ -14,114 +15,177 @@ type typescriptWalkState struct {
 	DefinitionStack  utils.Stack[Definition]
 	InDecorator      bool
 	TemplateFilename string
-	Class
+	*Class
 }
 
 type classWalkState struct {
-	IsExport bool
-	Classes  []*Class
-	Exports  []*Reference
+	Classes   []*Class
+	Decorator *sitter.Node
+	Exports   []*Reference
+	IsExport  bool
 }
 
-func HandleTypeScriptFile(state *State, file File) (File, error) {
-	fromDisk := file.Content == ""
-	var source string
-	if fromDisk {
-		source = file.Filename()
-	} else {
-		source = file.Content
+func extractFileImports(root *sitter.Node, file *File) error {
+	imports, err := ast.ExtractImports(root, []byte(file.Content))
+	if err != nil {
+		return err
 	}
 
-	return utils.ParseFile(fromDisk, source, utils.TypeScript, file,
-		func(root *sitter.Node, content []byte, file File) (File, error) {
-			file.SetContent(CStr2GoStr(content))
+	file.Imports = append(file.Imports, imports...)
 
-			imports, err := ast.ExtractImports(root, content)
-			if err != nil {
-				return file, err
-			}
+	return nil
+}
 
-			file.Imports = append(file.Imports, imports...)
+func parseClasses(state *State, root *sitter.Node, file *File) {
+	funcMap := walk.NewVisitorFuncsMap[classWalkState]()
 
-			funcMap := walk.NewVisitorFuncsMap[classWalkState]()
+	funcMap["export_statement"] = func(node *sitter.Node, classWalkState classWalkState, indexInParent int, funcMap walk.VisitorFuncMap[classWalkState]) classWalkState {
+		classWalkState.IsExport = true
 
-			funcMap["export_statement"] = func(node *sitter.Node, state classWalkState, indexInParent int, funcMap walk.VisitorFuncMap[classWalkState]) classWalkState {
-				state.IsExport = true
-				state = walk.VisitNamedChildren(node, state, funcMap)
-				state.IsExport = false
+		decorator := node.ChildByFieldName("decorator")
+		if decorator != nil {
+			classWalkState.Decorator = decorator
+		}
 
-				return state
-			}
+		classWalkState = walk.VisitNamedChildren(node, classWalkState, funcMap)
 
-			classVisitor := func(node *sitter.Node, classes classWalkState, indexInParent int, funcMap walk.VisitorFuncMap[classWalkState]) classWalkState {
-				class := NewClass(node.Content(content), &file, node)
+		classWalkState.IsExport = false
+		classWalkState.Decorator = nil
 
-				class, err := utils.ParseFile(false, class.Content, utils.TypeScript, class,
-					func(classRoot *sitter.Node, content []byte, class Class) (Class, error) {
-						class, err := ExtractMetadata(&class, classRoot, []byte(class.Content))
-						if err != nil {
-							return class, err
-						}
+		return classWalkState
+	}
 
-						class, err = ExtractTypeScriptDefinitions(class, classRoot, []byte(class.Content))
-						if err != nil {
-							return class, err
-						}
+	classVisitor := func(node *sitter.Node, classWalkState classWalkState, indexInParent int, funcMap walk.VisitorFuncMap[classWalkState]) classWalkState {
+		classContent := node.Content([]byte(file.Content))
 
-						class, err = ExtractTypeScriptUsages(class, classRoot, content)
-						if err != nil {
-							return class, err
-						}
+		var class *Class
 
-						templateFilename, err := ExtractTemplateFilename(class, classRoot, content)
-						if err != nil {
-							return class, err
-						}
+		_, err := utils.ParseFile(false, classContent, utils.TypeScript, nil,
+			func(classRoot *sitter.Node, content []byte, _ any) (any, error) {
+				uri := file.URI
+				className := ExtractClassName(classRoot, content)
 
-						if templateFilename != "" {
-							class, err = HandleTemplate(state, class, templateFilename)
-							if err != nil {
-								return class, err
-							}
-						}
+				var found bool
+				class, found = state.Classes[ClassId(uri, className)]
+				if !found {
+					c := NewClass(classContent, file, node)
+					c.Name = className
+					class = &c
+				} else {
+					class.Reset()
+					class.Node = node
+					class.Content = CStr2GoStr(content)
+					class.Name = className
+				}
 
-						return class, nil
-					})
+				ExtractMetadata(class, classRoot, []byte(class.Content))
+
+				err := ExtractTypeScriptDefinitions(class, classRoot, []byte(class.Content))
+				if err != nil {
+					return class, err
+				}
+
+				err = ExtractTypeScriptUsages(class, classRoot, content)
+				if err != nil {
+					return class, err
+				}
+
+				var templateFilename string
+
+				if classWalkState.Decorator != nil {
+					templateFilename, err = ExtractTemplateFilename(class, classWalkState.Decorator, []byte(file.Content))
+				} else {
+					templateFilename, err = ExtractTemplateFilename(class, classRoot, content)
+				}
 
 				if err != nil {
-					return classes
+					return class, err
 				}
 
-				classes.Classes = append(classes.Classes, &class)
-
-				if classes.IsExport {
-					export := Reference{Node: node, Name: class.Name, Class: &class}
-					classes.Exports = append(classes.Exports, &export)
+				if templateFilename != "" {
+					err = handleTemplate(state, class, templateFilename)
+					if err != nil {
+						return class, err
+					}
 				}
 
-				return classes
-			}
+				return nil, nil
+			})
 
-			funcMap["abstract_class_declaration"] = classVisitor
-			funcMap["class_declaration"] = classVisitor
-			funcMap["interface_declaration"] = classVisitor
+		if err != nil || class == nil {
+			return classWalkState
+		}
 
-			state := classWalkState{Classes: file.Classes, Exports: file.Exports}
+		file.Classes = append(file.Classes, class)
+		if classWalkState.IsExport {
+			export := Reference{Node: node, Name: class.Name, Class: class}
+			file.Exports = append(file.Exports, &export)
+		}
 
-			state = walk.Walk(root, state, funcMap)
+		return classWalkState
+	}
 
-			file.Classes = state.Classes
-			file.Exports = state.Exports
+	funcMap["abstract_class_declaration"] = classVisitor
+	funcMap["class_declaration"] = classVisitor
+	funcMap["interface_declaration"] = classVisitor
 
-			return file, nil
-		})
+	classWalkState := classWalkState{}
+
+	walk.Walk(root, classWalkState, funcMap)
 }
 
-func HandleTemplate(state *State, class Class, templateFilename string) (Class, error) {
-	return HandlePugFile(state, class, templateFilename)
+func IndexTypeScriptFileFromIndexer(state *State, filename string) error {
+	var err error
+
+	file, err := createFileIfNotExists(state, filename, "", 0)
+	if err != nil {
+		return err
+	}
+	file.ResetClasses()
+
+	_, err = utils.ParseFile(false, file.Content, utils.TypeScript, nil, func(root *sitter.Node, fileContent []byte, _ any) (any, error) {
+		err = extractFileImports(root, file)
+		if err != nil {
+			return nil, err
+		}
+
+		parseClasses(state, root, file)
+
+		return nil, nil
+	})
+
+	return err
 }
 
-func ExtractTemplateFilename(class Class, root *sitter.Node, content []byte) (string, error) {
+func IndexTypeScriptFileFromLsp(state *State, uri string, languageId string, version int, content string, logger *log.Logger) error {
+	var err error
+
+	file, err := createFileIfNotExists(state, FilenameFromUri(uri), content, version)
+	if err != nil {
+		return err
+	}
+	file.ResetClasses()
+
+	_, err = utils.ParseFile(false, file.Content, utils.TypeScript, nil, func(root *sitter.Node, fileContent []byte, _ any) (any, error) {
+		err = extractFileImports(root, file) // todo need to reset imports too
+		if err != nil {
+			return nil, err
+		}
+
+		parseClasses(state, root, file)
+
+		return nil, nil
+	})
+
+	return err
+}
+
+func handleTemplate(state *State, class *Class, templateFilename string) error {
+	return IndexPugFromTypeScript(state, class, templateFilename)
+}
+
+// Must not store references to any nodes on the Class. This can be called on either file-based or class-based content
+func ExtractTemplateFilename(class *Class, root *sitter.Node, content []byte) (string, error) {
 	funcMap := walk.NewVisitorFuncsMap[typescriptWalkState]()
 	funcMap["decorator"] = func(node *sitter.Node, state typescriptWalkState, indexInParent int, funcMap walk.VisitorFuncMap[typescriptWalkState]) typescriptWalkState {
 		call := node.NamedChild(0)
@@ -206,17 +270,29 @@ func ExtractTemplateFilename(class Class, root *sitter.Node, content []byte) (st
 	return s.TemplateFilename, nil
 }
 
-func ExtractMetadata(class *Class, root *sitter.Node, content []byte) (Class, error) {
-	funcMap := walk.NewVisitorFuncsMap[*Class]()
+func ExtractClassName(root *sitter.Node, content []byte) string {
+	funcMap := walk.NewVisitorFuncsMap[string]()
 
-	classVisitor := func(node *sitter.Node, state *Class, indexInParent int, funcMap walk.VisitorFuncMap[*Class]) *Class {
+	classVisitor := func(node *sitter.Node, state string, indexInParent int, funcMap walk.VisitorFuncMap[string]) string {
 		nameNode := node.ChildByFieldName("name")
 		if nameNode == nil {
 			return state
 		}
 
-		state.Name = nameNode.Content(content)
+		return nameNode.Content(content)
+	}
 
+	funcMap["abstract_class_declaration"] = classVisitor
+	funcMap["class_declaration"] = classVisitor
+	funcMap["interface_declaration"] = classVisitor
+
+	return walk.Walk(root, "", funcMap)
+}
+
+func ExtractMetadata(class *Class, root *sitter.Node, content []byte) {
+	funcMap := walk.NewVisitorFuncsMap[*Class]()
+
+	classVisitor := func(node *sitter.Node, state *Class, indexInParent int, funcMap walk.VisitorFuncMap[*Class]) *Class {
 		for i := range node.NamedChildCount() {
 			child := node.NamedChild(int(i))
 			t := child.Type()
@@ -254,7 +330,7 @@ func ExtractMetadata(class *Class, root *sitter.Node, content []byte) (Class, er
 
 		}
 
-		return state
+		return nil
 	}
 
 	funcMap["abstract_class_declaration"] = classVisitor
@@ -262,22 +338,20 @@ func ExtractMetadata(class *Class, root *sitter.Node, content []byte) (Class, er
 	funcMap["interface_declaration"] = classVisitor
 
 	walk.Walk(root, class, funcMap)
-
-	return *class, nil
 }
 
-func ExtractTypeScriptUsages(class Class, root *sitter.Node, content []byte) (Class, error) {
+func ExtractTypeScriptUsages(class *Class, root *sitter.Node, content []byte) error {
 	funcMap := walk.NewVisitorFuncsMap[typescriptWalkState]()
 	funcMap["member_expression"] = visitUsageExpression(content)
 	funcMap["subscript_expression"] = visitUsageExpression(content)
 
 	s := typescriptWalkState{Class: class}
-	s = walk.Walk(root, s, funcMap)
+	walk.Walk(root, s, funcMap)
 
-	return s.Class, nil
+	return nil
 }
 
-func ExtractTypeScriptDefinitions(class Class, root *sitter.Node, content []byte) (Class, error) {
+func ExtractTypeScriptDefinitions(class *Class, root *sitter.Node, content []byte) error {
 	funcMap := walk.NewVisitorFuncsMap[typescriptWalkState]()
 	funcMap["method_definition"] = visitDefinition(content)
 	funcMap["method_signature"] = visitDefinition(content)
@@ -376,10 +450,10 @@ func ExtractTypeScriptDefinitions(class Class, root *sitter.Node, content []byte
 	s := typescriptWalkState{Class: class}
 	s = walk.Walk(root, s, funcMap)
 
-	return s.Class, nil
+	return nil
 }
 
-func addUsage(class Class, name string, node *sitter.Node, content []byte) Class {
+func addUsage(class *Class, name string, node *sitter.Node, content []byte) {
 	access := LocalAccess
 	if isInConstructor(node, content) {
 		access = ConstructorAccess
@@ -387,11 +461,9 @@ func addUsage(class Class, name string, node *sitter.Node, content []byte) Class
 
 	usageInstance := UsageInstance{access, node}
 
-	class = class.SetUsageAccessType(name, usageInstance.Access)
-	class = class.AppendUsage(name, usageInstance)
-	class = class.AppendDefinitionUsage(name, usageInstance)
-
-	return class
+	class.SetUsageAccessType(name, usageInstance.Access)
+	class.AppendUsage(name, &usageInstance)
+	class.AppendDefinitionUsage(name, &usageInstance)
 }
 
 func isInConstructor(node *sitter.Node, content []byte) bool {
@@ -457,7 +529,7 @@ func visitUsageExpression(content []byte) walk.VisitorFunction[typescriptWalkSta
 		}
 
 		varName := varNode.Content(content)
-		state.Class = addUsage(state.Class, varName, node, content)
+		addUsage(state.Class, varName, node, content)
 
 		for i := range node.NamedChildCount() {
 			index := int(i)
@@ -509,7 +581,7 @@ func visitDefinition(content []byte) walk.VisitorFunction[typescriptWalkState] {
 		}
 
 		finalDefinition := state.DefinitionStack.Pop()
-		state.Class = state.Class.AddDefinition(*finalDefinition)
+		state.Class.AddDefinition(*finalDefinition)
 
 		return state
 	}

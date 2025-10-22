@@ -18,11 +18,6 @@ import (
 )
 
 func main() {
-	if len(os.Args) == 1 {
-		startLsp()
-		return
-	}
-
 	var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
 
 	flag.Parse()
@@ -42,25 +37,28 @@ func main() {
 
 	logger := utils.GetLogger("indexing")
 
-	file := "../angular-tour-of-heroes"
-	files := traversetypescriptfiles.Index(file)
-	state := parser.State{Classes: map[string]*parser.Class{}, Files: map[string]*parser.File{}, RootURI: file}
+	projectRoot := "../angular-tour-of-heroes"
+	filenames := traversetypescriptfiles.Index(projectRoot)
+	state := parser.State{Classes: map[string]*parser.Class{}, Files: map[string]*parser.File{}, RootURI: projectRoot}
 
 	var err error
-	for _, file := range files {
-		err = parser.HandleFile(&state, file, "", 0, "", logger)
+	for _, filename := range filenames {
+		err = parser.IndexFileFromIndexer(&state, filename)
 		if err != nil {
 			logger.Fatal(err)
 		}
 	}
 
-	parser.PostprocessClasses(&state)
+	state.Postprocess()
 
-	fmt.Print(state)
+	if len(os.Args) == 1 {
+		startLsp(&state)
+		return
+	}
 }
 
-func startLsp() {
-	go lsp.Start()
+func startLsp(state *parser.State) {
+	go lsp.Start(state)
 
 	sigs := make(chan os.Signal, 1)
 

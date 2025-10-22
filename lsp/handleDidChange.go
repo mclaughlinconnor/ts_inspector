@@ -9,7 +9,7 @@ import (
 )
 
 func HandleDidChange(writer io.Writer, logger *log.Logger, state *parser.State, request interfaces.DidChangeTextDocumentNotification) {
-	err := parser.HandleFile(
+	err := parser.IndexFileFromLsp(
 		state,
 		request.Params.TextDocument.Uri,
 		request.Params.TextDocument.LanguageId,
@@ -22,11 +22,11 @@ func HandleDidChange(writer io.Writer, logger *log.Logger, state *parser.State, 
 		logger.Println(err)
 	} else {
 		file := state.Files[parser.FilenameFromUri(request.Params.TextDocument.Uri)]
-		file.PostprocessClasses(state)
+		state.Postprocess()
 
 		utils.WriteResponse(writer, interfaces.GenerateDiagnosticsForFile(*file))
 
-		for _, depFile := range file.GetDependencies() {
+		for _, depFile := range file.GetDependencies(state) {
 			utils.WriteResponse(writer, interfaces.GenerateDiagnosticsForFile(*state.Files[depFile]))
 		}
 	}

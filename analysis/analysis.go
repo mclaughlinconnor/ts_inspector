@@ -30,6 +30,10 @@ func analyseClasses(file parser.File, analyse func(class parser.Class) []Analysi
 	analyses := []Analysis{}
 
 	for _, class := range file.Classes {
+		if file.URI != class.File.URI {
+			continue
+		}
+
 		analyses = append(analyses, analyse(*class)...)
 	}
 

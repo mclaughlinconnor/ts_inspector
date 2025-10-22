@@ -18,7 +18,7 @@ import (
 
 var Shutdown = make(chan int, 1)
 
-func Start() {
+func Start(state *parser.State) {
 	logger := utils.GetLogger("ts_inspector")
 	logger.Println("Started")
 
@@ -35,8 +35,6 @@ func Start() {
 	commands.InitCommands()
 	analysis.InitAnalysers()
 
-	state := parser.State{Classes: map[string]*parser.Class{}, Files: map[string]*parser.File{}}
-
 	for scanner.Scan() {
 		logger.Println("Scanner found the next message")
 		msg := scanner.Bytes()
@@ -48,7 +46,7 @@ func Start() {
 			continue
 		}
 
-		handleMessage(logger, writer, &state, method, contents)
+		handleMessage(logger, writer, state, method, contents)
 	}
 
 	logger.Println("LSP event loop finished")

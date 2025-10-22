@@ -46,7 +46,7 @@ type Definition struct {
 	Setter               bool
 	Static               bool
 	UsageAccess          access
-	Usages               []UsageInstance
+	Usages               []*UsageInstance
 }
 
 func (def Definition) IsConstructorParam() bool {
@@ -57,9 +57,9 @@ func (d *Definition) IsAngularMethod() bool {
 	return strings.HasPrefix(d.Name, "ng") && IsAngularFunction(d.Name)
 }
 
-func (c Class) AddDefinition(definition Definition) Class {
+func (c *Class) AddDefinition(definition Definition) {
 	if definition.Usages == nil {
-		definition.Usages = []UsageInstance{}
+		definition.Usages = []*UsageInstance{}
 	}
 
 	name := definition.Name
@@ -70,31 +70,62 @@ func (c Class) AddDefinition(definition Definition) Class {
 		c.Definitions = make(map[string]Definition)
 	}
 	c.Definitions[name] = definition
-
-	return c
 }
 
-func (c Class) AppendDefinitionUsage(name string, usage UsageInstance) Class {
+func (c *Class) DropTemplateUsages() {
+	for usageIndex, usage := range c.Usages {
+		usageInstances := make([]*UsageInstance, 0)
+		access := NoAccess
+		for usageInstanceIndex, _ := range usage.Usages {
+			usageInstance := usage.Usages[usageInstanceIndex]
+
+			if usageInstance.Access != TemplateAccess {
+				usageInstances = append(usageInstances, usageInstance)
+				access = CalculateNewAccessType(access, usageInstance.Access)
+			}
+		}
+
+		usage.Usages = usageInstances
+		usage.Access = access
+
+		c.Usages[usageIndex] = usage
+
+		for definitionIndex, definition := range c.Definitions {
+			if definition.Name == usage.Name {
+				definition.Usages = usageInstances
+				definition.UsageAccess = access
+			}
+
+			c.Definitions[definitionIndex] = definition
+		}
+	}
+
+	for key, usage := range c.Usages {
+		if len(usage.Usages) == 0 {
+			delete(c.Usages, key)
+		}
+	}
+}
+
+func (c *Class) AppendDefinitionUsage(name string, usage *UsageInstance) {
 	definition, found := c.Definitions[name]
 	if !found {
-		return c
+		return
 	}
 
 	definition.UsageAccess = CalculateNewAccessType(definition.UsageAccess, usage.Access)
 	definition.Usages = append(definition.Usages, usage)
 	c.Definitions[name] = definition
-
-	return c
 }
 
-func (c Class) AppendUsage(name string, usage UsageInstance) Class {
+func (c *Class) AppendUsage(name string, usage *UsageInstance) {
 	usages, found := c.Usages[name]
 
 	if found {
 		usages.Usages = append(usages.Usages, usage)
 		c.Usages[name] = usages
 
-		return c
+		return
 	}
 
 	if !found {
@@ -105,18 +136,14 @@ func (c Class) AppendUsage(name string, usage UsageInstance) Class {
 		c.Usages[name] = Usage{
 			usage.Access,
 			name,
-			[]UsageInstance{usage},
+			[]*UsageInstance{usage},
 		}
 	}
-
-	return c
 }
 
-func (c Class) SetUsageAccessType(name string, access access) Class {
+func (c *Class) SetUsageAccessType(name string, access access) {
 	usage := c.Usages[name]
 	usage.Access = CalculateNewAccessType(access, usage.Access)
-
-	return c
 }
 
 type Decorator struct {
@@ -132,7 +159,7 @@ type UsageInstance struct {
 type Usage struct {
 	Access access
 	Name   string
-	Usages []UsageInstance
+	Usages []*UsageInstance
 }
 
 type Usages map[string]Usage
@@ -186,12 +213,17 @@ type State struct {
 type File struct {
 	Classes     [](*Class)
 	Content     string
-	Exports     [](*Reference)
+	Exports     References
 	Filetype    string
 	Imports     [](*ast.ImportParseResult)
 	LineOffsets []uint32
 	URI         string
 	Version     int
+}
+
+func (f *File) ResetClasses() {
+	f.Classes = make([](*Class), 0)
+	f.Exports = make(References, 0)
 }
 
 type Class struct {
@@ -282,7 +314,7 @@ func getFileByPath(state *State, path string) *File {
 		return nil
 	}
 
-	HandleFile(state, UriFromFilename(path), "", 0, "", logger)
+	IndexFileFromIndexer(state, path)
 	file, found = state.Files[path]
 	if found {
 		return file
@@ -396,26 +428,46 @@ func (f *File) FindImportPath(identifier string) string {
 	return ""
 }
 
-func (c Class) Id() string {
-	return c.File.URI + "-" + c.Name
+func (c *Class) Id() string {
+	return ClassId(c.File.URI, c.Name)
 }
 
-func NewFile(uri string, filetype string, version int) (File, error) {
+func ClassId(uri string, className string) string {
+	return uri + "-" + className
+}
+
+// Clears everything except the reference to the parent file
+func (c *Class) Reset() {
+	c.AngularTemplateFile = nil
+	c.Content = ""
+	clear(c.Definitions)
+	clear(c.Extends)
+	c.ExtendsIdentNames = make([]string, 0)
+	clear(c.Implements)
+	c.ImplementsIdentNames = make([]string, 0)
+	c.Name = ""
+	c.Node = nil
+	clear(c.Usages)
+}
+
+func NewFile(uri string, filetype string, version int) (*File, error) {
 	filename := FilenameFromUri(uri)
 
 	if !strings.HasPrefix(filename, "/") {
 		cwd, err := os.Getwd()
 		if err != nil {
-			return File{}, err
+			file := File{}
+			return &file, err
 		}
 
 		filename, err = filepath.Abs(path.Join(cwd, filename)) // what?
 		if err != nil {
-			return File{}, err
+			file := File{}
+			return &file, err
 		}
 	}
 
-	return File{
+	file := File{
 		Classes:     []*Class{},
 		Content:     "",
 		Exports:     []*Reference{},
@@ -424,21 +476,33 @@ func NewFile(uri string, filetype string, version int) (File, error) {
 		LineOffsets: []uint32{},
 		URI:         UriFromFilename(filename),
 		Version:     version,
-	}, nil
+	}
+
+	return &file, nil
 }
 
 func (f File) Filename() string {
 	return FilenameFromUri(f.URI)
 }
 
-func (f File) GetDependencies() []string {
+func (f *File) GetDependencies(state *State) []string {
 	dependents := make([]string, 0)
-	// for _, class := range f.Classes {
-	// 	dependents = append(dependents, class.Controllers...)
-	// 	if class.Template != "" {
-	// 		dependents = append(dependents, class.Template)
-	// 	}
-	// }
+
+	for _, class := range state.Classes {
+		if class.AngularTemplateFile == f {
+			dependents = append(dependents, class.File.Filename())
+		}
+	}
+
+	for _, class := range f.Classes {
+		if class.AngularTemplateFile == f {
+			dependents = append(dependents, class.AngularTemplateFile.Filename())
+		}
+
+		if class.File.Filename() != f.Filename() {
+			dependents = append(dependents, class.File.Filename())
+		}
+	}
 
 	return dependents
 }
@@ -476,28 +540,29 @@ func getLineOffsets(text string) []uint32 {
 	return offsets
 }
 
-func (f *File) SetContent(content string) {
+var lastSeenDocumentVersion = make(map[string]int, 0)
+
+func versionFallback(version int, uri string) int {
+	v := version
+	if v == 0 {
+		lastSeenVersion, found := lastSeenDocumentVersion[uri]
+		if found {
+			v = lastSeenVersion
+		}
+	} else {
+		lastSeenDocumentVersion[uri] = v
+	}
+
+	return v
+}
+
+func (f *File) SetContent(content string, version int) {
 	lineOffsets := getLineOffsets(content)
 	f.LineOffsets = lineOffsets
 	f.Content = content
+
+	f.Version = versionFallback(version, f.URI)
 }
-
-// func (f File) SetContent(content string) File {
-// 	lineOffsets := getLineOffsets(content)
-// 	f.LineOffsets = lineOffsets
-// 	f.Content = content
-// 	return f
-// }
-
-// func (s State) GetClassForTemplate(uri string) *Class {
-// 	for _, class := range s.Classes {
-// 		if class.AngularTemplateFile != nil && class.AngularTemplateFile.URI == uri {
-// 			return &class
-// 		}
-// 	}
-//
-// 	return nil
-// }
 
 func (f File) GetOffsetForPosition(p utils.Position) uint32 {
 	lines := uint32(len(f.LineOffsets))
@@ -603,6 +668,6 @@ func CreatePropertyDefinition(accessModifier accessibility, decorators []Decorat
 		Setter:               false,
 		Static:               false,
 		UsageAccess:          access{},
-		Usages:               []UsageInstance{},
+		Usages:               []*UsageInstance{},
 	}
 }

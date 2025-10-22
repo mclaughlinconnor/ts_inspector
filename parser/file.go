@@ -2,105 +2,114 @@ package parser
 
 import (
 	"log"
+	"ts_inspector/utils"
 
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
 type parseCallback[V any] func(root *sitter.Node, content []byte, v V) (V, error)
 
-var lastSeenDocumentVersion = make(map[string]int, 0)
-
-func PostprocessClasses(state *State) {
-	for _, class := range state.Classes {
-		class.Postprocess(state)
-	}
-}
-
-func (f *File) PostprocessClasses(state *State) {
-	for _, class := range f.Classes {
-		class.Postprocess(state)
-	}
-}
-
-func handleFile(state *State, uri string, languageId string, version int, content string, _ *log.Logger) (File, error) {
-	v := version
-	if v == 0 {
-		lastSeenVersion, found := lastSeenDocumentVersion[uri]
-		if found {
-			v = lastSeenVersion
+func (s *State) Postprocess() {
+	for _, file := range s.Files {
+		for _, class := range file.Classes {
+			s.Classes[class.Id()] = class
 		}
-	} else {
-		lastSeenDocumentVersion[uri] = v
 	}
 
-	file, err := NewFile(uri, languageId, v)
-	if err != nil {
-		return file, err
-	}
-
-	file.SetContent(content)
-
-	if languageId == "typescript" {
-		file, err = HandleTypeScriptFile(state, file)
-	}
-
-	return file, err
+	s.postprocessClasses()
 }
 
-func HandleFile(state *State, uri string, languageId string, version int, content string, logger *log.Logger) error {
-	if languageId == "" {
-		var err error
-		languageId, err = FiletypeFromFilename(FilenameFromUri(uri))
+func (s *State) postprocessClasses() {
+	for _, class := range s.Classes {
+		class.Postprocess(s)
+	}
+}
+
+func IndexFileFromLsp(state *State, uri string, languageId string, version int, content string, logger *log.Logger) error {
+	var err error
+
+	language := languageId
+
+	if language == "" {
+		filetype, err := FiletypeFromFilename(FilenameFromUri(uri))
 		if err != nil {
 			return err
 		}
+
+		language = filetype
 	}
 
-	file, err := handleFile(state, uri, languageId, version, content, logger)
-	if err != nil {
-		return err
+	if language == "typescript" {
+		err = IndexTypeScriptFileFromLsp(state, uri, languageId, version, content, logger)
+	} else if language == "pug" {
+		err = IndexPugFileFromLsp(state, uri, content, version)
 	}
 
-	state.Files[file.Filename()] = &file
-
-	for _, class := range file.Classes {
-		state.Classes[class.Id()] = class
-	}
-
-	err = handleDependencies(file, state, logger)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
-func handleDependencies(file File, state *State, logger *log.Logger) error {
-	dependencies := file.GetDependencies()
-	for _, depFile := range dependencies {
-		err := handleDependency(state, depFile, logger)
+func IndexFileFromIndexer(state *State, filename string) error {
+	var err error
 
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func handleDependency(state *State, filename string, logger *log.Logger) error {
 	filetype, err := FiletypeFromFilename(filename)
 	if err != nil {
 		return err
 	}
-	df, err := handleFile(state, UriFromFilename(filename), filetype, 0, state.Files[filename].Content, logger)
-	if err != nil {
-		return err
-	}
-	state.Files[df.Filename()] = &df
 
-	for _, class := range df.Classes {
-		state.Classes[class.Id()] = class
+	if filetype == "typescript" {
+		err = IndexTypeScriptFileFromIndexer(state, filename)
+	} else if filetype == "pug" {
+		err = IndexPugFromIndexer(state, filename)
+	}
+
+	return err
+
+}
+
+func createFileIfNotExists(state *State, filename string, content string, version int) (*File, error) {
+	file, found := state.Files[filename]
+	if !found {
+		uri := UriFromFilename(filename)
+
+		filetype, err := FiletypeFromFilename(filename)
+		if err != nil {
+			return nil, err
+		}
+
+		file, err = NewFile(uri, filetype, versionFallback(0, uri))
+		if err != nil {
+			return nil, err
+		}
+
+		if content != "" {
+			file.SetContent(content, version)
+		} else {
+			_, err = utils.ParseFile(true, file.Filename(), filetype, nil, func(root *sitter.Node, content []byte, _ any) (any, error) {
+				file.SetContent(CStr2GoStr(content), version)
+
+				return nil, nil
+			})
+		}
+
+		state.Files[file.Filename()] = file
+	} else {
+		if content != "" || version != 0 {
+			file.SetContent(content, version)
+		}
+	}
+
+	return file, nil
+}
+
+func handleDependencies(file *File, state *State, logger *log.Logger) error {
+	dependencies := file.GetDependencies(state)
+
+	for _, depFile := range dependencies {
+		err := IndexFileFromIndexer(state, depFile)
+
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

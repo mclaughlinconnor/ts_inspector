@@ -8,98 +8,119 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
-func HandlePugFile(state *State, class Class, uri string) (Class, error) {
-	f, err := NewFile(uri, "pug", 0)
-	if err != nil {
-		return class, err
+func indexPug(state *State, file *File) error {
+	for _, class := range state.Classes {
+		if class.AngularTemplateFile == file {
+			class.DropTemplateUsages()
+
+			err := ExtractPugUsages(class, []byte(file.Content))
+			if err != nil {
+				return err
+			}
+		}
 	}
 
-	filename := f.Filename()
-	state.Files[filename] = &f
-
-	file := state.Files[filename]
-	class.AngularTemplateFile = file
-
-	class, err = utils.ParseFile(true, uri, utils.Pug, class, func(root *sitter.Node, content []byte, class Class) (Class, error) {
-		file.SetContent(CStr2GoStr(content))
-
-		class, err := ExtractPugUsages(class, content)
-
-		if err != nil {
-			return class, err
-		}
-
-		file.Classes = append(file.Classes, &class)
-
-		return class, nil
-	})
-
-	return class, err
+	return nil
 }
 
-func ExtractPugUsages(file Class, content []byte) (Class, error) {
-	pugFuncMap := walk.NewVisitorFuncsMap[Class]()
+func IndexPugFromTypeScript(state *State, class *Class, templateFileName string) error {
+	filetype, err := FiletypeFromFilename(templateFileName)
+	if err != nil || filetype != "pug" {
+		return err
+	}
+
+	file, err := createFileIfNotExists(state, templateFileName, "", 0)
+	if err != nil {
+		return err
+	}
+	file.ResetClasses()
+
+	class.AngularTemplateFile = file
+
+	err = ExtractPugUsages(class, []byte(file.Content))
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func IndexPugFromIndexer(state *State, templateFileName string) error {
+	filetype, err := FiletypeFromFilename(templateFileName)
+	if err != nil || filetype != "pug" {
+		return err
+	}
+
+	file, err := createFileIfNotExists(state, templateFileName, "", 0)
+	if err != nil {
+		return err
+	}
+	file.ResetClasses()
+
+	return indexPug(state, file)
+}
+
+func IndexPugFileFromLsp(state *State, uri string, content string, version int) error {
+	filetype, err := FiletypeFromFilename(FilenameFromUri(uri))
+	if err != nil || filetype != "pug" {
+		return err
+	}
+
+	file, err := createFileIfNotExists(state, FilenameFromUri(uri), content, version)
+	if err != nil {
+		return err
+	}
+	file.ResetClasses()
+
+	indexPug(state, file)
+
+	return nil
+}
+
+func ExtractPugUsages(class *Class, content []byte) error {
+	pugFuncMap := walk.NewVisitorFuncsMap[*Class]()
 	pugFuncMap["attribute"] = visitAttribute(content)
 	pugFuncMap["content"] = visitContent(content)
 
 	root, err := utils.GetRootNode(false, string(content), utils.Pug)
 	if err != nil {
-		return file, err
+		return err
 	}
 
-	file = walk.Walk(root, file, pugFuncMap)
+	output := walk.Walk(root, class, pugFuncMap)
+	if output != class {
+		panic("ExtractPugUsages altered the class pointer")
+	}
 
-	return file, nil
+	return nil
 }
 
 // Intentionally only get `identifier`s instead of `property_identifier`s because only the `identifier` will exist on the controller
-func extractIndentifierUsages(text []byte, class Class) (Class, error) {
+func extractIndentifierUsages(text []byte, class *Class) error {
 	root, err := utils.GetRootNode(false, string(text), utils.JavaScript)
 	if err != nil {
-		return class, err
+		return err
 	}
 
-	funcMap := walk.NewVisitorFuncsMap[Class]()
-	funcMap["identifier"] = func(node *sitter.Node, state Class, indexInParent int, _ walk.VisitorFuncMap[Class]) Class {
+	funcMap := walk.NewVisitorFuncsMap[*Class]()
+	funcMap["identifier"] = func(node *sitter.Node, state *Class, indexInParent int, _ walk.VisitorFuncMap[*Class]) *Class {
 		name := node.Content(text)
 		usageInstance := UsageInstance{TemplateAccess, node}
 
-		class = class.SetUsageAccessType(name, usageInstance.Access).AppendUsage(name, usageInstance)
+		class.SetUsageAccessType(name, usageInstance.Access)
+		class.AppendUsage(name, &usageInstance)
+		class.AppendDefinitionUsage(name, &usageInstance)
 
 		return class
 	}
 
 	class = walk.Walk(root, class, funcMap)
 
-	return class, nil
+	return nil
 }
 
-// func assignTemplate(controller string, state State, template string) State {
-// 	c, found := state.Classes[controller]
-// 	if !found {
-// 		return state
-// 	}
-//
-// 	c.Template = template
-// 	state.Classes[controller] = c
-//
-// 	return state
-// }
-
-// func assignController(template string, state State, controller string) State {
-// 	c, found := state.Classes[template]
-// 	if !found {
-// 		return state
-// 	}
-//
-// 	c.Controller = controller
-// 	state.Classes[template] = c
-//
-// 	return state
-// }
-
-func visitAttribute(content []byte) walk.VisitorFunction[Class] {
-	return func(node *sitter.Node, state Class, indexInParent int, _ walk.VisitorFuncMap[Class]) Class {
+func visitAttribute(content []byte) walk.VisitorFunction[*Class] {
+	return func(node *sitter.Node, state *Class, indexInParent int, _ walk.VisitorFuncMap[*Class]) *Class {
 		var nameNode *sitter.Node
 		var valueNode *sitter.Node
 
@@ -132,20 +153,21 @@ func visitAttribute(content []byte) walk.VisitorFunction[Class] {
 		if valueNode.Type() == "javascript" && strings.HasPrefix(string(value), "`") && strings.HasSuffix(string(value), "`") {
 			value = value[1 : len(value)-1]
 		}
-		state, _ = extractIndentifierUsages(value, state)
+
+		extractIndentifierUsages(value, state)
 
 		return state
 	}
 }
 
-func visitContent(content []byte) walk.VisitorFunction[Class] {
-	return func(node *sitter.Node, state Class, indexInParent int, _ walk.VisitorFuncMap[Class]) Class {
+func visitContent(content []byte) walk.VisitorFunction[*Class] {
+	return func(node *sitter.Node, state *Class, indexInParent int, _ walk.VisitorFuncMap[*Class]) *Class {
 		tagContent := []byte(node.Content(content))
 
-		angularContentFuncMap := walk.NewVisitorFuncsMap[Class]()
-		angularContentFuncMap["interpolation"] = func(node *sitter.Node, state Class, indexInParent int, _ walk.VisitorFuncMap[Class]) Class {
+		angularContentFuncMap := walk.NewVisitorFuncsMap[*Class]()
+		angularContentFuncMap["interpolation"] = func(node *sitter.Node, state *Class, indexInParent int, _ walk.VisitorFuncMap[*Class]) *Class {
 			interpolation := []byte(node.Content(tagContent))
-			state, _ = extractIndentifierUsages(interpolation, state)
+			_ = extractIndentifierUsages(interpolation, state)
 			return state
 		}
 
