@@ -11,17 +11,7 @@ type parseCallback[V any] func(root *sitter.Node, content []byte, v V) (V, error
 
 func (s *State) Postprocess() {
 	for _, file := range s.Files {
-		for _, class := range file.Classes {
-			s.Classes[class.Id()] = class
-		}
-	}
-
-	s.postprocessClasses()
-}
-
-func (s *State) postprocessClasses() {
-	for _, class := range s.Classes {
-		class.Postprocess(s)
+    file.Postprocess(s)
 	}
 }
 
@@ -62,8 +52,16 @@ func IndexFileFromIndexer(state *State, filename string) error {
 		err = IndexPugFromIndexer(state, filename)
 	}
 
-	return err
+  if err != nil {
+    return err
+  }
 
+  file, found := state.Files[filename]
+  if found {
+    file.Postprocess(state)
+  }
+
+  return nil
 }
 
 func createFileIfNotExists(state *State, filename string, content string, version int) (*File, error) {

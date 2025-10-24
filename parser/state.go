@@ -221,6 +221,14 @@ type File struct {
 	Version     int
 }
 
+func (f *File) Postprocess(state *State) {
+  for _, class := range f.Classes {
+    state.Classes[class.Id()] = class
+
+    class.Postprocess(state)
+  }
+}
+
 func (f *File) ResetClasses() {
 	f.Classes = make([](*Class), 0)
 	f.Exports = make(References, 0)
