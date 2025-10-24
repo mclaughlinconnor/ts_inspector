@@ -9,7 +9,7 @@ func getterUsedInTemplate(file parser.File) []Analysis {
 	return analyseClasses(file, func(class parser.Class) []Analysis {
 		analyses := []Analysis{}
 
-		if class.AngularTemplateFile == nil {
+		if class.GetTemplateFile() == nil {
 			return analyses
 		}
 

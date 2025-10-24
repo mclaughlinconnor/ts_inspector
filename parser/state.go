@@ -226,8 +226,20 @@ func (f *File) ResetClasses() {
 	f.Exports = make(References, 0)
 }
 
+type Component struct {
+	Imports       References
+	ImportsIdents []string
+	Selector      string
+	TemplateFile  *File
+	TemplateUrl   string
+}
+
+type Angular struct {
+	Component *Component
+}
+
 type Class struct {
-	AngularTemplateFile  *File
+	Angular              *Angular
 	Content              string
 	Definitions          Definitions
 	Extends              References // Extends may have nil references if resolution failed
@@ -238,6 +250,22 @@ type Class struct {
 	Name                 string
 	Node                 *sitter.Node
 	Usages               Usages
+}
+
+func (a *Angular) EnsureComponent() {
+	a.Component = &Component{}
+}
+
+func (c *Class) GetTemplateFile() *File {
+	if c.Angular != nil && c.Angular.Component != nil {
+		return c.Angular.Component.TemplateFile
+	}
+
+	return nil
+}
+
+func (c *Class) EnsureAngular() {
+	c.Angular = &Angular{}
 }
 
 type References []*Reference
@@ -438,7 +466,7 @@ func ClassId(uri string, className string) string {
 
 // Clears everything except the reference to the parent file
 func (c *Class) Reset() {
-	c.AngularTemplateFile = nil
+	c.Angular = nil
 	c.Content = ""
 	clear(c.Definitions)
 	clear(c.Extends)
@@ -489,14 +517,15 @@ func (f *File) GetDependencies(state *State) []string {
 	dependents := make([]string, 0)
 
 	for _, class := range state.Classes {
-		if class.AngularTemplateFile == f {
+		if class.GetTemplateFile() == f {
 			dependents = append(dependents, class.File.Filename())
 		}
 	}
 
 	for _, class := range f.Classes {
-		if class.AngularTemplateFile == f {
-			dependents = append(dependents, class.AngularTemplateFile.Filename())
+		t := class.GetTemplateFile()
+		if t == f {
+			dependents = append(dependents, t.Filename())
 		}
 
 		if class.File.Filename() != f.Filename() {

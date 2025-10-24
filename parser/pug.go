@@ -10,7 +10,7 @@ import (
 
 func indexPug(state *State, file *File) error {
 	for _, class := range state.Classes {
-		if class.AngularTemplateFile == file {
+		if class.GetTemplateFile() == file {
 			class.DropTemplateUsages()
 
 			err := ExtractPugUsages(class, []byte(file.Content))
@@ -35,7 +35,9 @@ func IndexPugFromTypeScript(state *State, class *Class, templateFileName string)
 	}
 	file.ResetClasses()
 
-	class.AngularTemplateFile = file
+	class.EnsureAngular()
+	class.Angular.EnsureComponent()
+	class.Angular.Component.TemplateFile = file
 
 	err = ExtractPugUsages(class, []byte(file.Content))
 	if err != nil {
