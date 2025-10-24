@@ -90,20 +90,18 @@ func parseClasses(state *State, root *sitter.Node, file *File) {
 					return class, err
 				}
 
-				var templateFilename string
-
 				if classWalkState.Decorator != nil {
-					templateFilename, err = ExtractTemplateFilename(class, classWalkState.Decorator, []byte(file.Content))
+					ExtractComponentData(state, class, classWalkState.Decorator, []byte(file.Content))
 				} else {
-					templateFilename, err = ExtractTemplateFilename(class, classRoot, content)
+					ExtractComponentData(state, class, classRoot, content)
 				}
 
 				if err != nil {
 					return class, err
 				}
 
-				if templateFilename != "" {
-					err = handleTemplate(state, class, templateFilename)
+				if class.Angular != nil && class.Angular.Component != nil && class.Angular.Component.TemplateUrl != "" {
+					err = handleTemplate(state, class, class.Angular.Component.TemplateUrl)
 					if err != nil {
 						return class, err
 					}

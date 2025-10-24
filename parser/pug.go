@@ -37,7 +37,7 @@ func IndexPugFromTypeScript(state *State, class *Class, templateFileName string)
 
 	class.EnsureAngular()
 	class.Angular.EnsureComponent()
-	class.Angular.Component.TemplateFile = file
+	class.Angular.Component.TemplateUrlFile = file
 
 	err = ExtractPugUsages(class, []byte(file.Content))
 	if err != nil {

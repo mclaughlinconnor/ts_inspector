@@ -227,11 +227,11 @@ func (f *File) ResetClasses() {
 }
 
 type Component struct {
-	Imports       References
-	ImportsIdents []string
-	Selector      string
-	TemplateFile  *File
-	TemplateUrl   string
+	Imports         References
+	ImportsIdents   []string
+	Selector        string
+	TemplateUrl     string
+	TemplateUrlFile *File
 }
 
 type Angular struct {
@@ -252,20 +252,35 @@ type Class struct {
 	Usages               Usages
 }
 
+func (c *Component) Postprocess(state *State, class *Class) {
+	imports := resolveIdentFromImports(c.ImportsIdents, class.File, state)
+	c.Imports = imports
+}
+
+func (a *Angular) Postprocess(state *State, class *Class) {
+	if a.Component != nil {
+		a.Component.Postprocess(state, class)
+	}
+}
+
 func (a *Angular) EnsureComponent() {
-	a.Component = &Component{}
+	if a.Component == nil {
+		a.Component = &Component{}
+	}
 }
 
 func (c *Class) GetTemplateFile() *File {
 	if c.Angular != nil && c.Angular.Component != nil {
-		return c.Angular.Component.TemplateFile
+		return c.Angular.Component.TemplateUrlFile
 	}
 
 	return nil
 }
 
 func (c *Class) EnsureAngular() {
-	c.Angular = &Angular{}
+	if c.Angular == nil {
+		c.Angular = &Angular{}
+	}
 }
 
 type References []*Reference
@@ -310,6 +325,10 @@ var logger = utils.GetLogger("parser_state")
 
 func (c *Class) Postprocess(state *State) {
 	c.resolveExtendsImplements(state)
+
+	if c.Angular != nil {
+		c.Angular.Postprocess(state, c)
+	}
 }
 
 func (c *Class) HasDefinition(name string) bool {
