@@ -7,9 +7,6 @@ import (
 	"os"
 	"runtime/debug"
 
-	"ts_inspector/actions"
-	"ts_inspector/analysis"
-	"ts_inspector/commands"
 	"ts_inspector/interfaces"
 	"ts_inspector/parser"
 	"ts_inspector/rpc"
@@ -29,11 +26,6 @@ func Start(state *parser.State) {
 	scanner.Buffer(buf, big)
 
 	writer := os.Stdout
-
-	utils.InitQueries()
-	actions.InitActions()
-	commands.InitCommands()
-	analysis.InitAnalysers()
 
 	for scanner.Scan() {
 		logger.Println("Scanner found the next message")
