@@ -8,7 +8,7 @@ type VisitorFuncMap[T any] map[string]VisitorFunction[T]
 var DefaultVisitorFuncKey = "__ts_inspector_default"
 
 func NewVisitorFuncsMap[T any]() VisitorFuncMap[T] {
-	var visitorFuncs VisitorFuncMap[T] = VisitorFuncMap[T]{
+	var visitorFuncs = VisitorFuncMap[T]{
 		"__ts_inspector_default": dummyVisitor[T],
 	}
 

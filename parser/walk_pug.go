@@ -8,77 +8,6 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
-func indexPug(state *State, file *File) error {
-	for _, class := range state.Classes {
-		if class.GetTemplateFile() == file {
-			class.DropTemplateUsages()
-
-			err := ExtractPugUsages(class, []byte(file.Content))
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
-}
-
-func IndexPugFromTypeScript(state *State, class *Class, templateFileName string) error {
-	filetype, err := FiletypeFromFilename(templateFileName)
-	if err != nil || filetype != "pug" {
-		return err
-	}
-
-	file, err := createFileIfNotExists(state, templateFileName, "", 0)
-	if err != nil {
-		return err
-	}
-	file.ResetClasses()
-
-	class.EnsureAngular()
-	class.Angular.EnsureComponent()
-	class.Angular.Component.TemplateUrlFile = file
-
-	err = ExtractPugUsages(class, []byte(file.Content))
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func IndexPugFromIndexer(state *State, templateFileName string) error {
-	filetype, err := FiletypeFromFilename(templateFileName)
-	if err != nil || filetype != "pug" {
-		return err
-	}
-
-	file, err := createFileIfNotExists(state, templateFileName, "", 0)
-	if err != nil {
-		return err
-	}
-	file.ResetClasses()
-
-	return indexPug(state, file)
-}
-
-func IndexPugFileFromLsp(state *State, uri string, content string, version int) error {
-	filetype, err := FiletypeFromFilename(FilenameFromUri(uri))
-	if err != nil || filetype != "pug" {
-		return err
-	}
-
-	file, err := createFileIfNotExists(state, FilenameFromUri(uri), content, version)
-	if err != nil {
-		return err
-	}
-	file.ResetClasses()
-
-	indexPug(state, file)
-
-	return nil
-}
-
 func ExtractPugUsages(class *Class, content []byte) error {
 	pugFuncMap := walk.NewVisitorFuncsMap[*Class]()
 	pugFuncMap["attribute"] = visitAttribute(content)
@@ -97,6 +26,62 @@ func ExtractPugUsages(class *Class, content []byte) error {
 	return nil
 }
 
+func IndexPugFileFromLsp(state *State, uri string, content string, version int) error {
+	filetype, err := FiletypeFromFilename(FilenameFromUri(uri))
+	if err != nil || filetype != "pug" {
+		return err
+	}
+
+	file, err := createFileIfNotExists(state, FilenameFromUri(uri), content, version)
+	if err != nil {
+		return err
+	}
+
+	file.ResetClasses()
+	indexPug(state, file)
+
+	return nil
+}
+func IndexPugFromIndexer(state *State, templateFileName string) error {
+	filetype, err := FiletypeFromFilename(templateFileName)
+	if err != nil || filetype != "pug" {
+		return err
+	}
+
+	file, err := createFileIfNotExists(state, templateFileName, "", 0)
+	if err != nil {
+		return err
+	}
+
+	file.ResetClasses()
+
+	return indexPug(state, file)
+}
+
+func IndexPugFromTypeScript(state *State, class *Class, templateFileName string) error {
+	filetype, err := FiletypeFromFilename(templateFileName)
+	if err != nil || filetype != "pug" {
+		return err
+	}
+
+	file, err := createFileIfNotExists(state, templateFileName, "", 0)
+	if err != nil {
+		return err
+	}
+
+	file.ResetClasses()
+	class.EnsureAngular()
+	class.Angular.EnsureComponent()
+	class.Angular.Component.TemplateUrlFile = file
+
+	err = ExtractPugUsages(class, []byte(file.Content))
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // Intentionally only get `identifier`s instead of `property_identifier`s because only the `identifier` will exist on the controller
 func extractIndentifierUsages(text []byte, class *Class) error {
 	root, err := utils.GetRootNode(false, string(text), utils.JavaScript)
@@ -107,6 +92,7 @@ func extractIndentifierUsages(text []byte, class *Class) error {
 	funcMap := walk.NewVisitorFuncsMap[*Class]()
 	funcMap["identifier"] = func(node *sitter.Node, state *Class, indexInParent int, _ walk.VisitorFuncMap[*Class]) *Class {
 		name := node.Content(text)
+
 		usageInstance := UsageInstance{TemplateAccess, node}
 
 		class.SetUsageAccessType(name, usageInstance.Access)
@@ -115,8 +101,22 @@ func extractIndentifierUsages(text []byte, class *Class) error {
 
 		return class
 	}
-
 	class = walk.Walk(root, class, funcMap)
+
+	return nil
+}
+
+func indexPug(state *State, file *File) error {
+	for _, class := range state.Classes {
+		if class.GetTemplateFile() == file {
+			class.DropTemplateUsages()
+
+			err := ExtractPugUsages(class, []byte(file.Content))
+			if err != nil {
+				return err
+			}
+		}
+	}
 
 	return nil
 }

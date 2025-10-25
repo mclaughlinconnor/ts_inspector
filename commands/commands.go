@@ -13,7 +13,7 @@ type Command struct {
 
 var Commands []Command
 
-var CommandMap map[string]Command = map[string]Command{}
+var CommandMap = map[string]Command{}
 
 type Action struct {
 	Perform func(parser.State, parser.File, utils.Range) (actionEdits []utils.TextEdit, allowed bool, err error)

@@ -8,9 +8,9 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
-type analyser = (func(file parser.File) []Analysis)
+type analyser = func(file parser.File) []Analysis
 
-var Analysers [](analyser) = []analyser{}
+var Analysers = []analyser{}
 
 func registerAnalyser(analyser analyser) {
 	Analysers = append(Analysers, analyser)

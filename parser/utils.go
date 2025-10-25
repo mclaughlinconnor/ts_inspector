@@ -53,14 +53,6 @@ var angularFunctions = map[string]bool{
 	"normaliseWriteValue":   true,
 }
 
-func FilenameFromUri(uri string) string {
-	return strings.TrimPrefix(uri, `file://`)
-}
-
-func UriFromFilename(filename string) string {
-	return `file://` + filename
-}
-
 func CStr2GoStr(b []byte) string {
 	i := bytes.IndexByte(b, 0)
 	if i < 0 {
@@ -68,4 +60,12 @@ func CStr2GoStr(b []byte) string {
 	}
 
 	return string(b[:i])
+}
+
+func FilenameFromUri(uri string) string {
+	return strings.TrimPrefix(uri, `file://`)
+}
+
+func UriFromFilename(filename string) string {
+	return `file://` + filename
 }

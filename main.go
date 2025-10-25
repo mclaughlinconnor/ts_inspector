@@ -43,7 +43,7 @@ func main() {
 
 	var err error
 	for _, filename := range filenames {
-    err = parser.IndexFileFromIndexer(&state, filename) // todo: are these filenames absolute?
+		err = parser.IndexFileFromIndexer(&state, filename) // todo: are these filenames absolute?
 		if err != nil {
 			logger.Fatal(err)
 		}

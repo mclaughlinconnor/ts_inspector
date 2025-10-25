@@ -13,7 +13,7 @@ func findProjectRoots(root string) []string {
 		log.Fatal(err)
 	}
 
-	var tsConfig TsConfig = TsConfig{
+	var tsConfig = TsConfig{
 		CompilerOptions: tsConfigCompilerOptions{
 			BaseURL: []string{},
 		},

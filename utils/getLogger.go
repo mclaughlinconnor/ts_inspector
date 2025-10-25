@@ -8,7 +8,7 @@ import (
 )
 
 func GetLogger(f string) *log.Logger {
-	timestamp := (time.Now().UTC().Format(time.RFC3339))
+	timestamp := time.Now().UTC().Format(time.RFC3339)
 
 	filename := "/home/connor/Development/ts_inspector/logs/" + f + "-" + timestamp + ".log"
 

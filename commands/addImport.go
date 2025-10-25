@@ -29,7 +29,7 @@ func AddImport(state *parser.State, args *[]any) (map[string]utils.TextEdits, er
 	typeImports := make([]string, len(_typeImports))
 	for i, v := range _typeImports {
 		typeImports[i], ok3 = v.(string)
-		if !ok4 {
+		if !ok3 {
 			return changes, errors.New("the fourth element contains non-string elements")
 		}
 	}
