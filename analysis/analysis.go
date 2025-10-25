@@ -76,4 +76,5 @@ func InitAnalysers() {
 	registerAnalyser(unnecessaryPublic)
 	registerAnalyser(unusedAngular)
 	registerAnalyser(angularMethodNoImplements)
+	registerAnalyser(angularManyDecorators)
 }

@@ -2,8 +2,6 @@ package parser
 
 import (
 	"log"
-	"path"
-	"path/filepath"
 	"ts_inspector/ast"
 	"ts_inspector/ast/walk"
 	"ts_inspector/utils"
@@ -84,23 +82,30 @@ func addUsage(class *Class, name string, node *sitter.Node, content []byte) {
 	class.AppendDefinitionUsage(name, &usageInstance)
 }
 
-func extractClassName(root *sitter.Node, content []byte) string {
-	funcMap := walk.NewVisitorFuncsMap[string]()
+func extractClassName(root *sitter.Node, content []byte) (string, *sitter.Node) {
+	type ret struct {
+		text string
+		node *sitter.Node
+	}
 
-	classVisitor := func(node *sitter.Node, state string, indexInParent int, funcMap walk.VisitorFuncMap[string]) string {
+	funcMap := walk.NewVisitorFuncsMap[ret]()
+
+	classVisitor := func(node *sitter.Node, state ret, indexInParent int, funcMap walk.VisitorFuncMap[ret]) ret {
 		nameNode := node.ChildByFieldName("name")
 		if nameNode == nil {
-			return state
+			return ret{}
 		}
 
-		return nameNode.Content(content)
+		return ret{text: nameNode.Content(content), node: nameNode}
 	}
 
 	funcMap["abstract_class_declaration"] = classVisitor
 	funcMap["class_declaration"] = classVisitor
 	funcMap["interface_declaration"] = classVisitor
 
-	return walk.Walk(root, "", funcMap)
+	r := walk.Walk(root, ret{}, funcMap)
+
+	return r.text, r.node
 }
 
 func extractFileImports(root *sitter.Node, file *File) error {
@@ -163,90 +168,6 @@ func extractMetadata(class *Class, root *sitter.Node, content []byte) {
 	funcMap["interface_declaration"] = classVisitor
 
 	walk.Walk(root, class, funcMap)
-}
-
-// Must not store references to any nodes on the Class. This can be called on either file-based or class-based content
-func extractTemplateFilename(class *Class, root *sitter.Node, content []byte) (string, error) {
-	funcMap := walk.NewVisitorFuncsMap[typescriptWalkState]()
-
-	funcMap["decorator"] = func(node *sitter.Node, state typescriptWalkState, indexInParent int, funcMap walk.VisitorFuncMap[typescriptWalkState]) typescriptWalkState {
-		call := node.NamedChild(0)
-		if call.Type() != "call_expression" {
-			return state
-		}
-
-		decoratorNameNode := call.ChildByFieldName("function")
-		if decoratorNameNode == nil {
-			return state
-		}
-
-		decoratorName := decoratorNameNode.Content(content)
-		if decoratorName != "Component" {
-			return state
-		}
-
-		state.InDecorator = true
-		for i := range node.NamedChildCount() {
-			index := int(i)
-			state = walk.VisitNode(node.NamedChild(index), state, index, funcMap)
-		}
-
-		state.InDecorator = false
-
-		return state
-	}
-
-	funcMap["pair"] = func(node *sitter.Node, state typescriptWalkState, indexInParent int, funcMap walk.VisitorFuncMap[typescriptWalkState]) typescriptWalkState {
-		if !state.InDecorator {
-			for i := range node.NamedChildCount() {
-				index := int(i)
-				state = walk.VisitNode(node.NamedChild(index), state, index, funcMap)
-			}
-
-			return state
-		}
-
-		keyNode := node.ChildByFieldName("key")
-		if keyNode == nil {
-			return state
-		}
-
-		if keyNode.Content(content) != "templateUrl" {
-			return state
-		}
-
-		valueNode := node.ChildByFieldName("value")
-		if valueNode == nil {
-			return state
-		}
-
-		relativeTemplatePathNode := valueNode.NamedChild(0)
-		if relativeTemplatePathNode == nil {
-			return state
-		}
-
-		relativeTemplatePath := relativeTemplatePathNode.Content(content)
-		if relativeTemplatePath == "" {
-			return state
-		}
-
-		controllerDirectory := filepath.Dir(class.File.Filename())
-		templateFilePath, err := filepath.Abs(path.Join(controllerDirectory, relativeTemplatePath))
-		if err != nil {
-			return state
-		}
-
-		if utils.FileExists(templateFilePath) {
-			state.TemplateFilename = templateFilePath
-			return state
-		}
-
-		return state
-	}
-
-	s := typescriptWalkState{InDecorator: false, Class: class}
-	s = walk.Walk(root, s, funcMap)
-	return s.TemplateFilename, nil
 }
 
 func extractTypeScriptDefinitions(class *Class, root *sitter.Node, content []byte) error {
@@ -433,19 +354,24 @@ func parseClasses(state *State, root *sitter.Node, file *File) {
 		_, err := utils.ParseFile(false, classContent, utils.TypeScript, nil, func(classRoot *sitter.Node, content []byte, _ any) (any, error) {
 			uri := file.URI
 
-			className := extractClassName(classRoot, content)
+			className, classNameNode := extractClassName(classRoot, content)
+			if className == "" || classNameNode == nil {
+				return nil, nil
+			}
 
 			var found bool
 			class, found = state.Classes[ClassId(uri, className)]
 			if !found {
 				c := NewClass(classContent, file, node)
 				c.Name = className
+				c.NameNode = classNameNode
 				class = &c
 			} else {
 				class.Reset()
 				class.Node = node
 				class.Content = CStr2GoStr(content)
 				class.Name = className
+				class.NameNode = classNameNode
 			}
 
 			extractMetadata(class, classRoot, []byte(class.Content))
@@ -462,6 +388,16 @@ func parseClasses(state *State, root *sitter.Node, file *File) {
 
 			if classWalkState.Decorator != nil {
 				ExtractComponentData(state, class, classWalkState.Decorator, []byte(file.Content))
+
+				for classWalkState.Decorator.NextSibling() != nil {
+					if classWalkState.Decorator.NextSibling().Type() != "decorator" {
+						break
+					}
+
+					classWalkState.Decorator = classWalkState.Decorator.NextSibling()
+
+					ExtractComponentData(state, class, classWalkState.Decorator, []byte(file.Content))
+				}
 			} else {
 				ExtractComponentData(state, class, classRoot, content)
 			}

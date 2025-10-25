@@ -17,6 +17,7 @@ type Class struct {
 	Implements           References // Implements may have nil references if resolution failed
 	ImplementsIdentNames []string
 	Name                 string
+	NameNode             *sitter.Node
 	Node                 *sitter.Node
 	Usages               Usages
 }
