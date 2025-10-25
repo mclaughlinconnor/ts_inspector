@@ -23,22 +23,25 @@ func ExtractComponentData(state *State, class *Class, node *sitter.Node, content
 		}
 
 		decoratorName := decoratorNameNode.Content(content)
-		if decoratorName != "Component" {
-			return nil
+
+		switch dn := decoratorName; dn {
+		case "Component":
+			class.EnsureAngular()
+			class.Angular.EnsureComponent()
+			walkComponentDecoratorParams(state, class, node, content)
+		case "NgModule":
+			class.EnsureAngular()
+			class.Angular.EnsureModule()
+			walkModuleDecoratorParams(state, class, node, content)
 		}
 
-		class.EnsureAngular()
-		class.Angular.EnsureComponent()
-
-		walkDecoratorParams(state, class, node, content)
-
-		return state
+		return nil
 	}
 
 	walk.Walk(node, nil, funcMap)
 }
 
-func walkDecoratorParams(state *State, class *Class, node *sitter.Node, content []byte) {
+func walkComponentDecoratorParams(state *State, class *Class, node *sitter.Node, content []byte) {
 	funcMap := walk.NewVisitorFuncsMap[any]()
 
 	funcMap["pair"] = func(node *sitter.Node, _ any, indexInParent int, funcMap walk.VisitorFuncMap[any]) any {
@@ -53,12 +56,7 @@ func walkDecoratorParams(state *State, class *Class, node *sitter.Node, content 
 			return nil
 		}
 
-		handleKv(state, class, valueNode, content, keyName)
-
-		relativeTemplatePathNode := valueNode.NamedChild(0)
-		if relativeTemplatePathNode == nil {
-			return nil
-		}
+		handleComponentKv(state, class, valueNode, content, keyName)
 
 		return nil
 	}
@@ -66,10 +64,33 @@ func walkDecoratorParams(state *State, class *Class, node *sitter.Node, content 
 	walk.Walk(node, nil, funcMap)
 }
 
-func handleKv(state *State, class *Class, vNode *sitter.Node, content []byte, keyName string) {
+func walkModuleDecoratorParams(state *State, class *Class, node *sitter.Node, content []byte) {
+	funcMap := walk.NewVisitorFuncsMap[any]()
+
+	funcMap["pair"] = func(node *sitter.Node, _ any, indexInParent int, funcMap walk.VisitorFuncMap[any]) any {
+		keyNode := node.ChildByFieldName("key")
+		if keyNode == nil {
+			return nil
+		}
+
+		keyName := keyNode.Content(content)
+		valueNode := node.ChildByFieldName("value")
+		if valueNode == nil {
+			return nil
+		}
+
+		handleModuleKv(state, class, valueNode, content, keyName)
+
+		return nil
+	}
+
+	walk.Walk(node, nil, funcMap)
+}
+
+func handleComponentKv(state *State, class *Class, vNode *sitter.Node, content []byte, keyName string) {
 	switch kn := keyName; kn {
 	case "imports":
-		handleImportsKv(state, class, vNode, content)
+		handleImportsComponentKv(state, class, vNode, content)
 	case "templateUrl":
 		handleTemplateUrlKv(state, class, vNode, content)
 	case "selector":
@@ -77,7 +98,56 @@ func handleKv(state *State, class *Class, vNode *sitter.Node, content []byte, ke
 	}
 }
 
-func handleImportsKv(state *State, class *Class, vNode *sitter.Node, content []byte) {
+func handleModuleKv(state *State, class *Class, vNode *sitter.Node, content []byte, keyName string) {
+	switch kn := keyName; kn {
+	case "imports":
+		handleImportsModuleKv(state, class, vNode, content)
+	case "exports":
+		handleExportsKv(state, class, vNode, content)
+	case "declarations":
+		handleDeclarationsKv(state, class, vNode, content)
+	}
+}
+
+func handleDeclarationsKv(state *State, class *Class, vNode *sitter.Node, content []byte) {
+	if vNode.Type() != "array" {
+		return
+	}
+
+	idents := make([]string, 0)
+
+	for i := range vNode.NamedChildCount() {
+		ident := vNode.NamedChild(int(i))
+		if ident.Type() != "identifier" {
+			continue
+		}
+
+		idents = append(idents, ident.Content(content))
+	}
+
+	class.Angular.Module.DeclarationsIdents = idents
+}
+
+func handleExportsKv(state *State, class *Class, vNode *sitter.Node, content []byte) {
+	if vNode.Type() != "array" {
+		return
+	}
+
+	idents := make([]string, 0)
+
+	for i := range vNode.NamedChildCount() {
+		ident := vNode.NamedChild(int(i))
+		if ident.Type() != "identifier" {
+			continue
+		}
+
+		idents = append(idents, ident.Content(content))
+	}
+
+	class.Angular.Module.ExportsIdents = idents
+}
+
+func handleImportsComponentKv(state *State, class *Class, vNode *sitter.Node, content []byte) {
 	if vNode.Type() != "array" {
 		return
 	}
@@ -94,6 +164,25 @@ func handleImportsKv(state *State, class *Class, vNode *sitter.Node, content []b
 	}
 
 	class.Angular.Component.ImportsIdents = idents
+}
+
+func handleImportsModuleKv(state *State, class *Class, vNode *sitter.Node, content []byte) {
+	if vNode.Type() != "array" {
+		return
+	}
+
+	idents := make([]string, 0)
+
+	for i := range vNode.NamedChildCount() {
+		ident := vNode.NamedChild(int(i))
+		if ident.Type() != "identifier" {
+			continue
+		}
+
+		idents = append(idents, ident.Content(content))
+	}
+
+	class.Angular.Module.ImportsIdents = idents
 }
 
 func handleSelectorKv(state *State, class *Class, vNode *sitter.Node, content []byte) {
