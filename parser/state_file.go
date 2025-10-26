@@ -93,6 +93,18 @@ func (f *File) Postprocess(state *State) {
 		state.Classes[class.Id()] = class
 		class.Postprocess(state)
 	}
+
+	if f.Filetype == "pug" {
+		for _, class := range state.Classes {
+			if class.Angular != nil &&
+				class.Angular.Component != nil &&
+				class.Angular.Component.TemplateUrlFile != nil &&
+				class.Angular.Component.TemplateUrlFile.URI == f.URI {
+
+				f.Classes = append(f.Classes, class)
+			}
+		}
+	}
 }
 
 func (f *File) ResetClasses() {

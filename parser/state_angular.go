@@ -1,5 +1,7 @@
 package parser
 
+import sitter "github.com/smacker/go-tree-sitter"
+
 type Angular struct {
 	Component *Component
 	Module    *Module
@@ -9,6 +11,7 @@ type Component struct {
 	Imports         References
 	ImportsIdents   []string
 	Selector        string
+	Template        *Template
 	TemplateUrl     string
 	TemplateUrlFile *File
 }
@@ -20,6 +23,21 @@ type Module struct {
 	ExportsIdents      []string
 	Imports            References
 	ImportsIdents      []string
+}
+
+type TagUsage struct {
+	// TODO
+	// Args
+	// Class  *Class
+
+	Ident  string
+	Usages []*UsageInstance
+}
+
+type TagUsages map[string]TagUsage
+
+type Template struct {
+	TagUsages TagUsages
 }
 
 func (a *Angular) EnsureComponent() {
@@ -41,6 +59,26 @@ func (a *Angular) Postprocess(state *State, class *Class) {
 
 	if a.Module != nil {
 		a.Module.Postprocess(state, class)
+	}
+}
+
+func (c *Component) AddTagUsage(usageNode *sitter.Node, usageIdent string) {
+	c.EnsureTemplate()
+
+	usage, found := c.Template.TagUsages[usageIdent]
+	if !found {
+		c.Template.TagUsages[usageIdent] = TagUsage{Ident: usageIdent, Usages: []*UsageInstance{{Access: TemplateAccess, Node: usageNode}}}
+
+		return
+	}
+
+	usageInstance := UsageInstance{Access: TemplateAccess, Node: usageNode}
+	usage.Usages = append(usage.Usages, &usageInstance)
+}
+
+func (c *Component) EnsureTemplate() {
+	if c.Template == nil {
+		c.Template = &Template{TagUsages: make(TagUsages, 0)}
 	}
 }
 

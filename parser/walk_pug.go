@@ -8,24 +8,6 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
-func ExtractPugUsages(class *Class, content []byte) error {
-	pugFuncMap := walk.NewVisitorFuncsMap[*Class]()
-	pugFuncMap["attribute"] = visitAttribute(content)
-	pugFuncMap["content"] = visitContent(content)
-
-	root, err := utils.GetRootNode(false, string(content), utils.Pug)
-	if err != nil {
-		return err
-	}
-
-	output := walk.Walk(root, class, pugFuncMap)
-	if output != class {
-		panic("ExtractPugUsages altered the class pointer")
-	}
-
-	return nil
-}
-
 func IndexPugFileFromLsp(state *State, uri string, content string, version int) error {
 	filetype, err := FiletypeFromFilename(FilenameFromUri(uri))
 	if err != nil || filetype != "pug" {
@@ -74,7 +56,7 @@ func IndexPugFromTypeScript(state *State, class *Class, templateFileName string)
 	class.Angular.EnsureComponent()
 	class.Angular.Component.TemplateUrlFile = file
 
-	err = ExtractPugUsages(class, []byte(file.Content))
+	err = extractPugUsages(class, []byte(file.Content))
 	if err != nil {
 		return err
 	}
@@ -106,12 +88,35 @@ func extractIndentifierUsages(text []byte, class *Class) error {
 	return nil
 }
 
+func extractPugUsages(class *Class, content []byte) error {
+	pugFuncMap := walk.NewVisitorFuncsMap[*Class]()
+	pugFuncMap["attribute"] = visitAttribute(content)
+	pugFuncMap["content"] = visitContent(content)
+	pugFuncMap["tag_name"] = func(node *sitter.Node, state *Class, indexInParent int, _ walk.VisitorFuncMap[*Class]) *Class {
+		state.Angular.Component.AddTagUsage(node, node.Content(content))
+
+		return state
+	}
+
+	root, err := utils.GetRootNode(false, string(content), utils.Pug)
+	if err != nil {
+		return err
+	}
+
+	output := walk.Walk(root, class, pugFuncMap)
+	if output != class {
+		panic("ExtractPugUsages altered the class pointer")
+	}
+
+	return nil
+}
+
 func indexPug(state *State, file *File) error {
 	for _, class := range state.Classes {
 		if class.GetTemplateFile() == file {
 			class.DropTemplateUsages()
 
-			err := ExtractPugUsages(class, []byte(file.Content))
+			err := extractPugUsages(class, []byte(file.Content))
 			if err != nil {
 				return err
 			}

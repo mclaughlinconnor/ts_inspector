@@ -310,6 +310,9 @@ func handleDecorator(node *sitter.Node, content []byte) Decorator {
 }
 
 func handleTemplate(state *State, class *Class, templateFilename string) error {
+	class.Angular.EnsureComponent()
+	class.Angular.Component.EnsureTemplate()
+
 	return IndexPugFromTypeScript(state, class, templateFilename)
 }
 
