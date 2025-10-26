@@ -50,12 +50,21 @@ func (f *File) GetDependencies(state *State) []string {
 	for _, class := range f.Classes {
 		t := class.GetTemplateFile()
 
+		if t == nil {
+			continue
+		}
+
 		if t == f {
 			dependents = append(dependents, t.Filename())
 		}
 
 		if class.File.Filename() != f.Filename() {
 			dependents = append(dependents, class.File.Filename())
+		}
+
+		// If there's a template, class.Angular.Component cannot not be nil
+		for _, module := range class.Angular.Component.DeclaredIn {
+			dependents = append(dependents, module.File.Filename())
 		}
 	}
 

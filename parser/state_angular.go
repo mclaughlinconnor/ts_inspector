@@ -8,7 +8,7 @@ type Angular struct {
 }
 
 type Component struct {
-	DeclaredIn      *Class
+	DeclaredIn      []*Class
 	Imports         References
 	ImportsIdents   []string
 	Selector        string
@@ -18,12 +18,15 @@ type Component struct {
 }
 
 type Module struct {
-	Declarations       References
-	DeclarationsIdents []string
-	Exports            References
-	ExportsIdents      []string
-	Imports            References
-	ImportsIdents      []string
+	Declarations           References
+	DeclarationsIdents     []string
+	DeclarationsIdentNodes []*sitter.Node // Note: These are file based nodes
+	Exports                References
+	ExportsIdents          []string
+	ExportsIdentNodes      []*sitter.Node // Note: These are file based nodes
+	Imports                References
+	ImportsIdents          []string
+	ImportsIdentNodes      []*sitter.Node // Note: These are file based nodes
 }
 
 type TagUsage struct {
@@ -102,6 +105,6 @@ func (m *Module) Postprocess(state *State, class *Class) {
 			continue
 		}
 
-		declaration.Class.Angular.Component.DeclaredIn = class
+		declaration.Class.Angular.Component.DeclaredIn = append(declaration.Class.Angular.Component.DeclaredIn, class)
 	}
 }

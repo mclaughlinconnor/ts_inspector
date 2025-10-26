@@ -69,13 +69,14 @@ func newAnalysis(code string, highlightRange utils.Range, severity int, message 
 }
 
 func InitAnalysers() {
+	registerAnalyser(angularManyDecorators)
+	registerAnalyser(angularMethodNoImplements)
 	registerAnalyser(asyncAngular)
 	registerAnalyser(constructorOnlyProperty)
 	registerAnalyser(getterUsedInTemplate)
+	registerAnalyser(illegalDeclaringModule)
 	registerAnalyser(nonPublicAngular)
+	registerAnalyser(recursiveTemplate)
 	registerAnalyser(unnecessaryPublic)
 	registerAnalyser(unusedAngular)
-	registerAnalyser(angularMethodNoImplements)
-	registerAnalyser(angularManyDecorators)
-	registerAnalyser(recursiveTemplate)
 }
