@@ -147,7 +147,7 @@ func GetPositionForOffset(content string, offset uint32) utils.Position {
 	var character uint32
 
 	for index, lineOffset := range lineOffsets {
-		if lineOffset >= offset {
+		if lineOffset > offset {
 			if index > 0 {
 				line = uint32(index - 1)
 				character = offset - lineOffsets[index-1]
@@ -189,6 +189,7 @@ func IndexFileFromIndexer(state *State, filename string) error {
 
 	return nil
 }
+
 func IndexFileFromLsp(state *State, uri string, languageId string, version int, content string, logger *log.Logger) error {
 	var err error
 
