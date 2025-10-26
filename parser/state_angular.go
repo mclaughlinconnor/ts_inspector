@@ -8,6 +8,7 @@ type Angular struct {
 }
 
 type Component struct {
+	DeclaredIn      *Class
 	Imports         References
 	ImportsIdents   []string
 	Selector        string
@@ -91,4 +92,16 @@ func (m *Module) Postprocess(state *State, class *Class) {
 	m.Imports = resolveIdentFromImports(m.ImportsIdents, class.File, state)
 	m.Exports = resolveIdentFromImports(m.ExportsIdents, class.File, state)
 	m.Declarations = resolveIdentFromImports(m.DeclarationsIdents, class.File, state)
+
+	for _, declaration := range m.Declarations {
+		if declaration == nil {
+			continue
+		}
+
+		if !declaration.Class.HasComponent() {
+			continue
+		}
+
+		declaration.Class.Angular.Component.DeclaredIn = class
+	}
 }

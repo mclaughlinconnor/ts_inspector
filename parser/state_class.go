@@ -118,6 +118,10 @@ func (c *Class) GetTemplateFile() *File {
 	return nil
 }
 
+func (c *Class) HasComponent() bool {
+	return c.Angular != nil && c.Angular.Component != nil
+}
+
 func (c *Class) HasDefinition(name string) bool {
 	for _, d := range c.Definitions {
 		if d.Name == name {
