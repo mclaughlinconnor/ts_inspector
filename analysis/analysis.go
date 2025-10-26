@@ -77,4 +77,5 @@ func InitAnalysers() {
 	registerAnalyser(unusedAngular)
 	registerAnalyser(angularMethodNoImplements)
 	registerAnalyser(angularManyDecorators)
+	registerAnalyser(recursiveTemplate)
 }
