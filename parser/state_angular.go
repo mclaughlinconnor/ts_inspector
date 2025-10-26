@@ -86,9 +86,75 @@ func (c *Component) EnsureTemplate() {
 	}
 }
 
+func (c *Component) GetTagsInModule() {
+	selectors := make([]string, 0)
+
+	for _, declaringClass := range c.DeclaredIn {
+		if declaringClass.Angular == nil || declaringClass.Angular.Module == nil {
+			continue
+		}
+
+		selectors = append(selectors, declaringClass.Angular.Module.GetImportedSelectors()...)
+		selectors = append(selectors, declaringClass.Angular.Module.GetDeclaredSelectors()...)
+	}
+}
+
 func (c *Component) Postprocess(state *State, class *Class) {
 	imports := resolveIdentFromImports(c.ImportsIdents, class.File, state)
 	c.Imports = imports
+}
+
+func (m *Module) GetImportedSelectors() []string {
+	selectors := make([]string, 0)
+
+	for _, imp := range m.Imports {
+		if imp == nil || imp.Class == nil {
+			// Should have been resolved by now
+			continue
+		}
+
+		angular := imp.Class.Angular
+		if angular == nil {
+			continue
+		}
+
+		if angular.Component != nil {
+			selectors = append(selectors, angular.Component.Selector)
+		}
+
+		if angular.Module != nil {
+			selectors = append(selectors, angular.Module.GetImportedSelectors()...)
+		}
+	}
+
+	return selectors
+}
+
+func (m *Module) GetDeclaredSelectors() []string {
+	selectors := make([]string, 0)
+
+	for _, imp := range m.Declarations {
+		if imp.Class == nil {
+			// Should have been resolved by now
+			continue
+		}
+
+		angular := imp.Class.Angular
+		if angular == nil {
+			continue
+		}
+
+		if angular.Component != nil {
+			selectors = append(selectors, angular.Component.Selector)
+		}
+
+		// Illegal
+		if angular.Module != nil {
+			selectors = append(selectors, angular.Module.GetImportedSelectors()...)
+		}
+	}
+
+	return selectors
 }
 
 func (m *Module) Postprocess(state *State, class *Class) {

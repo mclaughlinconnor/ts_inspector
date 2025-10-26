@@ -68,6 +68,10 @@ func resolveIdentFromImports(idents []string, file *File, state *State) []*Refer
 			}
 		}
 
+		if importedFile == nil {
+			continue
+		}
+
 		for _, export := range importedFile.Exports {
 			if export.Name == ident {
 				resolved[identIndex] = export
