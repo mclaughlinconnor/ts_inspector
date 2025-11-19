@@ -153,7 +153,7 @@ func AddToImport(importResults []*ImportParseResult, packageName string, toAdd [
 
 				r := result
 
-				if (!packageIsRelative && resultIsRelative) || (result.Package > packageName) {
+				if (!packageIsRelative && resultIsRelative) || (result.Package >= packageName) {
 					if !packageIsRelative && resultIsRelative {
 						r = importResults[index-1]
 					}
