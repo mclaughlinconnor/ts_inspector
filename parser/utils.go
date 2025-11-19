@@ -20,17 +20,19 @@ var angularDecorators = map[string]bool{
 	"Host":            true,
 	"HostBinding":     true,
 	"HostListener":    true,
-	"Inject":          true,
-	"Injectable":      true,
-	"Input":           true,
-	"NgModule":        true,
-	"Optional":        true,
-	"Output":          true,
-	"Pipe":            true,
-	"Self":            true,
-	"SkipSelf":        true,
-	"ViewChild":       true,
-	"ViewChildren":    true,
+	// Silence the "Angular property should be public" error on @Inject
+	// TODO: find a better solution for this
+	// "Inject":          true,
+	"Injectable":   true,
+	"Input":        true,
+	"NgModule":     true,
+	"Optional":     true,
+	"Output":       true,
+	"Pipe":         true,
+	"Self":         true,
+	"SkipSelf":     true,
+	"ViewChild":    true,
+	"ViewChildren": true,
 }
 
 func IsAngularFunction(name string) bool {
