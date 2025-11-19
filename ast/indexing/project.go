@@ -4,6 +4,8 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 	"ts_inspector/utils"
 )
 
@@ -52,6 +54,13 @@ func findProjectRoots(root string) []string {
 
 		if err == nil {
 			files = append(files, utils.RemoveNonCode(filenames)...)
+		}
+	}
+
+	for _, include := range tsConfig.Include {
+		fp := filepath.Join(root, include)
+		if strings.HasSuffix(include, ".ts") && !slices.Contains(files, fp) {
+			files = append(files, fp)
 		}
 	}
 
