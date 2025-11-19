@@ -122,6 +122,10 @@ func (c *Class) GetTemplateFile() *File {
 	return nil
 }
 
+func (c *Class) GetPublicDefinitions() []Definition {
+	return filterDefinitions(c, func(d Definition) bool { return d.IsPublic() })
+}
+
 func (c *Class) HasComponent() bool {
 	return c.Angular != nil && c.Angular.Component != nil
 }
