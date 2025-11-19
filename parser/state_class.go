@@ -110,8 +110,39 @@ func (c *Class) EnsureAngular() {
 	}
 }
 
+func (c *Class) GetAllPublicDefinitions() []Definition {
+	definitions := c.GetOwnPublicDefinitions()
+	definitionsMap := make(map[string]bool)
+
+	for _, d := range definitions {
+		definitionsMap[d.Name] = true
+	}
+
+	for _, e := range c.Extends {
+		if e.Class == nil {
+			continue
+		}
+
+		ds := e.Class.GetAllPublicDefinitions()
+		for _, d := range ds {
+			// Don't allow duplicates. Also, prepare for doing stuff with overridden props
+			found, _ := definitionsMap[d.Name]
+			if !found {
+				definitionsMap[d.Name] = true
+				definitions = append(definitions, d)
+			}
+		}
+	}
+
+	return definitions
+}
+
 func (c *Class) GetGetters() []Definition {
 	return filterDefinitions(c, func(d Definition) bool { return d.Getter })
+}
+
+func (c *Class) GetOwnPublicDefinitions() []Definition {
+	return filterDefinitions(c, func(d Definition) bool { return d.IsPublic() })
 }
 
 func (c *Class) GetTemplateFile() *File {
@@ -120,10 +151,6 @@ func (c *Class) GetTemplateFile() *File {
 	}
 
 	return nil
-}
-
-func (c *Class) GetPublicDefinitions() []Definition {
-	return filterDefinitions(c, func(d Definition) bool { return d.IsPublic() })
 }
 
 func (c *Class) HasComponent() bool {

@@ -23,7 +23,7 @@ func HandleCompletion(writer io.Writer, logger *log.Logger, state *parser.State,
 	}
 
 	for _, c := range file.Classes {
-		for _, d := range c.GetPublicDefinitions() {
+		for _, d := range c.GetAllPublicDefinitions() {
 			items = append(items, interfaces.CompletionItem{Label: d.Name})
 		}
 
