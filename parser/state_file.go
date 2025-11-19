@@ -177,7 +177,7 @@ func IndexFileFromIndexer(state *State, filename string) error {
 
 	filetype, err := FiletypeFromFilename(filename)
 	if err != nil {
-		return err
+		return nil // unhandled file type, not really an error
 	}
 
 	switch filetype {
@@ -207,7 +207,7 @@ func IndexFileFromLsp(state *State, uri string, languageId string, version int, 
 		filetype, err := FiletypeFromFilename(FilenameFromUri(uri))
 
 		if err != nil {
-			return err
+			return nil // unhandled file type, not really an error
 		}
 
 		language = filetype
