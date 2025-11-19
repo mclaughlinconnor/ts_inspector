@@ -1,6 +1,10 @@
 package parser
 
-import sitter "github.com/smacker/go-tree-sitter"
+import (
+	"slices"
+
+	sitter "github.com/smacker/go-tree-sitter"
+)
 
 type Angular struct {
 	Component *Component
@@ -86,7 +90,7 @@ func (c *Component) EnsureTemplate() {
 	}
 }
 
-func (c *Component) GetTagsInModule() {
+func (c *Component) GetTagsInModule() []string {
 	selectors := make([]string, 0)
 
 	for _, declaringClass := range c.DeclaredIn {
@@ -97,6 +101,8 @@ func (c *Component) GetTagsInModule() {
 		selectors = append(selectors, declaringClass.Angular.Module.GetImportedSelectors()...)
 		selectors = append(selectors, declaringClass.Angular.Module.GetDeclaredSelectors()...)
 	}
+
+	return selectors
 }
 
 func (c *Component) Postprocess(state *State, class *Class) {
@@ -171,6 +177,12 @@ func (m *Module) Postprocess(state *State, class *Class) {
 			continue
 		}
 
-		declaration.Class.Angular.Component.DeclaredIn = append(declaration.Class.Angular.Component.DeclaredIn, class)
+		/*
+		 * Editing pug files can trigger a re-postprocess, which will add the same
+		 * class without walk_typescript being able to call class.Reset()
+		 */
+		if !slices.Contains(declaration.Class.Angular.Component.DeclaredIn, class) {
+			declaration.Class.Angular.Component.DeclaredIn = append(declaration.Class.Angular.Component.DeclaredIn, class)
+		}
 	}
 }

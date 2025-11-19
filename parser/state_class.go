@@ -98,6 +98,10 @@ func (c *Class) DropTemplateUsages() {
 			delete(c.Usages, key)
 		}
 	}
+
+	if c.HasComponent() && c.Angular.Component.Template != nil {
+		c.Angular.Component.Template.TagUsages = make(TagUsages)
+	}
 }
 
 func (c *Class) EnsureAngular() {
