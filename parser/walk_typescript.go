@@ -116,6 +116,13 @@ func extractFileImports(root *sitter.Node, file *File) error {
 
 	file.Imports = append(file.Imports, imports...)
 
+	dynamicImports, err := ast.ExtractDynamicImports(root, []byte(file.Content))
+	if err != nil {
+		return err
+	}
+
+	file.DynamicImportPaths = append(file.DynamicImportPaths, dynamicImports...)
+
 	return nil
 }
 

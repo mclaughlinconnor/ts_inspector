@@ -9,6 +9,24 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
+func DetermineFilename(baseFilename string) (string, bool) {
+	if utils.FileExists(baseFilename) {
+		return baseFilename, true
+	}
+
+	typescript := baseFilename + ".ts"
+	if utils.FileExists(typescript) {
+		return typescript, true
+	}
+
+	javascript := baseFilename + ".js"
+	if utils.FileExists(javascript) {
+		return javascript, true
+	}
+
+	return "", false
+}
+
 func extractImportsFromFile(filename string) ([]string, error) {
 	funcMap := walk.NewVisitorFuncsMap[[]string]()
 
@@ -30,7 +48,7 @@ func extractImportsFromFile(filename string) ([]string, error) {
 				return state
 			}
 
-			resolvedFilename, found := determineFilename(filepath.Join(filepath.Dir(filename), pathString))
+			resolvedFilename, found := DetermineFilename(filepath.Join(filepath.Dir(filename), pathString))
 			if found {
 				state = append(state, resolvedFilename)
 			}
@@ -68,22 +86,4 @@ func recursivelyRetrieveImports(filename string, depth int, maxDepth int) ([]str
 	}
 
 	return state, nil
-}
-
-func determineFilename(baseFilename string) (string, bool) {
-	if utils.FileExists(baseFilename) {
-		return baseFilename, true
-	}
-
-	typescript := baseFilename + ".ts"
-	if utils.FileExists(typescript) {
-		return typescript, true
-	}
-
-	javascript := baseFilename + ".js"
-	if utils.FileExists(javascript) {
-		return javascript, true
-	}
-
-	return "", false
 }

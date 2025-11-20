@@ -98,6 +98,46 @@ func doExtractImports(node *sitter.Node, content []byte) ([]*ImportParseResult, 
 	return walk.Walk(node, []*ImportParseResult{}, funcMap), nil
 }
 
+func doExtractDynamicImports(node *sitter.Node, content []byte) ([]string, error) {
+	funcMap := walk.NewVisitorFuncsMap[[]string]()
+	// Do I need to do `require()` too? Require is just an `(identifier)` so there will likely be a performance hit
+	funcMap["import"] = func(node *sitter.Node, state []string, indexInParent int, funcMap walk.VisitorFuncMap[[]string]) []string {
+		call := node.Parent()
+		if call == nil || call.Type() != "call_expression" {
+			return state
+		}
+
+		arguments := call.ChildByFieldName("arguments")
+		if arguments == nil || arguments.NamedChildCount() != 1 {
+			return state
+		}
+
+		string := arguments.NamedChild(0)
+		if string == nil {
+			return state
+		}
+
+		fragment := string.NamedChild(0)
+		if fragment == nil || fragment.Type() != "string_fragment" {
+			return state
+		}
+
+		return append(state, fragment.Content(content))
+	}
+
+	return walk.Walk(node, []string{}, funcMap), nil
+}
+
+func ExtractDynamicImports(node *sitter.Node, content []byte) ([]string, error) {
+	if node != nil {
+		return doExtractDynamicImports(node, content)
+	}
+
+	return utils.ParseFile(false, CStr2GoStr(content), utils.TypeScript, []string{}, func(root *sitter.Node, content []byte, state []string) ([]string, error) {
+		return doExtractDynamicImports(root, content)
+	})
+}
+
 func ExtractImports(node *sitter.Node, content []byte) ([]*ImportParseResult, error) {
 	if node != nil {
 		return doExtractImports(node, content)

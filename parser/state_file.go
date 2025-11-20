@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"ts_inspector/ast"
+	"ts_inspector/ast/indexing"
 	"ts_inspector/utils"
 
 	sitter "github.com/smacker/go-tree-sitter"
@@ -16,14 +17,16 @@ import (
 var logger = utils.GetLogger("parser_state")
 
 type File struct {
-	Classes     []*Class
-	Content     string
-	Exports     References
-	Filetype    string
-	Imports     []*ast.ImportParseResult
-	LineOffsets []uint32
-	URI         string
-	Version     int
+	Classes            []*Class
+	Content            string
+	DynamicImportFiles []*File
+	DynamicImportPaths []string
+	Exports            References
+	Filetype           string
+	Imports            []*ast.ImportParseResult
+	LineOffsets        []uint32
+	URI                string
+	Version            int
 }
 
 func (f *File) FindImportPath(identifier string) string {
@@ -103,6 +106,8 @@ func (f *File) Postprocess(state *State) {
 		class.Postprocess(state)
 	}
 
+	f.ResolveDynamicallyImportedFiles(state)
+
 	if f.Filetype == "pug" {
 		for _, class := range state.Classes {
 			if class.Angular != nil &&
@@ -114,6 +119,28 @@ func (f *File) Postprocess(state *State) {
 			}
 		}
 	}
+}
+
+func (f *File) ResolveDynamicallyImportedFiles(state *State) {
+	dynamicImportFiles := make([]*File, len(f.DynamicImportPaths))
+
+	for i, importPath := range f.DynamicImportPaths {
+		absolutePath, err := filepath.Abs(path.Join(filepath.Dir(FilenameFromUri(f.URI)), importPath))
+
+		if err != nil {
+			logger.Println(err)
+			continue
+		}
+
+		resolvedFile := getFileByPath(state, absolutePath)
+		if resolvedFile != nil {
+			continue
+		}
+
+		dynamicImportFiles[i] = resolvedFile
+	}
+
+	f.DynamicImportFiles = dynamicImportFiles
 }
 
 func (f *File) ResetClasses() {
@@ -242,7 +269,7 @@ func NewFile(uri string, filetype string, version int) (*File, error) {
 		}
 	}
 
-	file := File{Classes: []*Class{}, Content: "", Exports: []*Reference{}, Filetype: filetype, Imports: []*ast.ImportParseResult{}, LineOffsets: []uint32{}, URI: UriFromFilename(filename), Version: version}
+	file := File{Classes: []*Class{}, Content: "", DynamicImportFiles: []*File{}, DynamicImportPaths: []string{}, Exports: []*Reference{}, Filetype: filetype, Imports: []*ast.ImportParseResult{}, LineOffsets: []uint32{}, URI: UriFromFilename(filename), Version: version}
 
 	return &file, nil
 }
@@ -288,12 +315,18 @@ func getFileByPath(state *State, path string) *File {
 		return file
 	}
 
-	if !utils.FileExists(path) {
+	extensionedPath, found := indexing.DetermineFilename(path)
+	if !found {
 		return nil
 	}
 
-	IndexFileFromIndexer(state, path)
-	file, found = state.Files[path]
+	file, found = state.Files[extensionedPath]
+	if found {
+		return file
+	}
+
+	IndexFileFromIndexer(state, extensionedPath)
+	file, found = state.Files[extensionedPath]
 	if found {
 		return file
 	}
