@@ -119,7 +119,7 @@ func (c *Class) GetAllPublicDefinitions() []Definition {
 	}
 
 	for _, e := range c.Extends {
-		if e.Class == nil {
+		if e == nil || e.Class == nil {
 			continue
 		}
 
