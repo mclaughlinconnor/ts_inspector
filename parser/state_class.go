@@ -222,3 +222,18 @@ func filterDefinitions(c *Class, cond func(d Definition) bool) []Definition {
 	}
 	return arr
 }
+
+// For sorting by name
+type Classes []*Class
+
+func (c Classes) Len() int {
+	return len(c)
+}
+
+func (c Classes) Less(a int, b int) bool {
+	return c[a].Name < c[b].Name
+}
+
+func (c Classes) Swap(i, j int) {
+	c[i], c[j] = c[j], c[i]
+}

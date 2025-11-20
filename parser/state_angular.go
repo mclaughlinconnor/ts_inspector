@@ -2,6 +2,7 @@ package parser
 
 import (
 	"slices"
+	"sort"
 
 	sitter "github.com/smacker/go-tree-sitter"
 )
@@ -90,15 +91,15 @@ func (c *Component) EnsureTemplate() {
 	}
 }
 
-func (c *Component) GetAvailableTags() []string {
-	selectors := make([]string, 0)
+func (c *Component) GetAvailableComponents() []*Class {
+	selectors := make(Classes, 0)
 
 	for _, declaringClass := range c.DeclaredIn {
 		if declaringClass.Angular == nil || declaringClass.Angular.Module == nil {
 			continue
 		}
 
-		selectors = append(selectors, declaringClass.Angular.Module.GetSelectors()...)
+		selectors = append(selectors, declaringClass.Angular.Module.GetComponents()...)
 	}
 
 	for _, imp := range c.Imports {
@@ -107,15 +108,15 @@ func (c *Component) GetAvailableTags() []string {
 		}
 
 		if imp.Class.HasComponent() {
-			selectors = append(selectors, imp.Class.Angular.Component.Selector)
+			selectors = append(selectors, imp.Class)
 		}
 
 		if imp.Class.HasModule() {
-			selectors = append(selectors, imp.Class.Angular.Module.GetSelectors()...)
+			selectors = append(selectors, imp.Class.Angular.Module.GetComponents()...)
 		}
 	}
 
-	slices.Sort(selectors)
+	sort.Sort(selectors)
 
 	return slices.Compact(selectors)
 }
@@ -125,8 +126,8 @@ func (c *Component) Postprocess(state *State, class *Class) {
 	c.Imports = imports
 }
 
-func (m *Module) GetDeclaredSelectors() []string {
-	selectors := make([]string, 0)
+func (m *Module) GetDeclaredComponents() []*Class {
+	selectors := make([]*Class, 0)
 
 	for _, imp := range m.Declarations {
 		if imp.Class == nil {
@@ -140,20 +141,20 @@ func (m *Module) GetDeclaredSelectors() []string {
 		}
 
 		if angular.Component != nil {
-			selectors = append(selectors, angular.Component.Selector)
+			selectors = append(selectors, imp.Class)
 		}
 
 		// Illegal
 		if angular.Module != nil {
-			selectors = append(selectors, angular.Module.GetImportedSelectors()...)
+			selectors = append(selectors, angular.Module.GetImportedComponents()...)
 		}
 	}
 
 	return selectors
 }
 
-func (m *Module) GetImportedSelectors() []string {
-	selectors := make([]string, 0)
+func (m *Module) GetImportedComponents() []*Class {
+	selectors := make([]*Class, 0)
 
 	for _, imp := range m.Imports {
 		if imp == nil || imp.Class == nil {
@@ -167,20 +168,20 @@ func (m *Module) GetImportedSelectors() []string {
 		}
 
 		if angular.Component != nil {
-			selectors = append(selectors, angular.Component.Selector)
+			selectors = append(selectors, imp.Class)
 		}
 
 		if angular.Module != nil {
-			selectors = append(selectors, angular.Module.GetImportedSelectors()...)
+			selectors = append(selectors, angular.Module.GetImportedComponents()...)
 		}
 	}
 
 	return selectors
 }
 
-func (m *Module) GetSelectors() []string {
-	selectors := m.GetDeclaredSelectors()
-	selectors = append(selectors, m.GetImportedSelectors()...)
+func (m *Module) GetComponents() []*Class {
+	selectors := m.GetDeclaredComponents()
+	selectors = append(selectors, m.GetImportedComponents()...)
 
 	return selectors
 }
