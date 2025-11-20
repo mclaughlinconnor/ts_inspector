@@ -167,6 +167,10 @@ func (c *Class) HasDefinition(name string) bool {
 	return false
 }
 
+func (c *Class) HasModule() bool {
+	return c.Angular != nil && c.Angular.Module != nil
+}
+
 func (c *Class) Id() string { return ClassId(c.File.URI, c.Name) }
 
 func (c *Class) Postprocess(state *State) {

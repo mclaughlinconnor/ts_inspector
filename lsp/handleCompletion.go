@@ -31,7 +31,7 @@ func HandleCompletion(writer io.Writer, logger *log.Logger, state *parser.State,
 			continue
 		}
 
-		tags := c.Angular.Component.GetTagsInModule()
+		tags := c.Angular.Component.GetAvailableTags()
 		for _, t := range tags {
 			items = append(items, interfaces.CompletionItem{Label: t})
 		}

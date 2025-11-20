@@ -90,7 +90,7 @@ func (c *Component) EnsureTemplate() {
 	}
 }
 
-func (c *Component) GetTagsInModule() []string {
+func (c *Component) GetAvailableTags() []string {
 	selectors := make([]string, 0)
 
 	for _, declaringClass := range c.DeclaredIn {
@@ -98,16 +98,58 @@ func (c *Component) GetTagsInModule() []string {
 			continue
 		}
 
-		selectors = append(selectors, declaringClass.Angular.Module.GetImportedSelectors()...)
-		selectors = append(selectors, declaringClass.Angular.Module.GetDeclaredSelectors()...)
+		selectors = append(selectors, declaringClass.Angular.Module.GetSelectors()...)
 	}
 
-	return selectors
+	for _, imp := range c.Imports {
+		if imp == nil || imp.Class == nil {
+			continue
+		}
+
+		if imp.Class.HasComponent() {
+			selectors = append(selectors, imp.Class.Angular.Component.Selector)
+		}
+
+		if imp.Class.HasModule() {
+			selectors = append(selectors, imp.Class.Angular.Module.GetSelectors()...)
+		}
+	}
+
+	slices.Sort(selectors)
+
+	return slices.Compact(selectors)
 }
 
 func (c *Component) Postprocess(state *State, class *Class) {
 	imports := resolveIdentFromImports(c.ImportsIdents, class.File, state)
 	c.Imports = imports
+}
+
+func (m *Module) GetDeclaredSelectors() []string {
+	selectors := make([]string, 0)
+
+	for _, imp := range m.Declarations {
+		if imp.Class == nil {
+			// Should have been resolved by now
+			continue
+		}
+
+		angular := imp.Class.Angular
+		if angular == nil {
+			continue
+		}
+
+		if angular.Component != nil {
+			selectors = append(selectors, angular.Component.Selector)
+		}
+
+		// Illegal
+		if angular.Module != nil {
+			selectors = append(selectors, angular.Module.GetImportedSelectors()...)
+		}
+	}
+
+	return selectors
 }
 
 func (m *Module) GetImportedSelectors() []string {
@@ -136,29 +178,9 @@ func (m *Module) GetImportedSelectors() []string {
 	return selectors
 }
 
-func (m *Module) GetDeclaredSelectors() []string {
-	selectors := make([]string, 0)
-
-	for _, imp := range m.Declarations {
-		if imp.Class == nil {
-			// Should have been resolved by now
-			continue
-		}
-
-		angular := imp.Class.Angular
-		if angular == nil {
-			continue
-		}
-
-		if angular.Component != nil {
-			selectors = append(selectors, angular.Component.Selector)
-		}
-
-		// Illegal
-		if angular.Module != nil {
-			selectors = append(selectors, angular.Module.GetImportedSelectors()...)
-		}
-	}
+func (m *Module) GetSelectors() []string {
+	selectors := m.GetDeclaredSelectors()
+	selectors = append(selectors, m.GetImportedSelectors()...)
 
 	return selectors
 }
