@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"cmp"
 	"slices"
 	"strings"
 
@@ -215,6 +216,7 @@ func (c *Class) GetDocumentation(includeClassName bool) string {
 	}
 
 	inputDefinitions := c.GetInputs()
+	slices.SortFunc(inputDefinitions, func(a ClassedDefinition, b ClassedDefinition) int { return cmp.Compare(a.Name, b.Name) })
 	if len(inputDefinitions) > 0 {
 		documentation = append(documentation, "Inputs:")
 		for _, input := range inputDefinitions {
