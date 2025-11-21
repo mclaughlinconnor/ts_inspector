@@ -1,6 +1,11 @@
 package parser
 
-import sitter "github.com/smacker/go-tree-sitter"
+import (
+	"slices"
+	"strings"
+
+	sitter "github.com/smacker/go-tree-sitter"
+)
 
 type Decorator struct {
 	IsAngular bool
@@ -115,6 +120,43 @@ type ClassedDefinition struct {
 	Class *Class
 }
 
+func (c *Class) FilterOwnDefinitions(cond func(d ClassedDefinition) bool) []ClassedDefinition {
+	arr := []ClassedDefinition{}
+	for _, definition := range c.GetClassedDefinitions() {
+		if cond(definition) {
+			arr = append(arr, definition)
+		}
+	}
+	return arr
+}
+
+func (c *Class) FilterAllDefinitions(cond func(d ClassedDefinition) bool) []ClassedDefinition {
+	definitions := c.FilterOwnDefinitions(cond)
+	definitionsMap := make(map[string]bool)
+
+	for _, d := range definitions {
+		definitionsMap[d.Name] = true
+	}
+
+	for _, e := range c.Extends {
+		if e == nil || e.Class == nil {
+			continue
+		}
+
+		ds := e.Class.FilterOwnDefinitions(cond)
+		for _, d := range ds {
+			// Don't allow duplicates. Also, prepare for doing stuff with overridden props
+			found, _ := definitionsMap[d.Name]
+			if !found {
+				definitionsMap[d.Name] = true
+				definitions = append(definitions, d)
+			}
+		}
+	}
+
+	return definitions
+}
+
 func (c *Class) GetAllPublicDefinitions() []ClassedDefinition {
 	definitions := c.GetOwnPublicDefinitions()
 	definitionsMap := make(map[string]bool)
@@ -142,19 +184,54 @@ func (c *Class) GetAllPublicDefinitions() []ClassedDefinition {
 	return definitions
 }
 
-func (c *Class) GetGetters() []Definition {
-	return filterDefinitions(c, func(d Definition) bool { return d.Getter })
-}
+func (c *Class) GetClassedDefinitions() []ClassedDefinition {
+	classedDefinitions := make([]ClassedDefinition, len(c.Definitions))
 
-func (c *Class) GetOwnPublicDefinitions() []ClassedDefinition {
-	definitions := filterDefinitions(c, func(d Definition) bool { return d.IsPublic() })
-	classedDefinitions := make([]ClassedDefinition, len(definitions))
-
-	for i, d := range definitions {
+	i := 0
+	for _, d := range c.Definitions {
 		classedDefinitions[i] = ClassedDefinition{d, c}
+		i++
 	}
 
 	return classedDefinitions
+}
+
+func (c *Class) GetDocumentation() string {
+	documentation := make([]string, 0)
+
+	if c.HasComponent() && len(c.Angular.Component.DeclaredIn) > 0 {
+		modules := make([]string, 0)
+
+		for _, d := range c.Angular.Component.DeclaredIn {
+			modules = append(modules, d.Name)
+		}
+
+		documentation = append(documentation, "Declared in: "+strings.Join(modules, ", "))
+	}
+
+	inputDefinitions := c.GetInputs()
+	if len(inputDefinitions) > 0 {
+		documentation = append(documentation, "Inputs:")
+		for _, input := range inputDefinitions {
+			documentation = append(documentation, "  "+input.Name+" ("+input.Class.Name+")")
+		}
+	}
+
+	return strings.Join(documentation, "\n")
+}
+
+func (c *Class) GetGetters() []ClassedDefinition {
+	return c.FilterOwnDefinitions(func(d ClassedDefinition) bool { return d.Getter })
+}
+
+func (c *Class) GetInputs() []ClassedDefinition {
+	return c.FilterAllDefinitions(func(def ClassedDefinition) bool {
+		return slices.ContainsFunc(def.Decorators, func(dec Decorator) bool { return dec.Name == "Input" })
+	})
+}
+
+func (c *Class) GetOwnPublicDefinitions() []ClassedDefinition {
+	return c.FilterOwnDefinitions(func(d ClassedDefinition) bool { return d.IsPublic() })
 }
 
 func (c *Class) GetTemplateFile() *File {
@@ -223,16 +300,6 @@ func ClassId(uri string, className string) string { return uri + "-" + className
 
 func NewClass(content string, file *File, node *sitter.Node) Class {
 	return Class{Content: content, Definitions: make(map[string]Definition), Extends: []*Reference{}, ExtendsIdentNames: []string{}, File: file, Implements: []*Reference{}, ImplementsIdentNames: []string{}, Name: "", Node: node, Usages: make(map[string]Usage)}
-}
-
-func filterDefinitions(c *Class, cond func(d Definition) bool) []Definition {
-	arr := []Definition{}
-	for _, definition := range c.Definitions {
-		if cond(definition) {
-			arr = append(arr, definition)
-		}
-	}
-	return arr
 }
 
 // For sorting by name

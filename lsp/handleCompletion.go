@@ -3,7 +3,6 @@ package lsp
 import (
 	"io"
 	"log"
-	"strings"
 	"ts_inspector/interfaces"
 	"ts_inspector/parser"
 	"ts_inspector/utils"
@@ -41,8 +40,8 @@ func HandleCompletion(writer io.Writer, logger *log.Logger, state *parser.State,
 				insertText := name + "($0)"
 				item.InsertText = &insertText
 				item.InsertTextFormat = &interfaces.InsertTextFormat.Snippet
-			case "property_definition":
-				fallthrough // is this even a thing?
+			case "property_definition": // is this even a thing?
+				fallthrough
 			case "public_field_definition":
 				item.Kind = &interfaces.CompletionItemKind.Property
 				item.Label = name
@@ -80,17 +79,8 @@ func HandleCompletion(writer io.Writer, logger *log.Logger, state *parser.State,
 				InsertText:       &insertText,
 			}
 
-			if len(c.Angular.Component.DeclaredIn) > 0 {
-				modules := make([]string, 0)
-
-				for _, d := range c.Angular.Component.DeclaredIn {
-					modules = append(modules, d.Name)
-				}
-
-				str := "Declared in: " + strings.Join(modules, ", ")
-
-				item.Documentation = &str
-			}
+			documentation := c.GetDocumentation()
+			item.Documentation = &documentation
 
 			items = append(items, item)
 		}
