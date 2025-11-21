@@ -16,6 +16,7 @@ func newInitializeResponse(id int) interfaces.InitializeResponse {
 			Capabilities: interfaces.ServerCapabilities{
 				CodeActionProvider: true,
 				CompletionProvider: interfaces.CompletionOptions{},
+				DefinitionProvider: true,
 				TextDocumentSync:   interfaces.TextDocumentSyncKind.Full,
 			},
 		},

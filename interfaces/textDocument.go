@@ -21,6 +21,6 @@ type TextDocumentItem struct {
 }
 
 type Location struct {
-	Uri   string      `json:"url"`
+	Uri   string      `json:"uri"`
 	Range utils.Range `json:"range"`
 }
