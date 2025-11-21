@@ -30,6 +30,7 @@ func HandleDidOpen(writer io.Writer, logger *log.Logger, state *parser.State, re
 		for _, dependency := range dependencies {
 			state.Files[dependency].Postprocess(state)
 		}
+		file.Postprocess(state)
 
 		utils.WriteResponse(writer, interfaces.GenerateDiagnosticsForFile(*file))
 
