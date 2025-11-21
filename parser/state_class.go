@@ -110,7 +110,12 @@ func (c *Class) EnsureAngular() {
 	}
 }
 
-func (c *Class) GetAllPublicDefinitions() []Definition {
+type ClassedDefinition struct {
+	Definition
+	Class *Class
+}
+
+func (c *Class) GetAllPublicDefinitions() []ClassedDefinition {
 	definitions := c.GetOwnPublicDefinitions()
 	definitionsMap := make(map[string]bool)
 
@@ -141,8 +146,15 @@ func (c *Class) GetGetters() []Definition {
 	return filterDefinitions(c, func(d Definition) bool { return d.Getter })
 }
 
-func (c *Class) GetOwnPublicDefinitions() []Definition {
-	return filterDefinitions(c, func(d Definition) bool { return d.IsPublic() })
+func (c *Class) GetOwnPublicDefinitions() []ClassedDefinition {
+	definitions := filterDefinitions(c, func(d Definition) bool { return d.IsPublic() })
+	classedDefinitions := make([]ClassedDefinition, len(definitions))
+
+	for i, d := range definitions {
+		classedDefinitions[i] = ClassedDefinition{d, c}
+	}
+
+	return classedDefinitions
 }
 
 func (c *Class) GetTemplateFile() *File {

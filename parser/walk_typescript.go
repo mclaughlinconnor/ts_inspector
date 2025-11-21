@@ -182,7 +182,7 @@ func extractTypeScriptDefinitions(class *Class, root *sitter.Node, content []byt
 
 	funcMap["method_definition"] = visitDefinition(content)
 	funcMap["method_signature"] = visitDefinition(content)
-	funcMap["property_definition"] = visitDefinition(content)
+	funcMap["property_definition"] = visitDefinition(content) // is this even a thing?
 	funcMap["public_field_definition"] = visitDefinition(content)
 	funcMap["required_parameter"] = visitDefinition(content)
 

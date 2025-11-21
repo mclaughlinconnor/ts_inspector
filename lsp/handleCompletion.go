@@ -25,7 +25,38 @@ func HandleCompletion(writer io.Writer, logger *log.Logger, state *parser.State,
 
 	for _, c := range file.Classes {
 		for _, d := range c.GetAllPublicDefinitions() {
-			items = append(items, interfaces.CompletionItem{Label: d.Name})
+			name := d.Name
+
+			item := interfaces.CompletionItem{}
+
+			switch t := d.Node.Type(); t {
+			case "method_definition":
+				fallthrough
+			case "method_signature":
+				fallthrough
+			case "abstract_method_signature":
+				item.Kind = &interfaces.CompletionItemKind.Method
+				item.Label = name + "()"
+
+				insertText := name + "($0)"
+				item.InsertText = &insertText
+				item.InsertTextFormat = &interfaces.InsertTextFormat.Snippet
+			case "property_definition":
+				fallthrough // is this even a thing?
+			case "public_field_definition":
+				item.Kind = &interfaces.CompletionItemKind.Property
+				item.Label = name
+			default:
+				// Nothing
+			}
+
+			details := interfaces.CompletionItemLabelDetails{
+				Description: d.Class.Name,
+			}
+
+			item.LabelDetails = &details
+
+			items = append(items, item)
 		}
 
 		if !c.HasComponent() {
