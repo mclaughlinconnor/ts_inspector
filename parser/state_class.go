@@ -158,6 +158,12 @@ func (c *Class) FilterAllDefinitions(cond func(d ClassedDefinition) bool) []Clas
 	return definitions
 }
 
+func (c *Class) FilterAllDefinitionsByDecorator(decoratorName string) []ClassedDefinition {
+	return c.FilterAllDefinitions(func(def ClassedDefinition) bool {
+		return slices.ContainsFunc(def.Decorators, func(dec Decorator) bool { return dec.Name == decoratorName })
+	})
+}
+
 func (c *Class) GetAllPublicDefinitions() []ClassedDefinition {
 	definitions := c.GetOwnPublicDefinitions()
 	definitionsMap := make(map[string]bool)
@@ -202,7 +208,6 @@ func (c *Class) GetDocumentation(includeClassName bool) string {
 
 	if includeClassName {
 		documentation = append(documentation, c.Name)
-		documentation = append(documentation, "")
 	}
 
 	if c.HasComponent() && len(c.Angular.Component.DeclaredIn) > 0 {
@@ -215,16 +220,10 @@ func (c *Class) GetDocumentation(includeClassName bool) string {
 		documentation = append(documentation, "Declared in: "+strings.Join(modules, ", "))
 	}
 
-	inputDefinitions := c.GetInputs()
-	slices.SortFunc(inputDefinitions, func(a ClassedDefinition, b ClassedDefinition) int { return cmp.Compare(a.Name, b.Name) })
-	if len(inputDefinitions) > 0 {
-		documentation = append(documentation, "Inputs:")
-		for _, input := range inputDefinitions {
-			documentation = append(documentation, "  "+input.Name+" ("+input.Class.Name+")")
-		}
-	}
+	documentation = append(documentation, buildDefinitionSection("Inputs", c.GetInputs()))
+	documentation = append(documentation, buildDefinitionSection("Outputs", c.GetOutputs()))
 
-	return strings.Join(documentation, "\n")
+	return strings.Join(documentation, "\n\n")
 }
 
 func (c *Class) GetGetters() []ClassedDefinition {
@@ -232,9 +231,11 @@ func (c *Class) GetGetters() []ClassedDefinition {
 }
 
 func (c *Class) GetInputs() []ClassedDefinition {
-	return c.FilterAllDefinitions(func(def ClassedDefinition) bool {
-		return slices.ContainsFunc(def.Decorators, func(dec Decorator) bool { return dec.Name == "Input" })
-	})
+	return c.FilterAllDefinitionsByDecorator("Input")
+}
+
+func (c *Class) GetOutputs() []ClassedDefinition {
+	return c.FilterAllDefinitionsByDecorator("Output")
 }
 
 func (c *Class) GetOwnPublicDefinitions() []ClassedDefinition {
@@ -307,6 +308,20 @@ func ClassId(uri string, className string) string { return uri + "-" + className
 
 func NewClass(content string, file *File, node *sitter.Node) Class {
 	return Class{Content: content, Definitions: make(map[string]Definition), Extends: []*Reference{}, ExtendsIdentNames: []string{}, File: file, Implements: []*Reference{}, ImplementsIdentNames: []string{}, Name: "", Node: node, Usages: make(map[string]Usage)}
+}
+
+func buildDefinitionSection(sectionName string, definitions []ClassedDefinition) string {
+	section := make([]string, 0)
+
+	slices.SortFunc(definitions, func(a ClassedDefinition, b ClassedDefinition) int { return cmp.Compare(a.Name, b.Name) })
+	if len(definitions) > 0 {
+		section = append(section, sectionName+":")
+		for _, input := range definitions {
+			section = append(section, "  "+input.Name+" ("+input.Class.Name+")")
+		}
+	}
+
+	return strings.Join(section, "\n")
 }
 
 // For sorting by name
