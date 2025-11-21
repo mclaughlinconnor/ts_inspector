@@ -6,6 +6,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"strings"
 	"ts_inspector/ast"
 	"ts_inspector/ast/indexing"
@@ -50,6 +51,24 @@ func (f *File) GetDependencies(state *State) []string {
 		}
 	}
 
+	for _, class := range state.Classes {
+		if !class.HasModule() {
+			continue
+		}
+
+		for d := range class.Angular.Module.Declarations.IterateResolved {
+			if d.Class.File == f || d.Class.GetTemplateFile() == f {
+				dependents = append(dependents, class.File.Filename())
+			}
+
+			for _, dep := range dependents {
+				if d.Class.File.Filename() == dep {
+					dependents = append(dependents, d.Class.File.Filename())
+				}
+			}
+		}
+	}
+
 	for _, class := range f.Classes {
 		t := class.GetTemplateFile()
 
@@ -71,7 +90,9 @@ func (f *File) GetDependencies(state *State) []string {
 		}
 	}
 
-	return dependents
+	slices.Sort(dependents)
+
+	return slices.Compact(dependents)
 }
 
 func (f *File) GetOffsetForPosition(p utils.Position) uint32 {
