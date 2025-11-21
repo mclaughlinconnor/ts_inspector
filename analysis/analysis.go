@@ -8,6 +8,8 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
+var enableDebug = false
+
 type analyser = func(file parser.File) []Analysis
 
 var Analysers = []analyser{}
@@ -79,4 +81,8 @@ func InitAnalysers() {
 	registerAnalyser(recursiveTemplate)
 	registerAnalyser(unnecessaryPublic)
 	registerAnalyser(unusedAngular)
+
+	if enableDebug {
+		registerAnalyser(debug)
+	}
 }
