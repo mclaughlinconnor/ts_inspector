@@ -19,6 +19,15 @@ func newCodeActionResponse(id int, codeActions []interfaces.CodeAction) interfac
 	}
 }
 
+func WorkspaceEditFromEdits(file *parser.File, edits utils.TextEdits) interfaces.WorkspaceEdit {
+	filename := parser.UriFromFilename(file.Filename())
+	return interfaces.WorkspaceEdit{
+		Changes: map[string]utils.TextEdits{
+			filename: edits,
+		},
+	}
+}
+
 func HandleCodeAction(writer io.Writer, logger *log.Logger, state *parser.State, request interfaces.CodeActionRequest) {
 	file := state.Files[parser.FilenameFromUri(request.Params.TextDocument.Uri)]
 
@@ -39,7 +48,7 @@ func GenerateActions(logger *log.Logger, state *parser.State, file *parser.File,
 
 		if allowed && err == nil && len(edits) > 0 {
 			codeActions = append(codeActions, interfaces.CodeAction{
-				Edit:  interfaces.WorkspaceEditFromEdits(file, edits),
+				Edit:  WorkspaceEditFromEdits(file, edits),
 				Title: action.Title,
 				Kind:  interfaces.CodeActionKind.Source,
 			})

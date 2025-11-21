@@ -1,11 +1,7 @@
 package interfaces
 
 import (
-	"ts_inspector/analysis"
-	"ts_inspector/parser"
 	"ts_inspector/utils"
-
-	sitter "github.com/smacker/go-tree-sitter"
 )
 
 type CodeDescription struct {
@@ -69,51 +65,4 @@ type PublishDiagnosticsParams struct {
 type PublishDiagnosticsNotification struct {
 	Notification
 	Params PublishDiagnosticsParams `json:"params"`
-}
-
-func NewDiagnosticNotification(uri string, version int, diagnostics []Diagnostic) PublishDiagnosticsNotification {
-	return PublishDiagnosticsNotification{
-		Notification: Notification{
-			RPC:    "2.0",
-			Method: "textDocument/publishDiagnostics",
-		},
-		Params: PublishDiagnosticsParams{uri, &version, diagnostics},
-	}
-}
-
-func GenerateDiagnosticsForFile(file parser.File) PublishDiagnosticsNotification {
-	return NewDiagnosticNotification(file.URI, file.Version, DiagnosticsFromAnalyses(analysis.Analyse(file)))
-}
-
-func NewDiagnostic(node *sitter.Node, severity int, source string, message string) Diagnostic {
-	r := utils.Range{Start: utils.PositionFromPoint(node.StartPoint()), End: utils.PositionFromPoint(node.EndPoint())}
-
-	return Diagnostic{
-		Range:    r,
-		Severity: &severity,
-		Source:   &source,
-		Message:  message,
-	}
-}
-
-func DiagnosticFromAnalysis(analysis analysis.Analysis) Diagnostic {
-	code := any(analysis.Code)
-
-	return Diagnostic{
-		Code:     &code,
-		Range:    analysis.Range,
-		Severity: &analysis.Severity,
-		Source:   &analysis.Source,
-		Message:  analysis.Message,
-	}
-}
-
-func DiagnosticsFromAnalyses(analyses []analysis.Analysis) []Diagnostic {
-	diagnostics := []Diagnostic{}
-
-	for _, analysis := range analyses {
-		diagnostics = append(diagnostics, DiagnosticFromAnalysis(analysis))
-	}
-
-	return diagnostics
 }

@@ -3,6 +3,7 @@ package lsp
 import (
 	"io"
 	"log"
+	"ts_inspector/analysis"
 	"ts_inspector/interfaces"
 	"ts_inspector/parser"
 	"ts_inspector/utils"
@@ -32,10 +33,10 @@ func HandleDidOpen(writer io.Writer, logger *log.Logger, state *parser.State, re
 		}
 		file.Postprocess(state)
 
-		utils.WriteResponse(writer, interfaces.GenerateDiagnosticsForFile(*file))
+		utils.WriteResponse(writer, analysis.GenerateDiagnosticsForFile(*file))
 
 		for _, depFile := range file.GetDependencies(state) {
-			utils.WriteResponse(writer, interfaces.GenerateDiagnosticsForFile(*state.Files[depFile]))
+			utils.WriteResponse(writer, analysis.GenerateDiagnosticsForFile(*state.Files[depFile]))
 		}
 	}
 }
