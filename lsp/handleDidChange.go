@@ -22,7 +22,15 @@ func HandleDidChange(writer io.Writer, logger *log.Logger, state *parser.State, 
 		logger.Println(err)
 	} else {
 		file := state.Files[parser.FilenameFromUri(request.Params.TextDocument.Uri)]
-		state.Postprocess()
+		if file == nil {
+			return
+		}
+
+		dependencies := file.GetDependencies(state)
+		for _, dependency := range dependencies {
+			state.Files[dependency].Postprocess(state)
+		}
+		file.Postprocess(state)
 
 		utils.WriteResponse(writer, interfaces.GenerateDiagnosticsForFile(*file))
 
