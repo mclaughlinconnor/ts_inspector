@@ -83,6 +83,8 @@ func (c *Component) AddTagUsage(usageNode *sitter.Node, usageIdent string) {
 
 	usageInstance := UsageInstance{Access: TemplateAccess, Node: usageNode}
 	usage.Usages = append(usage.Usages, &usageInstance)
+
+	c.Template.TagUsages[usageIdent] = usage
 }
 
 func (c *Component) EnsureTemplate() {
