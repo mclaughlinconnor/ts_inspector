@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"slices"
 	"strings"
+	"ts_inspector/interfaces"
 
 	sitter "github.com/smacker/go-tree-sitter"
 )
@@ -203,11 +204,11 @@ func (c *Class) GetClassedDefinitions() []ClassedDefinition {
 	return classedDefinitions
 }
 
-func (c *Class) GetDocumentation(includeClassName bool) string {
+func (c *Class) GetDocumentation(includeClassName bool) interfaces.MarkupContent {
 	documentation := make([]string, 0)
 
 	if includeClassName {
-		documentation = append(documentation, c.Name)
+		documentation = append(documentation, "# "+c.Name)
 	}
 
 	if c.HasComponent() && len(c.Angular.Component.DeclaredIn) > 0 {
@@ -217,13 +218,15 @@ func (c *Class) GetDocumentation(includeClassName bool) string {
 			modules = append(modules, d.Name)
 		}
 
-		documentation = append(documentation, "Declared in: "+strings.Join(modules, ", "))
+		documentation = append(documentation, "**Declared in:** "+strings.Join(modules, ", "))
 	}
 
 	documentation = append(documentation, buildDefinitionSection("Inputs", c.GetInputs()))
 	documentation = append(documentation, buildDefinitionSection("Outputs", c.GetOutputs()))
 
-	return strings.Join(documentation, "\n\n")
+	text := strings.Join(documentation, "\n\n")
+
+	return interfaces.MarkupContent{Kind: interfaces.MarkupKind.Markdown, Value: text}
 }
 
 func (c *Class) GetGetters() []ClassedDefinition {
@@ -315,9 +318,9 @@ func buildDefinitionSection(sectionName string, definitions []ClassedDefinition)
 
 	slices.SortFunc(definitions, func(a ClassedDefinition, b ClassedDefinition) int { return cmp.Compare(a.Name, b.Name) })
 	if len(definitions) > 0 {
-		section = append(section, sectionName+":")
+		section = append(section, "**"+sectionName+":**")
 		for _, input := range definitions {
-			section = append(section, "  "+input.Name+" ("+input.Class.Name+")")
+			section = append(section, "  "+input.Name+" (*"+input.Class.Name+"*)")
 		}
 	}
 

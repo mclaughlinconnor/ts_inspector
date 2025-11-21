@@ -46,7 +46,7 @@ type CompletionItem struct {
 	Kind                *int                        `json:"kind,omitempty"`
 	Tags                *[]int                      `json:"tags,omitempty"`
 	Detail              *string                     `json:"detail,omitempty"`
-	Documentation       *string                     `json:"documentation,omitempty"`
+	Documentation       *MarkupContent              `json:"documentation,omitempty"`
 	Deprecated          *bool                       `json:"deprecated,omitempty"`
 	Preselect           *bool                       `json:"preselect,omitempty"`
 	SortText            *string                     `json:"sortText,omitempty"`

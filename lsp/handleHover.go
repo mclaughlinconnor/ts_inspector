@@ -33,8 +33,7 @@ func HandleHover(writer io.Writer, logger *log.Logger, state *parser.State, requ
 					continue
 				}
 
-				documentation := c.GetDocumentation(true)
-				markup := interfaces.MarkupContent{Kind: interfaces.MarkupKind.PlainText, Value: documentation}
+				markup := c.GetDocumentation(true)
 				hover := interfaces.Hover{Contents: markup}
 
 				utils.WriteResponse(writer, interfaces.HoverResponse{Result: hover, Response: interfaces.Response{ID: &request.ID, RPC: "2.0"}})
