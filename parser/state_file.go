@@ -80,8 +80,8 @@ func (f *File) GetDependencies(state *State) []string {
 			dependents = append(dependents, t.Filename())
 		}
 
-		if class.File.Filename() != f.Filename() {
-			dependents = append(dependents, class.File.Filename())
+		if class.File.Filename() != t.Filename() {
+			dependents = append(dependents, t.Filename())
 		}
 
 		// If there's a template, class.Angular.Component cannot not be nil
