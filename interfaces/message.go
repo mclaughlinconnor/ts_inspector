@@ -15,3 +15,8 @@ type Notification struct {
 	RPC    string `json:"jsonrpc"`
 	Method string `json:"method"`
 }
+
+type EmptyResponse struct {
+	Response
+	Result any
+}

@@ -17,6 +17,7 @@ func newInitializeResponse(id int) interfaces.InitializeResponse {
 				CodeActionProvider: true,
 				CompletionProvider: interfaces.CompletionOptions{},
 				DefinitionProvider: true,
+				HoverProvider:      true,
 				TextDocumentSync:   interfaces.TextDocumentSyncKind.Full,
 			},
 		},

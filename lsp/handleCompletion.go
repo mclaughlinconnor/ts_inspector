@@ -79,7 +79,7 @@ func HandleCompletion(writer io.Writer, logger *log.Logger, state *parser.State,
 				InsertText:       &insertText,
 			}
 
-			documentation := c.GetDocumentation()
+			documentation := c.GetDocumentation(false)
 			item.Documentation = &documentation
 
 			items = append(items, item)

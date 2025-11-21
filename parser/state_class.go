@@ -196,8 +196,13 @@ func (c *Class) GetClassedDefinitions() []ClassedDefinition {
 	return classedDefinitions
 }
 
-func (c *Class) GetDocumentation() string {
+func (c *Class) GetDocumentation(includeClassName bool) string {
 	documentation := make([]string, 0)
+
+	if includeClassName {
+		documentation = append(documentation, c.Name)
+		documentation = append(documentation, "")
+	}
 
 	if c.HasComponent() && len(c.Angular.Component.DeclaredIn) > 0 {
 		modules := make([]string, 0)

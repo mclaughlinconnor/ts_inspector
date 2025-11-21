@@ -85,6 +85,9 @@ func handleMessage(logger *log.Logger, writer io.Writer, state *parser.State, me
 	case "textDocument/definition":
 		request := utils.TryParseRequest[interfaces.DefinitionRequest](logger, contents)
 		HandleDefinition(writer, logger, state, request)
+	case "textDocument/hover":
+		request := utils.TryParseRequest[interfaces.HoverRequest](logger, contents)
+		HandleHover(writer, logger, state, request)
 	case "workspace/executeCommand":
 		request := utils.TryParseRequest[interfaces.ExecuteCommandRequest](logger, contents)
 		HandleExecuteCommand(writer, logger, state, request)
