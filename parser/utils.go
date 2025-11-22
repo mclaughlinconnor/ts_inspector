@@ -3,6 +3,9 @@ package parser
 import (
 	"bytes"
 	"strings"
+	"ts_inspector/ast"
+	"ts_inspector/interfaces"
+	"ts_inspector/utils"
 )
 
 func IsAngularDecorator(name string) bool {
@@ -70,4 +73,29 @@ func FilenameFromUri(uri string) string {
 
 func UriFromFilename(filename string) string {
 	return `file://` + filename
+}
+
+func FindDefinition(file *File, cursorOffset uint32) []interfaces.Location {
+	locations := make([]interfaces.Location, 0)
+
+	tagName, found := ast.GetTagNameAtOffset(file.Content, cursorOffset)
+	if found {
+		for _, c := range file.Classes {
+			if !c.HasComponent() {
+				continue
+			}
+
+			components := c.Angular.Component.GetAvailableComponents()
+			for _, c := range components {
+				if c.Angular.Component.Selector == tagName {
+					start := GetPositionForOffset(c.File.Content, c.NameNode.StartByte()+c.Node.StartByte())
+					end := GetPositionForOffset(c.File.Content, c.NameNode.EndByte()+c.Node.StartByte())
+
+					locations = append(locations, interfaces.Location{Uri: c.File.URI, Range: utils.Range{Start: start, End: end}})
+				}
+			}
+		}
+	}
+
+	return locations
 }
