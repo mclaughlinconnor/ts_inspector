@@ -154,7 +154,7 @@ func (f *File) ResolveDynamicallyImportedFiles(state *State) {
 		}
 
 		resolvedFile := getFileByPath(state, absolutePath)
-		if resolvedFile != nil {
+		if resolvedFile == nil {
 			continue
 		}
 
