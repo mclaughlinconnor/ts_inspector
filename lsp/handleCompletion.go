@@ -13,16 +13,16 @@ func send(writer io.Writer, items []interfaces.CompletionItem, id *int) {
 }
 
 func HandleCompletion(writer io.Writer, logger *log.Logger, state *parser.State, request interfaces.CompletionRequest) {
-	file := state.Files[parser.FilenameFromUri(request.Params.TextDocument.Uri)]
+	file, _ := state.GetFile(parser.FilenameFromUri(request.Params.TextDocument.Uri))
 
 	items := make([]interfaces.CompletionItem, 0)
-	if file.Filetype != "pug" {
+	if file.Snapshot().Filetype != "pug" {
 		send(writer, items, &request.ID)
 
 		return
 	}
 
-	for _, c := range file.Classes {
+	for _, c := range file.Snapshot().Classes {
 		for _, d := range c.GetAllPublicDefinitions() {
 			name := d.Name
 

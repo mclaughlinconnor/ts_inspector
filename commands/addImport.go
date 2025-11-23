@@ -42,9 +42,9 @@ func AddImport(state *parser.State, args *[]any) (map[string]utils.TextEdits, er
 		}
 	}
 
-	file := state.Files[parser.FilenameFromUri(uri)]
+	file, _ := state.GetFile(parser.FilenameFromUri(uri))
 
-	return utils.ParseFile(false, file.Content, utils.TypeScript, changes, func(root *sitter.Node, content []byte, changes map[string]utils.TextEdits) (map[string]utils.TextEdits, error) {
+	return utils.ParseFile(false, file.Snapshot().Content, utils.TypeScript, changes, func(root *sitter.Node, content []byte, changes map[string]utils.TextEdits) (map[string]utils.TextEdits, error) {
 		edits, err := ast.AddImportToFile(content, packageName, imports, typeImports)
 		if err != nil {
 			return changes, err

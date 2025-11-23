@@ -22,21 +22,23 @@ func HandleDidChange(writer io.Writer, logger *log.Logger, state *parser.State, 
 	if err != nil {
 		logger.Println(err)
 	} else {
-		file := state.Files[parser.FilenameFromUri(request.Params.TextDocument.Uri)]
+		file, _ := state.GetFile(parser.FilenameFromUri(request.Params.TextDocument.Uri))
 		if file == nil {
 			return
 		}
 
 		dependencies := file.GetDependencies(state)
 		for _, dependency := range dependencies {
-			state.Files[dependency].Postprocess(state)
+			file, _ := state.GetFile(dependency)
+			file.Postprocess(state)
 		}
 		file.Postprocess(state)
 
-		utils.WriteResponse(writer, analysis.GenerateDiagnosticsForFile(*file))
+		utils.WriteResponse(writer, analysis.GenerateDiagnosticsForFile(file))
 
 		for _, depFile := range file.GetDependencies(state) {
-			utils.WriteResponse(writer, analysis.GenerateDiagnosticsForFile(*state.Files[depFile]))
+			file, _ := state.GetFile(depFile)
+			utils.WriteResponse(writer, analysis.GenerateDiagnosticsForFile(file))
 		}
 	}
 }

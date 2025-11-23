@@ -5,7 +5,7 @@ import (
 	"ts_inspector/utils"
 )
 
-func illegalDeclaringModule(file parser.File) []Analysis {
+func illegalDeclaringModule(file *parser.File) []Analysis {
 	return analyseClasses(file, func(class parser.Class) []Analysis {
 		analyses := []Analysis{}
 

@@ -5,7 +5,7 @@ import (
 	"ts_inspector/parser"
 )
 
-func constructorOnlyProperty(file parser.File) []Analysis {
+func constructorOnlyProperty(file *parser.File) []Analysis {
 	return analyseClasses(file, func(class parser.Class) []Analysis {
 		analyses := []Analysis{}
 

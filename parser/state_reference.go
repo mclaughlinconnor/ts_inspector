@@ -72,7 +72,7 @@ func resolveIdentFromImports(idents []string, file *File, state *State) []*Refer
 			continue
 		}
 
-		for _, export := range importedFile.Exports {
+		for _, export := range importedFile.Snapshot().Exports {
 			if export.Name == ident {
 				resolved[identIndex] = export
 			}
@@ -83,7 +83,7 @@ func resolveIdentFromImports(idents []string, file *File, state *State) []*Refer
 }
 
 func resolveNodeModulesImportPath(state *State, currentFile *File, importPath string) *File {
-	currentPath := filepath.Dir(FilenameFromUri(currentFile.URI))
+	currentPath := filepath.Dir(FilenameFromUri(currentFile.Snapshot().URI))
 
 	for currentPath != "." && currentPath != "/" {
 		nmPath := path.Join(currentPath, "node_modules")
@@ -101,11 +101,6 @@ func resolveNodeModulesImportPath(state *State, currentFile *File, importPath st
 		}
 
 		currentPath = path.Dir(currentPath)
-	}
-
-	resolvedFile := getFileByPath(state, currentPath)
-	if resolvedFile != nil {
-		return resolvedFile
 	}
 
 	return nil

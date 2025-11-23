@@ -65,7 +65,7 @@ func handleMessage(logger *log.Logger, writer io.Writer, state *parser.State, me
 	switch method {
 	case "initialize":
 		request := utils.TryParseRequest[interfaces.InitializeRequest](logger, contents)
-		state.RootURI = request.Params.RootUri
+		state.SetRootUri(request.Params.RootUri)
 		response := HandleInitialise(writer, logger, request)
 		utils.WriteResponse(writer, response)
 	case "shutdown":

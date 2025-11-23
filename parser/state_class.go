@@ -271,7 +271,7 @@ func (c *Class) HasModule() bool {
 	return c.Angular != nil && c.Angular.Module != nil
 }
 
-func (c *Class) Id() string { return ClassId(c.File.URI, c.Name) }
+func (c *Class) Id() string { return ClassId(c.File.Snapshot().URI, c.Name) }
 
 func (c *Class) Postprocess(state *State) {
 	c.resolveExtendsImplements(state)

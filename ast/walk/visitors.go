@@ -22,10 +22,5 @@ func NewVisitorFuncsMap[T any]() VisitorFuncMap[T] {
 }
 
 func dummyVisitor[T any](node *sitter.Node, state T, indexInParent int, visitorFuncMap VisitorFuncMap[T]) T {
-	for i := range node.ChildCount() {
-		index := int(i)
-		state = VisitNode(node.Child(index), state, index, visitorFuncMap)
-	}
-
-	return state
+	return VisitNamedChildren(node, state, visitorFuncMap)
 }

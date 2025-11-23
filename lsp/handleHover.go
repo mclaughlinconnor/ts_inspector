@@ -10,9 +10,9 @@ import (
 )
 
 func HandleHover(writer io.Writer, logger *log.Logger, state *parser.State, request interfaces.HoverRequest) {
-	file := state.Files[parser.FilenameFromUri(request.Params.TextDocument.Uri)]
+	file, _ := state.GetFile(parser.FilenameFromUri(request.Params.TextDocument.Uri))
 
-	if file.Filetype != "pug" {
+	if file.Snapshot().Filetype != "pug" {
 		utils.WriteResponse(writer, interfaces.EmptyResponse{Result: nil, Response: interfaces.Response{ID: &request.ID, RPC: "2.0"}})
 
 		return
@@ -20,9 +20,9 @@ func HandleHover(writer io.Writer, logger *log.Logger, state *parser.State, requ
 
 	offset := file.GetOffsetForPosition(request.Params.Position)
 
-	tagName, found := ast.GetTagNameAtOffset(file.Content, offset)
+	tagName, found := ast.GetTagNameAtOffset(file.Snapshot().Content, offset)
 	if found {
-		for _, c := range file.Classes {
+		for _, c := range file.Snapshot().Classes {
 			if !c.HasComponent() {
 				continue
 			}

@@ -42,8 +42,10 @@ func NewDiagnosticNotification(uri string, version int, diagnostics []interfaces
 	}
 }
 
-func GenerateDiagnosticsForFile(file parser.File) interfaces.PublishDiagnosticsNotification {
-	return NewDiagnosticNotification(file.URI, file.Version, DiagnosticsFromAnalyses(Analyse(file)))
+func GenerateDiagnosticsForFile(file *parser.File) interfaces.PublishDiagnosticsNotification {
+	f := file.Snapshot()
+
+	return NewDiagnosticNotification(f.URI, f.Version, DiagnosticsFromAnalyses(Analyse(file)))
 }
 
 func NewDiagnostic(node *sitter.Node, severity int, source string, message string) interfaces.Diagnostic {

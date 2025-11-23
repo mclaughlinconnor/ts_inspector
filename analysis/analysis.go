@@ -10,7 +10,7 @@ import (
 
 var enableDebug = false
 
-type analyser = func(file parser.File) []Analysis
+type analyser = func(file *parser.File) []Analysis
 
 var Analysers = []analyser{}
 
@@ -18,7 +18,7 @@ func registerAnalyser(analyser analyser) {
 	Analysers = append(Analysers, analyser)
 }
 
-func Analyse(file parser.File) []Analysis {
+func Analyse(file *parser.File) []Analysis {
 	analyses := []Analysis{}
 
 	for _, analyser := range Analysers {
@@ -28,11 +28,11 @@ func Analyse(file parser.File) []Analysis {
 	return analyses
 }
 
-func analyseClasses(file parser.File, analyse func(class parser.Class) []Analysis) []Analysis {
+func analyseClasses(file *parser.File, analyse func(class parser.Class) []Analysis) []Analysis {
 	analyses := []Analysis{}
 
-	for _, class := range file.Classes {
-		if file.URI != class.File.URI {
+	for _, class := range file.Snapshot().Classes {
+		if file.Snapshot().URI != class.File.Snapshot().URI {
 			continue
 		}
 
@@ -60,8 +60,10 @@ func newAnalysisHighlightName(problemNode *sitter.Node, class parser.Class, seve
 	startByte += class.Node.StartByte()
 	endByte += class.Node.StartByte()
 
-	startPosition := parser.GetPositionForOffset(class.File.Content, startByte)
-	endPosition := parser.GetPositionForOffset(class.File.Content, endByte)
+	content := class.File.Snapshot().Content
+
+	startPosition := parser.GetPositionForOffset(content, startByte)
+	endPosition := parser.GetPositionForOffset(content, endByte)
 
 	return newAnalysis(code, utils.Range{Start: startPosition, End: endPosition}, severity, message)
 }

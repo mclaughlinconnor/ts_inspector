@@ -32,7 +32,7 @@ func IndexTypeScriptFileFromIndexer(state *State, filename string) error {
 	}
 	file.ResetClasses()
 
-	_, err = utils.ParseFile(false, file.Content, utils.TypeScript, nil, func(root *sitter.Node, fileContent []byte, _ any) (any, error) {
+	_, err = utils.ParseFile(false, file.Snapshot().Content, utils.TypeScript, nil, func(root *sitter.Node, fileContent []byte, _ any) (any, error) {
 		err = extractFileImports(root, file)
 		if err != nil {
 			return nil, err
@@ -55,7 +55,7 @@ func IndexTypeScriptFileFromLsp(state *State, uri string, languageId string, ver
 	}
 	file.ResetClasses()
 
-	_, err = utils.ParseFile(false, file.Content, utils.TypeScript, nil, func(root *sitter.Node, fileContent []byte, _ any) (any, error) {
+	_, err = utils.ParseFile(false, file.Snapshot().Content, utils.TypeScript, nil, func(root *sitter.Node, fileContent []byte, _ any) (any, error) {
 		err = extractFileImports(root, file) // todo need to reset imports too
 		if err != nil {
 			return nil, err
@@ -109,19 +109,23 @@ func extractClassName(root *sitter.Node, content []byte) (string, *sitter.Node) 
 }
 
 func extractFileImports(root *sitter.Node, file *File) error {
-	imports, err := ast.ExtractImports(root, []byte(file.Content))
+	imports, err := ast.ExtractImports(root, []byte(file.Snapshot().Content))
 	if err != nil {
 		return err
 	}
 
-	file.Imports = append(file.Imports, imports...)
+	file.Update(func(data *fileState) {
+		data.Imports = append(data.Imports, imports...)
+	})
 
-	dynamicImports, err := ast.ExtractDynamicImports(root, []byte(file.Content))
+	dynamicImports, err := ast.ExtractDynamicImports(root, []byte(file.Snapshot().Content))
 	if err != nil {
 		return err
 	}
 
-	file.DynamicImportPaths = append(file.DynamicImportPaths, dynamicImports...)
+	file.Update(func(data *fileState) {
+		data.DynamicImportPaths = append(data.DynamicImportPaths, dynamicImports...)
+	})
 
 	return nil
 }
@@ -358,11 +362,11 @@ func parseClasses(state *State, root *sitter.Node, file *File) {
 	}
 
 	classVisitor := func(node *sitter.Node, classWalkState classWalkState, indexInParent int, funcMap walk.VisitorFuncMap[classWalkState]) classWalkState {
-		classContent := node.Content([]byte(file.Content))
+		classContent := node.Content([]byte(file.Snapshot().Content))
 
 		var class *Class
 		_, err := utils.ParseFile(false, classContent, utils.TypeScript, nil, func(classRoot *sitter.Node, content []byte, _ any) (any, error) {
-			uri := file.URI
+			uri := file.Snapshot().URI
 
 			className, classNameNode := extractClassName(classRoot, content)
 			if className == "" || classNameNode == nil {
@@ -370,7 +374,7 @@ func parseClasses(state *State, root *sitter.Node, file *File) {
 			}
 
 			var found bool
-			class, found = state.Classes[ClassId(uri, className)]
+			class, found = state.GetClass(ClassId(uri, className))
 			if !found {
 				c := NewClass(classContent, file, node)
 				c.Name = className
@@ -397,7 +401,7 @@ func parseClasses(state *State, root *sitter.Node, file *File) {
 			}
 
 			if classWalkState.Decorator != nil {
-				ExtractComponentData(state, class, classWalkState.Decorator, []byte(file.Content))
+				ExtractComponentData(state, class, classWalkState.Decorator, []byte(file.Snapshot().Content))
 
 				for classWalkState.Decorator.NextSibling() != nil {
 					if classWalkState.Decorator.NextSibling().Type() != "decorator" {
@@ -406,10 +410,10 @@ func parseClasses(state *State, root *sitter.Node, file *File) {
 
 					classWalkState.Decorator = classWalkState.Decorator.NextSibling()
 
-					ExtractComponentData(state, class, classWalkState.Decorator, []byte(file.Content))
+					ExtractComponentData(state, class, classWalkState.Decorator, []byte(file.Snapshot().Content))
 				}
 			} else {
-				ExtractComponentData(state, class, root, []byte(file.Content))
+				ExtractComponentData(state, class, root, []byte(file.Snapshot().Content))
 			}
 
 			if class.Angular != nil && class.Angular.Component != nil && class.Angular.Component.TemplateUrl != "" {
@@ -426,11 +430,13 @@ func parseClasses(state *State, root *sitter.Node, file *File) {
 			return classWalkState
 		}
 
-		file.Classes = append(file.Classes, class)
-		if classWalkState.IsExport {
-			export := Reference{Node: node, Name: class.Name, Class: class}
-			file.Exports = append(file.Exports, &export)
-		}
+		file.Update(func(data *fileState) {
+			data.Classes = append(data.Classes, class)
+			if classWalkState.IsExport {
+				export := Reference{Node: node, Name: class.Name, Class: class}
+				data.Exports = append(data.Exports, &export)
+			}
+		})
 
 		return classWalkState
 	}

@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 	"ts_inspector/ast"
 	"ts_inspector/ast/indexing"
 	"ts_inspector/utils"
@@ -17,7 +18,7 @@ import (
 
 var logger = utils.GetLogger("parser_state")
 
-type File struct {
+type fileState struct {
 	Classes            []*Class
 	Content            string
 	DynamicImportFiles []*File
@@ -30,8 +31,15 @@ type File struct {
 	Version            int
 }
 
+type File struct {
+	sync.RWMutex
+	state fileState
+}
+
+func (f *File) Filename() string { return FilenameFromUri(f.Snapshot().URI) }
+
 func (f *File) FindImportPath(identifier string) string {
-	for _, importClause := range f.Imports {
+	for _, importClause := range f.Snapshot().Imports {
 		for _, imp := range importClause.Imports {
 			if imp.LocalIdentifier == identifier {
 				return importClause.Package
@@ -45,13 +53,13 @@ func (f *File) FindImportPath(identifier string) string {
 func (f *File) GetDependencies(state *State) []string {
 	dependents := make([]string, 0)
 
-	for _, class := range state.Classes {
+	for _, class := range *state.GetClasses() {
 		if class.GetTemplateFile() == f {
 			dependents = append(dependents, class.File.Filename())
 		}
 	}
 
-	for _, class := range state.Classes {
+	for _, class := range *state.GetClasses() {
 		if !class.HasModule() {
 			continue
 		}
@@ -69,7 +77,7 @@ func (f *File) GetDependencies(state *State) []string {
 		}
 	}
 
-	for _, class := range f.Classes {
+	for _, class := range f.Snapshot().Classes {
 		t := class.GetTemplateFile()
 
 		if t == nil {
@@ -96,20 +104,21 @@ func (f *File) GetDependencies(state *State) []string {
 }
 
 func (f *File) GetOffsetForPosition(p utils.Position) uint32 {
-	lines := uint32(len(f.LineOffsets))
+	file := f.Snapshot()
+	lines := uint32(len(file.LineOffsets))
 
 	if p.Line >= lines {
-		return uint32(len(f.Content))
+		return uint32(len(file.Content))
 	} else if p.Line < 0 {
 		return 0
 	}
 
-	lineOffset := f.LineOffsets[p.Line]
+	lineOffset := file.LineOffsets[p.Line]
 
 	var nextLineOffset uint32
 
 	if p.Line+1 < lines {
-		nextLineOffset = f.LineOffsets[p.Line+1]
+		nextLineOffset = file.LineOffsets[p.Line+1]
 	} else {
 		nextLineOffset = lines
 	}
@@ -122,31 +131,37 @@ func (f *File) GetOffsetsForRange(r utils.Range) (uint32, uint32) {
 }
 
 func (f *File) Postprocess(state *State) {
-	for _, class := range f.Classes {
-		state.Classes[class.Id()] = class
+	file := f.Snapshot()
+
+	for _, class := range file.Classes {
+		state.SetClass(class.Id(), class)
 		class.Postprocess(state)
 	}
 
 	f.ResolveDynamicallyImportedFiles(state)
 
-	if f.Filetype == "pug" {
-		for _, class := range state.Classes {
+	if file.Filetype == "pug" {
+		for _, class := range *state.GetClasses() {
 			if class.Angular != nil &&
 				class.Angular.Component != nil &&
 				class.Angular.Component.TemplateUrlFile != nil &&
-				class.Angular.Component.TemplateUrlFile.URI == f.URI {
+				class.Angular.Component.TemplateUrlFile.Snapshot().URI == file.URI {
 
-				f.Classes = append(f.Classes, class)
+				f.Update(func(data *fileState) {
+					data.Classes = append(data.Classes, class)
+				})
 			}
 		}
 	}
 }
 
 func (f *File) ResolveDynamicallyImportedFiles(state *State) {
-	dynamicImportFiles := make([]*File, len(f.DynamicImportPaths))
+	file := f.Snapshot()
 
-	for i, importPath := range f.DynamicImportPaths {
-		absolutePath, err := filepath.Abs(path.Join(filepath.Dir(FilenameFromUri(f.URI)), importPath))
+	dynamicImportFiles := make([]*File, len(file.DynamicImportPaths))
+
+	for i, importPath := range file.DynamicImportPaths {
+		absolutePath, err := filepath.Abs(path.Join(filepath.Dir(FilenameFromUri(file.URI)), importPath))
 
 		if err != nil {
 			logger.Println(err)
@@ -154,30 +169,48 @@ func (f *File) ResolveDynamicallyImportedFiles(state *State) {
 		}
 
 		resolvedFile := getFileByPath(state, absolutePath)
-		if resolvedFile == nil {
+		if resolvedFile != nil {
 			continue
 		}
 
 		dynamicImportFiles[i] = resolvedFile
 	}
 
-	f.DynamicImportFiles = dynamicImportFiles
+	f.Update(func(data *fileState) {
+		data.DynamicImportFiles = dynamicImportFiles
+	})
 }
 
 func (f *File) ResetClasses() {
-	f.Classes = make([]*Class, 0)
-	f.Exports = make(References, 0)
+	f.Update(func(data *fileState) {
+		data.Classes = make([]*Class, 0)
+		data.Exports = make(References, 0)
+	})
 }
 
 func (f *File) SetContent(content string, version int) {
 	lineOffsets := getLineOffsets(content)
 
-	f.LineOffsets = lineOffsets
-	f.Content = content
-	f.Version = versionFallback(version, f.URI)
+	f.Update(func(data *fileState) {
+		data.LineOffsets = lineOffsets
+		data.Content = content
+		data.Version = versionFallback(version, data.URI)
+	})
 }
 
-func (f File) Filename() string { return FilenameFromUri(f.URI) }
+func (f *File) Snapshot() fileState {
+	f.RLock()
+	state := f.state
+	f.RUnlock()
+
+	return state
+}
+
+func (f *File) Update(fn func(data *fileState)) {
+	f.Lock()
+	defer f.Unlock()
+	fn(&f.state)
+}
 
 func FiletypeFromFilename(filename string) (string, error) {
 	if strings.HasSuffix(filename, ".pug") {
@@ -239,7 +272,7 @@ func IndexFileFromIndexer(state *State, filename string) error {
 		return err
 	}
 
-	file, found := state.Files[filename]
+	file, found := state.GetFile(filename)
 	if found {
 		file.Postprocess(state)
 	}
@@ -290,13 +323,14 @@ func NewFile(uri string, filetype string, version int) (*File, error) {
 		}
 	}
 
-	file := File{Classes: []*Class{}, Content: "", DynamicImportFiles: []*File{}, DynamicImportPaths: []string{}, Exports: []*Reference{}, Filetype: filetype, Imports: []*ast.ImportParseResult{}, LineOffsets: []uint32{}, URI: UriFromFilename(filename), Version: version}
+	fileState := fileState{Classes: []*Class{}, Content: "", DynamicImportFiles: []*File{}, DynamicImportPaths: []string{}, Exports: []*Reference{}, Filetype: filetype, Imports: []*ast.ImportParseResult{}, LineOffsets: []uint32{}, URI: UriFromFilename(filename), Version: version}
+	file := File{state: fileState}
 
 	return &file, nil
 }
 
 func createFileIfNotExists(state *State, filename string, content string, version int) (*File, error) {
-	file, found := state.Files[filename]
+	file, found := state.GetFile(filename)
 
 	if !found {
 		uri := UriFromFilename(filename)
@@ -320,7 +354,7 @@ func createFileIfNotExists(state *State, filename string, content string, versio
 			})
 		}
 
-		state.Files[file.Filename()] = file
+		state.SetFile(file.Filename(), file)
 	} else {
 		if content != "" || version != 0 {
 			file.SetContent(content, version)
@@ -331,7 +365,7 @@ func createFileIfNotExists(state *State, filename string, content string, versio
 }
 
 func getFileByPath(state *State, path string) *File {
-	file, found := state.Files[path]
+	file, found := state.GetFile(path)
 	if found {
 		return file
 	}
@@ -341,13 +375,13 @@ func getFileByPath(state *State, path string) *File {
 		return nil
 	}
 
-	file, found = state.Files[extensionedPath]
+	file, found = state.GetFile(extensionedPath)
 	if found {
 		return file
 	}
 
 	IndexFileFromIndexer(state, extensionedPath)
-	file, found = state.Files[extensionedPath]
+	file, found = state.GetFile(extensionedPath)
 	if found {
 		return file
 	}
@@ -384,8 +418,9 @@ func getLineOffsets(text string) []uint32 {
 
 	return offsets
 }
+
 func resolveProjectImportPath(state *State, currentFile *File, importPath string) *File {
-	absolutePath, err := filepath.Abs(path.Join(filepath.Dir(FilenameFromUri(currentFile.URI)), importPath))
+	absolutePath, err := filepath.Abs(path.Join(filepath.Dir(FilenameFromUri(currentFile.Snapshot().URI)), importPath))
 
 	if err != nil {
 		logger.Println(err)

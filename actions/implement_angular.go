@@ -17,13 +17,13 @@ func ImplementAngular(
 	methodName string,
 	score int,
 ) (actionEdits utils.TextEdits, allowed bool, err error) {
-	if file.Filetype != "typescript" {
+	if file.Snapshot().Filetype != "typescript" {
 		return nil, false, nil
 	}
 
 	var edits = utils.TextEdits{}
 
-	action, err := utils.ParseFile(false, file.Content, utils.TypeScript, edits, func(root *sitter.Node, content []byte, edits utils.TextEdits) (utils.TextEdits, error) {
+	action, err := utils.ParseFile(false, file.Snapshot().Content, utils.TypeScript, edits, func(root *sitter.Node, content []byte, edits utils.TextEdits) (utils.TextEdits, error) {
 		implementEdits, err := ast.AddImplementToFile(content, implements)
 		if err != nil {
 			return edits, err

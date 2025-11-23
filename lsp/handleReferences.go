@@ -10,10 +10,10 @@ import (
 )
 
 func HandleReferences(writer io.Writer, logger *log.Logger, state *parser.State, request interfaces.ReferenceRequest) {
-	file := state.Files[parser.FilenameFromUri(request.Params.TextDocument.Uri)]
+	file, _ := state.GetFile(parser.FilenameFromUri(request.Params.TextDocument.Uri))
 
 	locations := make([]interfaces.Location, 0)
-	if file.Filetype != "pug" {
+	if file.Snapshot().Filetype != "pug" {
 		utils.WriteResponse(writer, interfaces.ReferenceResponse{Result: locations, Response: interfaces.Response{ID: &request.ID, RPC: "2.0"}})
 
 		return
@@ -21,12 +21,12 @@ func HandleReferences(writer io.Writer, logger *log.Logger, state *parser.State,
 
 	offset := file.GetOffsetForPosition(request.Params.Position)
 
-	tagName, found := ast.GetTagNameAtOffset(file.Content, offset)
+	tagName, found := ast.GetTagNameAtOffset(file.Snapshot().Content, offset)
 	if !found {
 		utils.WriteResponse(writer, interfaces.DefinitionResponse{Result: locations, Response: interfaces.Response{ID: &request.ID, RPC: "2.0"}})
 	}
 
-	for _, c := range state.Classes {
+	for _, c := range *state.GetClasses() {
 		if !c.HasComponent() {
 			continue
 		}
@@ -44,10 +44,12 @@ func HandleReferences(writer io.Writer, logger *log.Logger, state *parser.State,
 		templateFile := c.Angular.Component.TemplateUrlFile
 
 		for _, usage := range usages.Usages {
-			start := parser.GetPositionForOffset(templateFile.Content, usage.Node.StartByte())
-			end := parser.GetPositionForOffset(templateFile.Content, usage.Node.EndByte())
+			tf := templateFile.Snapshot()
 
-			locations = append(locations, interfaces.Location{Uri: templateFile.URI, Range: utils.Range{Start: start, End: end}})
+			start := parser.GetPositionForOffset(tf.Content, usage.Node.StartByte())
+			end := parser.GetPositionForOffset(tf.Content, usage.Node.EndByte())
+
+			locations = append(locations, interfaces.Location{Uri: tf.URI, Range: utils.Range{Start: start, End: end}})
 		}
 	}
 

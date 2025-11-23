@@ -9,10 +9,10 @@ import (
 )
 
 func HandleDefinition(writer io.Writer, logger *log.Logger, state *parser.State, request interfaces.DefinitionRequest) {
-	file := state.Files[parser.FilenameFromUri(request.Params.TextDocument.Uri)]
+	file, _ := state.GetFile(parser.FilenameFromUri(request.Params.TextDocument.Uri))
 
 	locations := make([]interfaces.Location, 0)
-	if file.Filetype != "pug" {
+	if file.Snapshot().Filetype != "pug" {
 		utils.WriteResponse(writer, interfaces.DefinitionResponse{Result: locations, Response: interfaces.Response{ID: &request.ID, RPC: "2.0"}})
 
 		return

@@ -14,7 +14,7 @@ func MakeAsync(
 	file *parser.File,
 	editRange utils.Range,
 ) (actionEdits utils.TextEdits, allowed bool, err error) {
-	if file.Filetype != "typescript" {
+	if file.Snapshot().Filetype != "typescript" {
 		return nil, false, nil
 	}
 
@@ -22,7 +22,7 @@ func MakeAsync(
 
 	start, end := file.GetOffsetsForRange(editRange)
 
-	action, err := utils.ParseFile(false, file.Content, utils.TypeScript, edits, func(root *sitter.Node, content []byte, edits utils.TextEdits) (utils.TextEdits, error) {
+	action, err := utils.ParseFile(false, file.Snapshot().Content, utils.TypeScript, edits, func(root *sitter.Node, content []byte, edits utils.TextEdits) (utils.TextEdits, error) {
 		cursor := sitter.NewTreeCursor(root)
 		cursor.GoToFirstChild() // go into (program)
 		currentNode := cursor.CurrentNode()

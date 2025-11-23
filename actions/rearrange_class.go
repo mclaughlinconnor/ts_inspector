@@ -14,7 +14,7 @@ func RearrangeClass(
 	file *parser.File,
 	editRange utils.Range,
 ) (actionEdits utils.TextEdits, allowed bool, err error) {
-	definitions := ast.ExtractDefinitions([]byte(file.Content))
+	definitions := ast.ExtractDefinitions([]byte(file.Snapshot().Content))
 
 	if len(definitions) < 2 {
 		return utils.TextEdits{}, true, nil
@@ -47,7 +47,7 @@ func RearrangeClass(
 		s := file.GetOffsetForPosition(definition.Range.Start)
 		e := file.GetOffsetForPosition(definition.Range.End)
 
-		text := file.Content[s:e]
+		text := file.Snapshot().Content[s:e]
 		bodies = append(bodies, text)
 	}
 

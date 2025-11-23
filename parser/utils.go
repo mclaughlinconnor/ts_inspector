@@ -78,20 +78,22 @@ func UriFromFilename(filename string) string {
 func FindDefinition(file *File, cursorOffset uint32) []interfaces.Location {
 	locations := make([]interfaces.Location, 0)
 
-	tagName, found := ast.GetTagNameAtOffset(file.Content, cursorOffset)
+	tagName, found := ast.GetTagNameAtOffset(file.Snapshot().Content, cursorOffset)
 	if found {
-		for _, c := range file.Classes {
+		for _, c := range file.Snapshot().Classes {
 			if !c.HasComponent() {
 				continue
 			}
 
 			components := c.Angular.Component.GetAvailableComponents()
 			for _, c := range components {
-				if c.Angular.Component.Selector == tagName {
-					start := GetPositionForOffset(c.File.Content, c.NameNode.StartByte()+c.Node.StartByte())
-					end := GetPositionForOffset(c.File.Content, c.NameNode.EndByte()+c.Node.StartByte())
+				cContent := c.File.Snapshot().Content
 
-					locations = append(locations, interfaces.Location{Uri: c.File.URI, Range: utils.Range{Start: start, End: end}})
+				if c.Angular.Component.Selector == tagName {
+					start := GetPositionForOffset(cContent, c.NameNode.StartByte()+c.Node.StartByte())
+					end := GetPositionForOffset(cContent, c.NameNode.EndByte()+c.Node.StartByte())
+
+					locations = append(locations, interfaces.Location{Uri: c.File.Snapshot().URI, Range: utils.Range{Start: start, End: end}})
 				}
 			}
 		}

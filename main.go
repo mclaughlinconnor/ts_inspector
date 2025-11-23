@@ -39,7 +39,7 @@ func main() {
 
 	projectRoot := "../angular-tour-of-heroes"
 	filenames := traversetypescriptfiles.Index(projectRoot)
-	state := parser.State{Classes: map[string]*parser.Class{}, Files: map[string]*parser.File{}, RootURI: projectRoot}
+	state := parser.CreateState(projectRoot)
 
 	var err error
 	for _, filename := range filenames {

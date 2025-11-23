@@ -29,7 +29,7 @@ func WorkspaceEditFromEdits(file *parser.File, edits utils.TextEdits) interfaces
 }
 
 func HandleCodeAction(writer io.Writer, logger *log.Logger, state *parser.State, request interfaces.CodeActionRequest) {
-	file := state.Files[parser.FilenameFromUri(request.Params.TextDocument.Uri)]
+	file, _ := state.GetFile(parser.FilenameFromUri(request.Params.TextDocument.Uri))
 
 	codeActions := GenerateActions(logger, state, file, request.Params.Range)
 

@@ -5,14 +5,14 @@ import (
 	"ts_inspector/utils"
 )
 
-func recursiveTemplate(file parser.File) []Analysis {
+func recursiveTemplate(file *parser.File) []Analysis {
 	analyses := []Analysis{}
 
-	if file.Filetype != "pug" {
+	if file.Snapshot().Filetype != "pug" {
 		return analyses
 	}
 
-	for _, class := range file.Classes {
+	for _, class := range file.Snapshot().Classes {
 		if class.Angular == nil || class.Angular.Component == nil || class.Angular.Component.Template == nil {
 			continue
 		}

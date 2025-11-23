@@ -9,12 +9,12 @@ import (
 )
 
 func AddDestroyedObservable(state *parser.State, file *parser.File, _ utils.Range) (actionEdits utils.TextEdits, allowed bool, err error) {
-	if file.Filetype != "typescript" {
+	if file.Snapshot().Filetype != "typescript" {
 		return nil, false, nil
 	}
 
 	action := addDestroyedAction{[]utils.TextEdit{}, true}
-	action, err = utils.ParseFile(false, file.Content, utils.TypeScript, action, func(root *sitter.Node, content []byte, edits addDestroyedAction) (addDestroyedAction, error) {
+	action, err = utils.ParseFile(false, file.Snapshot().Content, utils.TypeScript, action, func(root *sitter.Node, content []byte, edits addDestroyedAction) (addDestroyedAction, error) {
 		definitionResults := ast.ExtractDefinitions(content)
 		definitionResult, err := ast.FindDefinition(&definitionResults, "_destroyed$")
 		if err != nil || definitionResult != nil {
