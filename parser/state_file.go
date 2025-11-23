@@ -160,21 +160,26 @@ func (f *File) ResolveDynamicallyImportedFiles(state *State) {
 
 	dynamicImportFiles := make([]*File, len(file.DynamicImportPaths))
 
+	var wg sync.WaitGroup
+
 	for i, importPath := range file.DynamicImportPaths {
-		absolutePath, err := filepath.Abs(path.Join(filepath.Dir(FilenameFromUri(file.URI)), importPath))
+		wg.Go(func() {
+			absolutePath, err := filepath.Abs(path.Join(filepath.Dir(FilenameFromUri(file.URI)), importPath))
+			if err != nil {
+				logger.Println(err)
+				return
+			}
 
-		if err != nil {
-			logger.Println(err)
-			continue
-		}
+			resolvedFile := getFileByPath(state, absolutePath)
+			if resolvedFile == nil {
+				return
+			}
 
-		resolvedFile := getFileByPath(state, absolutePath)
-		if resolvedFile != nil {
-			continue
-		}
-
-		dynamicImportFiles[i] = resolvedFile
+			dynamicImportFiles[i] = resolvedFile
+		})
 	}
+
+	wg.Wait()
 
 	f.Update(func(data *fileState) {
 		data.DynamicImportFiles = dynamicImportFiles
