@@ -90,12 +90,12 @@ func doExtractImports(node *sitter.Node, content []byte) ([]*ImportParseResult, 
 			}
 		}
 
-		walk.Walk(node, &importParseResult, internalFuncMap)
+		walk.WalkTypeScript(node, &importParseResult, internalFuncMap)
 
 		return append(state, &importParseResult)
 	}
 
-	return walk.Walk(node, []*ImportParseResult{}, funcMap), nil
+	return walk.WalkTypeScript(node, []*ImportParseResult{}, funcMap), nil
 }
 
 func doExtractDynamicImports(node *sitter.Node, content []byte) ([]string, error) {
@@ -125,7 +125,7 @@ func doExtractDynamicImports(node *sitter.Node, content []byte) ([]string, error
 		return append(state, fragment.Content(content))
 	}
 
-	return walk.Walk(node, []string{}, funcMap), nil
+	return walk.WalkTypeScript(node, []string{}, funcMap), nil
 }
 
 func ExtractDynamicImports(node *sitter.Node, content []byte) ([]string, error) {

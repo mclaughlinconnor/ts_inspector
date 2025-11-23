@@ -103,7 +103,7 @@ func extractClassName(root *sitter.Node, content []byte) (string, *sitter.Node) 
 	funcMap["class_declaration"] = classVisitor
 	funcMap["interface_declaration"] = classVisitor
 
-	r := walk.Walk(root, ret{}, funcMap)
+	r := walk.WalkTypeScript(root, ret{}, funcMap)
 
 	return r.text, r.node
 }
@@ -178,7 +178,7 @@ func extractMetadata(class *Class, root *sitter.Node, content []byte) {
 	funcMap["class_declaration"] = classVisitor
 	funcMap["interface_declaration"] = classVisitor
 
-	walk.Walk(root, class, funcMap)
+	walk.WalkTypeScript(root, class, funcMap)
 }
 
 func extractTypeScriptDefinitions(class *Class, root *sitter.Node, content []byte) error {
@@ -286,7 +286,7 @@ func extractTypeScriptDefinitions(class *Class, root *sitter.Node, content []byt
 	}
 
 	s := typescriptWalkState{Class: class}
-	s = walk.Walk(root, s, funcMap)
+	s = walk.WalkTypeScript(root, s, funcMap)
 
 	return nil
 }
@@ -298,7 +298,7 @@ func extractTypeScriptUsages(class *Class, root *sitter.Node, content []byte) er
 	funcMap["subscript_expression"] = visitUsageExpression(content)
 
 	s := typescriptWalkState{Class: class}
-	walk.Walk(root, s, funcMap)
+	walk.WalkTypeScript(root, s, funcMap)
 
 	return nil
 }
@@ -446,7 +446,7 @@ func parseClasses(state *State, root *sitter.Node, file *File) {
 	funcMap["interface_declaration"] = classVisitor
 
 	classWalkState := classWalkState{}
-	walk.Walk(root, classWalkState, funcMap)
+	walk.WalkTypeScript(root, classWalkState, funcMap)
 }
 
 func visitDefinition(content []byte) walk.VisitorFunction[typescriptWalkState] {

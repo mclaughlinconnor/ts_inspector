@@ -3,22 +3,28 @@ package walk
 import sitter "github.com/smacker/go-tree-sitter"
 
 type VisitorFunction[T any] func(node *sitter.Node, state T, indexInParent int, visitorFuncMap VisitorFuncMap[T]) T
-type VisitorFuncMap[T any] map[string]VisitorFunction[T]
+type InitVisitorFuncMap[T any] map[string]VisitorFunction[T]
+type VisitorFuncMap[T any] map[sitter.Symbol]VisitorFunction[T]
 
-var DefaultVisitorFuncKey = "__ts_inspector_default"
+func NewVisitorFuncsMap[T any]() InitVisitorFuncMap[T] {
+	return map[string]VisitorFunction[T]{}
+}
 
-func NewVisitorFuncsMap[T any]() VisitorFuncMap[T] {
-	var visitorFuncs = VisitorFuncMap[T]{
-		"__ts_inspector_default": dummyVisitor[T],
+func GenerateSymbolMap[T any](lang *sitter.Language, stringMap map[string]VisitorFunction[T]) VisitorFuncMap[T] {
+	optimizedMap := make(VisitorFuncMap[T])
+
+	count := uint32(lang.SymbolCount())
+	for i := range count {
+		symbolID := sitter.Symbol(i)
+		name := lang.SymbolName(symbolID)
+
+		handler, exists := stringMap[name]
+		if exists {
+			optimizedMap[symbolID] = handler
+		}
 	}
 
-	dst := make(map[string]VisitorFunction[T], len(visitorFuncs))
-
-	for k, v := range visitorFuncs {
-		dst[k] = v
-	}
-
-	return dst
+	return optimizedMap
 }
 
 func dummyVisitor[T any](node *sitter.Node, state T, indexInParent int, visitorFuncMap VisitorFuncMap[T]) T {

@@ -1,18 +1,35 @@
 package walk
 
-import sitter "github.com/smacker/go-tree-sitter"
+import (
+	"ts_inspector/utils"
 
-func Walk[T any](node *sitter.Node, state T, visitorFuncMap VisitorFuncMap[T]) T {
-	s := VisitNode(node, state, 0, visitorFuncMap)
-	return s
+	sitter "github.com/smacker/go-tree-sitter"
+)
+
+func Walk[T any](node *sitter.Node, state T, visitorFuncMap InitVisitorFuncMap[T], lang *sitter.Language) T {
+	optimizedMap := GenerateSymbolMap(lang, visitorFuncMap)
+
+	return VisitNode(node, state, 0, optimizedMap)
+}
+
+func WalkPug[T any](node *sitter.Node, state T, visitorFuncMap InitVisitorFuncMap[T]) T {
+	lang := utils.GetLanguage(utils.Pug)
+
+	return Walk(node, state, visitorFuncMap, lang)
+}
+
+func WalkTypeScript[T any](node *sitter.Node, state T, visitorFuncMap InitVisitorFuncMap[T]) T {
+	lang := utils.GetLanguage(utils.TypeScript)
+
+	return Walk(node, state, visitorFuncMap, lang)
 }
 
 func VisitNode[T any](node *sitter.Node, state T, indexInParent int, visitorFuncMap VisitorFuncMap[T]) T {
-	t := node.Type()
+	symbol := node.Symbol()
 
-	function, found := visitorFuncMap[t]
+	function, found := visitorFuncMap[symbol]
 	if !found {
-		function = visitorFuncMap[DefaultVisitorFuncKey]
+		function = dummyVisitor
 	}
 
 	state = function(node, state, indexInParent, visitorFuncMap)
@@ -29,7 +46,7 @@ func VisitNamedChildren[T any](node *sitter.Node, state T, funcMap VisitorFuncMa
 	return state
 }
 
-func VisitChildren[T any](node *sitter.Node, state T, funcMap VisitorFuncMap[T]) T {
+func FastVisitChildren[T any](node *sitter.Node, state T, funcMap VisitorFuncMap[T]) T {
 	for i := range node.ChildCount() {
 		index := int(i)
 		state = VisitNode(node.Child(index), state, index, funcMap)

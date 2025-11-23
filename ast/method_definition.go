@@ -140,7 +140,7 @@ func ExtractDefinitions(content []byte) []MethodDefinitionParseResult {
 	funcMap["method_signature"] = methodHandler
 	funcMap["abstract_method_signature"] = methodHandler
 
-	return walk.Walk(node, []MethodDefinitionParseResult{}, funcMap)
+	return walk.WalkTypeScript(node, []MethodDefinitionParseResult{}, funcMap)
 }
 
 func FindClassBody(content []byte) *sitter.Node {

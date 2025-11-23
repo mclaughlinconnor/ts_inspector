@@ -11,6 +11,7 @@ import (
 
 func ExtractComponentData(state *State, class *Class, node *sitter.Node, content []byte) {
 	funcMap := walk.NewVisitorFuncsMap[any]()
+
 	funcMap["decorator"] = func(node *sitter.Node, _ any, indexInParent int, funcMap walk.VisitorFuncMap[any]) any {
 		call := node.NamedChild(0)
 		if call.Type() != "call_expression" {
@@ -38,7 +39,7 @@ func ExtractComponentData(state *State, class *Class, node *sitter.Node, content
 		return nil
 	}
 
-	walk.Walk(node, nil, funcMap)
+	walk.WalkTypeScript(node, nil, funcMap)
 }
 
 func walkComponentDecoratorParams(state *State, class *Class, node *sitter.Node, content []byte) {
@@ -61,7 +62,7 @@ func walkComponentDecoratorParams(state *State, class *Class, node *sitter.Node,
 		return nil
 	}
 
-	walk.Walk(node, nil, funcMap)
+	walk.WalkTypeScript(node, nil, funcMap)
 }
 
 func walkModuleDecoratorParams(class *Class, node *sitter.Node, content []byte) {
@@ -84,7 +85,7 @@ func walkModuleDecoratorParams(class *Class, node *sitter.Node, content []byte) 
 		return nil
 	}
 
-	walk.Walk(node, nil, funcMap)
+	walk.WalkTypeScript(node, nil, funcMap)
 }
 
 func handleComponentKv(state *State, class *Class, vNode *sitter.Node, content []byte, keyName string) {

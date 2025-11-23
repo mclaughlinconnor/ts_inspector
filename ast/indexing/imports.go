@@ -56,7 +56,7 @@ func extractImportsFromFile(filename string) ([]string, error) {
 			return state
 		}
 
-		state = walk.Walk(root, state, funcMap)
+		state = walk.WalkTypeScript(root, state, funcMap)
 
 		return state, nil
 	})

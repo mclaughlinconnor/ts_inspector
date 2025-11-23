@@ -83,7 +83,7 @@ func extractIndentifierUsages(text []byte, class *Class) error {
 
 		return class
 	}
-	class = walk.Walk(root, class, funcMap)
+	class = walk.WalkPug(root, class, funcMap)
 
 	return nil
 }
@@ -103,7 +103,7 @@ func extractPugUsages(class *Class, content []byte) error {
 		return err
 	}
 
-	output := walk.Walk(root, class, pugFuncMap)
+	output := walk.WalkPug(root, class, pugFuncMap)
 	if output != class {
 		panic("ExtractPugUsages altered the class pointer")
 	}
@@ -183,7 +183,7 @@ func visitContent(content []byte) walk.VisitorFunction[*Class] {
 			return state
 		}
 
-		state = walk.Walk(angularRoot, state, angularContentFuncMap)
+		state = walk.WalkPug(angularRoot, state, angularContentFuncMap)
 		return state
 	}
 }
