@@ -7,6 +7,16 @@ import (
 )
 
 func newInitializeResponse(id int) interfaces.InitializeResponse {
+	triggerChars := []string{".", "\"", "'", "`", "/", "@", "<", "#", " ", "*"}
+
+	for i := 'A'; i <= 'z'; i++ {
+		triggerChars = append(triggerChars, string(i))
+	}
+
+	commitChars := []string{".", ",", ";"}
+
+	labelDetailsSupport := true
+
 	return interfaces.InitializeResponse{
 		Response: interfaces.Response{
 			RPC: "2.0",
@@ -15,7 +25,13 @@ func newInitializeResponse(id int) interfaces.InitializeResponse {
 		Result: interfaces.InitializeResult{
 			Capabilities: interfaces.ServerCapabilities{
 				CodeActionProvider: true,
-				CompletionProvider: interfaces.CompletionOptions{},
+				CompletionProvider: interfaces.CompletionOptions{
+					AllCommitCharacters: &commitChars,
+					CompletionItem: &struct {
+						LabelDetailsSupport *bool `json:"labelDetailsSupport,omitempty"`
+					}{LabelDetailsSupport: &labelDetailsSupport},
+					TriggerCharacters: &triggerChars,
+				},
 				DefinitionProvider: true,
 				HoverProvider:      true,
 				ReferencesProvider: true,
