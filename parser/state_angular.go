@@ -3,6 +3,7 @@ package parser
 import (
 	"slices"
 	"sort"
+	"sync"
 
 	sitter "github.com/smacker/go-tree-sitter"
 )
@@ -189,9 +190,13 @@ func (m *Module) GetComponents() []*Class {
 }
 
 func (m *Module) Postprocess(state *State, class *Class) {
-	m.Imports = resolveIdentFromImports(m.ImportsIdents, class.File, state)
-	m.Exports = resolveIdentFromImports(m.ExportsIdents, class.File, state)
-	m.Declarations = resolveIdentFromImports(m.DeclarationsIdents, class.File, state)
+	wg := sync.WaitGroup{}
+
+	wg.Go(func() { m.Imports = resolveIdentFromImports(m.ImportsIdents, class.File, state) })
+	wg.Go(func() { m.Exports = resolveIdentFromImports(m.ExportsIdents, class.File, state) })
+	wg.Go(func() { m.Declarations = resolveIdentFromImports(m.DeclarationsIdents, class.File, state) })
+
+	wg.Wait()
 
 	for _, declaration := range m.Declarations {
 		if declaration == nil {

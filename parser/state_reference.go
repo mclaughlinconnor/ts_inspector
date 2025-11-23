@@ -4,6 +4,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"sync"
 
 	sitter "github.com/smacker/go-tree-sitter"
 )
@@ -33,51 +34,57 @@ func (r *References) IterateResolved(yield func(*Reference) bool) {
 func resolveIdentFromImports(idents []string, file *File, state *State) []*Reference {
 	resolved := make([]*Reference, len(idents))
 
+	wg := sync.WaitGroup{}
+
 	for identIndex, ident := range idents {
-		importPath := file.FindImportPath(ident)
+		wg.Go(func() {
+			importPath := file.FindImportPath(ident)
 
-		if importPath == "" {
-			continue
-		}
+			if importPath == "" {
+				return
+			}
 
-		var importedFile *File
+			var importedFile *File
 
-		extensions := []string{".ts", ".d.ts", ".js"}
-		joinSuffixes := []string{"", "index"}
+			extensions := []string{".ts", ".d.ts", ".js"}
+			joinSuffixes := []string{"", "index"}
 
-		for _, join := range joinSuffixes {
-			ip := path.Join(importPath, join)
-			for _, extension := range extensions {
-				importedFile = resolveProjectImportPath(state, file, ip+extension)
+			for _, join := range joinSuffixes {
+				ip := path.Join(importPath, join)
+				for _, extension := range extensions {
+					importedFile = resolveProjectImportPath(state, file, ip+extension)
+					if importedFile != nil {
+						break
+					}
+				}
+
+				if importedFile == nil {
+					for _, extension := range extensions {
+						importedFile = resolveNodeModulesImportPath(state, file, ip+extension)
+						if importedFile != nil {
+							break
+						}
+					}
+				}
+
 				if importedFile != nil {
 					break
 				}
 			}
 
 			if importedFile == nil {
-				for _, extension := range extensions {
-					importedFile = resolveNodeModulesImportPath(state, file, ip+extension)
-					if importedFile != nil {
-						break
-					}
+				return
+			}
+
+			for _, export := range importedFile.Snapshot().Exports {
+				if export.Name == ident {
+					resolved[identIndex] = export
 				}
 			}
-
-			if importedFile != nil {
-				break
-			}
-		}
-
-		if importedFile == nil {
-			continue
-		}
-
-		for _, export := range importedFile.Snapshot().Exports {
-			if export.Name == ident {
-				resolved[identIndex] = export
-			}
-		}
+		})
 	}
+
+	wg.Wait()
 
 	return resolved
 }
