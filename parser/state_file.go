@@ -177,9 +177,9 @@ func (f *File) ResolveDynamicallyImportedFiles(state *State) {
 
 			dynamicImportFiles[i] = resolvedFile
 		})
-	}
 
-	wg.Wait()
+		wg.Wait()
+	}
 
 	f.Update(func(data *fileState) {
 		data.DynamicImportFiles = dynamicImportFiles

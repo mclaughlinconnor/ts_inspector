@@ -58,9 +58,8 @@ func (s *State) Postprocess() {
 
 	for _, file := range *s.GetFiles() {
 		wg.Go(func() { file.Postprocess(s) })
+		wg.Wait()
 	}
-
-	wg.Wait()
 }
 
 func (s *State) SetClass(id string, class *Class) {

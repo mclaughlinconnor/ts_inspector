@@ -222,9 +222,13 @@ func (m *Module) GetComponentsFromOutside() []*Class {
 func (m *Module) Postprocess(state *State, class *Class) {
 	wg := sync.WaitGroup{}
 
-	wg.Go(func() { m.Imports = resolveIdentFromImports(m.ImportsIdents, class.File, state) })
-	wg.Go(func() { m.Exports = resolveIdentFromImports(m.ExportsIdents, class.File, state) })
-	wg.Go(func() { m.Declarations = resolveIdentFromImports(m.DeclarationsIdents, class.File, state) })
+	m.Imports = resolveIdentFromImports(m.ImportsIdents, class.File, state)
+	m.Exports = resolveIdentFromImports(m.ExportsIdents, class.File, state)
+	m.Declarations = resolveIdentFromImports(m.DeclarationsIdents, class.File, state)
+
+	// wg.Go(func() { m.Imports = resolveIdentFromImports(m.ImportsIdents, class.File, state) })
+	// wg.Go(func() { m.Exports = resolveIdentFromImports(m.ExportsIdents, class.File, state) })
+	// wg.Go(func() { m.Declarations = resolveIdentFromImports(m.DeclarationsIdents, class.File, state) })
 
 	wg.Wait()
 
