@@ -102,7 +102,7 @@ func (c *Component) GetAvailableComponents() []*Class {
 			continue
 		}
 
-		selectors = append(selectors, declaringClass.Angular.Module.GetComponents()...)
+		selectors = append(selectors, declaringClass.Angular.Module.GetComponentsFromInside()...)
 	}
 
 	for _, imp := range c.Imports {
@@ -115,7 +115,7 @@ func (c *Component) GetAvailableComponents() []*Class {
 		}
 
 		if imp.Class.HasModule() {
-			selectors = append(selectors, imp.Class.Angular.Module.GetComponents()...)
+			selectors = append(selectors, imp.Class.Angular.Module.GetComponentsFromOutside()...)
 		}
 	}
 
@@ -133,7 +133,7 @@ func (m *Module) GetDeclaredComponents() []*Class {
 	selectors := make([]*Class, 0)
 
 	for _, imp := range m.Declarations {
-		if imp.Class == nil {
+		if imp == nil || imp.Class == nil {
 			// Should have been resolved by now
 			continue
 		}
@@ -148,6 +148,32 @@ func (m *Module) GetDeclaredComponents() []*Class {
 		}
 
 		// Illegal
+		if angular.Module != nil {
+			selectors = append(selectors, angular.Module.GetExportedComponents()...)
+		}
+	}
+
+	return selectors
+}
+
+func (m *Module) GetExportedComponents() []*Class {
+	selectors := make([]*Class, 0)
+
+	for _, imp := range m.Exports {
+		if imp == nil || imp.Class == nil {
+			// Should have been resolved by now
+			continue
+		}
+
+		angular := imp.Class.Angular
+		if angular == nil {
+			continue
+		}
+
+		if angular.Component != nil {
+			selectors = append(selectors, imp.Class)
+		}
+
 		if angular.Module != nil {
 			selectors = append(selectors, angular.Module.GetImportedComponents()...)
 		}
@@ -175,18 +201,22 @@ func (m *Module) GetImportedComponents() []*Class {
 		}
 
 		if angular.Module != nil {
-			selectors = append(selectors, angular.Module.GetImportedComponents()...)
+			selectors = append(selectors, angular.Module.GetExportedComponents()...)
 		}
 	}
 
 	return selectors
 }
 
-func (m *Module) GetComponents() []*Class {
+func (m *Module) GetComponentsFromInside() []*Class {
 	selectors := m.GetDeclaredComponents()
 	selectors = append(selectors, m.GetImportedComponents()...)
 
 	return selectors
+}
+
+func (m *Module) GetComponentsFromOutside() []*Class {
+	return m.GetExportedComponents()
 }
 
 func (m *Module) Postprocess(state *State, class *Class) {
