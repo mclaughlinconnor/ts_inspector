@@ -51,7 +51,7 @@ func main() {
 
 	state.Postprocess()
 
-	if len(os.Args) == 1 {
+	if utils.LSP && len(os.Args) == 1 {
 		startLsp(&state)
 		return
 	}

@@ -4,6 +4,7 @@ import (
 	"slices"
 	"sort"
 	"sync"
+	"ts_inspector/utils"
 
 	sitter "github.com/smacker/go-tree-sitter"
 )
@@ -223,8 +224,19 @@ func (m *Module) Postprocess(state *State, class *Class) {
 	wg := sync.WaitGroup{}
 
 	wg.Go(func() { m.Imports = resolveIdentFromImports(m.ImportsIdents, class.Snapshot().File, state) })
+	if !utils.Concurrency {
+		wg.Wait()
+	}
+
 	wg.Go(func() { m.Exports = resolveIdentFromImports(m.ExportsIdents, class.Snapshot().File, state) })
+	if !utils.Concurrency {
+		wg.Wait()
+	}
+
 	wg.Go(func() { m.Declarations = resolveIdentFromImports(m.DeclarationsIdents, class.Snapshot().File, state) })
+	if !utils.Concurrency {
+		wg.Wait()
+	}
 
 	wg.Wait()
 

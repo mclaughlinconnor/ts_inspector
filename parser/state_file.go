@@ -178,6 +178,10 @@ func (c *File) ResolveDynamicallyImportedFiles(state *State) {
 
 			dynamicImportFiles[i] = resolvedFile
 		})
+
+		if !utils.Concurrency {
+			wg.Wait()
+		}
 	}
 
 	wg.Wait()

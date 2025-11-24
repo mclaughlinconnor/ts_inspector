@@ -1,6 +1,9 @@
 package parser
 
-import "sync"
+import (
+	"sync"
+	"ts_inspector/utils"
+)
 
 type State struct {
 	sync.RWMutex
@@ -58,6 +61,10 @@ func (s *State) Postprocess() {
 
 	for _, file := range *s.GetFiles() {
 		wg.Go(func() { file.Postprocess(s) })
+
+		if !utils.Concurrency {
+			wg.Wait()
+		}
 	}
 
 	wg.Wait()

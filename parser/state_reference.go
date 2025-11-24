@@ -5,6 +5,7 @@ import (
 	"path"
 	"path/filepath"
 	"sync"
+	"ts_inspector/utils"
 
 	sitter "github.com/smacker/go-tree-sitter"
 )
@@ -82,6 +83,10 @@ func resolveIdentFromImports(idents []string, file *File, state *State) []*Refer
 				}
 			}
 		})
+
+		if !utils.Concurrency {
+			wg.Wait()
+		}
 	}
 
 	wg.Wait()
