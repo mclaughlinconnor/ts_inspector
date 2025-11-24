@@ -1,12 +1,24 @@
 package analysis
 
 import (
+	"fmt"
 	"ts_inspector/parser"
 	"ts_inspector/utils"
 )
 
 func debug(file *parser.File) []Analysis {
 	analyses := []Analysis{}
+
+	analyses = append(analyses, analyseClasses(file, func(class parser.Class) []Analysis {
+		analyses := []Analysis{}
+
+		for _, definition := range class.Definitions {
+			message := fmt.Sprintf("Usages: %d", len(definition.Usages))
+			analyses = append(analyses, newAnalysisHighlightName(definition.Node, class, AnalysisSeverity.Hint, "", message))
+		}
+
+		return analyses
+	})...)
 
 	if file.Snapshot().Filetype != "pug" {
 		return analyses

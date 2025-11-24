@@ -12,6 +12,18 @@ func Walk[T any](node *sitter.Node, state T, visitorFuncMap InitVisitorFuncMap[T
 	return VisitNode(node, state, 0, optimizedMap)
 }
 
+func WalkAngular[T any](node *sitter.Node, state T, visitorFuncMap InitVisitorFuncMap[T]) T {
+	lang := utils.GetLanguage(utils.AngularContent)
+
+	return Walk(node, state, visitorFuncMap, lang)
+}
+
+func WalkJavaScript[T any](node *sitter.Node, state T, visitorFuncMap InitVisitorFuncMap[T]) T {
+	lang := utils.GetLanguage(utils.JavaScript)
+
+	return Walk(node, state, visitorFuncMap, lang)
+}
+
 func WalkPug[T any](node *sitter.Node, state T, visitorFuncMap InitVisitorFuncMap[T]) T {
 	lang := utils.GetLanguage(utils.Pug)
 

@@ -83,7 +83,7 @@ func extractIndentifierUsages(text []byte, class *Class) error {
 
 		return class
 	}
-	class = walk.WalkPug(root, class, funcMap)
+	class = walk.WalkJavaScript(root, class, funcMap)
 
 	return nil
 }
@@ -183,7 +183,7 @@ func visitContent(content []byte) walk.VisitorFunction[*Class] {
 			return state
 		}
 
-		state = walk.WalkPug(angularRoot, state, angularContentFuncMap)
+		state = walk.WalkAngular(angularRoot, state, angularContentFuncMap)
 		return state
 	}
 }
