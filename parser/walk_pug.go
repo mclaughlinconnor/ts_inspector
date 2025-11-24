@@ -53,8 +53,8 @@ func IndexPugFromTypeScript(state *State, class *Class, templateFileName string)
 
 	file.ResetClasses()
 	class.EnsureAngular()
-	class.Angular.EnsureComponent()
-	class.Angular.Component.TemplateUrlFile = file
+	class.Snapshot().Angular.EnsureComponent()
+	class.Snapshot().Angular.Component.TemplateUrlFile = file
 
 	err = extractPugUsages(class, []byte(file.Snapshot().Content))
 	if err != nil {
@@ -93,7 +93,7 @@ func extractPugUsages(class *Class, content []byte) error {
 	pugFuncMap["attribute"] = visitAttribute(content)
 	pugFuncMap["content"] = visitContent(content)
 	pugFuncMap["tag_name"] = func(node *sitter.Node, state *Class, indexInParent int, _ walk.VisitorFuncMap[*Class]) *Class {
-		state.Angular.Component.AddTagUsage(node, node.Content(content))
+		state.Snapshot().Angular.Component.AddTagUsage(node, node.Content(content))
 
 		return state
 	}

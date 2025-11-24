@@ -31,7 +31,7 @@ func HandleReferences(writer io.Writer, logger *log.Logger, state *parser.State,
 			continue
 		}
 
-		template := c.Angular.Component.Template
+		template := c.Snapshot().Angular.Component.Template
 		if template == nil {
 			continue
 		}
@@ -41,7 +41,7 @@ func HandleReferences(writer io.Writer, logger *log.Logger, state *parser.State,
 			continue
 		}
 
-		templateFile := c.Angular.Component.TemplateUrlFile
+		templateFile := c.Snapshot().Angular.Component.TemplateUrlFile
 
 		for _, usage := range usages.Usages {
 			tf := templateFile.Snapshot()

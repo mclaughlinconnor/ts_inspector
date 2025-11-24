@@ -98,11 +98,11 @@ func (c *Component) GetAvailableComponents() []*Class {
 	selectors := make(Classes, 0)
 
 	for _, declaringClass := range c.DeclaredIn {
-		if declaringClass.Angular == nil || declaringClass.Angular.Module == nil {
+		if declaringClass.Snapshot().Angular == nil || declaringClass.Snapshot().Angular.Module == nil {
 			continue
 		}
 
-		selectors = append(selectors, declaringClass.Angular.Module.GetComponentsFromInside()...)
+		selectors = append(selectors, declaringClass.Snapshot().Angular.Module.GetComponentsFromInside()...)
 	}
 
 	for _, imp := range c.Imports {
@@ -115,7 +115,7 @@ func (c *Component) GetAvailableComponents() []*Class {
 		}
 
 		if imp.Class.HasModule() {
-			selectors = append(selectors, imp.Class.Angular.Module.GetComponentsFromOutside()...)
+			selectors = append(selectors, imp.Class.Snapshot().Angular.Module.GetComponentsFromOutside()...)
 		}
 	}
 
@@ -125,7 +125,7 @@ func (c *Component) GetAvailableComponents() []*Class {
 }
 
 func (c *Component) Postprocess(state *State, class *Class) {
-	imports := resolveIdentFromImports(c.ImportsIdents, class.File, state)
+	imports := resolveIdentFromImports(c.ImportsIdents, class.Snapshot().File, state)
 	c.Imports = imports
 }
 
@@ -138,7 +138,7 @@ func (m *Module) GetDeclaredComponents() []*Class {
 			continue
 		}
 
-		angular := imp.Class.Angular
+		angular := imp.Class.Snapshot().Angular
 		if angular == nil {
 			continue
 		}
@@ -165,7 +165,7 @@ func (m *Module) GetExportedComponents() []*Class {
 			continue
 		}
 
-		angular := imp.Class.Angular
+		angular := imp.Class.Snapshot().Angular
 		if angular == nil {
 			continue
 		}
@@ -191,7 +191,7 @@ func (m *Module) GetImportedComponents() []*Class {
 			continue
 		}
 
-		angular := imp.Class.Angular
+		angular := imp.Class.Snapshot().Angular
 		if angular == nil {
 			continue
 		}
@@ -222,13 +222,9 @@ func (m *Module) GetComponentsFromOutside() []*Class {
 func (m *Module) Postprocess(state *State, class *Class) {
 	wg := sync.WaitGroup{}
 
-	m.Imports = resolveIdentFromImports(m.ImportsIdents, class.File, state)
-	m.Exports = resolveIdentFromImports(m.ExportsIdents, class.File, state)
-	m.Declarations = resolveIdentFromImports(m.DeclarationsIdents, class.File, state)
-
-	// wg.Go(func() { m.Imports = resolveIdentFromImports(m.ImportsIdents, class.File, state) })
-	// wg.Go(func() { m.Exports = resolveIdentFromImports(m.ExportsIdents, class.File, state) })
-	// wg.Go(func() { m.Declarations = resolveIdentFromImports(m.DeclarationsIdents, class.File, state) })
+	wg.Go(func() { m.Imports = resolveIdentFromImports(m.ImportsIdents, class.Snapshot().File, state) })
+	wg.Go(func() { m.Exports = resolveIdentFromImports(m.ExportsIdents, class.Snapshot().File, state) })
+	wg.Go(func() { m.Declarations = resolveIdentFromImports(m.DeclarationsIdents, class.Snapshot().File, state) })
 
 	wg.Wait()
 
@@ -245,8 +241,10 @@ func (m *Module) Postprocess(state *State, class *Class) {
 		 * Editing pug files can trigger a re-postprocess, which will add the same
 		 * class without walk_typescript being able to call class.Reset()
 		 */
-		if !slices.Contains(declaration.Class.Angular.Component.DeclaredIn, class) {
-			declaration.Class.Angular.Component.DeclaredIn = append(declaration.Class.Angular.Component.DeclaredIn, class)
+		if !slices.Contains(declaration.Class.Snapshot().Angular.Component.DeclaredIn, class) {
+			declaration.Class.Update(func(data *classState) {
+				data.Angular.Component.DeclaredIn = append(data.Angular.Component.DeclaredIn, class)
+			})
 		}
 	}
 }

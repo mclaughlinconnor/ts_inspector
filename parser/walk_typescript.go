@@ -155,7 +155,9 @@ func extractMetadata(class *Class, root *sitter.Node, content []byte) {
 						extendsIdentifiers[i] = extendsClause.NamedChild(i).Content(content)
 					}
 
-					state.ExtendsIdentNames = extendsIdentifiers
+					state.Update(func(data *classState) {
+						data.ExtendsIdentNames = extendsIdentifiers
+					})
 				} else if jt == "implements_clause" {
 					implementsClause := clause
 					identCount := int(implementsClause.NamedChildCount())
@@ -165,7 +167,9 @@ func extractMetadata(class *Class, root *sitter.Node, content []byte) {
 						implementsIdentifiers[i] = implementsClause.NamedChild(i).Content(content)
 					}
 
-					state.ImplementsIdentNames = implementsIdentifiers
+					state.Update(func(data *classState) {
+						data.ImplementsIdentNames = implementsIdentifiers
+					})
 				}
 			}
 
@@ -321,8 +325,8 @@ func handleDecorator(node *sitter.Node, content []byte) Decorator {
 }
 
 func handleTemplate(state *State, class *Class, templateFilename string) error {
-	class.Angular.EnsureComponent()
-	class.Angular.Component.EnsureTemplate()
+	class.Snapshot().Angular.EnsureComponent()
+	class.Snapshot().Angular.Component.EnsureTemplate()
 
 	return IndexPugFromTypeScript(state, class, templateFilename)
 }
@@ -375,22 +379,28 @@ func parseClasses(state *State, root *sitter.Node, file *File) {
 
 			var found bool
 			class, found = state.GetClass(ClassId(uri, className))
+
 			if !found {
 				c := NewClass(classContent, file, node)
-				c.Name = className
-				c.NameNode = classNameNode
+				c.Update(func(data *classState) {
+					data.Name = className
+					data.NameNode = classNameNode
+				})
+
 				class = &c
 			} else {
 				class.Reset()
-				class.Node = node
-				class.Content = CStr2GoStr(content)
-				class.Name = className
-				class.NameNode = classNameNode
+				class.Update(func(data *classState) {
+					data.Node = node
+					data.Content = CStr2GoStr(content)
+					data.Name = className
+					data.NameNode = classNameNode
+				})
 			}
 
-			extractMetadata(class, classRoot, []byte(class.Content))
+			extractMetadata(class, classRoot, []byte(class.Snapshot().Content))
 
-			err := extractTypeScriptDefinitions(class, classRoot, []byte(class.Content))
+			err := extractTypeScriptDefinitions(class, classRoot, []byte(class.Snapshot().Content))
 			if err != nil {
 				return class, err
 			}
@@ -416,8 +426,8 @@ func parseClasses(state *State, root *sitter.Node, file *File) {
 				ExtractComponentData(state, class, root, []byte(file.Snapshot().Content))
 			}
 
-			if class.Angular != nil && class.Angular.Component != nil && class.Angular.Component.TemplateUrl != "" {
-				err = handleTemplate(state, class, class.Angular.Component.TemplateUrl)
+			if class.Snapshot().Angular != nil && class.Snapshot().Angular.Component != nil && class.Snapshot().Angular.Component.TemplateUrl != "" {
+				err = handleTemplate(state, class, class.Snapshot().Angular.Component.TemplateUrl)
 				if err != nil {
 					return class, err
 				}
@@ -433,7 +443,7 @@ func parseClasses(state *State, root *sitter.Node, file *File) {
 		file.Update(func(data *fileState) {
 			data.Classes = append(data.Classes, class)
 			if classWalkState.IsExport {
-				export := Reference{Node: node, Name: class.Name, Class: class}
+				export := Reference{Node: node, Name: class.Snapshot().Name, Class: class}
 				data.Exports = append(data.Exports, &export)
 			}
 		})

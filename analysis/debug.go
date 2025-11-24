@@ -9,10 +9,10 @@ import (
 func debug(file *parser.File) []Analysis {
 	analyses := []Analysis{}
 
-	analyses = append(analyses, analyseClasses(file, func(class parser.Class) []Analysis {
+	analyses = append(analyses, analyseClasses(file, func(class *parser.Class) []Analysis {
 		analyses := []Analysis{}
 
-		for _, definition := range class.Definitions {
+		for _, definition := range class.Snapshot().Definitions {
 			message := fmt.Sprintf("Usages: %d", len(definition.Usages))
 			analyses = append(analyses, newAnalysisHighlightName(definition.Node, class, AnalysisSeverity.Hint, "", message))
 		}
@@ -34,7 +34,7 @@ func debug(file *parser.File) []Analysis {
 	} else {
 		hasDeclaredIn := false
 		for _, c := range classes {
-			if c.HasComponent() && c.Angular.Component.DeclaredIn != nil {
+			if c.HasComponent() && c.Snapshot().Angular.Component.DeclaredIn != nil {
 				hasDeclaredIn = true
 			}
 		}

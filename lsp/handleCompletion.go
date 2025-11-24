@@ -50,7 +50,7 @@ func HandleCompletion(writer io.Writer, logger *log.Logger, state *parser.State,
 			}
 
 			details := interfaces.CompletionItemLabelDetails{
-				Description: d.Class.Name,
+				Description: d.Class.Snapshot().Name,
 			}
 
 			item.LabelDetails = &details
@@ -62,13 +62,13 @@ func HandleCompletion(writer io.Writer, logger *log.Logger, state *parser.State,
 			continue
 		}
 
-		components := c.Angular.Component.GetAvailableComponents()
+		components := c.Snapshot().Angular.Component.GetAvailableComponents()
 		for _, c := range components {
 			details := interfaces.CompletionItemLabelDetails{
-				Description: c.Name,
+				Description: c.Snapshot().Name,
 			}
 
-			selector := c.Angular.Component.Selector
+			selector := c.Snapshot().Angular.Component.Selector
 			insertText := selector + "($0)"
 
 			item := interfaces.CompletionItem{

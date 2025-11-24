@@ -36,10 +36,10 @@ type File struct {
 	state fileState
 }
 
-func (f *File) Filename() string { return FilenameFromUri(f.Snapshot().URI) }
+func (c *File) Filename() string { return FilenameFromUri(c.Snapshot().URI) }
 
-func (f *File) FindImportPath(identifier string) string {
-	for _, importClause := range f.Snapshot().Imports {
+func (c *File) FindImportPath(identifier string) string {
+	for _, importClause := range c.Snapshot().Imports {
 		for _, imp := range importClause.Imports {
 			if imp.LocalIdentifier == identifier {
 				return importClause.Package
@@ -50,12 +50,12 @@ func (f *File) FindImportPath(identifier string) string {
 	return ""
 }
 
-func (f *File) GetDependencies(state *State) []string {
+func (c *File) GetDependencies(state *State) []string {
 	dependents := make([]string, 0)
 
 	for _, class := range *state.GetClasses() {
-		if class.GetTemplateFile() == f {
-			dependents = append(dependents, class.File.Filename())
+		if class.GetTemplateFile() == c {
+			dependents = append(dependents, class.Snapshot().File.Filename())
 		}
 	}
 
@@ -64,37 +64,37 @@ func (f *File) GetDependencies(state *State) []string {
 			continue
 		}
 
-		for d := range class.Angular.Module.Declarations.IterateResolved {
-			if d.Class.File == f || d.Class.GetTemplateFile() == f {
-				dependents = append(dependents, class.File.Filename())
+		for d := range class.Snapshot().Angular.Module.Declarations.IterateResolved {
+			if d.Class.Snapshot().File == c || d.Class.GetTemplateFile() == c {
+				dependents = append(dependents, class.Snapshot().File.Filename())
 			}
 
 			for _, dep := range dependents {
-				if d.Class.File.Filename() == dep {
-					dependents = append(dependents, d.Class.File.Filename())
+				if d.Class.Snapshot().File.Filename() == dep {
+					dependents = append(dependents, d.Class.Snapshot().File.Filename())
 				}
 			}
 		}
 	}
 
-	for _, class := range f.Snapshot().Classes {
+	for _, class := range c.Snapshot().Classes {
 		t := class.GetTemplateFile()
 
 		if t == nil {
 			continue
 		}
 
-		if t == f {
+		if t == c {
 			dependents = append(dependents, t.Filename())
 		}
 
-		if class.File.Filename() != t.Filename() {
+		if class.Snapshot().File.Filename() != t.Filename() {
 			dependents = append(dependents, t.Filename())
 		}
 
 		// If there's a template, class.Angular.Component cannot not be nil
-		for _, module := range class.Angular.Component.DeclaredIn {
-			dependents = append(dependents, module.File.Filename())
+		for _, module := range class.Snapshot().Angular.Component.DeclaredIn {
+			dependents = append(dependents, module.Snapshot().File.Filename())
 		}
 	}
 
@@ -103,8 +103,8 @@ func (f *File) GetDependencies(state *State) []string {
 	return slices.Compact(dependents)
 }
 
-func (f *File) GetOffsetForPosition(p utils.Position) uint32 {
-	file := f.Snapshot()
+func (c *File) GetOffsetForPosition(p utils.Position) uint32 {
+	file := c.Snapshot()
 	lines := uint32(len(file.LineOffsets))
 
 	if p.Line >= lines {
@@ -126,28 +126,29 @@ func (f *File) GetOffsetForPosition(p utils.Position) uint32 {
 	return max(min(lineOffset+p.Character, nextLineOffset), lineOffset)
 }
 
-func (f *File) GetOffsetsForRange(r utils.Range) (uint32, uint32) {
-	return f.GetOffsetForPosition(r.Start), f.GetOffsetForPosition(r.End)
+func (c *File) GetOffsetsForRange(r utils.Range) (uint32, uint32) {
+	return c.GetOffsetForPosition(r.Start), c.GetOffsetForPosition(r.End)
 }
 
-func (f *File) Postprocess(state *State) {
-	file := f.Snapshot()
+func (c *File) Postprocess(state *State) {
+	file := c.Snapshot()
 
 	for _, class := range file.Classes {
 		state.SetClass(class.Id(), class)
 		class.Postprocess(state)
 	}
 
-	f.ResolveDynamicallyImportedFiles(state)
+	c.ResolveDynamicallyImportedFiles(state)
 
 	if file.Filetype == "pug" {
 		for _, class := range *state.GetClasses() {
-			if class.Angular != nil &&
-				class.Angular.Component != nil &&
-				class.Angular.Component.TemplateUrlFile != nil &&
-				class.Angular.Component.TemplateUrlFile.Snapshot().URI == file.URI {
+			snapshot := class.Snapshot()
+			if snapshot.Angular != nil &&
+				snapshot.Angular.Component != nil &&
+				snapshot.Angular.Component.TemplateUrlFile != nil &&
+				snapshot.Angular.Component.TemplateUrlFile.Snapshot().URI == file.URI {
 
-				f.Update(func(data *fileState) {
+				c.Update(func(data *fileState) {
 					data.Classes = append(data.Classes, class)
 				})
 			}
@@ -155,8 +156,8 @@ func (f *File) Postprocess(state *State) {
 	}
 }
 
-func (f *File) ResolveDynamicallyImportedFiles(state *State) {
-	file := f.Snapshot()
+func (c *File) ResolveDynamicallyImportedFiles(state *State) {
+	file := c.Snapshot()
 
 	dynamicImportFiles := make([]*File, len(file.DynamicImportPaths))
 
@@ -177,36 +178,36 @@ func (f *File) ResolveDynamicallyImportedFiles(state *State) {
 
 			dynamicImportFiles[i] = resolvedFile
 		})
-
-		wg.Wait()
 	}
 
-	f.Update(func(data *fileState) {
+	wg.Wait()
+
+	c.Update(func(data *fileState) {
 		data.DynamicImportFiles = dynamicImportFiles
 	})
 }
 
-func (f *File) ResetClasses() {
-	f.Update(func(data *fileState) {
+func (c *File) ResetClasses() {
+	c.Update(func(data *fileState) {
 		data.Classes = make([]*Class, 0)
 		data.Exports = make(References, 0)
 	})
 }
 
-func (f *File) SetContent(content string, version int) {
+func (c *File) SetContent(content string, version int) {
 	lineOffsets := getLineOffsets(content)
 
-	f.Update(func(data *fileState) {
+	c.Update(func(data *fileState) {
 		data.LineOffsets = lineOffsets
 		data.Content = content
 		data.Version = versionFallback(version, data.URI)
 	})
 }
 
-func (f *File) Snapshot() fileState {
-	f.RLock()
-	state := f.state
-	f.RUnlock()
+func (c *File) Snapshot() fileState {
+	c.RLock()
+	state := c.state
+	c.RUnlock()
 
 	return state
 }

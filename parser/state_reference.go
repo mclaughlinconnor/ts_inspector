@@ -20,8 +20,8 @@ type Reference struct {
 
 type References []*Reference
 
-func (r *References) IterateResolved(yield func(*Reference) bool) {
-	for _, v := range *r {
+func (r References) IterateResolved(yield func(*Reference) bool) {
+	for _, v := range r {
 		if v == nil {
 			continue
 		}
@@ -82,10 +82,9 @@ func resolveIdentFromImports(idents []string, file *File, state *State) []*Refer
 				}
 			}
 		})
-
-		// Benchmarking shows that having this parallelised saves ~0.5 seconds
-		wg.Wait()
 	}
+
+	wg.Wait()
 
 	return resolved
 }

@@ -6,16 +6,16 @@ import (
 )
 
 func illegalDeclaringModule(file *parser.File) []Analysis {
-	return analyseClasses(file, func(class parser.Class) []Analysis {
+	return analyseClasses(file, func(class *parser.Class) []Analysis {
 		analyses := []Analysis{}
 
-		if class.Angular == nil || class.Angular.Module == nil {
+		if class.Snapshot().Angular == nil || class.Snapshot().Angular.Module == nil {
 			return analyses
 		}
 
-		for i, declaration := range class.Angular.Module.Declarations {
-			if declaration != nil && declaration.Class != nil && declaration.Class.Angular != nil && declaration.Class.Angular.Module != nil {
-				n := class.Angular.Module.DeclarationsIdentNodes[i]
+		for i, declaration := range class.Snapshot().Angular.Module.Declarations {
+			if declaration != nil && declaration.Class != nil && declaration.Class.Snapshot().Angular != nil && declaration.Class.Snapshot().Angular.Module != nil {
+				n := class.Snapshot().Angular.Module.DeclarationsIdentNodes[i]
 
 				startPosition := utils.PositionFromPoint(n.StartPoint())
 				endPosition := utils.PositionFromPoint(n.EndPoint())

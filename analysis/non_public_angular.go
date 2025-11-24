@@ -6,10 +6,10 @@ import (
 )
 
 func nonPublicAngular(file *parser.File) []Analysis {
-	return analyseClasses(file, func(class parser.Class) []Analysis {
+	return analyseClasses(file, func(class *parser.Class) []Analysis {
 		analyses := []Analysis{}
 
-		for _, definition := range class.Definitions {
+		for _, definition := range class.Snapshot().Definitions {
 			if definition.HasAngularDecorator() && !definition.IsPublic() && !definition.IsLocalParam() {
 				message := fmt.Sprintf("Angular property should be public: %s", definition.Name)
 				analyses = append(analyses, newAnalysisHighlightName(definition.Node, class, AnalysisSeverity.Warning, "non-public-angular", message))

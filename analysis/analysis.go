@@ -28,21 +28,21 @@ func Analyse(file *parser.File) []Analysis {
 	return analyses
 }
 
-func analyseClasses(file *parser.File, analyse func(class parser.Class) []Analysis) []Analysis {
+func analyseClasses(file *parser.File, analyse func(class *parser.Class) []Analysis) []Analysis {
 	analyses := []Analysis{}
 
 	for _, class := range file.Snapshot().Classes {
-		if file.Snapshot().URI != class.File.Snapshot().URI {
+		if file.Snapshot().URI != class.Snapshot().File.Snapshot().URI {
 			continue
 		}
 
-		analyses = append(analyses, analyse(*class)...)
+		analyses = append(analyses, analyse(class)...)
 	}
 
 	return analyses
 }
 
-func newAnalysisHighlightName(problemNode *sitter.Node, class parser.Class, severity int, code string, message string) Analysis {
+func newAnalysisHighlightName(problemNode *sitter.Node, class *parser.Class, severity int, code string, message string) Analysis {
 	var highlightNode *sitter.Node
 
 	nameNode := problemNode.ChildByFieldName("name")
@@ -57,10 +57,10 @@ func newAnalysisHighlightName(problemNode *sitter.Node, class parser.Class, seve
 	startByte := highlightNode.StartByte()
 	endByte := highlightNode.EndByte()
 
-	startByte += class.Node.StartByte()
-	endByte += class.Node.StartByte()
+	startByte += class.Snapshot().Node.StartByte()
+	endByte += class.Snapshot().Node.StartByte()
 
-	content := class.File.Snapshot().Content
+	content := class.Snapshot().File.Snapshot().Content
 
 	startPosition := parser.GetPositionForOffset(content, startByte)
 	endPosition := parser.GetPositionForOffset(content, endByte)

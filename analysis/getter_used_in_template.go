@@ -6,7 +6,7 @@ import (
 )
 
 func getterUsedInTemplate(file *parser.File) []Analysis {
-	return analyseClasses(file, func(class parser.Class) []Analysis {
+	return analyseClasses(file, func(class *parser.Class) []Analysis {
 		analyses := []Analysis{}
 
 		if class.GetTemplateFile() == nil {

@@ -27,9 +27,9 @@ func HandleHover(writer io.Writer, logger *log.Logger, state *parser.State, requ
 				continue
 			}
 
-			components := c.Angular.Component.GetAvailableComponents()
+			components := c.Snapshot().Angular.Component.GetAvailableComponents()
 			for _, c := range components {
-				if c.Angular.Component.Selector != tagName {
+				if c.Snapshot().Angular.Component.Selector != tagName {
 					continue
 				}
 

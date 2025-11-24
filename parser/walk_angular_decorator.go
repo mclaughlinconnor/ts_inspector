@@ -28,11 +28,11 @@ func ExtractComponentData(state *State, class *Class, node *sitter.Node, content
 		switch dn := decoratorName; dn {
 		case "Component":
 			class.EnsureAngular()
-			class.Angular.EnsureComponent()
+			class.Snapshot().Angular.EnsureComponent()
 			walkComponentDecoratorParams(state, class, node, content)
 		case "NgModule":
 			class.EnsureAngular()
-			class.Angular.EnsureModule()
+			class.Snapshot().Angular.EnsureModule()
 			walkModuleDecoratorParams(class, node, content)
 		}
 
@@ -128,8 +128,10 @@ func handleDeclarationsKv(class *Class, vNode *sitter.Node, content []byte) {
 		identNodes = append(identNodes, ident)
 	}
 
-	class.Angular.Module.DeclarationsIdents = idents
-	class.Angular.Module.DeclarationsIdentNodes = identNodes
+	class.Update(func(data *classState) {
+		data.Angular.Module.DeclarationsIdents = idents
+		data.Angular.Module.DeclarationsIdentNodes = identNodes
+	})
 }
 
 func handleExportsKv(class *Class, vNode *sitter.Node, content []byte) {
@@ -150,8 +152,10 @@ func handleExportsKv(class *Class, vNode *sitter.Node, content []byte) {
 		identNodes = append(identNodes, ident)
 	}
 
-	class.Angular.Module.ExportsIdents = idents
-	class.Angular.Module.ExportsIdentNodes = identNodes
+	class.Update(func(data *classState) {
+		data.Angular.Module.ExportsIdents = idents
+		data.Angular.Module.ExportsIdentNodes = identNodes
+	})
 }
 
 func handleImportsComponentKv(class *Class, vNode *sitter.Node, content []byte) {
@@ -170,7 +174,9 @@ func handleImportsComponentKv(class *Class, vNode *sitter.Node, content []byte) 
 		idents = append(idents, ident.Content(content))
 	}
 
-	class.Angular.Component.ImportsIdents = idents
+	class.Update(func(data *classState) {
+		data.Angular.Component.ImportsIdents = idents
+	})
 }
 
 func handleImportsModuleKv(class *Class, vNode *sitter.Node, content []byte) {
@@ -191,8 +197,10 @@ func handleImportsModuleKv(class *Class, vNode *sitter.Node, content []byte) {
 		identNodes = append(identNodes, ident)
 	}
 
-	class.Angular.Module.ImportsIdents = idents
-	class.Angular.Module.ImportsIdentNodes = identNodes
+	class.Update(func(data *classState) {
+		data.Angular.Module.ImportsIdents = idents
+		data.Angular.Module.ImportsIdentNodes = identNodes
+	})
 }
 
 func handleSelectorKv(class *Class, vNode *sitter.Node, content []byte) {
@@ -209,7 +217,9 @@ func handleSelectorKv(class *Class, vNode *sitter.Node, content []byte) {
 		return
 	}
 
-	class.Angular.Component.Selector = fragNode.Content(content)
+	class.Update(func(data *classState) {
+		data.Angular.Component.Selector = fragNode.Content(content)
+	})
 }
 
 func handleTemplateUrlKv(state *State, class *Class, vNode *sitter.Node, content []byte) {
@@ -231,7 +241,7 @@ func handleTemplateUrlKv(state *State, class *Class, vNode *sitter.Node, content
 		return
 	}
 
-	controllerDirectory := filepath.Dir(class.File.Filename())
+	controllerDirectory := filepath.Dir(class.Snapshot().File.Filename())
 
 	templateFilePath, err := filepath.Abs(path.Join(controllerDirectory, relativePath))
 	if err != nil {
@@ -242,5 +252,7 @@ func handleTemplateUrlKv(state *State, class *Class, vNode *sitter.Node, content
 		return
 	}
 
-	class.Angular.Component.TemplateUrl = templateFilePath
+	class.Update(func(data *classState) {
+		data.Angular.Component.TemplateUrl = templateFilePath
+	})
 }

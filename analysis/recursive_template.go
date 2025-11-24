@@ -13,11 +13,11 @@ func recursiveTemplate(file *parser.File) []Analysis {
 	}
 
 	for _, class := range file.Snapshot().Classes {
-		if class.Angular == nil || class.Angular.Component == nil || class.Angular.Component.Template == nil {
+		if class.Snapshot().Angular == nil || class.Snapshot().Angular.Component == nil || class.Snapshot().Angular.Component.Template == nil {
 			continue
 		}
 
-		component := class.Angular.Component
+		component := class.Snapshot().Angular.Component
 		selector := component.Selector
 
 		usage, found := component.Template.TagUsages[selector]

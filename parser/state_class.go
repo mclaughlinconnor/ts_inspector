@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"slices"
 	"strings"
+	"sync"
 	"ts_inspector/interfaces"
 
 	sitter "github.com/smacker/go-tree-sitter"
@@ -14,7 +15,7 @@ type Decorator struct {
 	Name      string
 }
 
-type Class struct {
+type classState struct {
 	Angular              *Angular
 	Content              string
 	Definitions          Definitions
@@ -29,6 +30,11 @@ type Class struct {
 	Usages               Usages
 }
 
+type Class struct {
+	sync.RWMutex
+	state classState
+}
+
 func (c *Class) AddDefinition(definition Definition) {
 	if definition.Usages == nil {
 		definition.Usages = []*UsageInstance{}
@@ -37,15 +43,17 @@ func (c *Class) AddDefinition(definition Definition) {
 	name := definition.Name
 	definition.IsAngularesqueMethod = IsAngularFunction(name)
 
-	if c.Definitions == nil {
-		c.Definitions = make(map[string]Definition)
-	}
+	c.Update(func(data *classState) {
+		if data.Definitions == nil {
+			data.Definitions = make(map[string]Definition)
+		}
 
-	c.Definitions[name] = definition
+		data.Definitions[name] = definition
+	})
 }
 
 func (c *Class) AppendDefinitionUsage(name string, usage *UsageInstance) {
-	definition, found := c.Definitions[name]
+	definition, found := c.Snapshot().Definitions[name]
 	if !found {
 		return
 	}
@@ -53,27 +61,37 @@ func (c *Class) AppendDefinitionUsage(name string, usage *UsageInstance) {
 	definition.UsageAccess = CalculateNewAccessType(definition.UsageAccess, usage.Access)
 	definition.Usages = append(definition.Usages, usage)
 
-	c.Definitions[name] = definition
+	c.Update(func(data *classState) {
+		data.Definitions[name] = definition
+	})
 }
 
 func (c *Class) AppendUsage(name string, usage *UsageInstance) {
-	usages, found := c.Usages[name]
+	usages, found := c.Snapshot().Usages[name]
 
 	if found {
 		usages.Usages = append(usages.Usages, usage)
-		c.Usages[name] = usages
+
+		c.Update(func(data *classState) {
+			data.Usages[name] = usages
+		})
+
 		return
 	}
 
-	if c.Usages == nil {
-		c.Usages = make(map[string]Usage)
+	if c.Snapshot().Usages == nil {
+		c.Update(func(data *classState) {
+			data.Usages = make(map[string]Usage)
+		})
 	}
 
-	c.Usages[name] = Usage{usage.Access, name, []*UsageInstance{usage}}
+	c.Update(func(data *classState) {
+		data.Usages[name] = Usage{usage.Access, name, []*UsageInstance{usage}}
+	})
 }
 
 func (c *Class) DropTemplateUsages() {
-	for usageIndex, usage := range c.Usages {
+	for usageIndex, usage := range c.Snapshot().Usages {
 		usageInstances := make([]*UsageInstance, 0)
 		access := NoAccess
 
@@ -88,32 +106,42 @@ func (c *Class) DropTemplateUsages() {
 
 		usage.Usages = usageInstances
 		usage.Access = access
-		c.Usages[usageIndex] = usage
 
-		for definitionIndex, definition := range c.Definitions {
+		c.Update(func(data *classState) {
+			data.Usages[usageIndex] = usage
+		})
+
+		for definitionIndex, definition := range c.Snapshot().Definitions {
 			if definition.Name == usage.Name {
 				definition.Usages = usageInstances
 				definition.UsageAccess = access
 			}
 
-			c.Definitions[definitionIndex] = definition
+			c.Update(func(data *classState) {
+				data.Definitions[definitionIndex] = definition
+			})
 		}
 	}
 
-	for key, usage := range c.Usages {
+	for key, usage := range c.Snapshot().Usages {
 		if len(usage.Usages) == 0 {
-			delete(c.Usages, key)
+
+			c.Update(func(data *classState) {
+				delete(data.Usages, key)
+			})
 		}
 	}
 
-	if c.HasComponent() && c.Angular.Component.Template != nil {
-		c.Angular.Component.Template.TagUsages = make(TagUsages)
+	if c.HasComponent() && c.Snapshot().Angular.Component.Template != nil {
+		c.Snapshot().Angular.Component.Template.TagUsages = make(TagUsages)
 	}
 }
 
 func (c *Class) EnsureAngular() {
-	if c.Angular == nil {
-		c.Angular = &Angular{}
+	if c.Snapshot().Angular == nil {
+		c.Update(func(data *classState) {
+			data.Angular = &Angular{}
+		})
 	}
 }
 
@@ -140,7 +168,7 @@ func (c *Class) FilterAllDefinitions(cond func(d ClassedDefinition) bool) []Clas
 		definitionsMap[d.Name] = true
 	}
 
-	for _, e := range c.Extends {
+	for _, e := range c.Snapshot().Extends {
 		if e == nil || e.Class == nil {
 			continue
 		}
@@ -173,7 +201,7 @@ func (c *Class) GetAllPublicDefinitions() []ClassedDefinition {
 		definitionsMap[d.Name] = true
 	}
 
-	for _, e := range c.Extends {
+	for _, e := range c.Snapshot().Extends {
 		if e == nil || e.Class == nil {
 			continue
 		}
@@ -193,10 +221,11 @@ func (c *Class) GetAllPublicDefinitions() []ClassedDefinition {
 }
 
 func (c *Class) GetClassedDefinitions() []ClassedDefinition {
-	classedDefinitions := make([]ClassedDefinition, len(c.Definitions))
+	definitions := c.Snapshot().Definitions
+	classedDefinitions := make([]ClassedDefinition, len(definitions))
 
 	i := 0
-	for _, d := range c.Definitions {
+	for _, d := range definitions {
 		classedDefinitions[i] = ClassedDefinition{d, c}
 		i++
 	}
@@ -208,14 +237,14 @@ func (c *Class) GetDocumentation(includeClassName bool) interfaces.MarkupContent
 	documentation := make([]string, 0)
 
 	if includeClassName {
-		documentation = append(documentation, "# "+c.Name)
+		documentation = append(documentation, "# "+c.Snapshot().Name)
 	}
 
-	if c.HasComponent() && len(c.Angular.Component.DeclaredIn) > 0 {
+	if c.HasComponent() && len(c.Snapshot().Angular.Component.DeclaredIn) > 0 {
 		modules := make([]string, 0)
 
-		for _, d := range c.Angular.Component.DeclaredIn {
-			modules = append(modules, d.Name)
+		for _, d := range c.Snapshot().Angular.Component.DeclaredIn {
+			modules = append(modules, d.Snapshot().Name)
 		}
 
 		documentation = append(documentation, "**Declared in:** "+strings.Join(modules, ", "))
@@ -246,19 +275,19 @@ func (c *Class) GetOwnPublicDefinitions() []ClassedDefinition {
 }
 
 func (c *Class) GetTemplateFile() *File {
-	if c.Angular != nil && c.Angular.Component != nil {
-		return c.Angular.Component.TemplateUrlFile
+	if c.Snapshot().Angular != nil && c.Snapshot().Angular.Component != nil {
+		return c.Snapshot().Angular.Component.TemplateUrlFile
 	}
 
 	return nil
 }
 
 func (c *Class) HasComponent() bool {
-	return c.Angular != nil && c.Angular.Component != nil
+	return c.Snapshot().Angular != nil && c.Snapshot().Angular.Component != nil
 }
 
 func (c *Class) HasDefinition(name string) bool {
-	for _, d := range c.Definitions {
+	for _, d := range c.Snapshot().Definitions {
 		if d.Name == name {
 			return true
 		}
@@ -268,49 +297,70 @@ func (c *Class) HasDefinition(name string) bool {
 }
 
 func (c *Class) HasModule() bool {
-	return c.Angular != nil && c.Angular.Module != nil
+	return c.Snapshot().Angular != nil && c.Snapshot().Angular.Module != nil
 }
 
-func (c *Class) Id() string { return ClassId(c.File.Snapshot().URI, c.Name) }
+func (c *Class) Id() string { return ClassId(c.Snapshot().File.Snapshot().URI, c.Snapshot().Name) }
 
 func (c *Class) Postprocess(state *State) {
 	c.resolveExtendsImplements(state)
-	if c.Angular != nil {
-		c.Angular.Postprocess(state, c)
+	if c.Snapshot().Angular != nil {
+		c.Snapshot().Angular.Postprocess(state, c)
 	}
 }
 
 // Clears everything except the reference to the parent file
 func (c *Class) Reset() {
-	c.Angular = nil
-	c.Content = ""
-	clear(c.Definitions)
-	clear(c.Extends)
-	c.ExtendsIdentNames = make([]string, 0)
-	clear(c.Implements)
-	c.ImplementsIdentNames = make([]string, 0)
-	c.Name = ""
-	c.Node = nil
-	clear(c.Usages)
+	c.Update(func(data *classState) {
+		data.Angular = nil
+		data.Content = ""
+		clear(data.Definitions)
+		clear(data.Extends)
+		data.ExtendsIdentNames = make([]string, 0)
+		clear(data.Implements)
+		data.ImplementsIdentNames = make([]string, 0)
+		data.Name = ""
+		data.Node = nil
+		clear(data.Usages)
+	})
 }
 
 func (c *Class) SetUsageAccessType(name string, access access) {
-	usage := c.Usages[name]
+	usage := c.Snapshot().Usages[name]
 	usage.Access = CalculateNewAccessType(access, usage.Access)
 }
 
+func (c *Class) Snapshot() classState {
+	c.RLock()
+	state := c.state
+	c.RUnlock()
+
+	return state
+}
+
+func (c *Class) Update(fn func(data *classState)) {
+	c.Lock()
+	defer c.Unlock()
+	fn(&c.state)
+}
+
 func (c *Class) resolveExtendsImplements(state *State) {
-	file := c.File
-	extends := resolveIdentFromImports(c.ExtendsIdentNames, file, state)
-	implements := resolveIdentFromImports(c.ImplementsIdentNames, file, state)
-	c.Extends = extends
-	c.Implements = implements
+	file := c.Snapshot().File
+	extends := resolveIdentFromImports(c.Snapshot().ExtendsIdentNames, file, state)
+	implements := resolveIdentFromImports(c.Snapshot().ImplementsIdentNames, file, state)
+
+	c.Update(func(data *classState) {
+		data.Extends = extends
+		data.Implements = implements
+	})
 }
 
 func ClassId(uri string, className string) string { return uri + "-" + className }
 
 func NewClass(content string, file *File, node *sitter.Node) Class {
-	return Class{Content: content, Definitions: make(map[string]Definition), Extends: []*Reference{}, ExtendsIdentNames: []string{}, File: file, Implements: []*Reference{}, ImplementsIdentNames: []string{}, Name: "", Node: node, Usages: make(map[string]Usage)}
+	state := classState{Content: content, Definitions: make(map[string]Definition), Extends: []*Reference{}, ExtendsIdentNames: []string{}, File: file, Implements: []*Reference{}, ImplementsIdentNames: []string{}, Name: "", Node: node, Usages: make(map[string]Usage)}
+
+	return Class{state: state}
 }
 
 func buildDefinitionSection(sectionName string, definitions []ClassedDefinition) string {
@@ -320,7 +370,7 @@ func buildDefinitionSection(sectionName string, definitions []ClassedDefinition)
 	if len(definitions) > 0 {
 		section = append(section, "**"+sectionName+":**")
 		for _, input := range definitions {
-			section = append(section, "  "+input.Name+" (*"+input.Class.Name+"*)")
+			section = append(section, "  "+input.Name+" (*"+input.Class.Snapshot().Name+"*)")
 		}
 	}
 
@@ -335,7 +385,7 @@ func (c Classes) Len() int {
 }
 
 func (c Classes) Less(a int, b int) bool {
-	return c[a].Name < c[b].Name
+	return c[a].Snapshot().Name < c[b].Snapshot().Name
 }
 
 func (c Classes) Swap(i, j int) {
