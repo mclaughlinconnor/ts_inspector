@@ -9,7 +9,7 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
-func ExtractComponentData(state *State, class *Class, node *sitter.Node, content []byte) {
+func ExtractComponentData(class *Class, node *sitter.Node, content []byte) {
 	funcMap := walk.NewVisitorFuncsMap[any]()
 
 	funcMap["decorator"] = func(node *sitter.Node, _ any, indexInParent int, funcMap walk.VisitorFuncMap[any]) any {
@@ -29,7 +29,7 @@ func ExtractComponentData(state *State, class *Class, node *sitter.Node, content
 		case "Component":
 			class.EnsureAngular()
 			class.Snapshot().Angular.EnsureComponent()
-			walkComponentDecoratorParams(state, class, node, content)
+			walkComponentDecoratorParams(class, node, content)
 		case "NgModule":
 			class.EnsureAngular()
 			class.Snapshot().Angular.EnsureModule()
@@ -42,7 +42,7 @@ func ExtractComponentData(state *State, class *Class, node *sitter.Node, content
 	walk.WalkTypeScript(node, nil, funcMap)
 }
 
-func walkComponentDecoratorParams(state *State, class *Class, node *sitter.Node, content []byte) {
+func walkComponentDecoratorParams(class *Class, node *sitter.Node, content []byte) {
 	funcMap := walk.NewVisitorFuncsMap[any]()
 
 	funcMap["pair"] = func(node *sitter.Node, _ any, indexInParent int, funcMap walk.VisitorFuncMap[any]) any {
@@ -57,7 +57,7 @@ func walkComponentDecoratorParams(state *State, class *Class, node *sitter.Node,
 			return nil
 		}
 
-		handleComponentKv(state, class, valueNode, content, keyName)
+		handleComponentKv(class, valueNode, content, keyName)
 
 		return nil
 	}
@@ -88,12 +88,12 @@ func walkModuleDecoratorParams(class *Class, node *sitter.Node, content []byte) 
 	walk.WalkTypeScript(node, nil, funcMap)
 }
 
-func handleComponentKv(state *State, class *Class, vNode *sitter.Node, content []byte, keyName string) {
+func handleComponentKv(class *Class, vNode *sitter.Node, content []byte, keyName string) {
 	switch kn := keyName; kn {
 	case "imports":
 		handleImportsComponentKv(class, vNode, content)
 	case "templateUrl":
-		handleTemplateUrlKv(state, class, vNode, content)
+		handleTemplateUrlKv(class, vNode, content)
 	case "selector":
 		handleSelectorKv(class, vNode, content)
 	}
@@ -222,7 +222,7 @@ func handleSelectorKv(class *Class, vNode *sitter.Node, content []byte) {
 	})
 }
 
-func handleTemplateUrlKv(state *State, class *Class, vNode *sitter.Node, content []byte) {
+func handleTemplateUrlKv(class *Class, vNode *sitter.Node, content []byte) {
 	if vNode.Type() != "string" {
 		return
 	}

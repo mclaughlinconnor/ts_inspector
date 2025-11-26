@@ -411,7 +411,7 @@ func parseClasses(state *State, root *sitter.Node, file *File) {
 			}
 
 			if classWalkState.Decorator != nil {
-				ExtractComponentData(state, class, classWalkState.Decorator, []byte(file.Snapshot().Content))
+				ExtractComponentData(class, classWalkState.Decorator, []byte(file.Snapshot().Content))
 
 				for classWalkState.Decorator.NextSibling() != nil {
 					if classWalkState.Decorator.NextSibling().Type() != "decorator" {
@@ -420,10 +420,10 @@ func parseClasses(state *State, root *sitter.Node, file *File) {
 
 					classWalkState.Decorator = classWalkState.Decorator.NextSibling()
 
-					ExtractComponentData(state, class, classWalkState.Decorator, []byte(file.Snapshot().Content))
+					ExtractComponentData(class, classWalkState.Decorator, []byte(file.Snapshot().Content))
 				}
 			} else {
-				ExtractComponentData(state, class, root, []byte(file.Snapshot().Content))
+				ExtractComponentData(class, root, []byte(file.Snapshot().Content))
 			}
 
 			if class.Snapshot().Angular != nil && class.Snapshot().Angular.Component != nil && class.Snapshot().Angular.Component.TemplateUrl != "" {
