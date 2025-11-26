@@ -18,7 +18,7 @@ type Component struct {
 	DeclaredIn      []*Class
 	Imports         References
 	ImportsIdents   []string
-	Selector        string
+	Selectors       []string
 	Template        *Template
 	TemplateUrl     string
 	TemplateUrlFile *File

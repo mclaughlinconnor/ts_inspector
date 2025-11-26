@@ -21,6 +21,8 @@ func HandleReferences(writer io.Writer, logger *log.Logger, state *parser.State,
 
 	offset := file.GetOffsetForPosition(request.Params.Position)
 
+	// TODO: needs to find usages for every selector on a component
+
 	tagName, found := ast.GetTagNameAtOffset(file.Snapshot().Content, offset)
 	if !found {
 		utils.WriteResponse(writer, interfaces.DefinitionResponse{Result: locations, Response: interfaces.Response{ID: &request.ID, RPC: "2.0"}})

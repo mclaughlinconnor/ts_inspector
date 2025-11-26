@@ -68,21 +68,26 @@ func HandleCompletion(writer io.Writer, logger *log.Logger, state *parser.State,
 				Description: c.Snapshot().Name,
 			}
 
-			selector := c.Snapshot().Angular.Component.Selector
-			insertText := selector + "($0)"
+			selectors := c.Snapshot().Angular.Component.Selectors
 
 			item := interfaces.CompletionItem{
-				Label:            selector,
 				LabelDetails:     &details,
 				Kind:             &interfaces.CompletionItemKind.Class,
 				InsertTextFormat: &interfaces.InsertTextFormat.Snippet,
-				InsertText:       &insertText,
 			}
 
 			documentation := c.GetDocumentation(false)
 			item.Documentation = &documentation
 
-			items = append(items, item)
+			for _, selector := range selectors {
+				i := interfaces.CompletionItem(item)
+
+				insertText := selector + "($0)"
+				i.Label = selector
+				i.InsertText = &insertText
+
+				items = append(items, i)
+			}
 		}
 	}
 

@@ -3,6 +3,7 @@ package parser
 import (
 	"path"
 	"path/filepath"
+	"strings"
 	"ts_inspector/ast/walk"
 	"ts_inspector/utils"
 
@@ -218,7 +219,14 @@ func handleSelectorKv(class *Class, vNode *sitter.Node, content []byte) {
 	}
 
 	class.Update(func(data *classState) {
-		data.Angular.Component.Selector = fragNode.Content(content)
+		selectors := fragNode.Content(content)
+
+		split := strings.SplitSeq(selectors, ",")
+		for s := range split {
+			trimmed := strings.TrimSpace(s)
+
+			data.Angular.Component.Selectors = append(data.Angular.Component.Selectors, trimmed)
+		}
 	})
 }
 

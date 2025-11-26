@@ -89,11 +89,18 @@ func FindDefinition(file *File, cursorOffset uint32) []interfaces.Location {
 			for _, c := range components {
 				cContent := c.Snapshot().File.Snapshot().Content
 
-				if c.Snapshot().Angular.Component.Selector == tagName {
+				selectors := c.Snapshot().Angular.Component.Selectors
+				for _, selector := range selectors {
+					if selector != tagName {
+						continue
+					}
+
 					start := GetPositionForOffset(cContent, c.Snapshot().NameNode.StartByte()+c.Snapshot().Node.StartByte())
 					end := GetPositionForOffset(cContent, c.Snapshot().NameNode.EndByte()+c.Snapshot().Node.StartByte())
 
 					locations = append(locations, interfaces.Location{Uri: c.Snapshot().File.Snapshot().URI, Range: utils.Range{Start: start, End: end}})
+
+					break
 				}
 			}
 		}

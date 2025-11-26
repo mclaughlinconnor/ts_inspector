@@ -18,12 +18,10 @@ func recursiveTemplate(file *parser.File) []Analysis {
 		}
 
 		component := class.Snapshot().Angular.Component
-		selector := component.Selector
 
-		usage, found := component.Template.TagUsages[selector]
-		if found && len(usage.Usages) > 0 {
-			message := "Component recursively uses itself"
+		message := "Component recursively uses itself"
 
+		for _, selector := range component.Selectors {
 			for _, u := range component.Template.TagUsages[selector].Usages {
 				startPosition := utils.PositionFromPoint(u.Node.StartPoint())
 				endPosition := utils.PositionFromPoint(u.Node.EndPoint())
@@ -32,7 +30,6 @@ func recursiveTemplate(file *parser.File) []Analysis {
 				analyses = append(analyses, newAnalysis("angular-recursive-component", r, AnalysisSeverity.Information, message))
 			}
 		}
-
 	}
 
 	return analyses
