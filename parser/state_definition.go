@@ -21,6 +21,7 @@ type Definition struct {
 	Readonly             bool
 	Setter               bool
 	Static               bool
+	Type                 string
 	UsageAccess          access
 	Usages               []*UsageInstance
 }

@@ -185,6 +185,22 @@ func extractMetadata(class *Class, root *sitter.Node, content []byte) {
 	walk.WalkTypeScript(root, class, funcMap)
 }
 
+func extractType(node *sitter.Node, content []byte) string {
+	nodeTypes := []string{"type", "return_type"}
+
+	for _, nodeType := range nodeTypes {
+		typeNode := node.ChildByFieldName(nodeType)
+		if typeNode != nil && typeNode.Type() == "type_annotation" {
+			child := typeNode.NamedChild(0)
+			if child != nil {
+				return child.Content(content)
+			}
+		}
+	}
+
+	return ""
+}
+
 func extractTypeScriptDefinitions(class *Class, root *sitter.Node, content []byte) error {
 	funcMap := walk.NewVisitorFuncsMap[typescriptWalkState]()
 
@@ -491,6 +507,8 @@ func visitDefinition(content []byte) walk.VisitorFunction[typescriptWalkState] {
 		if state.DefinitionStack.Peek().Name == "" {
 			return state
 		}
+
+		state.DefinitionStack.Peek().Type = extractType(node, content)
 
 		for i := range node.ChildCount() {
 			index := int(i)

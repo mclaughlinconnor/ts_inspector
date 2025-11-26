@@ -53,6 +53,9 @@ func HandleCompletion(writer io.Writer, logger *log.Logger, state *parser.State,
 				Description: d.Class.Snapshot().Name,
 			}
 
+			documentation := interfaces.MarkupContent{Kind: interfaces.MarkupKind.PlainText, Value: item.Label + ": " + d.Type}
+			item.Documentation = &documentation
+
 			item.LabelDetails = &details
 
 			items = append(items, item)
