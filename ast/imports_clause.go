@@ -171,9 +171,9 @@ func AddToImport(importResults []*ImportParseResult, packageName string, toAdd [
 
 		var text string
 		if isType {
-			text = fmt.Sprintf("import type {%s} from '%s'", strings.Join(toAdd, ", "), packageName)
+			text = fmt.Sprintf("import type {%s} from '%s';", strings.Join(toAdd, ", "), packageName)
 		} else {
-			text = fmt.Sprintf("import {%s} from '%s'", strings.Join(toAdd, ", "), packageName)
+			text = fmt.Sprintf("import {%s} from '%s';", strings.Join(toAdd, ", "), packageName)
 		}
 
 		var editRange utils.Range
