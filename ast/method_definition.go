@@ -194,7 +194,7 @@ func AddToMethodDefinition(methodResults *[]MethodDefinitionParseResult, classBo
 				if index == len(*methodResults)-1 {
 					insertionIndex = len(*methodResults) - 1
 				} else {
-					insertionIndex = index
+					insertionIndex = index - 1
 				}
 			}
 		}

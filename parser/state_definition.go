@@ -43,6 +43,17 @@ func (d *Definition) HasAngularDecorator() bool {
 			return true
 		}
 	}
+
+	return false
+}
+
+func (d *Definition) HasInjectDecorator() bool {
+	for _, decorator := range d.Decorators {
+		if decorator.Name == "Inject" {
+			return true
+		}
+	}
+
 	return false
 }
 

@@ -273,6 +273,7 @@ func extractTypeScriptDefinitions(class *Class, root *sitter.Node, content []byt
 
 		return state
 	}
+
 	funcMap["generator"] = func(node *sitter.Node, state typescriptWalkState, indexInParent int, funcMap walk.VisitorFuncMap[typescriptWalkState]) typescriptWalkState {
 		if state.DefinitionStack.IsEmpty() {
 			return state
@@ -329,15 +330,25 @@ func handleDecorator(node *sitter.Node, content []byte) Decorator {
 	decoratorNameNode := functionExpression.ChildByFieldName("function")
 
 	var decoratorName string
-	if decoratorNameNode != nil { // @Decorator()
+	var arguments []string
+
+	if decoratorNameNode != nil { // @Decorator(...args)
 		decoratorName = decoratorNameNode.Content(content)
+
+		argumentsNode := functionExpression.ChildByFieldName("arguments")
+		if argumentsNode != nil {
+			for index := range argumentsNode.NamedChildCount() {
+				argumentNode := argumentsNode.NamedChild(int(index))
+				arguments = append(arguments, argumentNode.Content(content))
+			}
+		}
 	} else { // @Decorator
 		decoratorName = functionExpression.Content(content)
 	}
 
 	isAngularDecorator := IsAngularDecorator(decoratorName)
 
-	return Decorator{isAngularDecorator, decoratorName}
+	return Decorator{arguments, isAngularDecorator, decoratorName}
 }
 
 func handleTemplate(state *State, class *Class, templateFilename string) error {

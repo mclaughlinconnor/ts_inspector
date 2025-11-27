@@ -198,9 +198,9 @@ func AddToImport(importResults []*ImportParseResult, packageName string, toAdd [
 						r = importResults[index-1]
 					}
 
-					lastPoint := r.Import.EndPoint()
-					editRange = utils.Range{Start: utils.PositionFromPoint(lastPoint), End: utils.PositionFromPoint(lastPoint)}
-					text = "\n" + text
+					startPoint := r.Import.StartPoint()
+					editRange = utils.Range{Start: utils.PositionFromPoint(startPoint), End: utils.PositionFromPoint(startPoint)}
+					text = text + "\n"
 
 					return utils.TextEdits{utils.TextEdit{Range: editRange, NewText: text}}
 				}

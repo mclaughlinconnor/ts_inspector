@@ -11,6 +11,7 @@ import (
 )
 
 type Decorator struct {
+	Arguments []string
 	IsAngular bool
 	Name      string
 }
