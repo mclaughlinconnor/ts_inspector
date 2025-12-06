@@ -91,6 +91,30 @@ func (c *Class) AppendUsage(name string, usage *UsageInstance) {
 	})
 }
 
+func (c *Class) DoesExtendOrImplement(class *Class) bool {
+	for e := range c.Snapshot().Extends.IterateResolved {
+		if e.Class == class {
+			return true
+		}
+
+		if e.Class.DoesExtendOrImplement(class) {
+			return true
+		}
+	}
+
+	for i := range c.Snapshot().Implements.IterateResolved {
+		if i.Class == class {
+			return true
+		}
+
+		if i.Class.DoesExtendOrImplement(class) {
+			return true
+		}
+	}
+
+	return false
+}
+
 func (c *Class) DropTemplateUsages() {
 	for usageIndex, usage := range c.Snapshot().Usages {
 		usageInstances := make([]*UsageInstance, 0)
@@ -259,12 +283,41 @@ func (c *Class) GetDocumentation(includeClassName bool) interfaces.MarkupContent
 	return interfaces.MarkupContent{Kind: interfaces.MarkupKind.Markdown, Value: text}
 }
 
+func (c *Class) GetExtendsHierarchy() []*Class {
+	classes := []*Class{}
+
+	for e := range c.Snapshot().Extends.IterateResolved {
+		classes = append(classes, e.Class)
+		classes = append(classes, e.Class.GetExtendsHierarchy()...)
+	}
+
+	return classes
+}
+
+func (c *Class) GetExtendsImplementsHierarchy() []*Class {
+	classes := c.GetExtendsHierarchy()
+	classes = append(classes, c.GetImplementsHierarchy()...)
+
+	return classes
+}
+
 func (c *Class) GetGetters() []ClassedDefinition {
 	return c.FilterOwnDefinitions(func(d ClassedDefinition) bool { return d.Getter })
 }
 
 func (c *Class) GetInputs() []ClassedDefinition {
 	return c.FilterAllDefinitionsByDecorator("Input")
+}
+
+func (c *Class) GetImplementsHierarchy() []*Class {
+	classes := []*Class{}
+
+	for i := range c.Snapshot().Implements.IterateResolved {
+		classes = append(classes, i.Class)
+		classes = append(classes, i.Class.GetExtendsHierarchy()...)
+	}
+
+	return classes
 }
 
 func (c *Class) GetOutputs() []ClassedDefinition {
@@ -305,6 +358,10 @@ func (c *Class) Id() string { return ClassId(c.Snapshot().File.Snapshot().URI, c
 
 func (c *Class) Postprocess(state *State) {
 	c.resolveExtendsImplements(state)
+
+	c.removeOwnUagesUpwards()
+	c.propagateOwnUagesUpwards()
+
 	if c.Snapshot().Angular != nil {
 		c.Snapshot().Angular.Postprocess(state, c)
 	}
@@ -343,6 +400,56 @@ func (c *Class) Update(fn func(data *classState)) {
 	c.Lock()
 	defer c.Unlock()
 	fn(&c.state)
+}
+
+func (c *Class) propagateOwnUagesUpwards() {
+	usages := c.Snapshot().Usages
+	c.propagateUsagesUpwards(usages)
+}
+
+func (c *Class) propagateUsagesUpwards(usages Usages) {
+	for class := range c.Snapshot().Extends.IterateResolved {
+		for name, usage := range usages {
+			for _, instance := range usage.Usages {
+				class.Class.AppendDefinitionUsage(name, instance)
+			}
+		}
+
+		class.Class.propagateUsagesUpwards(usages)
+	}
+}
+
+func (c *Class) removeOwnUagesUpwards() {
+	c.removeUsagesFromClassUpwards(c)
+}
+
+// Remove all of the usages originating from a particular class all the way up the hierarchy
+func (c *Class) removeUsagesFromClassUpwards(class *Class) {
+	for e := range c.Snapshot().Extends.IterateResolved {
+		definitions := e.Class.Snapshot().Definitions
+		for name, d := range definitions {
+			newUsageInstances := []*UsageInstance{}
+
+			for _, instance := range d.Usages {
+				if instance.Class == class {
+					continue
+				}
+
+				newUsageInstances = append(newUsageInstances, instance)
+				d.UsageAccess = CalculateNewAccessType(d.UsageAccess, instance.Access)
+			}
+
+			definition := definitions[name]
+			definition.Usages = newUsageInstances
+			definitions[name] = definition
+		}
+
+		e.Class.Update(func(data *classState) {
+			data.Definitions = definitions
+		})
+
+		e.Class.removeUsagesFromClassUpwards(class)
+	}
 }
 
 func (c *Class) resolveExtendsImplements(state *State) {

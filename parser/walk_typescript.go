@@ -75,7 +75,7 @@ func addUsage(class *Class, name string, node *sitter.Node, content []byte) {
 		access = ConstructorAccess
 	}
 
-	usageInstance := UsageInstance{access, node}
+	usageInstance := UsageInstance{access, class, node}
 
 	class.SetUsageAccessType(name, usageInstance.Access)
 	class.AppendUsage(name, &usageInstance)

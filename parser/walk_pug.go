@@ -75,7 +75,7 @@ func extractIndentifierUsages(text []byte, class *Class) error {
 	funcMap["identifier"] = func(node *sitter.Node, state *Class, indexInParent int, _ walk.VisitorFuncMap[*Class]) *Class {
 		name := node.Content(text)
 
-		usageInstance := UsageInstance{TemplateAccess, node}
+		usageInstance := UsageInstance{Access: TemplateAccess, Class: state, Node: node}
 
 		class.SetUsageAccessType(name, usageInstance.Access)
 		class.AppendUsage(name, &usageInstance)

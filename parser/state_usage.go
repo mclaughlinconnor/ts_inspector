@@ -12,6 +12,7 @@ type Usages map[string]Usage
 
 type UsageInstance struct {
 	Access access
+	Class  *Class
 	Node   *sitter.Node
 }
 

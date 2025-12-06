@@ -36,10 +36,10 @@ type File struct {
 	state fileState
 }
 
-func (c *File) Filename() string { return FilenameFromUri(c.Snapshot().URI) }
+func (f *File) Filename() string { return FilenameFromUri(f.Snapshot().URI) }
 
-func (c *File) FindImportPath(identifier string) string {
-	for _, importClause := range c.Snapshot().Imports {
+func (f *File) FindImportPath(identifier string) string {
+	for _, importClause := range f.Snapshot().Imports {
 		for _, imp := range importClause.Imports {
 			if imp.LocalIdentifier == identifier {
 				return importClause.Package
@@ -50,23 +50,34 @@ func (c *File) FindImportPath(identifier string) string {
 	return ""
 }
 
-func (c *File) GetDependencies(state *State) []string {
+func (f *File) GetDependencies(state *State) []string {
 	dependents := make([]string, 0)
 
 	for _, class := range *state.GetClasses() {
-		if class.GetTemplateFile() == c {
+		if class.GetTemplateFile() == f {
 			dependents = append(dependents, class.Snapshot().File.Filename())
 		}
 	}
 
 	for _, class := range *state.GetClasses() {
+		for _, fileClass := range f.Snapshot().Classes {
+			if class.DoesExtendOrImplement(fileClass) {
+				dependents = append(dependents, class.Snapshot().File.Filename())
+			}
+		}
+
 		if !class.HasModule() {
 			continue
 		}
 
 		for d := range class.Snapshot().Angular.Module.Declarations.IterateResolved {
-			if d.Class.Snapshot().File == c || d.Class.GetTemplateFile() == c {
+			if d.Class.Snapshot().File == f || d.Class.GetTemplateFile() == f {
 				dependents = append(dependents, class.Snapshot().File.Filename())
+
+				eih := d.Class.GetExtendsImplementsHierarchy()
+				for _, c := range eih {
+					dependents = append(dependents, c.Snapshot().File.Filename())
+				}
 			}
 
 			for _, dep := range dependents {
@@ -77,14 +88,19 @@ func (c *File) GetDependencies(state *State) []string {
 		}
 	}
 
-	for _, class := range c.Snapshot().Classes {
+	for _, class := range f.Snapshot().Classes {
+		eih := class.GetExtendsImplementsHierarchy()
+		for _, c := range eih {
+			dependents = append(dependents, c.Snapshot().File.Filename())
+		}
+
 		t := class.GetTemplateFile()
 
 		if t == nil {
 			continue
 		}
 
-		if t == c {
+		if t == f {
 			dependents = append(dependents, t.Filename())
 		}
 
@@ -103,8 +119,8 @@ func (c *File) GetDependencies(state *State) []string {
 	return slices.Compact(dependents)
 }
 
-func (c *File) GetOffsetForPosition(p utils.Position) uint32 {
-	file := c.Snapshot()
+func (f *File) GetOffsetForPosition(p utils.Position) uint32 {
+	file := f.Snapshot()
 	lines := uint32(len(file.LineOffsets))
 
 	if p.Line >= lines {
@@ -126,19 +142,19 @@ func (c *File) GetOffsetForPosition(p utils.Position) uint32 {
 	return max(min(lineOffset+p.Character, nextLineOffset), lineOffset)
 }
 
-func (c *File) GetOffsetsForRange(r utils.Range) (uint32, uint32) {
-	return c.GetOffsetForPosition(r.Start), c.GetOffsetForPosition(r.End)
+func (f *File) GetOffsetsForRange(r utils.Range) (uint32, uint32) {
+	return f.GetOffsetForPosition(r.Start), f.GetOffsetForPosition(r.End)
 }
 
-func (c *File) Postprocess(state *State) {
-	file := c.Snapshot()
+func (f *File) Postprocess(state *State) {
+	file := f.Snapshot()
 
 	for _, class := range file.Classes {
 		state.SetClass(class.Id(), class)
 		class.Postprocess(state)
 	}
 
-	c.ResolveDynamicallyImportedFiles(state)
+	f.ResolveDynamicallyImportedFiles(state)
 
 	if file.Filetype == "pug" {
 		for _, class := range *state.GetClasses() {
@@ -148,7 +164,7 @@ func (c *File) Postprocess(state *State) {
 				snapshot.Angular.Component.TemplateUrlFile != nil &&
 				snapshot.Angular.Component.TemplateUrlFile.Snapshot().URI == file.URI {
 
-				c.Update(func(data *fileState) {
+				f.Update(func(data *fileState) {
 					data.Classes = append(data.Classes, class)
 				})
 			}
@@ -156,8 +172,8 @@ func (c *File) Postprocess(state *State) {
 	}
 }
 
-func (c *File) ResolveDynamicallyImportedFiles(state *State) {
-	file := c.Snapshot()
+func (f *File) ResolveDynamicallyImportedFiles(state *State) {
+	file := f.Snapshot()
 
 	dynamicImportFiles := make([]*File, len(file.DynamicImportPaths))
 
@@ -186,32 +202,32 @@ func (c *File) ResolveDynamicallyImportedFiles(state *State) {
 
 	wg.Wait()
 
-	c.Update(func(data *fileState) {
+	f.Update(func(data *fileState) {
 		data.DynamicImportFiles = dynamicImportFiles
 	})
 }
 
-func (c *File) ResetClasses() {
-	c.Update(func(data *fileState) {
+func (f *File) ResetClasses() {
+	f.Update(func(data *fileState) {
 		data.Classes = make([]*Class, 0)
 		data.Exports = make(References, 0)
 	})
 }
 
-func (c *File) SetContent(content string, version int) {
+func (f *File) SetContent(content string, version int) {
 	lineOffsets := getLineOffsets(content)
 
-	c.Update(func(data *fileState) {
+	f.Update(func(data *fileState) {
 		data.LineOffsets = lineOffsets
 		data.Content = content
 		data.Version = versionFallback(version, data.URI)
 	})
 }
 
-func (c *File) Snapshot() fileState {
-	c.RLock()
-	state := c.state
-	c.RUnlock()
+func (f *File) Snapshot() fileState {
+	f.RLock()
+	state := f.state
+	f.RUnlock()
 
 	return state
 }
