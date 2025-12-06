@@ -80,6 +80,26 @@ func doExtractImports(node *sitter.Node, content []byte) ([]*ImportParseResult, 
 			return state
 		}
 
+		internalFuncMap["namespace_import"] = func(node *sitter.Node, state *ImportParseResult, indexInParent int, internalFuncMap walk.VisitorFuncMap[*ImportParseResult]) *ImportParseResult {
+			state.Import = importNode
+
+			aliasNode := importNode.NamedChild(0)
+			if aliasNode == nil {
+				return state
+			}
+
+			alias := aliasNode.Content(content)
+
+			imp := ImportIdentifier{
+				ForeignIdentifier: "*",
+				IsType:            isType,
+				LocalIdentifier:   alias,
+			}
+			state.Imports = append(state.Imports, imp)
+
+			return state
+		}
+
 		importParseResult := ImportParseResult{IsType: isType}
 
 		packageStringNode := node.ChildByFieldName("source")
