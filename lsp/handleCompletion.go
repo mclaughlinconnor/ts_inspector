@@ -3,9 +3,12 @@ package lsp
 import (
 	"io"
 	"log"
+	"ts_inspector/ast"
 	"ts_inspector/interfaces"
 	"ts_inspector/parser"
 	"ts_inspector/utils"
+
+	sitter "github.com/smacker/go-tree-sitter"
 )
 
 func send(writer io.Writer, items []interfaces.CompletionItem, id *int) {
@@ -22,77 +25,119 @@ func HandleCompletion(writer io.Writer, logger *log.Logger, state *parser.State,
 		return
 	}
 
+	offset := file.GetOffsetForPosition(request.Params.Position)
+
+	node, err := utils.ParseFile(false, file.Snapshot().Content, utils.Pug, nil, func(root *sitter.Node, content []byte, v *sitter.Node) (*sitter.Node, error) {
+		return ast.GetNamedNodeAtPosition(root, offset), nil
+	})
+
+	if err != nil || node == nil {
+		return
+	}
+
 	for _, c := range file.Snapshot().Classes {
-		for _, d := range c.GetAllPublicDefinitions() {
-			name := d.Name
-
-			item := interfaces.CompletionItem{}
-
-			switch t := d.Node.Type(); t {
-			case "method_definition":
-				fallthrough
-			case "method_signature":
-				fallthrough
-			case "abstract_method_signature":
-				item.Kind = &interfaces.CompletionItemKind.Method
-				item.Label = name + "()"
-
-				insertText := name + "($0)"
-				item.InsertText = &insertText
-				item.InsertTextFormat = &interfaces.InsertTextFormat.Snippet
-			case "property_definition": // is this even a thing?
-				fallthrough
-			case "public_field_definition":
-				item.Kind = &interfaces.CompletionItemKind.Property
-				item.Label = name
-			default:
-				// Nothing
+		switch nodeType := node.Type(); nodeType {
+		case "interpolation_content":
+			fallthrough
+		case "source_file":
+			fallthrough
+		case "children":
+			{
+				items = append(items, getTagCompletions(c)...)
 			}
-
-			details := interfaces.CompletionItemLabelDetails{
-				Description: d.Class.Snapshot().Name,
-			}
-
-			documentation := interfaces.MarkupContent{Kind: interfaces.MarkupKind.PlainText, Value: item.Label + ": " + d.Type}
-			item.Documentation = &documentation
-
-			item.LabelDetails = &details
-
-			items = append(items, item)
-		}
-
-		if !c.HasComponent() {
-			continue
-		}
-
-		components := c.Snapshot().Angular.Component.GetAvailableComponents()
-		for _, c := range components {
-			details := interfaces.CompletionItemLabelDetails{
-				Description: c.Snapshot().Name,
-			}
-
-			selectors := c.Snapshot().Angular.Component.Selectors
-
-			item := interfaces.CompletionItem{
-				LabelDetails:     &details,
-				Kind:             &interfaces.CompletionItemKind.Class,
-				InsertTextFormat: &interfaces.InsertTextFormat.Snippet,
-			}
-
-			documentation := c.GetDocumentation(false)
-			item.Documentation = &documentation
-
-			for _, selector := range selectors {
-				i := interfaces.CompletionItem(item)
-
-				insertText := selector + "($0)"
-				i.Label = selector
-				i.InsertText = &insertText
-
-				items = append(items, i)
+		case "content":
+			fallthrough
+		case "attribute_value":
+			fallthrough
+		case "quoted_attribute_value":
+			fallthrough
+		case "javascript":
+			{
+				items = append(items, getPropertyCompletions(c)...)
 			}
 		}
 	}
 
 	send(writer, items, &request.ID)
+}
+
+func getPropertyCompletions(class *parser.Class) []interfaces.CompletionItem {
+	items := make([]interfaces.CompletionItem, 0)
+	for _, d := range class.GetAllPublicDefinitions() {
+		name := d.Name
+
+		item := interfaces.CompletionItem{}
+
+		switch t := d.Node.Type(); t {
+		case "method_definition":
+			fallthrough
+		case "method_signature":
+			fallthrough
+		case "abstract_method_signature":
+			item.Kind = &interfaces.CompletionItemKind.Method
+			item.Label = name + "()"
+
+			insertText := name + "($0)"
+			item.InsertText = &insertText
+			item.InsertTextFormat = &interfaces.InsertTextFormat.Snippet
+		case "property_definition": // is this even a thing?
+			fallthrough
+		case "public_field_definition":
+			item.Kind = &interfaces.CompletionItemKind.Property
+			item.Label = name
+		default:
+			// Nothing
+		}
+
+		details := interfaces.CompletionItemLabelDetails{
+			Description: d.Class.Snapshot().Name,
+		}
+
+		documentation := interfaces.MarkupContent{Kind: interfaces.MarkupKind.PlainText, Value: item.Label + ": " + d.Type}
+		item.Documentation = &documentation
+
+		item.LabelDetails = &details
+
+		items = append(items, item)
+	}
+
+	return items
+}
+
+func getTagCompletions(class *parser.Class) []interfaces.CompletionItem {
+	items := make([]interfaces.CompletionItem, 0)
+
+	if !class.HasComponent() {
+		return items
+	}
+
+	components := class.Snapshot().Angular.Component.GetAvailableComponents()
+	for _, c := range components {
+		details := interfaces.CompletionItemLabelDetails{
+			Description: c.Snapshot().Name,
+		}
+
+		selectors := c.Snapshot().Angular.Component.Selectors
+
+		item := interfaces.CompletionItem{
+			LabelDetails:     &details,
+			Kind:             &interfaces.CompletionItemKind.Class,
+			InsertTextFormat: &interfaces.InsertTextFormat.Snippet,
+		}
+
+		documentation := c.GetDocumentation(false)
+		item.Documentation = &documentation
+
+		for _, selector := range selectors {
+			i := interfaces.CompletionItem(item)
+
+			insertText := selector + "($0)"
+			i.Label = selector
+			i.InsertText = &insertText
+
+			items = append(items, i)
+		}
+	}
+
+	return items
 }
