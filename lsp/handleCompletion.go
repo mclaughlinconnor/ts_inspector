@@ -55,10 +55,85 @@ func HandleCompletion(writer io.Writer, logger *log.Logger, state *parser.State,
 			{
 				items = append(items, getPropertyCompletions(c)...)
 			}
+		case "attributes":
+			{
+				items = append(items, getAttrCompletions(file, c, offset)...)
+			}
 		}
 	}
 
 	send(writer, items, &request.ID)
+}
+
+func getAttrCompletions(file *parser.File, class *parser.Class, cursorOffset uint32) []interfaces.CompletionItem {
+	items := make([]interfaces.CompletionItem, 0)
+
+	if !class.HasComponent() {
+		return items
+	}
+
+	tagName, found := ast.GetNameOfTagAtOffset(file.Snapshot().Content, cursorOffset)
+	if !found {
+		return items
+	}
+
+	components := class.Snapshot().Angular.Component.GetAvailableComponents()
+	for _, c := range components {
+		if !c.HasComponent() {
+			continue
+		}
+
+		matches := false
+		for _, s := range c.Snapshot().Angular.Component.Selectors {
+			matches = matches || s == tagName
+		}
+
+		if !matches {
+			continue
+		}
+
+		cursorPosition := parser.GetPositionForOffset(file.Snapshot().Content, cursorOffset)
+		cursorRange := utils.Range{Start: cursorPosition, End: cursorPosition}
+
+		build := func(definition parser.ClassedDefinition, openChar string, closeChar string) interfaces.CompletionItem {
+			item := interfaces.CompletionItem{}
+
+			name := openChar + definition.Name + closeChar
+			insertText := name + "='$0'"
+			item.InsertText = &insertText
+			item.InsertTextFormat = &interfaces.InsertTextFormat.Snippet
+
+			// Can't use insertText because clients can do post-processing on the text, which can lead to tag((output)) losing some brackets
+			textEdit := interfaces.TextEdit{}
+			textEdit.Range = cursorRange
+			textEdit.NewText = name + "='$0'"
+			item.TextEdit = &textEdit
+
+			item.Kind = &interfaces.CompletionItemKind.Property
+			item.Label = name
+
+			documentation := interfaces.MarkupContent{Kind: interfaces.MarkupKind.PlainText, Value: definition.Name + ": " + definition.Type}
+			item.Documentation = &documentation
+
+			details := interfaces.CompletionItemLabelDetails{
+				Description: definition.Class.Snapshot().Name,
+			}
+
+			item.LabelDetails = &details
+
+			return item
+		}
+
+		for _, i := range c.GetInputs() {
+			items = append(items, build(i, "[", "]"))
+		}
+
+		for _, i := range c.GetOutputs() {
+			items = append(items, build(i, "(", ")"))
+		}
+	}
+
+	return items
 }
 
 func getPropertyCompletions(class *parser.Class) []interfaces.CompletionItem {

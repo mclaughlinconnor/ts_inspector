@@ -124,8 +124,8 @@ type insertTextMode struct {
 var InsertTextMode = insertTextMode{1, 2}
 
 type TextEdit struct {
-	Range   utils.Range `json:"Range"`
-	NewText string      `json:"NewText"`
+	Range   utils.Range `json:"range"`
+	NewText string      `json:"newText"`
 }
 
 type CompletionResponse struct {
