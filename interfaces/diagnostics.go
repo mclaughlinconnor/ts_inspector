@@ -11,9 +11,9 @@ type CodeDescription struct {
 type Diagnostic struct {
 	Range utils.Range `json:"range"`
 
-	Severity *int `json:"severity"`
+	Severity *int `json:"severity,omitempty"`
 
-	Code *any `json:"code"`
+	Code *any `json:"code,omitempty"`
 
 	CodeDescription *CodeDescription `json:"codeDescription"`
 
@@ -21,11 +21,11 @@ type Diagnostic struct {
 
 	Message string `json:"message"`
 
-	Tags *[]int `json:"tags"`
+	Tags *[]int `json:"tags,omitempty"`
 
-	RelatedInformation *[]DiagnosticRelatedInformation `json:"relatedInformation"`
+	RelatedInformation *[]DiagnosticRelatedInformation `json:"relatedInformation,omitempty"`
 
-	Data *any `json:"data"`
+	Data *any `json:"data,omitempty"`
 }
 
 type diagnosticTag struct {
