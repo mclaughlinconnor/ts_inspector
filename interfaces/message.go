@@ -18,5 +18,5 @@ type Notification struct {
 
 type EmptyResponse struct {
 	Response
-	Result any
+	Result *string `json:"result"`
 }
