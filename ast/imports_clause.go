@@ -31,7 +31,7 @@ func doExtractImports(node *sitter.Node, content []byte) ([]*ImportParseResult, 
 			state.Clause = node
 
 			for i := range node.ChildCount() {
-				walk.VisitNode(node.Child(int(i)), state, int(i), internalFuncMap)
+				walk.VisitNode(node.Child(int(i)), state, int(i), internalFuncMap, false)
 			}
 
 			return state

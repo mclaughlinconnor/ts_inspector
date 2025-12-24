@@ -28,5 +28,5 @@ func GenerateSymbolMap[T any](lang *sitter.Language, stringMap map[string]Visito
 }
 
 func dummyVisitor[T any](node *sitter.Node, state T, indexInParent int, visitorFuncMap VisitorFuncMap[T]) T {
-	return VisitNamedChildren(node, state, visitorFuncMap)
+	return VisitNamedChildren(node, state, visitorFuncMap, false)
 }

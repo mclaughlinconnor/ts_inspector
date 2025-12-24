@@ -385,7 +385,7 @@ func parseClasses(state *State, root *sitter.Node, file *File) {
 			classWalkState.Decorator = decorator
 		}
 
-		classWalkState = walk.VisitNamedChildren(node, classWalkState, funcMap)
+		classWalkState = walk.VisitNamedChildren(node, classWalkState, funcMap, false)
 		classWalkState.IsExport = false
 		classWalkState.Decorator = nil
 
@@ -523,7 +523,7 @@ func visitDefinition(content []byte) walk.VisitorFunction[typescriptWalkState] {
 
 		for i := range node.ChildCount() {
 			index := int(i)
-			state = walk.VisitNode(node.Child(index), state, index, funcMap)
+			state = walk.VisitNode(node.Child(index), state, index, funcMap, false)
 		}
 
 		finalDefinition := state.DefinitionStack.Pop()
@@ -543,7 +543,7 @@ func visitUsageExpression(content []byte) walk.VisitorFunction[typescriptWalkSta
 			if prototypeNode == nil || prototypeNode.Content(content) != "prototype" {
 				for i := range node.NamedChildCount() {
 					index := int(i)
-					state = walk.VisitNode(node.NamedChild(index), state, index, funcMap)
+					state = walk.VisitNode(node.NamedChild(index), state, index, funcMap, false)
 				}
 
 				return state
@@ -558,7 +558,7 @@ func visitUsageExpression(content []byte) walk.VisitorFunction[typescriptWalkSta
 			if varNode == nil || varNode.Type() != "string_fragment" {
 				for i := range node.NamedChildCount() {
 					index := int(i)
-					state = walk.VisitNode(node.NamedChild(index), state, index, funcMap)
+					state = walk.VisitNode(node.NamedChild(index), state, index, funcMap, false)
 				}
 
 				return state
@@ -570,7 +570,7 @@ func visitUsageExpression(content []byte) walk.VisitorFunction[typescriptWalkSta
 
 		for i := range node.NamedChildCount() {
 			index := int(i)
-			state = walk.VisitNode(node.NamedChild(index), state, index, funcMap)
+			state = walk.VisitNode(node.NamedChild(index), state, index, funcMap, false)
 		}
 
 		return state
