@@ -40,9 +40,30 @@ type FunctionCFG struct {
 }
 
 type State struct {
-	cfg        *FunctionCFG
-	current    *Block
-	breakStack utils.Stack[*Block]
+	breakStack    utils.Stack[*Block]
+	cfg           *FunctionCFG
+	continueStack utils.Stack[*Block]
+	current       *Block
+}
+
+func (s *State) pushLoopBlocks(continueBlock *Block, breakBlock *Block) {
+	s.continueStack.Push(continueBlock)
+	s.breakStack.Push(breakBlock)
+}
+
+func (s *State) popLoopBlocks() {
+	s.continueStack.Pop()
+	s.breakStack.Pop()
+}
+
+func (s *State) popBreakBlock() *Block {
+	s.continueStack.Pop()
+	return *s.breakStack.Pop()
+}
+
+func (s *State) popContinueBlock() *Block {
+	s.breakStack.Pop()
+	return *s.continueStack.Pop()
 }
 
 func (cfg *FunctionCFG) AddEdge(from *Block, to *Block) {
@@ -66,6 +87,12 @@ func build(state *State, root *sitter.Node, content []byte) {
 
 	funcMap["break_statement"] = func(node *sitter.Node, _ any, indexInParent int, funcMap walk.VisitorFuncMap[any]) any {
 		handleBreak(state, node, content)
+
+		return nil
+	}
+
+	funcMap["continue_statement"] = func(node *sitter.Node, _ any, indexInParent int, funcMap walk.VisitorFuncMap[any]) any {
+		handleContinue(state, node, content)
 
 		return nil
 	}
@@ -143,8 +170,18 @@ func handleReturn(state *State, _ *sitter.Node, _ []byte) {
 }
 
 func handleBreak(state *State, _ *sitter.Node, _ []byte) {
-	afterBlock := *state.breakStack.Pop()
+	afterBlock := state.popBreakBlock()
 	breakBlock := &Block{label: "Break block"}
+
+	state.cfg.AddEdge(state.current, breakBlock)
+	state.cfg.AddEdge(breakBlock, afterBlock)
+
+	state.current = breakBlock
+}
+
+func handleContinue(state *State, _ *sitter.Node, _ []byte) {
+	afterBlock := state.popContinueBlock()
+	breakBlock := &Block{label: "Continue block"}
 
 	state.cfg.AddEdge(state.current, breakBlock)
 	state.cfg.AddEdge(breakBlock, afterBlock)
@@ -231,7 +268,7 @@ func handleWhile(state *State, node *sitter.Node, content []byte) {
 	condBlock := Block{label: "While condition block"}
 	afterBlock := Block{label: "While after block"}
 
-	state.breakStack.Push(&afterBlock)
+	state.pushLoopBlocks(&condBlock, &afterBlock)
 
 	conditiondNode := node.ChildByFieldName("condition")
 	if conditiondNode == nil {
@@ -260,7 +297,7 @@ func handleWhile(state *State, node *sitter.Node, content []byte) {
 
 	state.current = &afterBlock
 
-	state.breakStack.Pop()
+	state.popLoopBlocks()
 }
 
 func handleForIn(state *State, node *sitter.Node, content []byte) {
@@ -270,7 +307,7 @@ func handleForIn(state *State, node *sitter.Node, content []byte) {
 	bodyBlock := Block{label: "For-in body block"}
 	afterBlock := Block{label: "For-in after block"}
 
-	state.breakStack.Push(&afterBlock)
+	state.pushLoopBlocks(&nextBlock, &afterBlock)
 
 	leftNode := node.ChildByFieldName("left")
 	rightNode := node.ChildByFieldName("right")
@@ -305,11 +342,11 @@ func handleForIn(state *State, node *sitter.Node, content []byte) {
 
 	state.current = &afterBlock
 
-	state.breakStack.Pop()
+	state.popLoopBlocks()
 }
 
 func Run() {
-	content := "function hello() { while (true) { ops(); opt(); } opt(); }"
+	content := "function hello() { while (true) { ops(); opt(); if (cond) {continue} opt() } opt(); }"
 
 	state := State{cfg: &FunctionCFG{}}
 
