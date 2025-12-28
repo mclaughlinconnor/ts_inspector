@@ -80,9 +80,15 @@ func (cfg *FunctionCFG) AddBlock(label string) *Block {
 	return &block
 }
 
-func (b *Block) AddInstruction(kind InstructionKind, left string, node *sitter.Node, right string, content []byte) {
+func (state *State) AddInstruction(kind InstructionKind, left string, node *sitter.Node, right string, content []byte) {
+	if len(state.current.after) != 0 {
+		current := state.cfg.AddBlock("Continuation")
+		state.cfg.AddEdge(state.current, current)
+		state.current = current
+	}
+
 	instruction := Instruction{kind, left, node, right, node.Content(content)}
-	b.instructions = append(b.instructions, &instruction)
+	state.current.instructions = append(state.current.instructions, &instruction)
 }
 
 func build(state *State, root *sitter.Node, content []byte) {
@@ -199,7 +205,7 @@ func handleContinue(state *State, _ *sitter.Node, _ []byte) {
 }
 
 func handleCall(state *State, node *sitter.Node, content []byte) {
-	state.current.AddInstruction(InstructionCall, "", node, "", content)
+	state.AddInstruction(InstructionCall, "", node, "", content)
 }
 
 func handleFunction(state *State, node *sitter.Node, content []byte) {
@@ -236,7 +242,7 @@ func handleIf(state *State, node *sitter.Node, content []byte) {
 	}
 
 	condBlock.node = conditiondNode
-	state.current.AddInstruction(InstructionBranch, "", node, "", content)
+	state.AddInstruction(InstructionBranch, "", node, "", content)
 	state.cfg.AddEdge(state.current, condBlock)
 	state.current = condBlock
 
@@ -288,7 +294,7 @@ func handleWhile(state *State, node *sitter.Node, content []byte) {
 	}
 
 	condBlock.node = conditiondNode
-	state.current.AddInstruction(InstructionBranch, "", node, "", content)
+	state.AddInstruction(InstructionBranch, "", node, "", content)
 	state.cfg.AddEdge(state.current, condBlock)
 	state.cfg.AddEdge(condBlock, afterBlock)
 	state.current = condBlock
@@ -329,11 +335,13 @@ func handleForIn(state *State, node *sitter.Node, content []byte) {
 
 	state.cfg.AddEdge(state.current, initialiseBlock)
 
-	initialiseBlock.AddInstruction(InstructionAssign, "%iter", rightNode, rightNode.Content(content)+"[Symbol.iterator]()", content)
+	state.current = initialiseBlock
+	state.AddInstruction(InstructionAssign, "%iter", rightNode, rightNode.Content(content)+"[Symbol.iterator]()", content)
 
 	state.cfg.AddEdge(initialiseBlock, nextBlock)
-	nextBlock.AddInstruction(InstructionAssign, "%value", rightNode, "%iter.next()", content)
-	nextBlock.AddInstruction(InstructionBranch, "!%value.done", rightNode, "", content)
+	state.current = nextBlock
+	state.AddInstruction(InstructionAssign, "%value", rightNode, "%iter.next()", content)
+	state.AddInstruction(InstructionBranch, "!%value.done", rightNode, "", content)
 
 	state.cfg.AddEdge(nextBlock, bodyBlock)
 	state.cfg.AddEdge(nextBlock, afterBlock)
@@ -358,7 +366,7 @@ func handleForIn(state *State, node *sitter.Node, content []byte) {
 }
 
 func Run() {
-	content := "function hello() { while (true) { ops(); opt(); if (cond) {continue} opt() } opt(); } function hello() { while (true) { ops(); opt(); if (cond) {continue} opt() } opt(); }"
+	content := "function hello() { while (true) { ops(); opt(); if (cond) {continue} return; opt() } opt(); } function hello() { while (true) { ops(); opt(); if (cond) {continue} opt() } opt(); }"
 
 	state := State{allCfg: []*FunctionCFG{}}
 
