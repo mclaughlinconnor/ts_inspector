@@ -175,33 +175,42 @@ func build(state *State, root *sitter.Node, content []byte) {
 	walk.WalkTypeScriptShallow(root, nil, funcMap)
 }
 
-func handleReturn(state *State, _ *sitter.Node, _ []byte) {
+func handleReturn(state *State, node *sitter.Node, content []byte) {
+	prevBlock := state.current
 	returnBlock := state.cfg.AddBlock("Return block")
 
-	state.cfg.AddEdge(state.current, returnBlock)
-	state.cfg.AddEdge(returnBlock, state.cfg.end)
-
 	state.current = returnBlock
+
+	state.AddInstruction(InstructionJump, "", node, "", content)
+
+	state.cfg.AddEdge(prevBlock, returnBlock)
+	state.cfg.AddEdge(returnBlock, state.cfg.End)
 }
 
-func handleBreak(state *State, _ *sitter.Node, _ []byte) {
+func handleBreak(state *State, node *sitter.Node, content []byte) {
+	prevBlock := state.current
 	afterBlock := state.popBreakBlock()
 	breakBlock := state.cfg.AddBlock("Break block")
 
-	state.cfg.AddEdge(state.current, breakBlock)
-	state.cfg.AddEdge(breakBlock, afterBlock)
-
 	state.current = breakBlock
+
+	state.AddInstruction(InstructionBranch, "", node, "", content)
+
+	state.cfg.AddEdge(prevBlock, breakBlock)
+	state.cfg.AddEdge(breakBlock, afterBlock)
 }
 
-func handleContinue(state *State, _ *sitter.Node, _ []byte) {
+func handleContinue(state *State, node *sitter.Node, content []byte) {
+	prevBlock := state.current
 	afterBlock := state.popContinueBlock()
 	breakBlock := state.cfg.AddBlock("Continue block")
 
-	state.cfg.AddEdge(state.current, breakBlock)
-	state.cfg.AddEdge(breakBlock, afterBlock)
-
 	state.current = breakBlock
+
+	state.AddInstruction(InstructionBranch, "", node, "", content)
+
+	state.cfg.AddEdge(prevBlock, breakBlock)
+	state.cfg.AddEdge(breakBlock, afterBlock)
 }
 
 func handleCall(state *State, node *sitter.Node, content []byte) {
