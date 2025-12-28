@@ -8,7 +8,10 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
-type analyser = func(file *parser.File) []Analysis
+type analyser struct {
+	exec      func(file *parser.File) []Analysis
+	expensive bool
+}
 
 var Analysers = []analyser{}
 
@@ -16,11 +19,13 @@ func registerAnalyser(analyser analyser) {
 	Analysers = append(Analysers, analyser)
 }
 
-func Analyse(file *parser.File) []Analysis {
+func Analyse(file *parser.File, runExpensive bool) []Analysis {
 	analyses := []Analysis{}
 
 	for _, analyser := range Analysers {
-		analyses = append(analyses, analyser(file)...)
+		if !runExpensive || (runExpensive && analyser.expensive) {
+			analyses = append(analyses, analyser.exec(file)...)
+		}
 	}
 
 	return analyses
@@ -71,18 +76,19 @@ func newAnalysis(code string, highlightRange utils.Range, severity int, message 
 }
 
 func InitAnalysers() {
-	registerAnalyser(angularManyDecorators)
-	registerAnalyser(angularMethodNoImplements)
-	registerAnalyser(asyncAngular)
-	registerAnalyser(constructorOnlyProperty)
-	registerAnalyser(getterUsedInTemplate)
-	registerAnalyser(illegalDeclaringModule)
-	registerAnalyser(nonPublicAngular)
-	registerAnalyser(recursiveTemplate)
-	registerAnalyser(unnecessaryPublic)
-	registerAnalyser(unusedAngular)
+	registerAnalyser(analyser{exec: angularManyDecorators, expensive: false})
+	registerAnalyser(analyser{exec: angularMethodNoImplements, expensive: false})
+	registerAnalyser(analyser{exec: asyncAngular, expensive: false})
+	registerAnalyser(analyser{exec: cfgUnreachableBlock, expensive: true})
+	registerAnalyser(analyser{exec: constructorOnlyProperty, expensive: false})
+	registerAnalyser(analyser{exec: getterUsedInTemplate, expensive: false})
+	registerAnalyser(analyser{exec: illegalDeclaringModule, expensive: false})
+	registerAnalyser(analyser{exec: nonPublicAngular, expensive: false})
+	registerAnalyser(analyser{exec: recursiveTemplate, expensive: false})
+	registerAnalyser(analyser{exec: unnecessaryPublic, expensive: false})
+	registerAnalyser(analyser{exec: unusedAngular, expensive: false})
 
 	if utils.Debug {
-		registerAnalyser(debug)
+		registerAnalyser(analyser{exec: debug, expensive: true})
 	}
 }

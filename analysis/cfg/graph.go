@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"ts_inspector/ast/walk"
+	"ts_inspector/parser"
 	"ts_inspector/utils"
 
 	sitter "github.com/smacker/go-tree-sitter"
@@ -21,31 +22,35 @@ const (
 type Instruction struct {
 	kind  InstructionKind
 	left  string
-	node  *sitter.Node
+	Node  *sitter.Node
 	right string
 	text  string
 }
 
 type Block struct {
-	node         *sitter.Node
-	instructions []*Instruction
-	before       []*Block
-	after        []*Block
-	label        string
+	Node         *sitter.Node
+	Instructions []*Instruction
+	Before       []*Block
+	After        []*Block
+	Label        string
 }
 
 type FunctionCFG struct {
-	blocks []*Block
-	start  *Block
-	end    *Block
+	Blocks []*Block
+	Start  *Block
+	End    *Block
 }
 
 type State struct {
-	allCfg        []*FunctionCFG
+	AllCfg        []*FunctionCFG
 	breakStack    utils.Stack[*Block]
 	cfg           *FunctionCFG
 	continueStack utils.Stack[*Block]
 	current       *Block
+}
+
+func newState() *State {
+	return &State{AllCfg: []*FunctionCFG{}}
 }
 
 func (s *State) pushLoopBlocks(continueBlock *Block, breakBlock *Block) {
@@ -69,26 +74,25 @@ func (s *State) popContinueBlock() *Block {
 }
 
 func (cfg *FunctionCFG) AddEdge(from *Block, to *Block) {
-	from.after = append(from.after, to)
-	to.before = append(to.before, from)
+	from.After = append(from.After, to)
+	to.Before = append(to.Before, from)
 }
 
 func (cfg *FunctionCFG) AddBlock(label string) *Block {
-	block := Block{label: label}
-	cfg.blocks = append(cfg.blocks, &block)
+	block := Block{Label: label}
+	cfg.Blocks = append(cfg.Blocks, &block)
 
 	return &block
 }
 
 func (state *State) AddInstruction(kind InstructionKind, left string, node *sitter.Node, right string, content []byte) {
-	if len(state.current.after) != 0 {
+	if len(state.current.After) != 0 {
 		current := state.cfg.AddBlock("Continuation")
-		state.cfg.AddEdge(state.current, current)
 		state.current = current
 	}
 
 	instruction := Instruction{kind, left, node, right, node.Content(content)}
-	state.current.instructions = append(state.current.instructions, &instruction)
+	state.current.Instructions = append(state.current.Instructions, &instruction)
 }
 
 func build(state *State, root *sitter.Node, content []byte) {
@@ -218,14 +222,14 @@ func handleCall(state *State, node *sitter.Node, content []byte) {
 }
 
 func handleFunction(state *State, node *sitter.Node, content []byte) {
-	state.cfg = &FunctionCFG{blocks: []*Block{}}
-	state.allCfg = append(state.allCfg, state.cfg)
+	state.cfg = &FunctionCFG{Blocks: []*Block{}}
+	state.AllCfg = append(state.AllCfg, state.cfg)
 
 	start := state.cfg.AddBlock("Function start")
 	end := state.cfg.AddBlock("Function end")
 
-	state.cfg.start = start
-	state.cfg.end = end
+	state.cfg.Start = start
+	state.cfg.End = end
 
 	body := node.ChildByFieldName("body")
 	if body == nil {
@@ -250,10 +254,11 @@ func handleIf(state *State, node *sitter.Node, content []byte) {
 		return
 	}
 
-	condBlock.node = conditiondNode
-	state.AddInstruction(InstructionBranch, "", node, "", content)
 	state.cfg.AddEdge(state.current, condBlock)
+	condBlock.Node = conditiondNode
+
 	state.current = condBlock
+	state.AddInstruction(InstructionBranch, "", node, "", content)
 
 	state.cfg.AddEdge(state.current, thenBlock)
 
@@ -262,19 +267,21 @@ func handleIf(state *State, node *sitter.Node, content []byte) {
 		return // grammar guarantees that it exists
 	}
 
-	thenBlock.node = thenNode
+	thenBlock.Node = thenNode
 
 	elseNode := node.ChildByFieldName("alternative")
 	if elseNode == nil {
 		state.cfg.AddEdge(state.current, afterBlock)
 	} else {
 		state.cfg.AddEdge(state.current, elseBlock)
-		elseBlock.node = elseNode
+		elseBlock.Node = elseNode
 	}
 
 	state.current = thenBlock
+	state.AddInstruction(InstructionBranch, "", thenBlock.Node, "", content)
+
 	build(state, thenNode, content)
-	if len(state.current.after) == 0 {
+	if len(state.current.After) == 0 {
 		state.cfg.AddEdge(state.current, afterBlock)
 	}
 
@@ -282,7 +289,7 @@ func handleIf(state *State, node *sitter.Node, content []byte) {
 		state.current = elseBlock
 		build(state, elseNode, content)
 
-		if len(state.current.after) == 0 {
+		if len(state.current.After) == 0 {
 			state.cfg.AddEdge(state.current, afterBlock)
 		}
 	}
@@ -302,11 +309,12 @@ func handleWhile(state *State, node *sitter.Node, content []byte) {
 		return
 	}
 
-	condBlock.node = conditiondNode
-	state.AddInstruction(InstructionBranch, "", node, "", content)
 	state.cfg.AddEdge(state.current, condBlock)
-	state.cfg.AddEdge(condBlock, afterBlock)
+	condBlock.Node = conditiondNode
+
 	state.current = condBlock
+	state.AddInstruction(InstructionBranch, "", node, "", content)
+	state.cfg.AddEdge(condBlock, afterBlock)
 
 	state.cfg.AddEdge(state.current, bodyBlock)
 
@@ -315,10 +323,10 @@ func handleWhile(state *State, node *sitter.Node, content []byte) {
 		return // grammar guarantees that it exists
 	}
 
-	bodyBlock.node = bodyNode
+	bodyBlock.Node = bodyNode
 	state.current = bodyBlock
 	build(state, bodyNode, content)
-	if len(state.current.after) == 0 {
+	if len(state.current.After) == 0 {
 		state.cfg.AddEdge(state.current, condBlock)
 	}
 
@@ -353,20 +361,30 @@ func handleForIn(state *State, node *sitter.Node, content []byte) {
 	state.AddInstruction(InstructionBranch, "!%value.done", rightNode, "", content)
 
 	state.cfg.AddEdge(nextBlock, bodyBlock)
-	state.cfg.AddEdge(nextBlock, afterBlock)
+	state.cfg.AddEdge(state.current, afterBlock)
 
 	bodyNode := node.ChildByFieldName("body")
 	if bodyNode == nil {
 		return
 	}
 
-	bodyBlock.node = bodyNode
+	bodyBlock.Node = bodyNode
 	state.current = bodyBlock
 
 	build(state, bodyNode, content)
 
-	if len(state.current.after) == 0 {
-		state.cfg.AddEdge(state.current, nextBlock)
+	if len(state.current.After) == 0 {
+		skipsAfterBlock := true
+		for _, after := range state.current.After {
+			if after == afterBlock {
+				skipsAfterBlock = false
+				break
+			}
+		}
+
+		if !skipsAfterBlock {
+			state.cfg.AddEdge(state.current, afterBlock)
+		}
 	}
 
 	state.current = afterBlock
@@ -375,13 +393,13 @@ func handleForIn(state *State, node *sitter.Node, content []byte) {
 }
 
 func Run() {
-	content := "function hello() { while (true) { ops(); opt(); if (cond) {continue} return; opt() } opt(); } function hello() { while (true) { ops(); opt(); if (cond) {continue} opt() } opt(); }"
+	content := "function hello() { for (const x of xs) { break } op(); } function hello() { for (const x of xs) { continue } op(); } function hello() { for (const x of xs) { return } op(); }"
 
-	state := State{allCfg: []*FunctionCFG{}}
+	state := newState()
 
 	utils.ParseFile(false, content, utils.TypeScript, nil, func(root *sitter.Node, content []byte, _ any) (any, error) {
 		for i := range root.NamedChildCount() { // the root it a `(program)`
-			build(&state, root.NamedChild(int(i)), content)
+			build(state, root.NamedChild(int(i)), content)
 		}
 
 		return nil, nil
@@ -389,21 +407,37 @@ func Run() {
 
 	sb := strings.Builder{}
 	visited := map[*Block]any{}
-	printFromState(&sb, &visited, &state)
+	printFromState(&sb, &visited, state)
 
 	println(sb.String())
+}
+
+func BuildGraph(file *parser.File) *State {
+	content := file.Snapshot().Content
+
+	state := newState()
+
+	utils.ParseFile(false, content, utils.TypeScript, nil, func(root *sitter.Node, content []byte, _ any) (any, error) {
+		for i := range root.NamedChildCount() { // the root it a `(program)`
+			build(state, root.NamedChild(int(i)), content)
+		}
+
+		return nil, nil
+	})
+
+	return state
 }
 
 func printFromState(sb *strings.Builder, visited *map[*Block]any, state *State) {
 	sb.WriteString("digraph {\n")
 
-	for _, cfg := range state.allCfg {
+	for _, cfg := range state.AllCfg {
 		fmt.Fprintf(sb, "subgraph cluster_%p {\n", cfg)
 
-		start := cfg.start
-		fmt.Fprintf(sb, "\"%p\" [label=\"%s (%d)\"]\n", start, start.label, len(start.instructions))
+		start := cfg.Start
+		fmt.Fprintf(sb, "\"%p\" [label=\"%s (%d)\"]\n", start, start.Label, len(start.Instructions))
 
-		for _, after := range start.after {
+		for _, after := range start.After {
 			printFromBlock(sb, visited, start, after)
 		}
 
@@ -422,9 +456,9 @@ func printFromBlock(sb *strings.Builder, visited *map[*Block]any, parent *Block,
 	}
 
 	(*visited)[block] = true
-	fmt.Fprintf(sb, "\"%p\" [label=\"%s (%d)\"]\n", block, block.label, len(block.instructions))
+	fmt.Fprintf(sb, "\"%p\" [label=\"%s (%d)\"]\n", block, block.Label, len(block.Instructions))
 
-	for _, after := range block.after {
+	for _, after := range block.After {
 		printFromBlock(sb, visited, block, after)
 	}
 }
