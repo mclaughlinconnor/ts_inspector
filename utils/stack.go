@@ -15,13 +15,13 @@ func (s *Stack[T]) Push(v T) {
 }
 
 func (s *Stack[T]) Pop() *T {
-	lenght := len(s.data)
-	if lenght == 0 {
+	length := len(s.data)
+	if length == 0 {
 		return nil
 	}
 
-	top := &s.data[lenght-1]
-	s.data = s.data[:lenght-1]
+	top := &s.data[length-1]
+	s.data = s.data[:length-1]
 
 	return top
 }
@@ -31,12 +31,12 @@ func (s *Stack[T]) IsEmpty() bool {
 }
 
 func (s *Stack[T]) Peek() *T {
-	lenght := len(s.data)
-	if lenght == 0 {
+	length := len(s.data)
+	if length == 0 {
 		return nil
 	}
 
-	top := &s.data[lenght-1]
+	top := &s.data[length-1]
 
 	return top
 }
