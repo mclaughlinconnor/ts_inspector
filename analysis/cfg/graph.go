@@ -42,6 +42,7 @@ type FunctionCFG struct {
 }
 
 type State struct {
+	content       []byte
 	AllCfg        []*FunctionCFG
 	breakStack    utils.Stack[*Block]
 	cfgStack      utils.Stack[*FunctionCFG]
@@ -49,8 +50,8 @@ type State struct {
 	current       *Block
 }
 
-func newState() *State {
-	return &State{AllCfg: []*FunctionCFG{}}
+func newState(content []byte) *State {
+	return &State{AllCfg: []*FunctionCFG{}, content: content}
 }
 
 func (s *State) cfg() *FunctionCFG {
@@ -99,94 +100,49 @@ func (state *State) AddInstruction(kind InstructionKind, left string, node *sitt
 	state.current.Instructions = append(state.current.Instructions, &instruction)
 }
 
+type visitorFunction = func(state *State, node *sitter.Node, content []byte)
+
+var visitMap = map[string]visitorFunction{
+	"break_statement":      handleBreak,
+	"call_expression":      handleCall,
+	"continue_statement":   handleContinue,
+	"else_clause":          handleNamedChildren,
+	"expression_statement": handleNamedChildren,
+	"for_in_statement":     handleForIn,
+	"function_declaration": handleFunction,
+	"if_statement":         handleIf,
+	"program":              handleProgram,
+	"return_statement":     handleReturn,
+	"statement_block":      handleNamedChildren,
+	"while_statement":      handleWhile,
+	"variable_declaration": handleWhile,
+	"lexical_declaration":  handleWhile,
+}
+
+var funcMap = walk.NewVisitorFuncsMap[*State]()
+
+func InitBuilder() {
+	for k, v := range visitMap {
+		funcMap[k] = func(node *sitter.Node, state *State, indexInParent int, funcMap walk.VisitorFuncMap[*State]) *State {
+			v(state, node, state.content)
+
+			return state
+		}
+	}
+}
+
 func build(state *State, root *sitter.Node, content []byte) {
-	funcMap := walk.NewVisitorFuncsMap[any]()
+	walk.WalkTypeScriptShallow(root, state, funcMap)
+}
 
-	funcMap["program"] = func(node *sitter.Node, _ any, indexInParent int, funcMap walk.VisitorFuncMap[any]) any {
-		handleProgram(state, node, content)
-
-		return nil
+func handleNamedChildren(state *State, node *sitter.Node, content []byte) {
+	if node.NamedChildCount() <= 0 {
+		return
 	}
 
-	funcMap["return_statement"] = func(node *sitter.Node, _ any, indexInParent int, funcMap walk.VisitorFuncMap[any]) any {
-		handleReturn(state, node, content)
-
-		return nil
+	for i := range node.NamedChildCount() {
+		build(state, node.NamedChild(int(i)), content)
 	}
-
-	funcMap["break_statement"] = func(node *sitter.Node, _ any, indexInParent int, funcMap walk.VisitorFuncMap[any]) any {
-		handleBreak(state, node, content)
-
-		return nil
-	}
-
-	funcMap["continue_statement"] = func(node *sitter.Node, _ any, indexInParent int, funcMap walk.VisitorFuncMap[any]) any {
-		handleContinue(state, node, content)
-
-		return nil
-	}
-
-	funcMap["function_declaration"] = func(node *sitter.Node, _ any, indexInParent int, funcMap walk.VisitorFuncMap[any]) any {
-		handleFunction(state, node, content)
-
-		return nil
-	}
-
-	funcMap["statement_block"] = func(node *sitter.Node, _ any, indexInParent int, funcMap walk.VisitorFuncMap[any]) any {
-		if node.NamedChildCount() <= 0 {
-			return nil
-		}
-
-		walk.VisitNamedChildren(node, nil, funcMap, true)
-
-		return nil
-	}
-
-	funcMap["expression_statement"] = func(node *sitter.Node, _ any, indexInParent int, funcMap walk.VisitorFuncMap[any]) any {
-		if node.NamedChildCount() <= 0 {
-			return nil
-		}
-
-		walk.VisitNamedChildren(node, nil, funcMap, true)
-
-		return nil
-	}
-
-	funcMap["else_clause"] = func(node *sitter.Node, _ any, indexInParent int, funcMap walk.VisitorFuncMap[any]) any {
-		if node.NamedChildCount() <= 0 {
-			return nil
-		}
-
-		walk.VisitNamedChildren(node, nil, funcMap, true)
-
-		return nil
-	}
-
-	funcMap["call_expression"] = func(node *sitter.Node, _ any, indexInParent int, funcMap walk.VisitorFuncMap[any]) any {
-		handleCall(state, node, content)
-
-		return nil
-	}
-
-	funcMap["if_statement"] = func(node *sitter.Node, _ any, indexInParent int, funcMap walk.VisitorFuncMap[any]) any {
-		handleIf(state, node, content)
-
-		return nil
-	}
-
-	funcMap["while_statement"] = func(node *sitter.Node, _ any, indexInParent int, funcMap walk.VisitorFuncMap[any]) any {
-		handleWhile(state, node, content)
-
-		return nil
-	}
-
-	funcMap["for_in_statement"] = func(node *sitter.Node, _ any, indexInParent int, funcMap walk.VisitorFuncMap[any]) any {
-		handleForIn(state, node, content)
-
-		return nil
-	}
-
-	walk.WalkTypeScriptShallow(root, nil, funcMap)
 }
 
 func handleProgram(state *State, node *sitter.Node, content []byte) {
@@ -423,10 +379,25 @@ func handleForIn(state *State, node *sitter.Node, content []byte) {
 	state.popLoopBlocks()
 }
 
+func handleVariableDeclaration(state *State, node *sitter.Node, content []byte) {
+	declarator := node.NamedChild(0)
+	if declarator == nil || declarator.Type() != "variable_declarator" {
+		return
+	}
+
+	nameNode := declarator.ChildByFieldName("name")
+	valueNode := declarator.ChildByFieldName("value")
+
+	name := nameNode.Content(content)
+	value := valueNode.Content(content)
+
+	state.AddInstruction(InstructionAssign, name, node, value, content)
+}
+
 func Run() {
 	content := "function hello() { for (const x of xs) { break } op(); } function hello() { for (const x of xs) { continue } op(); } function hello() { for (const x of xs) { return } op(); }"
 
-	state := newState()
+	state := newState([]byte(content))
 
 	utils.ParseFile(false, content, utils.TypeScript, nil, func(root *sitter.Node, content []byte, _ any) (any, error) {
 		for i := range root.NamedChildCount() { // the root it a `(program)`
@@ -446,7 +417,7 @@ func Run() {
 func BuildGraph(file *parser.File) *State {
 	content := file.Snapshot().Content
 
-	state := newState()
+	state := newState([]byte(content))
 
 	utils.ParseFile(false, content, utils.TypeScript, nil, func(root *sitter.Node, content []byte, _ any) (any, error) {
 		build(state, root, content)

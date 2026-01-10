@@ -2,6 +2,7 @@ package analysis
 
 import (
 	"fmt"
+	"ts_inspector/analysis/cfg"
 	"ts_inspector/parser"
 	"ts_inspector/utils"
 
@@ -91,4 +92,6 @@ func InitAnalysers() {
 	if utils.Debug {
 		registerAnalyser(analyser{exec: debug, expensive: true})
 	}
+
+	cfg.InitBuilder()
 }
