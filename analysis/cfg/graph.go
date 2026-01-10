@@ -103,20 +103,24 @@ func (state *State) AddInstruction(kind InstructionKind, left string, node *sitt
 type visitorFunction = func(state *State, node *sitter.Node, content []byte)
 
 var visitMap = map[string]visitorFunction{
+	"arrow_function":       handleFunction,
 	"break_statement":      handleBreak,
 	"call_expression":      handleCall,
+	"class_declaration":    handleClass,
 	"continue_statement":   handleContinue,
 	"else_clause":          handleNamedChildren,
+	"export_statement":     handleNamedChildren,
 	"expression_statement": handleNamedChildren,
 	"for_in_statement":     handleForIn,
 	"function_declaration": handleFunction,
 	"if_statement":         handleIf,
+	"lexical_declaration":  handleWhile,
+	"method_definition":    handleFunction,
 	"program":              handleProgram,
 	"return_statement":     handleReturn,
 	"statement_block":      handleNamedChildren,
-	"while_statement":      handleWhile,
 	"variable_declaration": handleWhile,
-	"lexical_declaration":  handleWhile,
+	"while_statement":      handleWhile,
 }
 
 var funcMap = walk.NewVisitorFuncsMap[*State]()
@@ -133,6 +137,22 @@ func InitBuilder() {
 
 func build(state *State, root *sitter.Node, content []byte) {
 	walk.WalkTypeScriptShallow(root, state, funcMap)
+}
+
+func handleClass(state *State, node *sitter.Node, content []byte) {
+	body := node.ChildByFieldName("body")
+	if body == nil {
+		return
+	}
+
+	for i := range body.NamedChildCount() {
+		child := body.NamedChild(int(i))
+		if child.Type() != "method_definition" {
+			continue
+		}
+
+		build(state, child, content)
+	}
 }
 
 func handleNamedChildren(state *State, node *sitter.Node, content []byte) {
@@ -223,11 +243,15 @@ func handleFunction(state *State, node *sitter.Node, content []byte) {
 		return
 	}
 
+	prevCurrent := state.current
 	state.current = start
 
 	build(state, body, content)
 
 	state.cfg().AddEdge(state.current, end)
+
+	state.cfgStack.Pop()
+	state.current = prevCurrent
 }
 
 func handleIf(state *State, node *sitter.Node, content []byte) {
