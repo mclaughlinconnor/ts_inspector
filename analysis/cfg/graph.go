@@ -232,8 +232,14 @@ func handleFunction(state *State, node *sitter.Node, content []byte) {
 	state.AllCfg = append(state.AllCfg, cfg)
 	state.cfgStack.Push(cfg)
 
-	start := state.cfg().AddBlock("Function start")
-	end := state.cfg().AddBlock("Function end")
+	blockName := "Function"
+	name := node.ChildByFieldName("name")
+	if name != nil {
+		blockName = blockName + " " + name.Content(content)
+	}
+
+	start := state.cfg().AddBlock(blockName + " start")
+	end := state.cfg().AddBlock(blockName + " end")
 
 	state.cfg().Start = start
 	state.cfg().End = end
@@ -433,7 +439,7 @@ func Run() {
 
 	sb := strings.Builder{}
 	visited := map[*Block]any{}
-	printFromState(&sb, &visited, state)
+	state.PrintFromState(&sb, &visited)
 
 	println(sb.String())
 }
@@ -452,10 +458,10 @@ func BuildGraph(file *parser.File) *State {
 	return state
 }
 
-func printFromState(sb *strings.Builder, visited *map[*Block]any, state *State) {
+func (s *State) PrintFromState(sb *strings.Builder, visited *map[*Block]any) {
 	sb.WriteString("digraph {\n")
 
-	for _, cfg := range state.AllCfg {
+	for _, cfg := range s.AllCfg {
 		fmt.Fprintf(sb, "subgraph cluster_%p {\n", cfg)
 
 		start := cfg.Start

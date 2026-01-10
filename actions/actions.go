@@ -25,4 +25,8 @@ func InitActions() {
 	registerAction(Action{ImplementAngularOnInit, "Add OnInit"})
 	registerAction(Action{MakeAsync, "Make surrounding method async"})
 	registerAction(Action{RearrangeClass, "Rearrange class"})
+
+	if utils.Debug {
+		registerAction(Action{SaveDotForCfg, "Save dot graph for CFG"})
+	}
 }
