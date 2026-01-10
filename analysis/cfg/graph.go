@@ -114,12 +114,12 @@ var visitMap = map[string]visitorFunction{
 	"for_in_statement":     handleForIn,
 	"function_declaration": handleFunction,
 	"if_statement":         handleIf,
-	"lexical_declaration":  handleWhile,
+	"lexical_declaration":  handleVariableDeclaration,
 	"method_definition":    handleFunction,
 	"program":              handleProgram,
 	"return_statement":     handleReturn,
 	"statement_block":      handleNamedChildren,
-	"variable_declaration": handleWhile,
+	"variable_declaration": handleVariableDeclaration,
 	"while_statement":      handleWhile,
 }
 
