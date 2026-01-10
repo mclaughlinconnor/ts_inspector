@@ -38,6 +38,11 @@ func HandleDidChange(writer io.Writer, logger *log.Logger, state *parser.State, 
 
 		for _, depFile := range file.GetDependencies(state) {
 			file, _ := state.GetFile(depFile)
+
+			if !file.Snapshot().IsOpen {
+				continue
+			}
+
 			utils.WriteResponse(writer, analysis.GenerateDiagnosticsForFile(file, false))
 		}
 	}

@@ -26,6 +26,7 @@ type fileState struct {
 	Exports            References
 	Filetype           string
 	Imports            []*ast.ImportParseResult
+	IsOpen             bool
 	LineOffsets        []uint32
 	URI                string
 	Version            int
@@ -221,6 +222,12 @@ func (f *File) SetContent(content string, version int) {
 		data.LineOffsets = lineOffsets
 		data.Content = content
 		data.Version = versionFallback(version, data.URI)
+	})
+}
+
+func (f *File) SetOpen() {
+	f.Update(func(data *fileState) {
+		data.IsOpen = true
 	})
 }
 

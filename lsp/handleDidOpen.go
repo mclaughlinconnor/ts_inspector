@@ -27,6 +27,8 @@ func HandleDidOpen(writer io.Writer, logger *log.Logger, state *parser.State, re
 			return
 		}
 
+		file.SetOpen()
+
 		dependencies := file.GetDependencies(state)
 		for _, dependency := range dependencies {
 			file, _ := state.GetFile(dependency)
@@ -38,6 +40,11 @@ func HandleDidOpen(writer io.Writer, logger *log.Logger, state *parser.State, re
 
 		for _, depFile := range file.GetDependencies(state) {
 			file, _ := state.GetFile(depFile)
+
+			if !file.Snapshot().IsOpen {
+				continue
+			}
+
 			utils.WriteResponse(writer, analysis.GenerateDiagnosticsForFile(file, false))
 		}
 	}
