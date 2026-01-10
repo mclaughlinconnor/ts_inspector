@@ -188,6 +188,7 @@ func handleProgram(state *State, node *sitter.Node, content []byte) {
 func handleReturn(state *State, node *sitter.Node, content []byte) {
 	prevBlock := state.current
 	returnBlock := state.cfg().AddBlock("Return block")
+	afterReturnBlock := state.cfg().AddBlock("After return block")
 
 	state.current = returnBlock
 
@@ -195,6 +196,8 @@ func handleReturn(state *State, node *sitter.Node, content []byte) {
 
 	state.cfg().AddEdge(prevBlock, returnBlock)
 	state.cfg().AddEdge(returnBlock, state.cfg().End)
+
+	state.current = afterReturnBlock
 }
 
 func handleBreak(state *State, node *sitter.Node, content []byte) {
@@ -228,15 +231,18 @@ func handleCall(state *State, node *sitter.Node, content []byte) {
 }
 
 func handleFunction(state *State, node *sitter.Node, content []byte) {
+	blockName := "Function"
+	name := node.ChildByFieldName("name")
+	nameContent := name.Content(content)
+	if name != nil {
+		blockName = blockName + " " + nameContent
+	}
+
+	state.AddInstruction(InstructionAssign, nameContent, node, "", content)
+
 	cfg := &FunctionCFG{Blocks: []*Block{}}
 	state.AllCfg = append(state.AllCfg, cfg)
 	state.cfgStack.Push(cfg)
-
-	blockName := "Function"
-	name := node.ChildByFieldName("name")
-	if name != nil {
-		blockName = blockName + " " + name.Content(content)
-	}
 
 	start := state.cfg().AddBlock(blockName + " start")
 	end := state.cfg().AddBlock(blockName + " end")
@@ -261,24 +267,18 @@ func handleFunction(state *State, node *sitter.Node, content []byte) {
 }
 
 func handleIf(state *State, node *sitter.Node, content []byte) {
-	condBlock := state.cfg().AddBlock("If condition block")
 	thenBlock := state.cfg().AddBlock("If then block")
 	elseBlock := state.cfg().AddBlock("If else block")
 	afterBlock := state.cfg().AddBlock("If after block")
 
-	conditiondNode := node.ChildByFieldName("condition")
-	if conditiondNode == nil {
+	conditionNode := node.ChildByFieldName("condition")
+	if conditionNode == nil {
 		return
 	}
 
-	state.cfg().AddEdge(state.current, condBlock)
-	condBlock.Node = conditiondNode
-
-	state.current = condBlock
 	state.AddInstruction(InstructionBranch, "", node, "", content)
 
 	state.cfg().AddEdge(state.current, thenBlock)
-
 	thenNode := node.ChildByFieldName("consequence")
 	if thenNode == nil {
 		return // grammar guarantees that it exists
@@ -315,8 +315,8 @@ func handleIf(state *State, node *sitter.Node, content []byte) {
 }
 
 func handleWhile(state *State, node *sitter.Node, content []byte) {
-	bodyBlock := state.cfg().AddBlock("While body block")
 	condBlock := state.cfg().AddBlock("While condition block")
+	bodyBlock := state.cfg().AddBlock("While body block")
 	afterBlock := state.cfg().AddBlock("While after block")
 
 	state.pushLoopBlocks(condBlock, afterBlock)
@@ -325,6 +325,8 @@ func handleWhile(state *State, node *sitter.Node, content []byte) {
 	if conditiondNode == nil {
 		return
 	}
+
+	state.AddInstruction(InstructionBranch, "", node, "", content)
 
 	state.cfg().AddEdge(state.current, condBlock)
 	condBlock.Node = conditiondNode
@@ -353,6 +355,8 @@ func handleWhile(state *State, node *sitter.Node, content []byte) {
 }
 
 func handleForIn(state *State, node *sitter.Node, content []byte) {
+	state.AddInstruction(InstructionBranch, "", node, "", content)
+
 	initialiseBlock := state.cfg().AddBlock("For-in initialisation block")
 	nextBlock := state.cfg().AddBlock("For-in condition block")
 
