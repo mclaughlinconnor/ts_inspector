@@ -44,13 +44,17 @@ type FunctionCFG struct {
 type State struct {
 	AllCfg        []*FunctionCFG
 	breakStack    utils.Stack[*Block]
-	cfg           *FunctionCFG
+	cfgStack      utils.Stack[*FunctionCFG]
 	continueStack utils.Stack[*Block]
 	current       *Block
 }
 
 func newState() *State {
 	return &State{AllCfg: []*FunctionCFG{}}
+}
+
+func (s *State) cfg() *FunctionCFG {
+	return *s.cfgStack.Peek()
 }
 
 func (s *State) pushLoopBlocks(continueBlock *Block, breakBlock *Block) {
@@ -87,7 +91,7 @@ func (cfg *FunctionCFG) AddBlock(label string) *Block {
 
 func (state *State) AddInstruction(kind InstructionKind, left string, node *sitter.Node, right string, content []byte) {
 	if len(state.current.After) != 0 {
-		current := state.cfg.AddBlock("Continuation")
+		current := state.cfg().AddBlock("Continuation")
 		state.current = current
 	}
 
@@ -97,6 +101,12 @@ func (state *State) AddInstruction(kind InstructionKind, left string, node *sitt
 
 func build(state *State, root *sitter.Node, content []byte) {
 	funcMap := walk.NewVisitorFuncsMap[any]()
+
+	funcMap["program"] = func(node *sitter.Node, _ any, indexInParent int, funcMap walk.VisitorFuncMap[any]) any {
+		handleProgram(state, node, content)
+
+		return nil
+	}
 
 	funcMap["return_statement"] = func(node *sitter.Node, _ any, indexInParent int, funcMap walk.VisitorFuncMap[any]) any {
 		handleReturn(state, node, content)
@@ -179,42 +189,62 @@ func build(state *State, root *sitter.Node, content []byte) {
 	walk.WalkTypeScriptShallow(root, nil, funcMap)
 }
 
+func handleProgram(state *State, node *sitter.Node, content []byte) {
+	cfg := &FunctionCFG{Blocks: []*Block{}}
+	state.AllCfg = append(state.AllCfg, cfg)
+	state.cfgStack.Push(cfg)
+
+	start := state.cfg().AddBlock("Program start")
+	end := state.cfg().AddBlock("Program end")
+
+	state.cfg().Start = start
+	state.cfg().End = end
+
+	state.current = start
+
+	for i := range node.NamedChildCount() {
+		build(state, node.NamedChild(int(i)), content)
+	}
+
+	state.cfg().AddEdge(state.current, end)
+}
+
 func handleReturn(state *State, node *sitter.Node, content []byte) {
 	prevBlock := state.current
-	returnBlock := state.cfg.AddBlock("Return block")
+	returnBlock := state.cfg().AddBlock("Return block")
 
 	state.current = returnBlock
 
 	state.AddInstruction(InstructionJump, "", node, "", content)
 
-	state.cfg.AddEdge(prevBlock, returnBlock)
-	state.cfg.AddEdge(returnBlock, state.cfg.End)
+	state.cfg().AddEdge(prevBlock, returnBlock)
+	state.cfg().AddEdge(returnBlock, state.cfg().End)
 }
 
 func handleBreak(state *State, node *sitter.Node, content []byte) {
 	prevBlock := state.current
 	afterBlock := state.popBreakBlock()
-	breakBlock := state.cfg.AddBlock("Break block")
+	breakBlock := state.cfg().AddBlock("Break block")
 
 	state.current = breakBlock
 
 	state.AddInstruction(InstructionBranch, "", node, "", content)
 
-	state.cfg.AddEdge(prevBlock, breakBlock)
-	state.cfg.AddEdge(breakBlock, afterBlock)
+	state.cfg().AddEdge(prevBlock, breakBlock)
+	state.cfg().AddEdge(breakBlock, afterBlock)
 }
 
 func handleContinue(state *State, node *sitter.Node, content []byte) {
 	prevBlock := state.current
 	afterBlock := state.popContinueBlock()
-	breakBlock := state.cfg.AddBlock("Continue block")
+	breakBlock := state.cfg().AddBlock("Continue block")
 
 	state.current = breakBlock
 
 	state.AddInstruction(InstructionBranch, "", node, "", content)
 
-	state.cfg.AddEdge(prevBlock, breakBlock)
-	state.cfg.AddEdge(breakBlock, afterBlock)
+	state.cfg().AddEdge(prevBlock, breakBlock)
+	state.cfg().AddEdge(breakBlock, afterBlock)
 }
 
 func handleCall(state *State, node *sitter.Node, content []byte) {
@@ -222,14 +252,15 @@ func handleCall(state *State, node *sitter.Node, content []byte) {
 }
 
 func handleFunction(state *State, node *sitter.Node, content []byte) {
-	state.cfg = &FunctionCFG{Blocks: []*Block{}}
-	state.AllCfg = append(state.AllCfg, state.cfg)
+	cfg := &FunctionCFG{Blocks: []*Block{}}
+	state.AllCfg = append(state.AllCfg, cfg)
+	state.cfgStack.Push(cfg)
 
-	start := state.cfg.AddBlock("Function start")
-	end := state.cfg.AddBlock("Function end")
+	start := state.cfg().AddBlock("Function start")
+	end := state.cfg().AddBlock("Function end")
 
-	state.cfg.Start = start
-	state.cfg.End = end
+	state.cfg().Start = start
+	state.cfg().End = end
 
 	body := node.ChildByFieldName("body")
 	if body == nil {
@@ -240,27 +271,27 @@ func handleFunction(state *State, node *sitter.Node, content []byte) {
 
 	build(state, body, content)
 
-	state.cfg.AddEdge(state.current, end)
+	state.cfg().AddEdge(state.current, end)
 }
 
 func handleIf(state *State, node *sitter.Node, content []byte) {
-	condBlock := state.cfg.AddBlock("If condition block")
-	thenBlock := state.cfg.AddBlock("If then block")
-	elseBlock := state.cfg.AddBlock("If else block")
-	afterBlock := state.cfg.AddBlock("If after block")
+	condBlock := state.cfg().AddBlock("If condition block")
+	thenBlock := state.cfg().AddBlock("If then block")
+	elseBlock := state.cfg().AddBlock("If else block")
+	afterBlock := state.cfg().AddBlock("If after block")
 
 	conditiondNode := node.ChildByFieldName("condition")
 	if conditiondNode == nil {
 		return
 	}
 
-	state.cfg.AddEdge(state.current, condBlock)
+	state.cfg().AddEdge(state.current, condBlock)
 	condBlock.Node = conditiondNode
 
 	state.current = condBlock
 	state.AddInstruction(InstructionBranch, "", node, "", content)
 
-	state.cfg.AddEdge(state.current, thenBlock)
+	state.cfg().AddEdge(state.current, thenBlock)
 
 	thenNode := node.ChildByFieldName("consequence")
 	if thenNode == nil {
@@ -271,9 +302,9 @@ func handleIf(state *State, node *sitter.Node, content []byte) {
 
 	elseNode := node.ChildByFieldName("alternative")
 	if elseNode == nil {
-		state.cfg.AddEdge(state.current, afterBlock)
+		state.cfg().AddEdge(state.current, afterBlock)
 	} else {
-		state.cfg.AddEdge(state.current, elseBlock)
+		state.cfg().AddEdge(state.current, elseBlock)
 		elseBlock.Node = elseNode
 	}
 
@@ -282,7 +313,7 @@ func handleIf(state *State, node *sitter.Node, content []byte) {
 
 	build(state, thenNode, content)
 	if len(state.current.After) == 0 {
-		state.cfg.AddEdge(state.current, afterBlock)
+		state.cfg().AddEdge(state.current, afterBlock)
 	}
 
 	if elseNode != nil {
@@ -290,7 +321,7 @@ func handleIf(state *State, node *sitter.Node, content []byte) {
 		build(state, elseNode, content)
 
 		if len(state.current.After) == 0 {
-			state.cfg.AddEdge(state.current, afterBlock)
+			state.cfg().AddEdge(state.current, afterBlock)
 		}
 	}
 
@@ -298,9 +329,9 @@ func handleIf(state *State, node *sitter.Node, content []byte) {
 }
 
 func handleWhile(state *State, node *sitter.Node, content []byte) {
-	bodyBlock := state.cfg.AddBlock("While body block")
-	condBlock := state.cfg.AddBlock("While condition block")
-	afterBlock := state.cfg.AddBlock("While after block")
+	bodyBlock := state.cfg().AddBlock("While body block")
+	condBlock := state.cfg().AddBlock("While condition block")
+	afterBlock := state.cfg().AddBlock("While after block")
 
 	state.pushLoopBlocks(condBlock, afterBlock)
 
@@ -309,14 +340,14 @@ func handleWhile(state *State, node *sitter.Node, content []byte) {
 		return
 	}
 
-	state.cfg.AddEdge(state.current, condBlock)
+	state.cfg().AddEdge(state.current, condBlock)
 	condBlock.Node = conditiondNode
 
 	state.current = condBlock
 	state.AddInstruction(InstructionBranch, "", node, "", content)
-	state.cfg.AddEdge(condBlock, afterBlock)
+	state.cfg().AddEdge(condBlock, afterBlock)
 
-	state.cfg.AddEdge(state.current, bodyBlock)
+	state.cfg().AddEdge(state.current, bodyBlock)
 
 	bodyNode := node.ChildByFieldName("body")
 	if bodyNode == nil {
@@ -327,7 +358,7 @@ func handleWhile(state *State, node *sitter.Node, content []byte) {
 	state.current = bodyBlock
 	build(state, bodyNode, content)
 	if len(state.current.After) == 0 {
-		state.cfg.AddEdge(state.current, condBlock)
+		state.cfg().AddEdge(state.current, condBlock)
 	}
 
 	state.current = afterBlock
@@ -336,11 +367,11 @@ func handleWhile(state *State, node *sitter.Node, content []byte) {
 }
 
 func handleForIn(state *State, node *sitter.Node, content []byte) {
-	initialiseBlock := state.cfg.AddBlock("For-in initialisation block")
-	nextBlock := state.cfg.AddBlock("For-in condition block")
+	initialiseBlock := state.cfg().AddBlock("For-in initialisation block")
+	nextBlock := state.cfg().AddBlock("For-in condition block")
 
-	bodyBlock := state.cfg.AddBlock("For-in body block")
-	afterBlock := state.cfg.AddBlock("For-in after block")
+	bodyBlock := state.cfg().AddBlock("For-in body block")
+	afterBlock := state.cfg().AddBlock("For-in after block")
 
 	state.pushLoopBlocks(nextBlock, afterBlock)
 
@@ -350,18 +381,18 @@ func handleForIn(state *State, node *sitter.Node, content []byte) {
 		return
 	}
 
-	state.cfg.AddEdge(state.current, initialiseBlock)
+	state.cfg().AddEdge(state.current, initialiseBlock)
 
 	state.current = initialiseBlock
 	state.AddInstruction(InstructionAssign, "%iter", rightNode, rightNode.Content(content)+"[Symbol.iterator]()", content)
 
-	state.cfg.AddEdge(initialiseBlock, nextBlock)
+	state.cfg().AddEdge(initialiseBlock, nextBlock)
 	state.current = nextBlock
 	state.AddInstruction(InstructionAssign, "%value", rightNode, "%iter.next()", content)
 	state.AddInstruction(InstructionBranch, "!%value.done", rightNode, "", content)
 
-	state.cfg.AddEdge(nextBlock, bodyBlock)
-	state.cfg.AddEdge(state.current, afterBlock)
+	state.cfg().AddEdge(nextBlock, bodyBlock)
+	state.cfg().AddEdge(state.current, afterBlock)
 
 	bodyNode := node.ChildByFieldName("body")
 	if bodyNode == nil {
@@ -383,7 +414,7 @@ func handleForIn(state *State, node *sitter.Node, content []byte) {
 		}
 
 		if !skipsAfterBlock {
-			state.cfg.AddEdge(state.current, afterBlock)
+			state.cfg().AddEdge(state.current, afterBlock)
 		}
 	}
 
@@ -418,9 +449,7 @@ func BuildGraph(file *parser.File) *State {
 	state := newState()
 
 	utils.ParseFile(false, content, utils.TypeScript, nil, func(root *sitter.Node, content []byte, _ any) (any, error) {
-		for i := range root.NamedChildCount() { // the root it a `(program)`
-			build(state, root.NamedChild(int(i)), content)
-		}
+		build(state, root, content)
 
 		return nil, nil
 	})
