@@ -48,6 +48,32 @@ func (s *State) GetClasses() *map[string]*Class {
 	return classes
 }
 
+func (s *State) GetClassesBySelectorUsage(selectors []string) []*Class {
+	classes := []*Class{}
+
+	s.RLock()
+
+	for _, selector := range selectors {
+		for _, class := range *s.GetClasses() {
+			if !class.HasComponent() || class.Snapshot().Angular.Component.Template == nil {
+				continue
+			}
+
+			tagUsages := class.Snapshot().Angular.Component.Template.TagUsages
+			_, found := tagUsages[selector]
+			if !found {
+				continue
+			}
+
+			classes = append(classes, class)
+		}
+	}
+
+	s.RUnlock()
+
+	return classes
+}
+
 func (s *State) GetRootUri() *string {
 	s.RLock()
 	rootUri := &s.rootURI
