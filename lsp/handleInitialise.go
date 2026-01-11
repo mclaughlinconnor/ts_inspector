@@ -3,6 +3,7 @@ package lsp
 import (
 	"io"
 	"log"
+	"ts_inspector/commands"
 	"ts_inspector/interfaces"
 )
 
@@ -33,6 +34,9 @@ func newInitializeResponse(id int) interfaces.InitializeResponse {
 					TriggerCharacters: &triggerChars,
 				},
 				DefinitionProvider: true,
+				ExecuteCommandProvider: interfaces.ExecuteCommandOptions{
+					Commands: commands.CommandNames,
+				},
 				HoverProvider:      true,
 				ReferencesProvider: true,
 				TextDocumentSync:   interfaces.TextDocumentSyncKind.Full,

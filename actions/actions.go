@@ -2,6 +2,7 @@ package actions
 
 import (
 	"io"
+	"ts_inspector/interfaces"
 	"ts_inspector/parser"
 	"ts_inspector/utils"
 )
@@ -9,7 +10,7 @@ import (
 var Actions []Action
 
 type Action struct {
-	Perform func(io.Writer, *parser.State, *parser.File, utils.Range) (actionEdits []utils.TextEdit, allowed bool, err error)
+	Perform func(io.Writer, *parser.State, *parser.File, utils.Range) (actionEdits *[]utils.TextEdit, command *interfaces.Command, allowed bool, err error)
 	Title   string
 }
 

@@ -10,10 +10,6 @@ import (
 	"ts_inspector/utils"
 )
 
-func response(writer io.Writer, id int) {
-	utils.WriteResponse(writer, Response{RPC: "2.0", ID: &id})
-}
-
 func HandleExecuteCommand(writer io.Writer, logger *log.Logger, state *parser.State, request interfaces.ExecuteCommandRequest) {
 	commandName := request.Params.Command
 	args := request.Params.Arguments
@@ -21,18 +17,18 @@ func HandleExecuteCommand(writer io.Writer, logger *log.Logger, state *parser.St
 	command, ok := commands.CommandMap[commandName]
 	if !ok {
 		logger.Printf("Error: could not find command %s", commandName)
-		response(writer, request.ID)
 		return
 	}
 
-	changes, err := command.Perform(state, args)
+	changes, err := command.Perform(writer, state, args)
 	if err != nil {
 		logger.Printf("Error: %s", err)
-		response(writer, request.ID)
 		return
 	}
 
-	response(writer, request.ID)
+	if len(changes) == 0 {
+		return
+	}
 
 	utils.WriteResponse(
 		writer,

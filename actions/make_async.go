@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"ts_inspector/interfaces"
 	"ts_inspector/parser"
 	"ts_inspector/utils"
 
@@ -15,9 +16,9 @@ func MakeAsync(
 	state *parser.State,
 	file *parser.File,
 	editRange utils.Range,
-) (actionEdits utils.TextEdits, allowed bool, err error) {
+) (actionEdits *utils.TextEdits, command *interfaces.Command, allowed bool, err error) {
 	if file.Snapshot().Filetype != "typescript" {
-		return nil, false, nil
+		return nil, nil, false, nil
 	}
 
 	var edits = utils.TextEdits{}
@@ -130,5 +131,5 @@ func MakeAsync(
 		return edits, nil
 	})
 
-	return action, true, err
+	return &action, nil, true, err
 }

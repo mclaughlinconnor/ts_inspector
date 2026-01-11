@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 	"ts_inspector/ast"
+	"ts_inspector/interfaces"
 	"ts_inspector/parser"
 	"ts_inspector/utils"
 )
@@ -15,11 +16,11 @@ func RearrangeClass(
 	state *parser.State,
 	file *parser.File,
 	editRange utils.Range,
-) (actionEdits utils.TextEdits, allowed bool, err error) {
+) (actionEdits *utils.TextEdits, command *interfaces.Command, allowed bool, err error) {
 	definitions := ast.ExtractDefinitions([]byte(file.Snapshot().Content))
 
 	if len(definitions) < 2 {
-		return utils.TextEdits{}, true, nil
+		return &utils.TextEdits{}, nil, true, nil
 	}
 
 	var sortFunc = func(a ast.MethodDefinitionParseResult, b ast.MethodDefinitionParseResult) int {
@@ -31,7 +32,7 @@ func RearrangeClass(
 
 	alreadySorted := slices.IsSortedFunc(definitions, sortFunc)
 	if alreadySorted {
-		return utils.TextEdits{}, false, nil
+		return &utils.TextEdits{}, nil, false, nil
 	}
 
 	start := definitions[0].Range.Start
@@ -55,5 +56,5 @@ func RearrangeClass(
 
 	edit.NewText = strings.Join(bodies, "\n\n  ")
 
-	return utils.TextEdits{edit}, true, nil
+	return &utils.TextEdits{edit}, nil, true, nil
 }

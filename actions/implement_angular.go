@@ -2,6 +2,7 @@ package actions
 
 import (
 	"ts_inspector/ast"
+	"ts_inspector/interfaces"
 	"ts_inspector/parser"
 	"ts_inspector/utils"
 
@@ -16,9 +17,9 @@ func ImplementAngular(
 	methodDefinition string,
 	methodName string,
 	score int,
-) (actionEdits utils.TextEdits, allowed bool, err error) {
+) (actionEdits *utils.TextEdits, command *interfaces.Command, allowed bool, err error) {
 	if file.Snapshot().Filetype != "typescript" {
-		return nil, false, nil
+		return nil, nil, false, nil
 	}
 
 	var edits = utils.TextEdits{}
@@ -48,5 +49,5 @@ func ImplementAngular(
 		return edits, nil
 	})
 
-	return action, true, err
+	return &action, nil, true, err
 }

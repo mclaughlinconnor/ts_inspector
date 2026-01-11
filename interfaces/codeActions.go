@@ -39,7 +39,9 @@ var CodeActionKind = codeActionKind{"", "quickfix", "refactor", "refactor.extrac
 type CodeAction struct {
 	Title string `json:"title"`
 
-	Edit WorkspaceEdit `json:"edit"`
+	Edit *WorkspaceEdit `json:"edit,omitempty"`
+
+	Command *Command `json:"command,omitempty"`
 
 	Kind string `json:"kind"`
 }

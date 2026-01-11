@@ -40,18 +40,28 @@ func GenerateActions(writer io.Writer, logger *log.Logger, state *parser.State, 
 	codeActions := []interfaces.CodeAction{}
 
 	for _, action := range actions.Actions {
-		edits, allowed, err := action.Perform(writer, state, file, editRange)
+		edits, command, allowed, err := action.Perform(writer, state, file, editRange)
 
 		if err != nil {
 			logger.Printf("Error: %s", err)
 		}
 
-		if allowed && err == nil && len(edits) > 0 {
-			codeActions = append(codeActions, interfaces.CodeAction{
-				Edit:  WorkspaceEditFromEdits(file, edits),
+		if allowed && err == nil && ((edits != nil && len(*edits) > 0) || command != nil) {
+			ca := interfaces.CodeAction{
 				Title: action.Title,
 				Kind:  interfaces.CodeActionKind.Source,
-			})
+			}
+
+			if edits != nil && len(*edits) > 0 {
+				we := WorkspaceEditFromEdits(file, *edits)
+				ca.Edit = &we
+			}
+
+			if command != nil {
+				ca.Command = command
+			}
+
+			codeActions = append(codeActions, ca)
 		}
 	}
 

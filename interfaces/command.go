@@ -13,7 +13,7 @@ type ExecuteCommandRequest struct {
 
 type ExecuteCommandParams struct {
 	Command   string `json:"command"`
-	Arguments *[]any `json:"arguments"`
+	Arguments *any   `json:"arguments"`
 }
 
 type ExecuteCommandOptions struct {

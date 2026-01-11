@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"ts_inspector/analysis/cfg"
+	"ts_inspector/interfaces"
 	"ts_inspector/parser"
 	"ts_inspector/utils"
 )
@@ -15,7 +16,7 @@ func SaveDotForCfg(
 	state *parser.State,
 	file *parser.File,
 	editRange utils.Range,
-) (actionEdits utils.TextEdits, allowed bool, err error) {
+) (actionEdits *utils.TextEdits, command *interfaces.Command, allowed bool, err error) {
 	cfgState := cfg.BuildGraph(file)
 
 	sb := strings.Builder{}
@@ -26,5 +27,5 @@ func SaveDotForCfg(
 
 	r := utils.Range{Start: utils.Position{Line: 0, Character: 0}, End: utils.Position{Line: 0, Character: 0}}
 
-	return utils.TextEdits{{Range: r, NewText: ""}}, true, nil
+	return &utils.TextEdits{{Range: r, NewText: ""}}, nil, true, nil
 }

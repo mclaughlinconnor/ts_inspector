@@ -3,15 +3,16 @@ package actions
 import (
 	"io"
 	"ts_inspector/ast"
+	"ts_inspector/interfaces"
 	"ts_inspector/parser"
 	"ts_inspector/utils"
 
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
-func AddDestroyedObservable(_ io.Writer, state *parser.State, file *parser.File, _ utils.Range) (actionEdits utils.TextEdits, allowed bool, err error) {
+func AddDestroyedObservable(_ io.Writer, state *parser.State, file *parser.File, _ utils.Range) (actionEdits *utils.TextEdits, command *interfaces.Command, allowed bool, err error) {
 	if file.Snapshot().Filetype != "typescript" {
-		return nil, false, nil
+		return nil, nil, false, nil
 	}
 
 	action := addDestroyedAction{[]utils.TextEdit{}, true}
@@ -85,7 +86,7 @@ func AddDestroyedObservable(_ io.Writer, state *parser.State, file *parser.File,
 		return action, nil
 	})
 
-	return action.Edits, action.IsAllowed, err
+	return &action.Edits, nil, action.IsAllowed, err
 }
 
 func addNgOnInit(content []byte) (utils.TextEdits, error) {

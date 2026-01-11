@@ -2,6 +2,7 @@ package commands
 
 import (
 	"errors"
+	"io"
 	"ts_inspector/ast"
 	"ts_inspector/parser"
 	"ts_inspector/utils"
@@ -9,9 +10,13 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
-func AddImport(state *parser.State, args *[]any) (map[string]utils.TextEdits, error) {
+func AddImport(_ io.Writer, state *parser.State, args *any) (map[string]utils.TextEdits, error) {
 	changes := map[string]utils.TextEdits{}
-	slice := *args
+	slice, ok := (*args).([]any)
+
+	if !ok {
+		return changes, errors.New("The args aren't an array")
+	}
 
 	if len(slice) != 4 {
 		return changes, errors.New("the slice does not contain exactly three elements")
