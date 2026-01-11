@@ -61,7 +61,7 @@ func resolveIdentFromImports(idents []string, file *File, state *State) []*Refer
 
 			var importedFile *File
 
-			extensions := []string{".ts", ".d.ts", ".js"}
+			extensions := []string{"", ".ts", ".d.ts", ".js"}
 			joinSuffixes := []string{"", "index"}
 
 			for _, join := range joinSuffixes {
