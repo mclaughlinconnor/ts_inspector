@@ -36,6 +36,11 @@ type Class struct {
 	state classState
 }
 
+type GetProvidersResult struct {
+	Provider *Provider
+	Source   *Class
+}
+
 func (c *Class) AddDefinition(definition Definition) {
 	if definition.Usages == nil {
 		definition.Usages = []*UsageInstance{}
@@ -218,6 +223,108 @@ func (c *Class) FilterAllDefinitionsByDecorator(decoratorName string) []ClassedD
 	})
 }
 
+func (s *State) FindPlacesThatUseThisClassComponent(class *Class) []*Class {
+	places := []*Class{}
+
+	if !class.HasComponent() {
+		return places
+	}
+
+	for _, c := range *s.GetClasses() {
+		if !c.HasComponent() {
+			continue
+		}
+
+		template := c.Snapshot().Angular.Component.Template
+		if template == nil {
+			continue
+		}
+
+		for _, selector := range class.Snapshot().Angular.Component.Selectors {
+			usages, found := template.TagUsages[selector]
+			if !found || len(usages.Usages) == 0 {
+				continue
+			}
+
+			places = append(places, c)
+		}
+	}
+
+	return places
+}
+
+func (s *State) FindPlacesThatDeclareThisClassComponent(class *Class) []*Class {
+	places := []*Class{}
+
+	if !class.HasComponent() {
+		return places
+	}
+
+	for _, c := range *s.GetClasses() {
+		if !c.HasModule() {
+			continue
+		}
+
+		for _, declaration := range c.Snapshot().Angular.Module.Declarations {
+			if declaration.Class == nil || declaration.Class != class {
+				continue
+			}
+
+			places = append(places, c)
+		}
+	}
+
+	return places
+}
+
+func (c *Class) GetAllProvidedValues(state *State) []*GetProvidersResult {
+	visited := map[*Class]bool{}
+	routesToRoot := [][]*Class{}
+
+	rootTemplateUsages := state.FindPlacesThatUseThisClassComponent(c)
+	for _, rootUsage := range rootTemplateUsages {
+		routes := findProviderRoutes(state, []*Class{c}, visited, rootUsage)
+		routesToRoot = append(routesToRoot, routes...)
+	}
+
+	rootModuleUsages := state.FindPlacesThatDeclareThisClassComponent(c)
+	for _, rootUsage := range rootModuleUsages {
+		routes := findProviderRoutes(state, []*Class{c}, visited, rootUsage)
+		routesToRoot = append(routesToRoot, routes...)
+	}
+
+	providers := []*GetProvidersResult{}
+
+	addProviderIfNotExists := func(treeProviders []*GetProvidersResult, providers []*Provider, class *Class) []*GetProvidersResult {
+		for _, provider := range providers {
+			if slices.ContainsFunc(treeProviders, func(p *GetProvidersResult) bool { return p.Provider.Token.Name == provider.Token.Name }) {
+				continue
+			}
+
+			treeProviders = append(treeProviders, &GetProvidersResult{provider, class})
+		}
+
+		return treeProviders
+	}
+
+	for _, route := range routesToRoot {
+		treeProviders := []*GetProvidersResult{}
+		for _, entry := range route {
+			if entry.HasComponent() {
+				treeProviders = addProviderIfNotExists(treeProviders, entry.Snapshot().Angular.Component.Providers, entry)
+			}
+
+			if entry.HasModule() {
+				treeProviders = addProviderIfNotExists(treeProviders, entry.Snapshot().Angular.Module.Providers, entry)
+			}
+		}
+
+		providers = append(providers, treeProviders...)
+	}
+
+	return providers
+}
+
 func (c *Class) GetAllPublicDefinitions() []ClassedDefinition {
 	definitions := c.GetOwnPublicDefinitions()
 	definitionsMap := make(map[string]bool)
@@ -336,8 +443,12 @@ func (c *Class) GetTemplateFile() *File {
 	return nil
 }
 
+func (c *Class) HasAngular() bool {
+	return c.Snapshot().Angular != nil
+}
+
 func (c *Class) HasComponent() bool {
-	return c.Snapshot().Angular != nil && c.Snapshot().Angular.Component != nil
+	return c.HasAngular() && c.Snapshot().Angular.Component != nil
 }
 
 func (c *Class) HasDefinition(name string) bool {
@@ -351,7 +462,7 @@ func (c *Class) HasDefinition(name string) bool {
 }
 
 func (c *Class) HasModule() bool {
-	return c.Snapshot().Angular != nil && c.Snapshot().Angular.Module != nil
+	return c.HasAngular() && c.Snapshot().Angular.Module != nil
 }
 
 func (c *Class) Id() string { return ClassId(c.Snapshot().File.Snapshot().URI, c.Snapshot().Name) }
@@ -498,4 +609,84 @@ func (c Classes) Less(a int, b int) bool {
 
 func (c Classes) Swap(i, j int) {
 	c[i], c[j] = c[j], c[i]
+}
+
+func findProviderRoutes(state *State, path []*Class, visited map[*Class]bool, class *Class) [][]*Class {
+	routesToTarget := [][]*Class{}
+
+	if value, found := visited[class]; found && value {
+		return routesToTarget
+	}
+
+	visited[class] = true
+
+	if !class.HasComponent() && !class.HasModule() {
+		return routesToTarget
+	}
+
+	if class.HasComponent() {
+		routesToTarget = append(routesToTarget, findProviderRoutesComponent(state, path, visited, class)...)
+	}
+
+	if class.HasModule() {
+		routesToTarget = append(routesToTarget, findProviderRoutesModule(state, path, visited, class)...)
+	}
+
+	return routesToTarget
+}
+
+func findProviderRoutesModule(state *State, path []*Class, visited map[*Class]bool, class *Class) [][]*Class {
+	routesToTarget := [][]*Class{}
+
+	angular := class.Snapshot().Angular
+
+	findRoutesInResolved := func(references References) {
+		references.IterateResolved(func(r *Reference) bool {
+			foundRoutes := findProviderRoutes(state, append(path, class), visited, r.Class)
+			routesToTarget = append(routesToTarget, foundRoutes...)
+
+			return true
+		})
+	}
+
+	m := angular.Module
+	isDeclared := m.DoesDeclare(path[len(path)-1])
+
+	if (!isDeclared && m.Exports.CountResolved() == 0) || (isDeclared && m.Imports.CountResolved()+m.Exports.CountResolved() == 0) {
+		routesToTarget = append(routesToTarget, append(path, class))
+		return routesToTarget
+	}
+
+	if isDeclared {
+		findRoutesInResolved(m.Imports)
+		findRoutesInResolved(m.Exports)
+	} else {
+		findRoutesInResolved(m.Exports)
+	}
+
+	if len(routesToTarget) == 0 {
+		routesToTarget = append(routesToTarget, append(path, class))
+	}
+
+	return routesToTarget
+}
+
+func findProviderRoutesComponent(state *State, path []*Class, visited map[*Class]bool, class *Class) [][]*Class {
+	routesToTarget := [][]*Class{}
+
+	tagUsages := state.FindPlacesThatUseThisClassComponent(class)
+
+	// It's a root terminal component
+	if class.HasComponent() && len(tagUsages) == 0 {
+		routesToTarget = append(routesToTarget, append(path, class))
+
+		return routesToTarget
+	}
+
+	for _, tagUsage := range tagUsages {
+		foundRoutes := findProviderRoutes(state, append(path, class), visited, tagUsage)
+		routesToTarget = append(routesToTarget, foundRoutes...)
+	}
+
+	return routesToTarget
 }

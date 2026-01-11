@@ -31,16 +31,16 @@ func WorkspaceEditFromEdits(file *parser.File, edits utils.TextEdits) interfaces
 func HandleCodeAction(writer io.Writer, logger *log.Logger, state *parser.State, request interfaces.CodeActionRequest) {
 	file, _ := state.GetFile(parser.FilenameFromUri(request.Params.TextDocument.Uri))
 
-	codeActions := GenerateActions(logger, state, file, request.Params.Range)
+	codeActions := GenerateActions(writer, logger, state, file, request.Params.Range)
 
 	utils.WriteResponse(writer, newCodeActionResponse(request.ID, codeActions))
 }
 
-func GenerateActions(logger *log.Logger, state *parser.State, file *parser.File, editRange utils.Range) []interfaces.CodeAction {
+func GenerateActions(writer io.Writer, logger *log.Logger, state *parser.State, file *parser.File, editRange utils.Range) []interfaces.CodeAction {
 	codeActions := []interfaces.CodeAction{}
 
 	for _, action := range actions.Actions {
-		edits, allowed, err := action.Perform(state, file, editRange)
+		edits, allowed, err := action.Perform(writer, state, file, editRange)
 
 		if err != nil {
 			logger.Printf("Error: %s", err)

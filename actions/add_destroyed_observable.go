@@ -1,6 +1,7 @@
 package actions
 
 import (
+	"io"
 	"ts_inspector/ast"
 	"ts_inspector/parser"
 	"ts_inspector/utils"
@@ -8,7 +9,7 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
-func AddDestroyedObservable(state *parser.State, file *parser.File, _ utils.Range) (actionEdits utils.TextEdits, allowed bool, err error) {
+func AddDestroyedObservable(_ io.Writer, state *parser.State, file *parser.File, _ utils.Range) (actionEdits utils.TextEdits, allowed bool, err error) {
 	if file.Snapshot().Filetype != "typescript" {
 		return nil, false, nil
 	}

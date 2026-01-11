@@ -2,6 +2,7 @@ package actions
 
 import (
 	"cmp"
+	"io"
 	"slices"
 	"strings"
 	"ts_inspector/ast"
@@ -10,6 +11,7 @@ import (
 )
 
 func RearrangeClass(
+	_ io.Writer,
 	state *parser.State,
 	file *parser.File,
 	editRange utils.Range,

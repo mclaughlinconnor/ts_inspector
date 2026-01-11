@@ -21,6 +21,20 @@ type Reference struct {
 
 type References []*Reference
 
+func (r References) CountResolved() int {
+	count := 0
+
+	for _, v := range r {
+		if v == nil {
+			continue
+		}
+
+		count += 1
+	}
+
+	return count
+}
+
 func (r References) IterateResolved(yield func(*Reference) bool) {
 	for _, v := range r {
 		if v == nil {

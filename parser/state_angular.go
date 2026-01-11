@@ -18,6 +18,7 @@ type Component struct {
 	DeclaredIn      []*Class
 	Imports         References
 	ImportsIdents   []string
+	Providers       []*Provider
 	Selectors       []string
 	Template        *Template
 	TemplateUrl     string
@@ -34,6 +35,16 @@ type Module struct {
 	Imports                References
 	ImportsIdents          []string
 	ImportsIdentNodes      []*sitter.Node // Note: These are file based nodes
+	Providers              []*Provider
+}
+
+type Provider struct {
+	Class    *Reference
+	Existing *Reference
+	Factory  *sitter.Node
+	RefToken *Reference
+	Token    *Reference
+	Value    *sitter.Node
 }
 
 type TagUsage struct {
@@ -130,6 +141,36 @@ func (c *Component) Postprocess(state *State, class *Class) {
 	c.Imports = imports
 }
 
+func (m *Module) DoesDeclare(class *Class) bool {
+	for _, exp := range m.Declarations {
+		if exp == nil || exp.Class == nil {
+			// Should have been resolved by now
+			continue
+		}
+
+		if exp.Class == class {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (m *Module) DoesExport(class *Class) bool {
+	for _, exp := range m.Exports {
+		if exp == nil || exp.Class == nil {
+			// Should have been resolved by now
+			continue
+		}
+
+		if exp.Class == class {
+			return true
+		}
+	}
+
+	return false
+}
+
 func (m *Module) GetDeclaredComponents() []*Class {
 	selectors := make([]*Class, 0)
 
@@ -160,19 +201,19 @@ func (m *Module) GetDeclaredComponents() []*Class {
 func (m *Module) GetExportedComponents() []*Class {
 	selectors := make([]*Class, 0)
 
-	for _, imp := range m.Exports {
-		if imp == nil || imp.Class == nil {
+	for _, exp := range m.Exports {
+		if exp == nil || exp.Class == nil {
 			// Should have been resolved by now
 			continue
 		}
 
-		angular := imp.Class.Snapshot().Angular
+		angular := exp.Class.Snapshot().Angular
 		if angular == nil {
 			continue
 		}
 
 		if angular.Component != nil {
-			selectors = append(selectors, imp.Class)
+			selectors = append(selectors, exp.Class)
 		}
 
 		if angular.Module != nil {

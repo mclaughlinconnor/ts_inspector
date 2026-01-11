@@ -1,6 +1,7 @@
 package actions
 
 import (
+	"io"
 	"ts_inspector/parser"
 	"ts_inspector/utils"
 )
@@ -8,7 +9,7 @@ import (
 var Actions []Action
 
 type Action struct {
-	Perform func(*parser.State, *parser.File, utils.Range) (actionEdits []utils.TextEdit, allowed bool, err error)
+	Perform func(io.Writer, *parser.State, *parser.File, utils.Range) (actionEdits []utils.TextEdit, allowed bool, err error)
 	Title   string
 }
 
@@ -18,6 +19,7 @@ func registerAction(action Action) {
 
 func InitActions() {
 	registerAction(Action{AddDestroyedObservable, "Add _destroyed$ observable"})
+	registerAction(Action{CalculateAllProviders, "Calculate all providers"})
 	registerAction(Action{ConvertInjectToProperty, "Convert @Inject() to inject() property"})
 	registerAction(Action{ImplementAngularAfterViewInit, "Add AfterViewInit"})
 	registerAction(Action{ImplementAngularOnChanges, "Add OnChanges"})

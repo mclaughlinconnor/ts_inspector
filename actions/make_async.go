@@ -2,6 +2,7 @@ package actions
 
 import (
 	"fmt"
+	"io"
 	"strings"
 	"ts_inspector/parser"
 	"ts_inspector/utils"
@@ -10,6 +11,7 @@ import (
 )
 
 func MakeAsync(
+	_ io.Writer,
 	state *parser.State,
 	file *parser.File,
 	editRange utils.Range,

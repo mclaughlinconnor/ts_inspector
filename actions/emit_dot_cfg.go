@@ -1,6 +1,7 @@
 package actions
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,6 +11,7 @@ import (
 )
 
 func SaveDotForCfg(
+	_ io.Writer,
 	state *parser.State,
 	file *parser.File,
 	editRange utils.Range,

@@ -43,60 +43,65 @@ func ExtractComponentData(class *Class, node *sitter.Node, content []byte) {
 	walk.WalkTypeScript(node, nil, funcMap)
 }
 
-func walkComponentDecoratorParams(class *Class, node *sitter.Node, content []byte) {
-	funcMap := walk.NewVisitorFuncsMap[any]()
+func extractProvider(node *sitter.Node, content []byte) *Provider {
+	nodeType := node.Type()
+	if nodeType == "identifier" {
+		provider := Provider{}
 
-	funcMap["pair"] = func(node *sitter.Node, _ any, indexInParent int, funcMap walk.VisitorFuncMap[any]) any {
-		keyNode := node.ChildByFieldName("key")
-		if keyNode == nil {
-			return nil
-		}
+		reference := &Reference{Name: node.Content(content), Node: node}
+		provider.Token = reference
+		provider.Class = reference
 
-		keyName := keyNode.Content(content)
-		valueNode := node.ChildByFieldName("value")
-		if valueNode == nil {
-			return nil
-		}
+		return &provider
+	}
 
-		handleComponentKv(class, valueNode, content, keyName)
-
+	if nodeType != "object" {
 		return nil
 	}
 
-	walk.WalkTypeScript(node, nil, funcMap)
-}
+	provider := Provider{}
 
-func walkModuleDecoratorParams(class *Class, node *sitter.Node, content []byte) {
-	funcMap := walk.NewVisitorFuncsMap[any]()
+	for i := range node.NamedChildCount() {
+		pair := node.NamedChild(int(i))
+		key := pair.ChildByFieldName("key")
+		value := pair.ChildByFieldName("value")
 
-	funcMap["pair"] = func(node *sitter.Node, _ any, indexInParent int, funcMap walk.VisitorFuncMap[any]) any {
-		keyNode := node.ChildByFieldName("key")
-		if keyNode == nil {
+		if key == nil || value == nil {
 			return nil
 		}
 
-		keyName := keyNode.Content(content)
-		valueNode := node.ChildByFieldName("value")
-		if valueNode == nil {
-			return nil
+		keyName := key.Content(content)
+		valueText := value.Content(content)
+
+		switch kn := keyName; kn {
+		case "provide":
+			provider.Token = &Reference{Name: valueText, Node: value}
+		case "useClass":
+			provider.Class = &Reference{Name: valueText, Node: value}
+		case "useExisting":
+			provider.Existing = &Reference{Name: valueText, Node: value}
+		case "useFactory":
+			provider.Factory = value
+		case "useToken":
+			provider.RefToken = &Reference{Name: valueText, Node: value}
+		case "useValue":
+			provider.Value = value
 		}
-
-		handleModuleKv(class, valueNode, content, keyName)
-
-		return nil
 	}
 
-	walk.WalkTypeScript(node, nil, funcMap)
+	return &provider
 }
 
 func handleComponentKv(class *Class, vNode *sitter.Node, content []byte, keyName string) {
 	switch kn := keyName; kn {
 	case "imports":
 		handleImportsComponentKv(class, vNode, content)
-	case "templateUrl":
-		handleTemplateUrlKv(class, vNode, content)
+	case "providers":
+		handleProvidersComponentKv(class, vNode, content)
 	case "selector":
 		handleSelectorKv(class, vNode, content)
+	case "templateUrl":
+		handleTemplateUrlKv(class, vNode, content)
 	}
 }
 
@@ -108,6 +113,8 @@ func handleModuleKv(class *Class, vNode *sitter.Node, content []byte, keyName st
 		handleExportsKv(class, vNode, content)
 	case "declarations":
 		handleDeclarationsKv(class, vNode, content)
+	case "providers":
+		handleProvidersModuleKv(class, vNode, content)
 	}
 }
 
@@ -204,6 +211,46 @@ func handleImportsModuleKv(class *Class, vNode *sitter.Node, content []byte) {
 	})
 }
 
+func handleProvidersComponentKv(class *Class, vNode *sitter.Node, content []byte) {
+	if vNode.Type() != "array" {
+		return
+	}
+
+	providers := make([]*Provider, 0)
+
+	for i := range vNode.NamedChildCount() {
+		provider := vNode.NamedChild(int(i))
+
+		p := extractProvider(provider, content)
+		if p == nil {
+			continue
+		}
+
+		providers = append(providers, p)
+	}
+
+	class.Update(func(data *classState) {
+		data.Angular.Component.Providers = providers
+	})
+}
+
+func handleProvidersModuleKv(class *Class, vNode *sitter.Node, content []byte) {
+	if vNode.Type() != "array" {
+		return
+	}
+
+	providers := make([]*Provider, 0)
+
+	for i := range vNode.NamedChildCount() {
+		provider := vNode.NamedChild(int(i))
+		providers = append(providers, extractProvider(provider, content))
+	}
+
+	class.Update(func(data *classState) {
+		data.Angular.Module.Providers = providers
+	})
+}
+
 func handleSelectorKv(class *Class, vNode *sitter.Node, content []byte) {
 	if vNode.Type() != "string" {
 		return
@@ -263,4 +310,50 @@ func handleTemplateUrlKv(class *Class, vNode *sitter.Node, content []byte) {
 	class.Update(func(data *classState) {
 		data.Angular.Component.TemplateUrl = templateFilePath
 	})
+}
+
+func walkComponentDecoratorParams(class *Class, node *sitter.Node, content []byte) {
+	funcMap := walk.NewVisitorFuncsMap[any]()
+
+	funcMap["pair"] = func(node *sitter.Node, _ any, indexInParent int, funcMap walk.VisitorFuncMap[any]) any {
+		keyNode := node.ChildByFieldName("key")
+		if keyNode == nil {
+			return nil
+		}
+
+		keyName := keyNode.Content(content)
+		valueNode := node.ChildByFieldName("value")
+		if valueNode == nil {
+			return nil
+		}
+
+		handleComponentKv(class, valueNode, content, keyName)
+
+		return nil
+	}
+
+	walk.WalkTypeScript(node, nil, funcMap)
+}
+
+func walkModuleDecoratorParams(class *Class, node *sitter.Node, content []byte) {
+	funcMap := walk.NewVisitorFuncsMap[any]()
+
+	funcMap["pair"] = func(node *sitter.Node, _ any, indexInParent int, funcMap walk.VisitorFuncMap[any]) any {
+		keyNode := node.ChildByFieldName("key")
+		if keyNode == nil {
+			return nil
+		}
+
+		keyName := keyNode.Content(content)
+		valueNode := node.ChildByFieldName("value")
+		if valueNode == nil {
+			return nil
+		}
+
+		handleModuleKv(class, valueNode, content, keyName)
+
+		return nil
+	}
+
+	walk.WalkTypeScript(node, nil, funcMap)
 }
