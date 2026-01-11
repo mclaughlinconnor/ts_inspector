@@ -115,7 +115,7 @@ func extractFileImports(root *sitter.Node, file *File) error {
 	}
 
 	file.Update(func(data *fileState) {
-		data.Imports = append(data.Imports, imports...)
+		data.Imports = imports
 	})
 
 	dynamicImports, err := ast.ExtractDynamicImports(root, []byte(file.Snapshot().Content))
@@ -124,7 +124,7 @@ func extractFileImports(root *sitter.Node, file *File) error {
 	}
 
 	file.Update(func(data *fileState) {
-		data.DynamicImportPaths = append(data.DynamicImportPaths, dynamicImports...)
+		data.DynamicImportPaths = dynamicImports
 	})
 
 	return nil
