@@ -2,10 +2,6 @@ package actions
 
 import (
 	"io"
-	"os"
-	"path/filepath"
-	"strings"
-	"ts_inspector/analysis/cfg"
 	"ts_inspector/interfaces"
 	"ts_inspector/parser"
 	"ts_inspector/utils"
@@ -17,15 +13,13 @@ func SaveDotForCfg(
 	file *parser.File,
 	editRange utils.Range,
 ) (actionEdits *utils.TextEdits, command *interfaces.Command, allowed bool, err error) {
-	cfgState := cfg.BuildGraph(file)
+	args := []any{file.Snapshot().URI}
 
-	sb := strings.Builder{}
-	visited := map[*cfg.Block]any{}
-	cfgState.PrintFromState(&sb, &visited)
+	command = &interfaces.Command{
+		Title:     "Save dot graph for CFG",
+		Command:   "ts_inspector/saveDotCfg",
+		Arguments: &args[0],
+	}
 
-	os.WriteFile(filepath.Base(file.Filename())+"_cfg.dot", []byte(sb.String()), 0644)
-
-	r := utils.Range{Start: utils.Position{Line: 0, Character: 0}, End: utils.Position{Line: 0, Character: 0}}
-
-	return &utils.TextEdits{{Range: r, NewText: ""}}, nil, true, nil
+	return nil, command, true, nil
 }

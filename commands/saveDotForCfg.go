@@ -1,0 +1,48 @@
+package commands
+
+import (
+	"errors"
+	"io"
+	"os"
+	"path/filepath"
+	"strings"
+	"ts_inspector/analysis/cfg"
+	"ts_inspector/interfaces"
+	"ts_inspector/parser"
+	"ts_inspector/utils"
+)
+
+func SaveDotForCfg(writer io.Writer, state *parser.State, args *any) (map[string]utils.TextEdits, error) {
+	changes := map[string]utils.TextEdits{}
+	uri, ok := (*args).(string)
+
+	if !ok {
+		return changes, errors.New("URI is not a string")
+	}
+
+	file, found := state.GetFile(parser.FilenameFromUri(uri))
+	if !found {
+		return map[string]utils.TextEdits{}, nil
+	}
+
+	cfgState := cfg.BuildGraph(file)
+
+	sb := strings.Builder{}
+	visited := map[*cfg.Block]any{}
+	cfgState.PrintFromState(&sb, &visited)
+
+	savePath := filepath.Base(file.Filename()) + "_cfg.dot"
+	os.WriteFile(savePath, []byte(sb.String()), 0644)
+
+	notification := interfaces.ShowMessageNotification{
+		Notification: interfaces.Notification{
+			RPC:    "2.0",
+			Method: "window/showMessage",
+		},
+		Params: interfaces.ShowMessageParams{Type: interfaces.MessageType.Info, Message: "Saved " + savePath},
+	}
+
+	utils.WriteResponse(writer, notification)
+
+	return map[string]utils.TextEdits{}, nil
+}

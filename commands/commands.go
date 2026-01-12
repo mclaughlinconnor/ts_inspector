@@ -29,6 +29,7 @@ func registerCommand(command Command) {
 func InitCommands() {
 	registerCommand(Command{Command: interfaces.Command{Command: "ts_inspector/addImport", Title: "Add Import"}, Perform: AddImport})
 	registerCommand(Command{Command: interfaces.Command{Command: "ts_inspector/printProviders", Title: "Print providers"}, Perform: PrintProviders})
+	registerCommand(Command{Command: interfaces.Command{Command: "ts_inspector/saveDotCfg", Title: "Save dot graph for CFG"}, Perform: SaveDotForCfg})
 
 	for _, command := range Commands {
 		CommandNames = append(CommandNames, command.Command.Command)
