@@ -22,6 +22,7 @@ func InitActions() {
 	registerAction(Action{AddDestroyedObservable, "Add _destroyed$ observable"})
 	registerAction(Action{CalculateAllProviders, "Calculate all providers"})
 	registerAction(Action{ConvertInjectToProperty, "Convert @Inject() to inject() property"})
+	registerAction(Action{GoToDeclaringModule, "Go to declaring module"})
 	registerAction(Action{ImplementAngularAfterViewInit, "Add AfterViewInit"})
 	registerAction(Action{ImplementAngularOnChanges, "Add OnChanges"})
 	registerAction(Action{ImplementAngularOnDestroy, "Add OnDestroy"})

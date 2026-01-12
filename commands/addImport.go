@@ -24,8 +24,8 @@ func AddImport(_ io.Writer, state *parser.State, args *any) (map[string]utils.Te
 
 	uri, ok1 := slice[0].(string)
 	packageName, ok2 := slice[1].(string)
-	_typeImports, ok3 := slice[2].([]interface{})
-	_imports, ok4 := slice[3].([]interface{})
+	_typeImports, ok3 := slice[2].([]any)
+	_imports, ok4 := slice[3].([]any)
 
 	if !ok1 || !ok2 || !ok3 || !ok4 {
 		return changes, errors.New("one or more elements are not strings")
