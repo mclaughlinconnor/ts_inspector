@@ -422,6 +422,10 @@ func handleVariableDeclaration(state *State, node *sitter.Node, content []byte) 
 	nameNode := declarator.ChildByFieldName("name")
 	valueNode := declarator.ChildByFieldName("value")
 
+	if valueNode == nil || nameNode == nil {
+		return
+	}
+
 	name := nameNode.Content(content)
 	value := valueNode.Content(content)
 
