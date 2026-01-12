@@ -265,7 +265,7 @@ func (s *State) FindPlacesThatDeclareThisClassComponent(class *Class) []*Class {
 			continue
 		}
 
-		for _, declaration := range c.Snapshot().Angular.Module.Declarations {
+		for declaration := range c.Snapshot().Angular.Module.Declarations.IterateResolved {
 			if declaration.Class == nil || declaration.Class != class {
 				continue
 			}
