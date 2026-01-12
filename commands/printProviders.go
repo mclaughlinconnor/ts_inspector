@@ -39,7 +39,23 @@ func PrintProviders(writer io.Writer, state *parser.State, args *any) (map[strin
 			} else if p.Provider.RefToken != nil {
 				text = text + ": " + p.Provider.RefToken.Name
 			} else if p.Provider.Value != nil {
-				text = text + ": " + p.Provider.Value.Content(content)
+				valueNode := p.Provider.Value
+				valueText := valueNode.Content(content)
+
+				if valueNode.Type() == "identifier" {
+					t := ""
+					for _, variable := range file.Snapshot().Variables {
+						if variable.Name == valueText {
+							t = variable.Value
+						}
+					}
+
+					if t != "" {
+						text = text + ": " + t
+					}
+				} else {
+					text = text + ": " + p.Provider.Value.Content(content)
+				}
 			}
 
 			allProviders = append(allProviders, text)
