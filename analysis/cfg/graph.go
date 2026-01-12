@@ -51,7 +51,15 @@ type State struct {
 }
 
 func newState(content []byte) *State {
-	return &State{AllCfg: []*FunctionCFG{}, content: content}
+	continueStack := utils.NewStack[*Block]()
+	cfgStack := utils.NewStack[*FunctionCFG]()
+
+	return &State{
+		AllCfg:        []*FunctionCFG{},
+		continueStack: *continueStack,
+		cfgStack:      *cfgStack,
+		content:       content,
+	}
 }
 
 func (s *State) cfg() *FunctionCFG {
@@ -61,6 +69,14 @@ func (s *State) cfg() *FunctionCFG {
 func (s *State) pushLoopBlocks(continueBlock *Block, breakBlock *Block) {
 	s.continueStack.Push(continueBlock)
 	s.breakStack.Push(breakBlock)
+}
+
+func (s *State) peekBreakBlock() *Block {
+	return *s.breakStack.Peek()
+}
+
+func (s *State) peekContinueBlock() *Block {
+	return *s.continueStack.Peek()
 }
 
 func (s *State) popLoopBlocks() {
@@ -202,7 +218,7 @@ func handleReturn(state *State, node *sitter.Node, content []byte) {
 
 func handleBreak(state *State, node *sitter.Node, content []byte) {
 	prevBlock := state.current
-	afterBlock := state.popBreakBlock()
+	afterBlock := state.peekBreakBlock()
 	breakBlock := state.cfg().AddBlock("Break block")
 
 	state.current = breakBlock
@@ -215,7 +231,7 @@ func handleBreak(state *State, node *sitter.Node, content []byte) {
 
 func handleContinue(state *State, node *sitter.Node, content []byte) {
 	prevBlock := state.current
-	afterBlock := state.popContinueBlock()
+	afterBlock := state.peekContinueBlock()
 	breakBlock := state.cfg().AddBlock("Continue block")
 
 	state.current = breakBlock
