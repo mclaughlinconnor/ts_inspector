@@ -26,7 +26,7 @@ type HoverRequest struct {
 
 type Hover struct {
 	Contents MarkupContent `json:"contents"`
-	Range    *utils.Range  `json:"range"`
+	Range    *utils.Range  `json:"range,omitempty"`
 }
 
 type HoverResponse struct {
