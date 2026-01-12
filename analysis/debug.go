@@ -20,6 +20,22 @@ func debug(file *parser.File) []Analysis {
 		return analyses
 	})...)
 
+	for _, variable := range file.Snapshot().Variables {
+		node := variable.Node
+
+		startByte := node.StartByte()
+		endByte := node.EndByte()
+
+		content := file.Snapshot().Content
+
+		startPosition := parser.GetPositionForOffset(content, startByte)
+		endPosition := parser.GetPositionForOffset(content, endByte)
+
+		message := "Found " + variable.Kind + " `" + variable.Name + "` with value `" + variable.Value + "`"
+
+		analyses = append(analyses, newAnalysis("variable", utils.Range{Start: startPosition, End: endPosition}, AnalysisSeverity.Warning, message))
+	}
+
 	if file.Snapshot().Filetype != "pug" {
 		return analyses
 	}

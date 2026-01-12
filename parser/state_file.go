@@ -29,6 +29,7 @@ type fileState struct {
 	IsOpen             bool
 	LineOffsets        []uint32
 	URI                string
+	Variables          []*Variable
 	Version            int
 }
 
@@ -208,10 +209,11 @@ func (f *File) ResolveDynamicallyImportedFiles(state *State) {
 	})
 }
 
-func (f *File) ResetClasses() {
+func (f *File) ResetDeclarations() {
 	f.Update(func(data *fileState) {
 		data.Classes = make([]*Class, 0)
 		data.Exports = make(References, 0)
+		data.Variables = make([]*Variable, 0)
 	})
 }
 

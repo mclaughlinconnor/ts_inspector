@@ -19,7 +19,7 @@ func IndexPugFileFromLsp(state *State, uri string, content string, version int) 
 		return err
 	}
 
-	file.ResetClasses()
+	file.ResetDeclarations()
 	indexPug(state, file)
 
 	return nil
@@ -35,7 +35,7 @@ func IndexPugFromIndexer(state *State, templateFileName string) error {
 		return err
 	}
 
-	file.ResetClasses()
+	file.ResetDeclarations()
 
 	return indexPug(state, file)
 }
@@ -51,7 +51,7 @@ func IndexPugFromTypeScript(state *State, class *Class, templateFileName string)
 		return err
 	}
 
-	file.ResetClasses()
+	file.ResetDeclarations()
 	class.EnsureAngular()
 	class.Snapshot().Angular.EnsureComponent()
 	class.Snapshot().Angular.Component.TemplateUrlFile = file

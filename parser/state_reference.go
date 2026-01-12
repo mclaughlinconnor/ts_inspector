@@ -11,12 +11,10 @@ import (
 )
 
 type Reference struct {
-	Class *Class
-	Name  string
-	Node  *sitter.Node
-
-	// Variable *Variable
-	// ...
+	Class    *Class
+	Name     string
+	Node     *sitter.Node
+	Variable *Variable
 }
 
 type References []*Reference
