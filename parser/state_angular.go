@@ -62,6 +62,18 @@ type Template struct {
 	TagUsages TagUsages
 }
 
+func (a *Angular) DoesImport(class *Class) bool {
+	if a.Component != nil {
+		return a.Component.Imports.ContainsClass(class)
+	}
+
+	if a.Module != nil {
+		return a.Module.Imports.ContainsClass(class)
+	}
+
+	return false
+}
+
 func (a *Angular) EnsureComponent() {
 	if a.Component == nil {
 		a.Component = &Component{}

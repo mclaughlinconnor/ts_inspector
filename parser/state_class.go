@@ -277,6 +277,22 @@ func (s *State) FindPlacesThatDeclareThisClassComponent(class *Class) []*Class {
 	return places
 }
 
+func (s *State) FindModulesThatAngularImportThisClass(class *Class) []*Class {
+	places := []*Class{}
+
+	for _, c := range *s.GetClasses() {
+		if !c.HasModule() {
+			continue
+		}
+
+		if c.Snapshot().Angular.DoesImport(class) {
+			places = append(places, c)
+		}
+	}
+
+	return places
+}
+
 func (c *Class) GetAllProvidedValues(state *State) []*GetProvidersResult {
 	visited := map[*Class]bool{}
 	routesToRoot := [][]*Class{}
@@ -638,30 +654,10 @@ func findProviderRoutes(state *State, path []*Class, visited map[*Class]bool, cl
 func findProviderRoutesModule(state *State, path []*Class, visited map[*Class]bool, class *Class) [][]*Class {
 	routesToTarget := [][]*Class{}
 
-	angular := class.Snapshot().Angular
-
-	findRoutesInResolved := func(references References) {
-		references.IterateResolved(func(r *Reference) bool {
-			foundRoutes := findProviderRoutes(state, append(path, class), visited, r.Class)
-			routesToTarget = append(routesToTarget, foundRoutes...)
-
-			return true
-		})
-	}
-
-	m := angular.Module
-	isDeclared := m.DoesDeclare(path[len(path)-1])
-
-	if (!isDeclared && m.Exports.CountResolved() == 0) || (isDeclared && m.Imports.CountResolved()+m.Exports.CountResolved() == 0) {
-		routesToTarget = append(routesToTarget, append(path, class))
-		return routesToTarget
-	}
-
-	if isDeclared {
-		findRoutesInResolved(m.Imports)
-		findRoutesInResolved(m.Exports)
-	} else {
-		findRoutesInResolved(m.Exports)
+	importingClasses := state.FindModulesThatAngularImportThisClass(class)
+	for _, importingClass := range importingClasses {
+		foundRoutes := findProviderRoutes(state, append(path, class), visited, importingClass)
+		routesToTarget = append(routesToTarget, foundRoutes...)
 	}
 
 	if len(routesToTarget) == 0 {
@@ -686,6 +682,12 @@ func findProviderRoutesComponent(state *State, path []*Class, visited map[*Class
 	for _, tagUsage := range tagUsages {
 		foundRoutes := findProviderRoutes(state, append(path, class), visited, tagUsage)
 		routesToTarget = append(routesToTarget, foundRoutes...)
+	}
+
+	moduleDeclarations := state.FindPlacesThatDeclareThisClassComponent(class)
+	for _, moduleDeclaration := range moduleDeclarations {
+		routes := findProviderRoutes(state, append(path, class), visited, moduleDeclaration)
+		routesToTarget = append(routesToTarget, routes...)
 	}
 
 	return routesToTarget

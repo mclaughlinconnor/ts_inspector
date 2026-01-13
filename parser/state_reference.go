@@ -4,6 +4,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"sync"
 	"ts_inspector/utils"
 
@@ -18,6 +19,16 @@ type Reference struct {
 }
 
 type References []*Reference
+
+func (r References) ContainsClass(class *Class) bool {
+	return slices.ContainsFunc(r, func(r *Reference) bool {
+		if r == nil || r.Class == nil {
+			return false
+		}
+
+		return r.Class == class
+	})
+}
 
 func (r References) CountResolved() int {
 	count := 0
