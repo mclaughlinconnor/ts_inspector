@@ -78,33 +78,73 @@ func UriFromFilename(filename string) string {
 func FindDefinition(file *File, cursorOffset uint32) []interfaces.Location {
 	locations := make([]interfaces.Location, 0)
 
-	tagName, found := ast.GetTagNameAtOffset(file.Snapshot().Content, cursorOffset)
-	if found {
-		for _, c := range file.Snapshot().Classes {
-			if !c.HasComponent() {
-				continue
-			}
+	tagName, cursorOnTagName := ast.GetTagNameAtOffset(file.Snapshot().Content, cursorOffset)
 
-			components := c.Snapshot().Angular.Component.GetAvailableComponents()
-			for _, c := range components {
-				cContent := c.Snapshot().File.Snapshot().Content
+	var tagUnderCursor string
+	attributeName, cursorOnAttributeName := ast.GetAttributeNameAtOffset(file.Snapshot().Content, cursorOffset)
+	if cursorOnAttributeName {
+		tagUnderCursor, _ = ast.GetNameOfTagAtOffset(file.Snapshot().Content, cursorOffset)
+	}
 
-				selectors := c.Snapshot().Angular.Component.Selectors
-				for _, selector := range selectors {
-					if selector != tagName {
-						continue
+	for _, c := range file.Snapshot().Classes {
+		if !c.HasComponent() {
+			continue
+		}
+
+		components := c.Snapshot().Angular.Component.GetAvailableComponents()
+		for _, c := range components {
+
+			selectors := c.Snapshot().Angular.Component.Selectors
+			for _, selector := range selectors {
+				if cursorOnTagName && selector == tagName {
+					locations = handleDefinitionOfTag(locations, c)
+				}
+
+				if cursorOnAttributeName {
+					if selector == tagUnderCursor {
+						locations = handleAttributeOfTag(locations, c, attributeName)
+					} else if selector == attributeName { // component with `selector: '[formControl]`
+						locations = handleDefinitionOfTag(locations, c)
 					}
-
-					start := GetPositionForOffset(cContent, c.Snapshot().NameNode.StartByte()+c.Snapshot().Node.StartByte())
-					end := GetPositionForOffset(cContent, c.Snapshot().NameNode.EndByte()+c.Snapshot().Node.StartByte())
-
-					locations = append(locations, interfaces.Location{Uri: c.Snapshot().File.Snapshot().URI, Range: utils.Range{Start: start, End: end}})
-
-					break
 				}
 			}
 		}
 	}
 
 	return locations
+}
+
+func handleAttributeOfTag(locations []interfaces.Location, class *Class, attributeName string) []interfaces.Location {
+	for _, definition := range class.FilterAllDefinitions(func(def ClassedDefinition) bool { return def.Name == utils.StripAngularFromAttribute(attributeName) }) {
+		c := definition.Class.Snapshot()
+		cOffset := c.Node.StartByte()
+		file := c.File.Snapshot()
+		cContent := file.Content
+
+		node := definition.Node
+
+		nameNode := node.ChildByFieldName("name")
+		if nameNode == nil {
+			nameNode = node
+		}
+
+		start := GetPositionForOffset(cContent, cOffset+nameNode.StartByte())
+		end := GetPositionForOffset(cContent, cOffset+nameNode.StartByte())
+
+		locations = append(locations, interfaces.Location{Uri: file.URI, Range: utils.Range{Start: start, End: end}})
+	}
+
+	return locations
+}
+
+func handleDefinitionOfTag(locations []interfaces.Location, class *Class) []interfaces.Location {
+	c := class.Snapshot()
+	cOffset := c.Node.StartByte()
+	file := c.File.Snapshot()
+	cContent := file.Content
+
+	start := GetPositionForOffset(cContent, c.NameNode.StartByte()+cOffset)
+	end := GetPositionForOffset(cContent, c.NameNode.EndByte()+cOffset)
+
+	return append(locations, interfaces.Location{Uri: file.URI, Range: utils.Range{Start: start, End: end}})
 }
