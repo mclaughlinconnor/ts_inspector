@@ -12,8 +12,8 @@ type State struct {
 	rootURI string
 }
 
-func CreateState(projectRoot string) State {
-	return State{classes: map[string]*Class{}, files: map[string]*File{}, rootURI: projectRoot}
+func CreateState() State {
+	return State{classes: map[string]*Class{}, files: map[string]*File{}}
 }
 
 func (s *State) GetFile(filename string) (*File, bool) {
@@ -74,12 +74,12 @@ func (s *State) GetClassesBySelectorUsage(selectors []string) []*Class {
 	return classes
 }
 
-func (s *State) GetRootUri() *string {
+func (s *State) GetRootPath() string {
 	s.RLock()
-	rootUri := &s.rootURI
+	rootPath := FilenameFromUri(s.rootURI)
 	s.RUnlock()
 
-	return rootUri
+	return rootPath
 }
 
 func (s *State) Postprocess() {

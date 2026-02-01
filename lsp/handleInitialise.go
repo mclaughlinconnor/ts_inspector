@@ -3,8 +3,11 @@ package lsp
 import (
 	"io"
 	"log"
+	traversetypescriptfiles "ts_inspector/ast/indexing"
 	"ts_inspector/commands"
 	"ts_inspector/interfaces"
+	"ts_inspector/parser"
+	"ts_inspector/utils"
 )
 
 func newInitializeResponse(id int) interfaces.InitializeResponse {
@@ -45,7 +48,23 @@ func newInitializeResponse(id int) interfaces.InitializeResponse {
 	}
 }
 
-func HandleInitialise(writer io.Writer, logger *log.Logger, request interfaces.InitializeRequest) interfaces.InitializeResponse {
-	msg := newInitializeResponse(request.ID)
-	return msg
+func HandleInitialise(writer io.Writer, logger *log.Logger, state *parser.State, request interfaces.InitializeRequest) {
+	response := newInitializeResponse(request.ID)
+	utils.WriteResponse(writer, response)
+
+	state.SetRootUri(request.Params.RootUri)
+	utils.WriteResponse(writer, interfaces.BuildMessageNotification("Starting indexing...", interfaces.MessageType.Info))
+	filenames := traversetypescriptfiles.Index(state.GetRootPath())
+
+	var err error
+	for _, filename := range filenames {
+		err = parser.IndexFileFromIndexer(state, filename)
+		if err != nil {
+			logger.Fatal(err)
+		}
+	}
+
+	state.Postprocess()
+
+	utils.WriteResponse(writer, interfaces.BuildMessageNotification("Indexing finished", interfaces.MessageType.Info))
 }

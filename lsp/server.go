@@ -15,7 +15,7 @@ import (
 
 var Shutdown = make(chan int, 1)
 
-func Start(state *parser.State) {
+func Start() {
 	logger := utils.GetLogger("ts_inspector")
 	logger.Println("Started")
 
@@ -26,6 +26,8 @@ func Start(state *parser.State) {
 	scanner.Buffer(buf, big)
 
 	writer := os.Stdout
+
+	state := parser.CreateState()
 
 	for scanner.Scan() {
 		logger.Println("Scanner found the next message")
@@ -38,7 +40,7 @@ func Start(state *parser.State) {
 			continue
 		}
 
-		handleMessage(logger, writer, state, method, contents)
+		handleMessage(logger, writer, &state, method, contents)
 	}
 
 	logger.Println("LSP event loop finished")
@@ -65,9 +67,7 @@ func handleMessage(logger *log.Logger, writer io.Writer, state *parser.State, me
 	switch method {
 	case "initialize":
 		request := utils.TryParseRequest[interfaces.InitializeRequest](logger, contents)
-		state.SetRootUri(request.Params.RootUri)
-		response := HandleInitialise(writer, logger, request)
-		utils.WriteResponse(writer, response)
+		HandleInitialise(writer, logger, state, request)
 	case "shutdown":
 		Shutdown <- 1
 	case "textDocument/didOpen":
