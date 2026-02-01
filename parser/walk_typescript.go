@@ -611,6 +611,11 @@ func visitDefinition(content []byte) walk.VisitorFunction[typescriptWalkState] {
 		}
 
 		finalDefinition := state.DefinitionStack.Pop()
+
+		if node.Type() == "required_parameter" && finalDefinition.OriginFunctionName != "constuctor" && finalDefinition.IsLocalParam() {
+			return state
+		}
+
 		state.Class.AddDefinition(*finalDefinition)
 
 		return state
