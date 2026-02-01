@@ -55,7 +55,6 @@ func handleMessage(logger *log.Logger, writer io.Writer, state *parser.State, me
 		if r := recover(); r != nil {
 			logger.Println("Panicked with: ", r, "responding with empty response")
 			logger.Println("Stack: ", string(debug.Stack()))
-			utils.WriteResponse(writer, Response{RPC: "2.0", ID: &utils.MostRecentId})
 		}
 	}()
 
@@ -103,7 +102,5 @@ func handleMessage(logger *log.Logger, writer io.Writer, state *parser.State, me
 		}
 
 		log.Println("Not handling request for:", method)
-
-		utils.WriteResponse(writer, Response{RPC: "2.0", ID: &utils.MostRecentId})
 	}
 }
