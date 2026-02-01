@@ -62,14 +62,7 @@ func PrintProviders(writer io.Writer, state *parser.State, args *any) (map[strin
 		}
 	}
 
-	notification := interfaces.ShowMessageNotification{
-		Notification: interfaces.Notification{
-			RPC:    "2.0",
-			Method: "window/showMessage",
-		},
-		Params: interfaces.ShowMessageParams{Type: interfaces.MessageType.Info, Message: strings.Join(allProviders, ", ")},
-	}
-
+	notification := interfaces.BuildMessageNotification(strings.Join(allProviders, ", "), interfaces.MessageType.Info)
 	utils.WriteResponse(writer, notification)
 
 	return map[string]utils.TextEdits{}, nil

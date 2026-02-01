@@ -92,14 +92,7 @@ func GoToDeclaringModule(writer io.Writer, state *parser.State, args *any) (map[
 	}
 
 	if !documentShown {
-		notification := interfaces.ShowMessageNotification{
-			Notification: interfaces.Notification{
-				RPC:    "2.0",
-				Method: "window/showMessage",
-			},
-			Params: interfaces.ShowMessageParams{Type: interfaces.MessageType.Info, Message: "No declaring module found"},
-		}
-
+		notification := interfaces.BuildMessageNotification("No declaring module found", interfaces.MessageType.Info)
 		utils.WriteResponse(writer, notification)
 	}
 

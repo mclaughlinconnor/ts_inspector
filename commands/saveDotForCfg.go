@@ -34,14 +34,7 @@ func SaveDotForCfg(writer io.Writer, state *parser.State, args *any) (map[string
 	savePath := filepath.Base(file.Filename()) + "_cfg.dot"
 	os.WriteFile(savePath, []byte(sb.String()), 0644)
 
-	notification := interfaces.ShowMessageNotification{
-		Notification: interfaces.Notification{
-			RPC:    "2.0",
-			Method: "window/showMessage",
-		},
-		Params: interfaces.ShowMessageParams{Type: interfaces.MessageType.Info, Message: "Saved " + savePath},
-	}
-
+	notification := interfaces.BuildMessageNotification("Saved "+savePath, interfaces.MessageType.Info)
 	utils.WriteResponse(writer, notification)
 
 	return map[string]utils.TextEdits{}, nil
