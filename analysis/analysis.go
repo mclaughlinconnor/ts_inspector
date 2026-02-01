@@ -1,7 +1,6 @@
 package analysis
 
 import (
-	"fmt"
 	"ts_inspector/analysis/cfg"
 	"ts_inspector/parser"
 	"ts_inspector/utils"
@@ -51,10 +50,8 @@ func newAnalysisHighlightName(problemNode *sitter.Node, class *parser.Class, sev
 
 	nameNode := problemNode.ChildByFieldName("name")
 	if nameNode != nil {
-		fmt.Println(nameNode == nil)
 		highlightNode = nameNode
 	} else {
-		fmt.Println(nameNode == nil)
 		highlightNode = problemNode
 	}
 
