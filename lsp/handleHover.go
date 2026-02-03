@@ -3,6 +3,7 @@ package lsp
 import (
 	"io"
 	"log"
+	"strings"
 	"ts_inspector/ast"
 	"ts_inspector/interfaces"
 	"ts_inspector/parser"
@@ -18,41 +19,61 @@ func HandleHover(writer io.Writer, logger *log.Logger, state *parser.State, requ
 		return
 	}
 
-	offset := file.GetOffsetForPosition(request.Params.Position)
+	cursorOffset := file.GetOffsetForPosition(request.Params.Position)
 
-	tagName, found := ast.GetTagNameAtOffset(file.Snapshot().Content, offset)
-	if found {
-		for _, c := range file.Snapshot().Classes {
-			if !c.HasComponent() {
-				continue
-			}
+	tagName, cursorOnTagName := ast.GetTagNameAtOffset(file.Snapshot().Content, cursorOffset)
 
-			components := c.Snapshot().Angular.Component.GetAvailableComponents()
-			for _, c := range components {
+	var tagUnderCursor string
+	attributeName, cursorOnAttributeName := ast.GetAttributeNameAtOffset(file.Snapshot().Content, cursorOffset)
+	if cursorOnAttributeName {
+		tagUnderCursor, _ = ast.GetNameOfTagAtOffset(file.Snapshot().Content, cursorOffset)
+	}
 
-				selectors := c.Snapshot().Angular.Component.Selectors
-				matches := false
-				for _, selector := range selectors {
-					if selector != tagName {
-						continue
+	sb := []string{}
+
+	for _, c := range file.Snapshot().Classes {
+		if !c.HasComponent() {
+			continue
+		}
+
+		components := c.Snapshot().Angular.Component.GetAvailableComponents()
+		for _, c := range components {
+
+			selectors := c.Snapshot().Angular.Component.Selectors
+			for _, selector := range selectors {
+				if cursorOnTagName && selector == tagName {
+					sb = handleTagHover(sb, c)
+				}
+
+				if cursorOnAttributeName {
+					if selector == tagUnderCursor {
+						sb = handleAttributeHover(sb, c, attributeName)
+					} else if selector == attributeName { // component with `selector: '[formControl]`
+						sb = handleTagHover(sb, c)
 					}
-
-					matches = true
 				}
-
-				if !matches {
-					continue
-				}
-
-				markup := c.GetDocumentation(true)
-				hover := interfaces.Hover{Contents: markup}
-
-				utils.WriteResponse(writer, interfaces.HoverResponse{Result: hover, Response: interfaces.Response{ID: &request.ID, RPC: "2.0"}})
-
-				return
 			}
 		}
 	}
 
-	utils.WriteResponse(writer, interfaces.EmptyResponse{Result: nil, Response: interfaces.Response{ID: &request.ID, RPC: "2.0"}})
+	if len(sb) == 0 {
+		utils.WriteResponse(writer, interfaces.EmptyResponse{Result: nil, Response: interfaces.Response{ID: &request.ID, RPC: "2.0"}})
+	}
+
+	hover := interfaces.Hover{Contents: interfaces.MarkupContent{Kind: interfaces.MarkupKind.Markdown, Value: strings.Join(sb, "\n---\n")}}
+	utils.WriteResponse(writer, interfaces.HoverResponse{Result: hover, Response: interfaces.Response{ID: &request.ID, RPC: "2.0"}})
+}
+
+func handleAttributeHover(sb []string, class *parser.Class, attributeName string) []string {
+	for _, definition := range class.FilterAllDefinitions(func(def parser.ClassedDefinition) bool {
+		return def.Name == utils.StripAngularFromAttribute(attributeName)
+	}) {
+		sb = append(sb, definition.GetDocumentation(true))
+	}
+
+	return sb
+}
+
+func handleTagHover(sb []string, class *parser.Class) []string {
+	return append(sb, (class.GetDocumentation(true)))
 }

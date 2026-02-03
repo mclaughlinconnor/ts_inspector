@@ -5,7 +5,6 @@ import (
 	"slices"
 	"strings"
 	"sync"
-	"ts_inspector/interfaces"
 
 	sitter "github.com/smacker/go-tree-sitter"
 )
@@ -178,6 +177,15 @@ func (c *Class) EnsureAngular() {
 type ClassedDefinition struct {
 	Definition
 	Class *Class
+}
+
+func (c *ClassedDefinition) GetDocumentation(includeDefinitionName bool) string {
+	documentation := ""
+	if includeDefinitionName {
+		documentation += "# " + c.Class.Snapshot().Name + "." + c.Name + "\n\n"
+	}
+
+	return documentation + c.Definition.GetDocumentation(false)
 }
 
 func (c *Class) FilterOwnDefinitions(cond func(d ClassedDefinition) bool) []ClassedDefinition {
@@ -381,7 +389,7 @@ func (c *Class) GetClassedDefinitions() []ClassedDefinition {
 	return classedDefinitions
 }
 
-func (c *Class) GetDocumentation(includeClassName bool) interfaces.MarkupContent {
+func (c *Class) GetDocumentation(includeClassName bool) string {
 	documentation := make([]string, 0)
 
 	if includeClassName {
@@ -403,7 +411,7 @@ func (c *Class) GetDocumentation(includeClassName bool) interfaces.MarkupContent
 
 	text := strings.Join(documentation, "\n\n")
 
-	return interfaces.MarkupContent{Kind: interfaces.MarkupKind.Markdown, Value: text}
+	return text
 }
 
 func (c *Class) GetExtendsHierarchy() []*Class {

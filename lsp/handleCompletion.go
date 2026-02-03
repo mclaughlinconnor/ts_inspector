@@ -201,7 +201,7 @@ func getTagCompletions(class *parser.Class) []interfaces.CompletionItem {
 		}
 
 		documentation := c.GetDocumentation(false)
-		item.Documentation = &documentation
+		item.Documentation = &interfaces.MarkupContent{Kind: interfaces.MarkupKind.Markdown, Value: documentation}
 
 		for _, selector := range selectors {
 			i := interfaces.CompletionItem(item)

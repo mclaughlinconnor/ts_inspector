@@ -37,6 +37,106 @@ var PrivateAccessibility = accessibility{"private"}
 var ProtectedAccessibility = accessibility{"protected"}
 var PublicAccessibility = accessibility{"public"}
 
+func (d *Definition) GetDocumentation(includeDefinitionName bool) string {
+	documentation := make([]string, 0)
+
+	if includeDefinitionName {
+		documentation = append(documentation, "# "+d.Name)
+		documentation = append(documentation, "")
+	}
+
+	signature := make([]string, 0)
+	if d.AccessModifier != NoAccessibility {
+		signature = append(signature, d.AccessModifier.Modifier)
+	}
+	if d.Static {
+		signature = append(signature, "static")
+	}
+
+	if d.Override {
+		signature = append(signature, "override")
+	}
+	if d.Readonly {
+		signature = append(signature, "readonly")
+	}
+
+	if d.Getter {
+		signature = append(signature, "get")
+	}
+	if d.Setter {
+		signature = append(signature, "setter")
+	}
+
+	name := d.Name
+	if d.Generator {
+		name = "*" + name
+	}
+
+	nodeType := d.Node.Type()
+	isMethod := nodeType == "method_definition" || nodeType == "method_signature" || nodeType == "abstract_method_signature"
+	if isMethod {
+		name += "()"
+	}
+
+	name += ": " + d.Type
+
+	signature = append(signature, name)
+
+	documentation = append(documentation, "```ts\n"+strings.Join(signature, " ")+"\n```")
+
+	firstLine := false
+
+	if len(d.Decorators) > 0 {
+		decorators := make([]string, 0)
+		decorators = append(decorators, "**Decorators:**")
+		for _, dec := range d.Decorators {
+			str := "  `@" + dec.Name
+			if len(dec.Arguments) > 0 {
+				str += "("
+				sb := make([]string, 0)
+				for _, arg := range dec.Arguments {
+					sb = append(sb, arg)
+				}
+				str += strings.Join(sb, ", ") + ")"
+			} else {
+				str += "()"
+			}
+
+			str += "`"
+			if dec.IsAngular {
+				str += " (Angular)"
+			}
+
+			decorators = append(decorators, str)
+		}
+
+		if !firstLine {
+			documentation = append(documentation, "")
+			firstLine = true
+		}
+
+		documentation = append(documentation, strings.Join(decorators, "\n"))
+	}
+
+	if isMethod {
+		var angular string
+		if d.IsAngularesqueMethod {
+			angular = "true"
+		} else {
+			angular = "false"
+		}
+
+		if !firstLine {
+			documentation = append(documentation, "")
+			firstLine = true
+		}
+
+		documentation = append(documentation, "**Is Angular Method:** "+angular)
+	}
+
+	return strings.Join(documentation, "\n")
+}
+
 func (d *Definition) HasAngularDecorator() bool {
 	for _, decorator := range d.Decorators {
 		if decorator.IsAngular {
