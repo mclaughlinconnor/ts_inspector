@@ -72,11 +72,21 @@ func (s *State) pushLoopBlocks(continueBlock *Block, breakBlock *Block) {
 }
 
 func (s *State) peekBreakBlock() *Block {
-	return *s.breakStack.Peek()
+	b := s.breakStack.Peek()
+	if b != nil {
+		return *b
+	}
+
+	return nil
 }
 
 func (s *State) peekContinueBlock() *Block {
-	return *s.continueStack.Peek()
+	b := s.continueStack.Peek()
+	if b != nil {
+		return *b
+	}
+
+	return nil
 }
 
 func (s *State) popLoopBlocks() {
