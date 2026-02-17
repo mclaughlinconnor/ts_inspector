@@ -12,7 +12,7 @@ func HandleDefinition(writer io.Writer, logger *log.Logger, state *parser.State,
 	file, _ := state.GetFile(parser.FilenameFromUri(request.Params.TextDocument.Uri))
 
 	locations := make([]interfaces.Location, 0)
-	if file.Snapshot().Filetype != "pug" {
+	if file == nil || file.Snapshot().Filetype != "pug" {
 		utils.WriteResponse(writer, interfaces.DefinitionResponse{Result: locations, Response: interfaces.Response{ID: &request.ID, RPC: "2.0"}})
 
 		return

@@ -13,7 +13,7 @@ import (
 func HandleHover(writer io.Writer, logger *log.Logger, state *parser.State, request interfaces.HoverRequest) {
 	file, _ := state.GetFile(parser.FilenameFromUri(request.Params.TextDocument.Uri))
 
-	if file.Snapshot().Filetype != "pug" {
+	if file == nil || file.Snapshot().Filetype != "pug" {
 		utils.WriteResponse(writer, interfaces.EmptyResponse{Result: nil, Response: interfaces.Response{ID: &request.ID, RPC: "2.0"}})
 
 		return
