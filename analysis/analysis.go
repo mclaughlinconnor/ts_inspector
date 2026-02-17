@@ -23,7 +23,7 @@ func Analyse(file *parser.File, runExpensive bool) []Analysis {
 	analyses := []Analysis{}
 
 	for _, analyser := range Analysers {
-		if !runExpensive || (runExpensive && analyser.expensive) {
+		if runExpensive || !analyser.expensive {
 			analyses = append(analyses, analyser.exec(file)...)
 		}
 	}
