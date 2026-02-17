@@ -58,6 +58,7 @@ func HandleHover(writer io.Writer, logger *log.Logger, state *parser.State, requ
 
 	if len(sb) == 0 {
 		utils.WriteResponse(writer, interfaces.EmptyResponse{Result: nil, Response: interfaces.Response{ID: &request.ID, RPC: "2.0"}})
+		return 
 	}
 
 	hover := interfaces.Hover{Contents: interfaces.MarkupContent{Kind: interfaces.MarkupKind.Markdown, Value: strings.Join(sb, "\n---\n")}}
