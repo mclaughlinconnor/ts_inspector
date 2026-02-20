@@ -8,7 +8,7 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
-func cfgUnreachableBlock(file *parser.File) []Analysis {
+func cfgUnreachableBlock(_ *parser.State, file *parser.File) []Analysis {
 	if file.Snapshot().Filetype != "typescript" {
 		return []Analysis{}
 	}

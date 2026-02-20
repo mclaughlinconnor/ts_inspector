@@ -13,6 +13,7 @@ import (
 
 type Reference struct {
 	Class    *Class
+	File     *File
 	Name     string
 	Node     *sitter.Node
 	Variable *Variable
@@ -55,7 +56,74 @@ func (r References) IterateResolved(yield func(*Reference) bool) {
 	}
 }
 
-func resolveIdentFromImports(idents []string, file *File, state *State) []*Reference {
+func (r *Reference) IsResolved() bool {
+	return r.Class != nil || r.Variable != nil
+}
+
+func (r *Reference) Resolve(state *State) {
+	if r.IsResolved() {
+		return
+	}
+
+	importPath := r.File.FindImportPath(r.Name)
+
+	if importPath == "" {
+		for _, v := range r.File.Snapshot().Variables {
+			if v.Name == r.Name {
+				r.Variable = v
+			}
+		}
+
+		for _, c := range r.File.Snapshot().Classes {
+			if c.Snapshot().Name == r.Name {
+				r.Class = c
+			}
+		}
+
+		return
+	}
+
+	var importedFile *File
+
+	extensions := []string{"", ".ts", ".d.ts", ".js"}
+	joinSuffixes := []string{"", "index"}
+
+	for _, join := range joinSuffixes {
+		ip := path.Join(importPath, join)
+		for _, extension := range extensions {
+			importedFile = resolveProjectImportPath(state, r.File, ip+extension)
+			if importedFile != nil {
+				break
+			}
+		}
+
+		if importedFile == nil {
+			for _, extension := range extensions {
+				importedFile = resolveNodeModulesImportPath(state, r.File, ip+extension)
+				if importedFile != nil {
+					break
+				}
+			}
+		}
+
+		if importedFile != nil {
+			break
+		}
+	}
+
+	if importedFile == nil {
+		return
+	}
+
+	for _, export := range importedFile.Snapshot().Exports {
+		if export.Name == r.Name {
+			r.Class = export.Class
+			r.Variable = export.Variable
+		}
+	}
+}
+
+func resolveIdents(idents []string, file *File, state *State) []*Reference {
 	resolved := make([]*Reference, len(idents))
 
 	wg := sync.WaitGroup{}

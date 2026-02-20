@@ -5,7 +5,7 @@ import (
 	"ts_inspector/parser"
 )
 
-func getterUsedInTemplate(file *parser.File) []Analysis {
+func getterUsedInTemplate(_ *parser.State, file *parser.File) []Analysis {
 	return analyseClasses(file, func(class *parser.Class) []Analysis {
 		analyses := []Analysis{}
 

@@ -5,7 +5,7 @@ import (
 	"ts_inspector/utils"
 )
 
-func illegalDeclaringModule(file *parser.File) []Analysis {
+func illegalDeclaringModule(state *parser.State, file *parser.File) []Analysis {
 	return analyseClasses(file, func(class *parser.Class) []Analysis {
 		analyses := []Analysis{}
 
@@ -13,9 +13,11 @@ func illegalDeclaringModule(file *parser.File) []Analysis {
 			return analyses
 		}
 
-		for i, declaration := range class.Snapshot().Angular.Module.Declarations {
+		for declaration := range class.Snapshot().Angular.Module.Declarations.FlattenReferenceArraysToReferences(state) {
+			declaration.Resolve(state)
+
 			if declaration != nil && declaration.Class != nil && declaration.Class.Snapshot().Angular != nil && declaration.Class.Snapshot().Angular.Module != nil {
-				n := class.Snapshot().Angular.Module.DeclarationsIdentNodes[i]
+				n := declaration.Node
 
 				startPosition := utils.PositionFromPoint(n.StartPoint())
 				endPosition := utils.PositionFromPoint(n.EndPoint())

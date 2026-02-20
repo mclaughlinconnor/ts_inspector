@@ -36,7 +36,7 @@ func HandleHover(writer io.Writer, logger *log.Logger, state *parser.State, requ
 			continue
 		}
 
-		components := c.Snapshot().Angular.Component.GetAvailableComponents()
+		components := c.Snapshot().Angular.Component.GetAvailableComponents(state)
 		for _, c := range components {
 
 			selectors := c.Snapshot().Angular.Component.Selectors
@@ -58,7 +58,7 @@ func HandleHover(writer io.Writer, logger *log.Logger, state *parser.State, requ
 
 	if len(sb) == 0 {
 		utils.WriteResponse(writer, interfaces.EmptyResponse{Result: nil, Response: interfaces.Response{ID: &request.ID, RPC: "2.0"}})
-		return 
+		return
 	}
 
 	hover := interfaces.Hover{Contents: interfaces.MarkupContent{Kind: interfaces.MarkupKind.Markdown, Value: strings.Join(sb, "\n---\n")}}

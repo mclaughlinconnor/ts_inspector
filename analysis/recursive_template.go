@@ -5,7 +5,7 @@ import (
 	"ts_inspector/utils"
 )
 
-func recursiveTemplate(file *parser.File) []Analysis {
+func recursiveTemplate(_ *parser.State, file *parser.File) []Analysis {
 	analyses := []Analysis{}
 
 	if file.Snapshot().Filetype != "pug" {

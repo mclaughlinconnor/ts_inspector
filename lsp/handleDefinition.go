@@ -19,7 +19,7 @@ func HandleDefinition(writer io.Writer, logger *log.Logger, state *parser.State,
 	}
 
 	offset := file.GetOffsetForPosition(request.Params.Position)
-	locations = append(locations, parser.FindDefinition(file, offset)...)
+	locations = append(locations, parser.FindDefinition(state, file, offset)...)
 
 	utils.WriteResponse(writer, interfaces.DefinitionResponse{Result: locations, Response: interfaces.Response{ID: &request.ID, RPC: "2.0"}})
 }

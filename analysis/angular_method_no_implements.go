@@ -4,7 +4,7 @@ import (
 	"ts_inspector/parser"
 )
 
-func angularMethodNoImplements(file *parser.File) []Analysis {
+func angularMethodNoImplements(_ *parser.State, file *parser.File) []Analysis {
 	return analyseClasses(file, func(class *parser.Class) []Analysis {
 		analyses := []Analysis{}
 

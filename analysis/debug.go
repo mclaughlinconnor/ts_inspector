@@ -6,7 +6,7 @@ import (
 	"ts_inspector/utils"
 )
 
-func debug(file *parser.File) []Analysis {
+func debug(_ *parser.State, file *parser.File) []Analysis {
 	analyses := []Analysis{}
 
 	analyses = append(analyses, analyseClasses(file, func(class *parser.Class) []Analysis {
@@ -31,7 +31,21 @@ func debug(file *parser.File) []Analysis {
 		startPosition := parser.GetPositionForOffset(content, startByte)
 		endPosition := parser.GetPositionForOffset(content, endByte)
 
-		message := "Found " + variable.Kind + " `" + variable.Name + "` with value `" + variable.Value + "`"
+		value := variable.Value
+		var str = ""
+		if value == nil {
+			str = "nil"
+		} else if value.Type == "string" {
+			str = value.StringValue
+		} else if value.Type == "array" {
+			str = "array"
+		} else if value.Type == "reference" {
+			str = value.Reference.Name
+		} else if value.Type == "spread" {
+			str = value.SpreadReference.Name
+		}
+
+		message := "Found " + variable.Kind + " `" + variable.Name + "` with value `" + str + "`"
 
 		analyses = append(analyses, newAnalysis("variable", utils.Range{Start: startPosition, End: endPosition}, AnalysisSeverity.Warning, message))
 	}

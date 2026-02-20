@@ -34,7 +34,7 @@ func HandleDidChange(writer io.Writer, logger *log.Logger, state *parser.State, 
 		}
 		file.Postprocess(state)
 
-		utils.WriteResponse(writer, analysis.GenerateDiagnosticsForFile(file, true))
+		utils.WriteResponse(writer, analysis.GenerateDiagnosticsForFile(state, file, true))
 
 		for _, depFile := range file.GetDependencies(state) {
 			file, _ := state.GetFile(depFile)
@@ -43,7 +43,7 @@ func HandleDidChange(writer io.Writer, logger *log.Logger, state *parser.State, 
 				continue
 			}
 
-			utils.WriteResponse(writer, analysis.GenerateDiagnosticsForFile(file, false))
+			utils.WriteResponse(writer, analysis.GenerateDiagnosticsForFile(state, file, false))
 		}
 	}
 }

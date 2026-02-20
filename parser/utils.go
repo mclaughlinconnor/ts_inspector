@@ -75,7 +75,7 @@ func UriFromFilename(filename string) string {
 	return `file://` + filename
 }
 
-func FindDefinition(file *File, cursorOffset uint32) []interfaces.Location {
+func FindDefinition(state *State, file *File, cursorOffset uint32) []interfaces.Location {
 	locations := make([]interfaces.Location, 0)
 
 	tagName, cursorOnTagName := ast.GetTagNameAtOffset(file.Snapshot().Content, cursorOffset)
@@ -91,7 +91,7 @@ func FindDefinition(file *File, cursorOffset uint32) []interfaces.Location {
 			continue
 		}
 
-		components := c.Snapshot().Angular.Component.GetAvailableComponents()
+		components := c.Snapshot().Angular.Component.GetAvailableComponents(state)
 		for _, c := range components {
 
 			selectors := c.Snapshot().Angular.Component.Selectors

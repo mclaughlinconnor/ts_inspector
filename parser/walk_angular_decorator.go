@@ -119,26 +119,9 @@ func handleModuleKv(class *Class, vNode *sitter.Node, content []byte, keyName st
 }
 
 func handleDeclarationsKv(class *Class, vNode *sitter.Node, content []byte) {
-	if vNode.Type() != "array" {
-		return
-	}
-
-	idents := make([]string, 0)
-	identNodes := make([]*sitter.Node, 0)
-
-	for i := range vNode.NamedChildCount() {
-		ident := vNode.NamedChild(int(i))
-		if ident.Type() != "identifier" {
-			continue
-		}
-
-		idents = append(idents, ident.Content(content))
-		identNodes = append(identNodes, ident)
-	}
-
+	file := class.Snapshot().File
 	class.Update(func(data *classState) {
-		data.Angular.Module.DeclarationsIdents = idents
-		data.Angular.Module.DeclarationsIdentNodes = identNodes
+		data.Angular.Module.Declarations = NodeToValue(file, vNode)
 	})
 }
 

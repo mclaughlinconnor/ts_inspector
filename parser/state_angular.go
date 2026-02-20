@@ -26,16 +26,14 @@ type Component struct {
 }
 
 type Module struct {
-	Declarations           References
-	DeclarationsIdents     []string
-	DeclarationsIdentNodes []*sitter.Node // Note: These are file based nodes
-	Exports                References
-	ExportsIdents          []string
-	ExportsIdentNodes      []*sitter.Node // Note: These are file based nodes
-	Imports                References
-	ImportsIdents          []string
-	ImportsIdentNodes      []*sitter.Node // Note: These are file based nodes
-	Providers              []*Provider
+	Declarations      *Value
+	Exports           References
+	ExportsIdents     []string
+	ExportsIdentNodes []*sitter.Node // Note: These are file based nodes
+	Imports           References
+	ImportsIdents     []string
+	ImportsIdentNodes []*sitter.Node // Note: These are file based nodes
+	Providers         []*Provider
 }
 
 type Provider struct {
@@ -118,7 +116,7 @@ func (c *Component) EnsureTemplate() {
 	}
 }
 
-func (c *Component) GetAvailableComponents() []*Class {
+func (c *Component) GetAvailableComponents(state *State) []*Class {
 	selectors := make(Classes, 0)
 
 	for _, declaringClass := range c.DeclaredIn {
@@ -126,7 +124,7 @@ func (c *Component) GetAvailableComponents() []*Class {
 			continue
 		}
 
-		selectors = append(selectors, declaringClass.Snapshot().Angular.Module.GetComponentsFromInside()...)
+		selectors = append(selectors, declaringClass.Snapshot().Angular.Module.GetComponentsFromInside(state)...)
 	}
 
 	for _, imp := range c.Imports {
@@ -149,20 +147,13 @@ func (c *Component) GetAvailableComponents() []*Class {
 }
 
 func (c *Component) Postprocess(state *State, class *Class) {
-	imports := resolveIdentFromImports(c.ImportsIdents, class.Snapshot().File, state)
+	imports := resolveIdents(c.ImportsIdents, class.Snapshot().File, state)
 	c.Imports = imports
 }
 
 func (m *Module) DoesDeclare(class *Class) bool {
-	for _, exp := range m.Declarations {
-		if exp == nil || exp.Class == nil {
-			// Should have been resolved by now
-			continue
-		}
-
-		if exp.Class == class {
-			return true
-		}
+	if m.Declarations.IsOrHas(class) {
+		return true
 	}
 
 	return false
@@ -183,22 +174,45 @@ func (m *Module) DoesExport(class *Class) bool {
 	return false
 }
 
-func (m *Module) GetDeclaredComponents() []*Class {
+func (m *Module) GetDeclaredComponents(state *State) []*Class {
 	selectors := make([]*Class, 0)
+	declarations := m.Declarations
 
-	for _, imp := range m.Declarations {
-		if imp == nil || imp.Class == nil {
-			// Should have been resolved by now
-			continue
+	classes := []*Class{}
+	if declarations.Type == "reference" {
+		declarations.Reference.Resolve(state)
+
+		class := declarations.Reference.Class
+		if class != nil {
+			classes = append(classes, class)
 		}
+	}
 
-		angular := imp.Class.Snapshot().Angular
+	if declarations.Type == "array" {
+		for _, element := range declarations.ArrayValues {
+			if element.Type != "reference" {
+				continue
+			}
+
+			ref := element.Reference
+			ref.Resolve(state)
+
+			if ref.Class == nil {
+				continue
+			}
+
+			classes = append(classes, ref.Class)
+		}
+	}
+
+	for _, declaration := range classes {
+		angular := declaration.Snapshot().Angular
 		if angular == nil {
 			continue
 		}
 
 		if angular.Component != nil {
-			selectors = append(selectors, imp.Class)
+			selectors = append(selectors, declaration)
 		}
 
 		// Illegal
@@ -262,8 +276,8 @@ func (m *Module) GetImportedComponents() []*Class {
 	return selectors
 }
 
-func (m *Module) GetComponentsFromInside() []*Class {
-	selectors := m.GetDeclaredComponents()
+func (m *Module) GetComponentsFromInside(state *State) []*Class {
+	selectors := m.GetDeclaredComponents(state)
 	selectors = append(selectors, m.GetImportedComponents()...)
 
 	return selectors
@@ -276,29 +290,29 @@ func (m *Module) GetComponentsFromOutside() []*Class {
 func (m *Module) Postprocess(state *State, class *Class) {
 	wg := sync.WaitGroup{}
 
-	wg.Go(func() { m.Imports = resolveIdentFromImports(m.ImportsIdents, class.Snapshot().File, state) })
+	wg.Go(func() { m.Imports = resolveIdents(m.ImportsIdents, class.Snapshot().File, state) })
 	if !utils.Concurrency {
 		wg.Wait()
 	}
 
-	wg.Go(func() { m.Exports = resolveIdentFromImports(m.ExportsIdents, class.Snapshot().File, state) })
+	wg.Go(func() { m.Exports = resolveIdents(m.ExportsIdents, class.Snapshot().File, state) })
 	if !utils.Concurrency {
 		wg.Wait()
 	}
 
-	wg.Go(func() { m.Declarations = resolveIdentFromImports(m.DeclarationsIdents, class.Snapshot().File, state) })
 	if !utils.Concurrency {
 		wg.Wait()
 	}
 
 	wg.Wait()
 
-	for _, declaration := range m.Declarations {
+	for declaration := range m.Declarations.FlattenReferenceArraysToReferences(state) {
 		if declaration == nil {
 			continue
 		}
 
-		if !declaration.Class.HasComponent() {
+		declaration.Resolve(state)
+		if declaration.Class == nil || !declaration.Class.HasComponent() {
 			continue
 		}
 

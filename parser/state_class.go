@@ -273,7 +273,8 @@ func (s *State) FindPlacesThatDeclareThisClassComponent(class *Class) []*Class {
 			continue
 		}
 
-		for declaration := range c.Snapshot().Angular.Module.Declarations.IterateResolved {
+		for declaration := range c.Snapshot().Angular.Module.Declarations.FlattenReferenceArraysToReferences(s) {
+			declaration.Resolve(s)
 			if declaration.Class == nil || declaration.Class != class {
 				continue
 			}
@@ -589,8 +590,8 @@ func (c *Class) removeUsagesFromClassUpwards(class *Class) {
 
 func (c *Class) resolveExtendsImplements(state *State) {
 	file := c.Snapshot().File
-	extends := resolveIdentFromImports(c.Snapshot().ExtendsIdentNames, file, state)
-	implements := resolveIdentFromImports(c.Snapshot().ImplementsIdentNames, file, state)
+	extends := resolveIdents(c.Snapshot().ExtendsIdentNames, file, state)
+	implements := resolveIdents(c.Snapshot().ImplementsIdentNames, file, state)
 
 	c.Update(func(data *classState) {
 		data.Extends = extends

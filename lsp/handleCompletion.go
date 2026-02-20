@@ -43,7 +43,7 @@ func HandleCompletion(writer io.Writer, logger *log.Logger, state *parser.State,
 			fallthrough
 		case "children":
 			{
-				items = append(items, getTagCompletions(c)...)
+				items = append(items, getTagCompletions(state, c)...)
 			}
 		case "content":
 			fallthrough
@@ -57,7 +57,7 @@ func HandleCompletion(writer io.Writer, logger *log.Logger, state *parser.State,
 			}
 		case "attributes":
 			{
-				items = append(items, getAttrCompletions(file, c, offset)...)
+				items = append(items, getAttrCompletions(state, file, c, offset)...)
 			}
 		}
 	}
@@ -65,7 +65,7 @@ func HandleCompletion(writer io.Writer, logger *log.Logger, state *parser.State,
 	send(writer, items, &request.ID)
 }
 
-func getAttrCompletions(file *parser.File, class *parser.Class, cursorOffset uint32) []interfaces.CompletionItem {
+func getAttrCompletions(state *parser.State, file *parser.File, class *parser.Class, cursorOffset uint32) []interfaces.CompletionItem {
 	items := make([]interfaces.CompletionItem, 0)
 
 	if !class.HasComponent() {
@@ -77,7 +77,7 @@ func getAttrCompletions(file *parser.File, class *parser.Class, cursorOffset uin
 		return items
 	}
 
-	components := class.Snapshot().Angular.Component.GetAvailableComponents()
+	components := class.Snapshot().Angular.Component.GetAvailableComponents(state)
 	for _, c := range components {
 		if !c.HasComponent() {
 			continue
@@ -179,14 +179,14 @@ func getPropertyCompletions(class *parser.Class) []interfaces.CompletionItem {
 	return items
 }
 
-func getTagCompletions(class *parser.Class) []interfaces.CompletionItem {
+func getTagCompletions(state *parser.State, class *parser.Class) []interfaces.CompletionItem {
 	items := make([]interfaces.CompletionItem, 0)
 
 	if !class.HasComponent() {
 		return items
 	}
 
-	components := class.Snapshot().Angular.Component.GetAvailableComponents()
+	components := class.Snapshot().Angular.Component.GetAvailableComponents(state)
 	for _, c := range components {
 		details := interfaces.CompletionItemLabelDetails{
 			Description: c.Snapshot().Name,

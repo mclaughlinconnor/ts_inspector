@@ -45,8 +45,8 @@ func PrintProviders(writer io.Writer, state *parser.State, args *any) (map[strin
 				if valueNode.Type() == "identifier" {
 					t := ""
 					for _, variable := range p.Source.Snapshot().File.Snapshot().Variables {
-						if variable.Name == valueText {
-							t = variable.Value
+						if variable.Name == valueText && variable.Value != nil && variable.Value.Type == "string" {
+							t = variable.Value.StringValue
 						}
 					}
 

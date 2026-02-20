@@ -4,7 +4,7 @@ import (
 	"ts_inspector/parser"
 )
 
-func angularManyDecorators(file *parser.File) []Analysis {
+func angularManyDecorators(state *parser.State, file *parser.File) []Analysis {
 	return analyseClasses(file, func(class *parser.Class) []Analysis {
 		analyses := []Analysis{}
 

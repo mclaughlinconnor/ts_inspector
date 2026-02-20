@@ -72,7 +72,12 @@ func (f *File) GetDependencies(state *State) []string {
 			continue
 		}
 
-		for d := range class.Snapshot().Angular.Module.Declarations.IterateResolved {
+		for d := range class.Snapshot().Angular.Module.Declarations.FlattenReferenceArraysToReferences(state) {
+			d.Resolve(state)
+			if d.Class == nil {
+				continue
+			}
+
 			if d.Class.Snapshot().File == f || d.Class.GetTemplateFile() == f {
 				dependents = append(dependents, class.Snapshot().File.Filename())
 

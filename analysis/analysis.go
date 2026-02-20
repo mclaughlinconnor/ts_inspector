@@ -9,7 +9,7 @@ import (
 )
 
 type analyser struct {
-	exec      func(file *parser.File) []Analysis
+	exec      func(state *parser.State, file *parser.File) []Analysis
 	expensive bool
 }
 
@@ -19,12 +19,12 @@ func registerAnalyser(analyser analyser) {
 	Analysers = append(Analysers, analyser)
 }
 
-func Analyse(file *parser.File, runExpensive bool) []Analysis {
+func Analyse(state *parser.State, file *parser.File, runExpensive bool) []Analysis {
 	analyses := []Analysis{}
 
 	for _, analyser := range Analysers {
 		if runExpensive || !analyser.expensive {
-			analyses = append(analyses, analyser.exec(file)...)
+			analyses = append(analyses, analyser.exec(state, file)...)
 		}
 	}
 
