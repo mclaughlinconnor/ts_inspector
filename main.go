@@ -10,8 +10,10 @@ import (
 	"syscall"
 	"ts_inspector/actions"
 	"ts_inspector/analysis"
+	traversetypescriptfiles "ts_inspector/ast/indexing"
 	"ts_inspector/commands"
 	"ts_inspector/lsp"
+	"ts_inspector/parser"
 	"ts_inspector/utils"
 )
 
@@ -37,6 +39,26 @@ func main() {
 		startLsp()
 		return
 	}
+
+	if len(os.Args) != 2 {
+		return
+	}
+
+	logger := utils.GetLogger("indexer")
+
+	state := parser.CreateState()
+	filenames := traversetypescriptfiles.Index(os.Args[1])
+	for _, filename := range filenames {
+		logger.Println(filename)
+		err := parser.IndexFileFromIndexer(&state, filename)
+		if err != nil {
+			logger.Fatal(err)
+		}
+	}
+
+	state.Postprocess()
+
+	logger.Println("Done")
 }
 
 func startLsp() {
