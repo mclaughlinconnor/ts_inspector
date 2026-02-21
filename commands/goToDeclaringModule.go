@@ -73,7 +73,7 @@ func GoToDeclaringModule(writer io.Writer, state *parser.State, args *any) (map[
 		classOffset := declaredIn.Node.StartByte()
 		nameOffset := classOffset + declaredIn.NameNode.StartByte()
 
-		position := parser.GetPositionForOffset(declaringFile.Content, nameOffset)
+		position := utils.GetPositionForOffset(declaringFile.Content, nameOffset)
 		selection := utils.Range{Start: position, End: position}
 
 		notification := interfaces.ShowDocumentNotification{

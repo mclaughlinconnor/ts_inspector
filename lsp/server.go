@@ -93,6 +93,9 @@ func handleMessage(logger *log.Logger, writer io.Writer, state *parser.State, me
 	case "workspace/executeCommand":
 		request := utils.TryParseRequest[interfaces.ExecuteCommandRequest](logger, contents)
 		HandleExecuteCommand(writer, logger, state, request)
+	case "workspace/symbol":
+		request := utils.TryParseRequest[interfaces.WorkspaceSymbolRequest](logger, contents)
+		HandleWorkspaceSymbol(writer, logger, state, request)
 	case "initialized":
 		{
 		}

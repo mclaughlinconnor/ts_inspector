@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"ts_inspector/interfaces"
 
 	sitter "github.com/smacker/go-tree-sitter"
 )
@@ -186,6 +187,19 @@ func (c *ClassedDefinition) GetDocumentation(includeDefinitionName bool) string 
 	}
 
 	return documentation + c.Definition.GetDocumentation(false)
+}
+
+func (c *Class) GetInterestingPoints() []InterestingPoint {
+	interestingPoints := make([]InterestingPoint, 0)
+
+	class := c.Snapshot()
+
+	location := interfaces.NodeToLocationWithOffsetNode(class.NameNode, class.Node, class.File.Snapshot().Content, c.Snapshot().File.Snapshot().URI)
+	interestingPoint := InterestingPoint{Location: location, Text: class.Name, Kind: interfaces.SymbolKind.Class}
+
+	interestingPoints = append(interestingPoints, interestingPoint)
+
+	return interestingPoints
 }
 
 func (c *Class) FilterOwnDefinitions(cond func(d ClassedDefinition) bool) []ClassedDefinition {

@@ -7,6 +7,7 @@ import (
 	"ts_inspector/commands"
 	"ts_inspector/interfaces"
 	"ts_inspector/parser"
+	"ts_inspector/search"
 	"ts_inspector/utils"
 )
 
@@ -40,9 +41,10 @@ func newInitializeResponse(id int) interfaces.InitializeResponse {
 				ExecuteCommandProvider: interfaces.ExecuteCommandOptions{
 					Commands: commands.CommandNames,
 				},
-				HoverProvider:      true,
-				ReferencesProvider: true,
-				TextDocumentSync:   interfaces.TextDocumentSyncKind.Full,
+				HoverProvider:           true,
+				ReferencesProvider:      true,
+				TextDocumentSync:        interfaces.TextDocumentSyncKind.Full,
+				WorkspaceSymbolProvider: true,
 			},
 		},
 	}
@@ -64,7 +66,12 @@ func HandleInitialise(writer io.Writer, logger *log.Logger, state *parser.State,
 		}
 	}
 
+	utils.WriteResponse(writer, interfaces.BuildMessageNotification("Postprocessing...", interfaces.MessageType.Info))
 	state.Postprocess()
+
+	utils.WriteResponse(writer, interfaces.BuildMessageNotification("Building search indexes...", interfaces.MessageType.Info))
+	search.InitSearch()
+	search.IndexState(state)
 
 	utils.WriteResponse(writer, interfaces.BuildMessageNotification("Indexing finished", interfaces.MessageType.Info))
 }

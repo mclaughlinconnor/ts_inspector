@@ -74,6 +74,15 @@ func (s *State) GetClassesBySelectorUsage(selectors []string) []*Class {
 	return classes
 }
 
+func (s *State) GetInterestingPoints() []InterestingPoint {
+	interestingPoints := make([]InterestingPoint, 0)
+	for _, file := range *s.GetFiles() {
+		interestingPoints = append(interestingPoints, file.GetInterestingPoints()...)
+	}
+
+	return interestingPoints
+}
+
 func (s *State) GetRootPath() string {
 	s.RLock()
 	rootPath := FilenameFromUri(s.rootURI)

@@ -103,7 +103,7 @@ func ConvertInjectToProperty(_ io.Writer, state *parser.State, file *parser.File
 
 		action.Edits = append(action.Edits, propertyEdits...)
 
-		startPosition := parser.GetPositionForOffset(file.Snapshot().Content, parameterNode.StartByte())
+		startPosition := utils.GetPositionForOffset(file.Snapshot().Content, parameterNode.StartByte())
 
 		endOffset := parameterNode.EndByte()
 		sibling := parameterNode.NextSibling()
@@ -115,7 +115,7 @@ func ConvertInjectToProperty(_ io.Writer, state *parser.State, file *parser.File
 		if sibling != nil && sibling.StartPoint().Row > parameterNode.EndPoint().Row {
 			endOffset = sibling.StartByte()
 		}
-		endPosition := parser.GetPositionForOffset(file.Snapshot().Content, endOffset)
+		endPosition := utils.GetPositionForOffset(file.Snapshot().Content, endOffset)
 
 		r := utils.Range{Start: startPosition, End: endPosition}
 

@@ -63,8 +63,8 @@ func newAnalysisHighlightName(problemNode *sitter.Node, class *parser.Class, sev
 
 	content := class.Snapshot().File.Snapshot().Content
 
-	startPosition := parser.GetPositionForOffset(content, startByte)
-	endPosition := parser.GetPositionForOffset(content, endByte)
+	startPosition := utils.GetPositionForOffset(content, startByte)
+	endPosition := utils.GetPositionForOffset(content, endByte)
 
 	return newAnalysis(code, utils.Range{Start: startPosition, End: endPosition}, severity, message)
 }

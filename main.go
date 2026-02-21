@@ -1,14 +1,12 @@
 package main
 
 import (
-	"bufio"
 	"flag"
 	"fmt"
 	"log"
 	"os"
 	"os/signal"
 	"runtime/pprof"
-	"strings"
 	"syscall"
 	"ts_inspector/actions"
 	"ts_inspector/analysis"
@@ -16,7 +14,6 @@ import (
 	"ts_inspector/commands"
 	"ts_inspector/lsp"
 	"ts_inspector/parser"
-	"ts_inspector/search"
 	"ts_inspector/utils"
 )
 
@@ -60,30 +57,6 @@ func main() {
 	}
 
 	state.Postprocess()
-
-	search.InitSearch()
-
-	search.IndexState(&state)
-
-	reader := bufio.NewReader(os.Stdin)
-	for {
-		fmt.Print("Enter text: ")
-		t, _ := reader.ReadString('\n')
-
-		text := strings.TrimSpace(t)
-		if text == "exit" {
-			break
-		}
-
-		classes, err := search.FindClass(text)
-		if err != nil {
-			panic(err)
-		}
-
-		for _, c := range classes {
-			fmt.Printf("  %v -- %v\n", c.Class.Snapshot().Name, c.Score)
-		}
-	}
 
 	logger.Println("Done")
 }

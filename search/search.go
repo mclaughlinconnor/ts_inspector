@@ -5,7 +5,7 @@ import (
 	"ts_inspector/parser"
 )
 
-var classIdCache = make(map[int64]*parser.Class, 0)
+var interestingPointsIdCache = make(map[int64]parser.InterestingPoint, 0)
 
 type ClassResult struct {
 	Class *parser.Class
@@ -13,26 +13,30 @@ type ClassResult struct {
 }
 
 func IndexState(state *parser.State) {
-	classes := *state.GetClasses()
+	interestingPoints := state.GetInterestingPoints()
 
 	hash := fnv.New64a()
 	hash.Sum64()
 
-	vectors := make([]Vector, len(classes))
+	vectors := make([]Vector, len(interestingPoints))
 	i := 0
-	for _, class := range classes {
-		classId := class.Id()
+	for _, interestingPoint := range interestingPoints {
+		ipId := interestingPoint.Id()
 
-		hash.Write([]byte(classId))
+		hash.Write([]byte(ipId))
 		id := int64(hash.Sum64())
 		hash.Reset()
 
-		classIdCache[id] = class
+		interestingPointsIdCache[id] = interestingPoint
 
-		vector := GetEmbedding(class.Snapshot().Name)
+		vector := GetEmbedding(interestingPoint.Text)
 
 		vectors[i] = Vector{id, vector}
 		i++
+	}
+
+	if len(vectors) == 0 {
+		return
 	}
 
 	AddToFAISS(vectors)
@@ -43,22 +47,22 @@ func InitSearch() {
 	initFAISS()
 }
 
-func FindClass(text string) ([]ClassResult, error) {
+func FindInterestingPoints(text string, resultsCount int64) ([]parser.InterestingPoint, error) {
 	query := GetEmbedding(text)
-	results, err := SearchFAISS(query, 5)
+	results, err := SearchFAISS(query, resultsCount)
 	if err != nil {
-		return []ClassResult{}, err
+		return []parser.InterestingPoint{}, err
 	}
 
-	classes := make([]ClassResult, 0)
+	interestingPoints := make([]parser.InterestingPoint, 0)
 	for _, result := range results {
-		c, found := classIdCache[result.Id]
+		ip, found := interestingPointsIdCache[result.Id]
 		if !found {
 			continue
 		}
 
-		classes = append(classes, ClassResult{Class: c, Score: result.Distance})
+		interestingPoints = append(interestingPoints, ip)
 	}
 
-	return classes, nil
+	return interestingPoints, nil
 }

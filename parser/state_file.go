@@ -126,6 +126,15 @@ func (f *File) GetDependencies(state *State) []string {
 	return slices.Compact(dependents)
 }
 
+func (f *File) GetInterestingPoints() []InterestingPoint {
+	interestingPoints := make([]InterestingPoint, 0)
+	for _, class := range f.Snapshot().Classes {
+		interestingPoints = append(interestingPoints, class.GetInterestingPoints()...)
+	}
+
+	return interestingPoints
+}
+
 func (f *File) GetOffsetForPosition(p utils.Position) uint32 {
 	file := f.Snapshot()
 	lines := uint32(len(file.LineOffsets))
@@ -223,7 +232,7 @@ func (f *File) ResetDeclarations() {
 }
 
 func (f *File) SetContent(content string, version int) {
-	lineOffsets := getLineOffsets(content)
+	lineOffsets := utils.GetLineOffsets(content)
 
 	f.Update(func(data *fileState) {
 		data.LineOffsets = lineOffsets
@@ -262,35 +271,6 @@ func FiletypeFromFilename(filename string) (string, error) {
 	}
 
 	return "", fmt.Errorf("Couldn't determine filetype from filename: %s", filename)
-}
-
-func GetPositionForOffset(content string, offset uint32) utils.Position {
-	lineOffsets := getLineOffsets(content)
-
-	if offset >= uint32(len(content)) {
-		return utils.Position{Line: uint32(len(lineOffsets)), Character: 0}
-	} else if offset < 0 {
-		return utils.Position{Line: 0, Character: 0}
-	}
-
-	var line uint32
-	var character uint32
-
-	for index, lineOffset := range lineOffsets {
-		if lineOffset > offset {
-			if index > 0 {
-				line = uint32(index - 1)
-				character = offset - lineOffsets[index-1]
-			} else {
-				line = 0
-				character = offset
-			}
-
-			break
-		}
-	}
-
-	return utils.Position{Line: line, Character: character}
 }
 
 func IndexFileFromIndexer(state *State, filename string) error {
@@ -427,36 +407,6 @@ func getFileByPath(state *State, path string) *File {
 	}
 
 	return nil
-}
-
-func getLineOffsets(text string) []uint32 {
-	var i uint32 = 0
-
-	offsets := []uint32{}
-	isLineStart := true
-
-	textLength := uint32(len(text))
-	for i < textLength {
-		if isLineStart {
-			offsets = append(offsets, i)
-			isLineStart = false
-		}
-
-		ch := text[i]
-		isLineStart = ch == '\r' || ch == '\n'
-
-		if ch == '\r' && i+1 < textLength && text[i+1] == '\n' {
-			i++
-		}
-
-		i++
-	}
-
-	if isLineStart && textLength > 0 {
-		offsets = append(offsets, textLength)
-	}
-
-	return offsets
 }
 
 func resolveProjectImportPath(state *State, currentFile *File, importPath string) *File {

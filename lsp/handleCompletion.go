@@ -92,7 +92,7 @@ func getAttrCompletions(state *parser.State, file *parser.File, class *parser.Cl
 			continue
 		}
 
-		cursorPosition := parser.GetPositionForOffset(file.Snapshot().Content, cursorOffset)
+		cursorPosition := utils.GetPositionForOffset(file.Snapshot().Content, cursorOffset)
 		cursorRange := utils.Range{Start: cursorPosition, End: cursorPosition}
 
 		build := func(definition parser.ClassedDefinition, openChar string, closeChar string) interfaces.CompletionItem {

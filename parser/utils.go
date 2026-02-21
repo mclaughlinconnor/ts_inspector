@@ -128,8 +128,8 @@ func handleAttributeOfTag(locations []interfaces.Location, class *Class, attribu
 			nameNode = node
 		}
 
-		start := GetPositionForOffset(cContent, cOffset+nameNode.StartByte())
-		end := GetPositionForOffset(cContent, cOffset+nameNode.StartByte())
+		start := utils.GetPositionForOffset(cContent, cOffset+nameNode.StartByte())
+		end := utils.GetPositionForOffset(cContent, cOffset+nameNode.StartByte())
 
 		locations = append(locations, interfaces.Location{Uri: file.URI, Range: utils.Range{Start: start, End: end}})
 	}
@@ -143,8 +143,8 @@ func handleDefinitionOfTag(locations []interfaces.Location, class *Class) []inte
 	file := c.File.Snapshot()
 	cContent := file.Content
 
-	start := GetPositionForOffset(cContent, c.NameNode.StartByte()+cOffset)
-	end := GetPositionForOffset(cContent, c.NameNode.EndByte()+cOffset)
+	start := utils.GetPositionForOffset(cContent, c.NameNode.StartByte()+cOffset)
+	end := utils.GetPositionForOffset(cContent, c.NameNode.EndByte()+cOffset)
 
 	return append(locations, interfaces.Location{Uri: file.URI, Range: utils.Range{Start: start, End: end}})
 }

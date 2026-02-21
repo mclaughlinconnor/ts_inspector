@@ -48,8 +48,8 @@ func HandleReferences(writer io.Writer, logger *log.Logger, state *parser.State,
 		for _, usage := range usages.Usages {
 			tf := templateFile.Snapshot()
 
-			start := parser.GetPositionForOffset(tf.Content, usage.Node.StartByte())
-			end := parser.GetPositionForOffset(tf.Content, usage.Node.EndByte())
+			start := utils.GetPositionForOffset(tf.Content, usage.Node.StartByte())
+			end := utils.GetPositionForOffset(tf.Content, usage.Node.EndByte())
 
 			locations = append(locations, interfaces.Location{Uri: tf.URI, Range: utils.Range{Start: start, End: end}})
 		}

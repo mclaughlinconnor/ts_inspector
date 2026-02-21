@@ -28,8 +28,8 @@ func debug(_ *parser.State, file *parser.File) []Analysis {
 
 		content := file.Snapshot().Content
 
-		startPosition := parser.GetPositionForOffset(content, startByte)
-		endPosition := parser.GetPositionForOffset(content, endByte)
+		startPosition := utils.GetPositionForOffset(content, startByte)
+		endPosition := utils.GetPositionForOffset(content, endByte)
 
 		value := variable.Value
 		var str = ""
