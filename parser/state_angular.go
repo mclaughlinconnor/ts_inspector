@@ -20,6 +20,7 @@ type Component struct {
 	ImportsIdents   []string
 	Providers       []*Provider
 	Selectors       []string
+	SelectorNode    *sitter.Node
 	Template        *Template
 	TemplateUrl     string
 	TemplateUrlFile *File

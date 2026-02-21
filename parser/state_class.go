@@ -199,6 +199,39 @@ func (c *Class) GetInterestingPoints() []InterestingPoint {
 
 	interestingPoints = append(interestingPoints, interestingPoint)
 
+	for _, d := range c.Snapshot().Definitions {
+		var locationNode *sitter.Node
+
+		nameNode := d.Node.ChildByFieldName("name")
+		if nameNode != nil {
+			locationNode = nameNode
+		} else {
+			locationNode = d.Node
+		}
+
+		location := interfaces.NodeToLocationWithOffsetNode(locationNode, class.Node, class.File.Snapshot().Content, c.Snapshot().File.Snapshot().URI)
+
+		var kind interfaces.TSymbolKind
+
+		nodeKind := d.Node.Type()
+		if nodeKind == "method_definition" || nodeKind == "method_signature" || nodeKind == "abstract_method_signature" {
+			kind = interfaces.SymbolKind.Method
+		} else {
+			kind = interfaces.SymbolKind.Property
+		}
+
+		interestingPoint := InterestingPoint{Location: location, Text: class.Name + "." + d.Name, Kind: kind}
+		interestingPoints = append(interestingPoints, interestingPoint)
+	}
+
+	if c.HasComponent() {
+		location := interfaces.NodeToLocationWithOffsetNode(class.Angular.Component.SelectorNode, class.Node, class.File.Snapshot().Content, c.Snapshot().File.Snapshot().URI)
+		for _, selector := range class.Angular.Component.Selectors {
+			interestingPoint := InterestingPoint{Location: location, Text: selector, Kind: interfaces.SymbolKind.Class}
+			interestingPoints = append(interestingPoints, interestingPoint)
+		}
+	}
+
 	return interestingPoints
 }
 

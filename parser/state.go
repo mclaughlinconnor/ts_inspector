@@ -76,8 +76,8 @@ func (s *State) GetClassesBySelectorUsage(selectors []string) []*Class {
 
 func (s *State) GetInterestingPoints() []InterestingPoint {
 	interestingPoints := make([]InterestingPoint, 0)
-	for _, file := range *s.GetFiles() {
-		interestingPoints = append(interestingPoints, file.GetInterestingPoints()...)
+	for _, class := range *s.GetClasses() {
+		interestingPoints = append(interestingPoints, class.GetInterestingPoints()...)
 	}
 
 	return interestingPoints

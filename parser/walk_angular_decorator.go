@@ -257,6 +257,8 @@ func handleSelectorKv(class *Class, vNode *sitter.Node, content []byte) {
 
 			data.Angular.Component.Selectors = append(data.Angular.Component.Selectors, trimmed)
 		}
+
+		data.Angular.Component.SelectorNode = fragNode
 	})
 }
 

@@ -126,15 +126,6 @@ func (f *File) GetDependencies(state *State) []string {
 	return slices.Compact(dependents)
 }
 
-func (f *File) GetInterestingPoints() []InterestingPoint {
-	interestingPoints := make([]InterestingPoint, 0)
-	for _, class := range f.Snapshot().Classes {
-		interestingPoints = append(interestingPoints, class.GetInterestingPoints()...)
-	}
-
-	return interestingPoints
-}
-
 func (f *File) GetOffsetForPosition(p utils.Position) uint32 {
 	file := f.Snapshot()
 	lines := uint32(len(file.LineOffsets))
