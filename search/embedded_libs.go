@@ -1,0 +1,124 @@
+package search
+
+import (
+	"archive/tar"
+	"bufio"
+	"compress/gzip"
+	"embed"
+	"io"
+	"os"
+	"path/filepath"
+)
+
+// Use github.com/hybridgroup/yzma/pkg/download to download the libs
+
+//go:embed lib.tar.gz
+var libTgzFs embed.FS
+
+//go:embed granite-embedding-30m-english-Q8_0.gguf
+var modelFs embed.FS
+
+func extractEmbeddedModel() (string, error) {
+	tempDir, err := os.MkdirTemp("", "ts_inspector-model-*")
+	if err != nil {
+		return "", err
+	}
+
+	f, err := modelFs.Open("granite-embedding-30m-english-Q8_0.gguf")
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+
+	reader := bufio.NewReader(f)
+
+	path := filepath.Join(tempDir, "models/granite-embedding-30m-english-Q8_0.gguf")
+	makeFile(reader, path, 0755)
+
+	return path, nil
+}
+
+func extractEmbeddedLibs() (string, error) {
+	tempDir, err := os.MkdirTemp("", "ts_inspector-libs-*")
+	if err != nil {
+		return "", err
+	}
+
+	f, err := libTgzFs.Open("lib.tar.gz")
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+
+	gzReader, err := gzip.NewReader(f)
+	if err != nil {
+		return "", err
+	}
+	defer gzReader.Close()
+
+	tarReader := tar.NewReader(gzReader)
+
+	for {
+		header, err := tarReader.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return "", err
+		}
+
+		path := filepath.Join(tempDir, header.Name)
+
+		switch header.Typeflag {
+		case tar.TypeDir:
+			err := makeDir(path)
+			if err != nil {
+				return "", err
+			}
+		case tar.TypeReg:
+			err := makeFile(tarReader, path, header.Mode)
+			if err != nil {
+				return "", err
+			}
+		case tar.TypeSymlink:
+			err := makeSymlink(header.Linkname, path)
+			if err != nil {
+				return "", err
+			}
+		}
+	}
+
+	return filepath.Join(tempDir, "lib"), nil
+}
+
+func makeDir(path string) error {
+	err := os.MkdirAll(path, 0755)
+	return err
+}
+
+func makeFile(reader io.Reader, path string, mode int64) error {
+	err := os.MkdirAll(filepath.Dir(path), 0755)
+	if err != nil {
+		return err
+	}
+
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, os.FileMode(mode))
+	if err != nil {
+		return err
+	}
+
+	defer f.Close()
+
+	_, err = io.Copy(f, reader)
+	return err
+}
+
+func makeSymlink(linkName string, path string) error {
+	err := os.MkdirAll(filepath.Dir(path), 0755)
+	if err != nil {
+		return err
+	}
+
+	err = os.Symlink(linkName, path)
+	return err
+}

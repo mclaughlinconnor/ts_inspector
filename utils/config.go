@@ -1,5 +1,5 @@
 package utils
 
 var Concurrency = false
-var Debug = false
+var Debug = true
 var LSP = true

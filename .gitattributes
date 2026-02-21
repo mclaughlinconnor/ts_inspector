@@ -1,0 +1,2 @@
+search/granite-embedding-30m-english-Q8_0.gguf filter=lfs diff=lfs merge=lfs -text
+search/lib.tar.gz filter=lfs diff=lfs merge=lfs -text
