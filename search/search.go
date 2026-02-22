@@ -2,7 +2,11 @@ package search
 
 import (
 	"hash/fnv"
+	"strings"
 	"ts_inspector/parser"
+	"unicode"
+
+	"github.com/fatih/camelcase"
 )
 
 var interestingPointsIdCache = make(map[int64]parser.InterestingPoint, 0)
@@ -29,7 +33,7 @@ func IndexState(state *parser.State) {
 
 		interestingPointsIdCache[id] = interestingPoint
 
-		vector := GetEmbedding(interestingPoint.Text)
+		vector := GetEmbedding(preprocessText(interestingPoint.Text))
 
 		vectors[i] = Vector{id, vector}
 		i++
@@ -48,7 +52,7 @@ func InitSearch() {
 }
 
 func FindInterestingPoints(text string, resultsCount int64) ([]parser.InterestingPoint, error) {
-	query := GetEmbedding(text)
+	query := GetEmbedding(preprocessText(text))
 	results, err := SearchFAISS(query, resultsCount)
 	if err != nil {
 		return []parser.InterestingPoint{}, err
@@ -65,4 +69,16 @@ func FindInterestingPoints(text string, resultsCount int64) ([]parser.Interestin
 	}
 
 	return interestingPoints, nil
+}
+
+func preprocessText(text string) string {
+	partials := []string{}
+
+	split := camelcase.Split(text)
+	for _, s := range split {
+		ss := strings.FieldsFunc(s, unicode.IsPunct)
+		partials = append(partials, ss...)
+	}
+
+	return strings.Join(partials, " ")
 }

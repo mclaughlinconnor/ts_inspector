@@ -10,6 +10,7 @@ require (
 
 require (
 	github.com/ebitengine/purego v0.9.1 // indirect
+	github.com/fatih/camelcase v1.0.0 // indirect
 	github.com/jupiterrider/ffi v0.5.1 // indirect
 	golang.org/x/sys v0.40.0 // indirect
 )
