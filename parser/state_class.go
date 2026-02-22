@@ -225,7 +225,7 @@ func (c *Class) GetInterestingPoints() []InterestingPoint {
 	}
 
 	if c.HasComponent() {
-		location := interfaces.NodeToLocationWithOffsetNode(class.Angular.Component.SelectorNode, class.Node, class.File.Snapshot().Content, c.Snapshot().File.Snapshot().URI)
+		location := interfaces.NodeToLocation(class.Angular.Component.SelectorNode, c.Snapshot().File.Snapshot().URI)
 		for _, selector := range class.Angular.Component.Selectors {
 			interestingPoint := InterestingPoint{Location: location, Text: selector, Kind: interfaces.SymbolKind.Class}
 			interestingPoints = append(interestingPoints, interestingPoint)
