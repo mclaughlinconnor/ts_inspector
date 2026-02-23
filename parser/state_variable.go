@@ -64,6 +64,10 @@ func (v *Value) FlattenArray(state *State) func(func(*Reference) bool) {
 
 func (v *Value) FlattenReferenceArraysToReferences(state *State) func(func(*Reference) bool) {
 	return func(yield func(*Reference) bool) {
+		if v == nil {
+			return
+		}
+
 		if v.Type == "reference" {
 			v.Reference.Resolve(state)
 			if v.Reference.Class != nil {
