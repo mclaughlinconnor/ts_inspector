@@ -258,7 +258,7 @@ func (c *Class) FilterAllDefinitions(cond func(d ClassedDefinition) bool) []Clas
 			continue
 		}
 
-		ds := e.Class.FilterOwnDefinitions(cond)
+		ds := e.Class.FilterAllDefinitions(cond)
 		for _, d := range ds {
 			// Don't allow duplicates. Also, prepare for doing stuff with overridden props
 			found, _ := definitionsMap[d.Name]
