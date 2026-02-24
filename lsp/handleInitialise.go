@@ -44,7 +44,7 @@ func newInitializeResponse(id int) interfaces.InitializeResponse {
 				HoverProvider:           true,
 				ReferencesProvider:      true,
 				TextDocumentSync:        interfaces.TextDocumentSyncKind.Full,
-				WorkspaceSymbolProvider: true,
+				WorkspaceSymbolProvider: utils.SemanticSearch,
 			},
 		},
 	}
@@ -69,9 +69,11 @@ func HandleInitialise(writer io.Writer, logger *log.Logger, state *parser.State,
 	utils.WriteResponse(writer, interfaces.BuildMessageNotification("Postprocessing...", interfaces.MessageType.Info))
 	state.Postprocess()
 
-	utils.WriteResponse(writer, interfaces.BuildMessageNotification("Building search indexes...", interfaces.MessageType.Info))
-	search.InitSearch()
-	search.IndexState(state)
+	if utils.SemanticSearch {
+		utils.WriteResponse(writer, interfaces.BuildMessageNotification("Building search indexes...", interfaces.MessageType.Info))
+		search.InitSearch()
+		search.IndexState(state)
+	}
 
 	utils.WriteResponse(writer, interfaces.BuildMessageNotification("Indexing finished", interfaces.MessageType.Info))
 }
