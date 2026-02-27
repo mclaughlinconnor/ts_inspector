@@ -1,6 +1,8 @@
 package search
 
 import (
+	"math"
+
 	"github.com/hybridgroup/yzma/pkg/llama"
 )
 
@@ -20,10 +22,20 @@ func GetEmbedding(text string) []float32 {
 		panic(err)
 	}
 
-	copyEmbedding := make([]float32, embeddingDimensions)
-	copy(copyEmbedding, embedding)
+	normalisedEmbedding := make([]float32, embeddingDimensions)
 
-	return copyEmbedding
+	var sum float64
+	for _, v := range embedding {
+		sum += float64(v * v)
+	}
+	sum = math.Sqrt(sum)
+	normal := float32(1.0 / sum)
+
+	for i, e := range embedding {
+		normalisedEmbedding[i] = e * normal
+	}
+
+	return normalisedEmbedding
 }
 
 func initEmbedding() {
