@@ -258,9 +258,11 @@ func handleCall(state *State, node *sitter.Node, content []byte) {
 
 func handleFunction(state *State, node *sitter.Node, content []byte) {
 	blockName := "Function"
+
+	nameContent := "function"
 	name := node.ChildByFieldName("name")
-	nameContent := name.Content(content)
 	if name != nil {
+		nameContent := name.Content(content)
 		blockName = blockName + " " + nameContent
 	}
 
