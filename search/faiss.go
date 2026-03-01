@@ -18,12 +18,7 @@ import (
 
 var dimension = 384
 
-var index *C.FaissIndex
-
-type Result struct {
-	Distance float32
-	Id       int64
-}
+var faissIndex *C.FaissIndex
 
 type Vector struct {
 	Id     int64
@@ -42,7 +37,7 @@ func AddToFAISS(vectors []Vector) {
 		ids[i] = v.Id
 	}
 
-	addWithIds(index, nVectors, combinedVectors, ids)
+	addWithIds(faissIndex, nVectors, combinedVectors, ids)
 }
 
 func SearchFAISS(queryVector []float32, resultsCount int64) ([]Result, error) {
@@ -50,7 +45,7 @@ func SearchFAISS(queryVector []float32, resultsCount int64) ([]Result, error) {
 
 	results := make([]Result, resultsCount)
 	for i := range resultsCount {
-		results[i] = Result{distances[i], labels[i]}
+		results[i] = Result{1 - distances[i] + SortOrderEmbedding, labels[i], "embedding"}
 	}
 
 	return results, nil
@@ -74,7 +69,7 @@ func indexSearch(queryVector []float32, resultsCount int64) ([]float32, []int64)
 	labels := make([]int64, resultsCount)
 
 	ret := C.faiss_Index_search(
-		index,
+		faissIndex,
 		C.idx_t(1),
 		(*C.float)(unsafe.Pointer(&queryVector[0])),
 		C.idx_t(resultsCount),
@@ -93,7 +88,7 @@ func initFAISS() {
 	var flatIndex *C.FaissIndex = newIndexFlatL2()
 	var idmapIndex *C.FaissIndex = newIndexIdMap(flatIndex)
 
-	index = idmapIndex
+	faissIndex = idmapIndex
 }
 
 func newIndexFlatL2() *C.FaissIndex {

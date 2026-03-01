@@ -22,7 +22,7 @@ func newWorkspaceSymbolResponse(id int, symbols []interfaces.WorkspaceSymbol) in
 func HandleWorkspaceSymbol(writer io.Writer, logger *log.Logger, state *parser.State, request interfaces.WorkspaceSymbolRequest) {
 	params := request.Params
 
-	interestingPoints, err := search.FindInterestingPoints(params.Query, utils.WorkspaceSymbolResultCount)
+	interestingPoints, err := search.FindInterestingPoints(params.Query)
 	if err != nil {
 		logger.Println(err)
 	}

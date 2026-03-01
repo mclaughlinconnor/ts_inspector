@@ -1,9 +1,13 @@
 package search
 
 import (
+	"cmp"
+	"fmt"
 	"hash/fnv"
+	"slices"
 	"strings"
 	"ts_inspector/parser"
+	"ts_inspector/utils"
 	"unicode"
 
 	"github.com/fatih/camelcase"
@@ -16,6 +20,22 @@ type ClassResult struct {
 	Score float32
 }
 
+type Result struct {
+	Distance float32
+	Id       int64
+	Source   string // "embedding" or "fzf"
+}
+
+const (
+	SortOrderEmbedding = 0
+	SortOrderFzf       = 1
+)
+
+const (
+	FzfResultsCount       = 10
+	EmbeddingResultsCount = 40
+)
+
 func IndexState(state *parser.State) {
 	interestingPoints := state.GetInterestingPoints()
 
@@ -25,6 +45,7 @@ func IndexState(state *parser.State) {
 	vectors := make([]Vector, len(interestingPoints))
 	i := 0
 	for _, interestingPoint := range interestingPoints {
+		ppText := preprocessText(interestingPoint.Text)
 		ipId := interestingPoint.Id()
 
 		hash.Write([]byte(ipId))
@@ -33,10 +54,11 @@ func IndexState(state *parser.State) {
 
 		interestingPointsIdCache[id] = interestingPoint
 
-		vector := GetEmbedding(preprocessText(interestingPoint.Text))
-
+		vector := GetEmbedding(ppText)
 		vectors[i] = Vector{id, vector}
 		i++
+
+		AddToFZF(ppText, id)
 	}
 
 	if len(vectors) == 0 {
@@ -51,12 +73,19 @@ func InitSearch() {
 	initFAISS()
 }
 
-func FindInterestingPoints(text string, resultsCount int64) ([]parser.InterestingPoint, error) {
-	query := GetEmbedding(preprocessText(text))
-	results, err := SearchFAISS(query, resultsCount)
+func FindInterestingPoints(text string) ([]parser.InterestingPoint, error) {
+	ppText := preprocessText(text)
+
+	query := GetEmbedding(ppText)
+	results, err := SearchFAISS(query, EmbeddingResultsCount)
 	if err != nil {
 		return []parser.InterestingPoint{}, err
 	}
+
+	results = append(results, SearchFZF(ppText, FzfResultsCount)...)
+
+	slices.SortFunc(results, func(a Result, b Result) int { return cmp.Compare(b.Distance, a.Distance) })
+	results = makeUnique(results)
 
 	interestingPoints := make([]parser.InterestingPoint, 0)
 	for _, result := range results {
@@ -65,10 +94,31 @@ func FindInterestingPoints(text string, resultsCount int64) ([]parser.Interestin
 			continue
 		}
 
+		if utils.Debug {
+			ip.Text += fmt.Sprintf(" (%v) (%v)", result.Distance, result.Source)
+		}
+
 		interestingPoints = append(interestingPoints, ip)
 	}
 
 	return interestingPoints, nil
+}
+
+func makeUnique(results []Result) []Result {
+	output := []Result{}
+	seenIds := map[int64]bool{}
+
+	for _, result := range results {
+		seen, found := seenIds[result.Id]
+		if found && seen {
+			continue
+		}
+
+		seenIds[result.Id] = true
+		output = append(output, result)
+	}
+
+	return output
 }
 
 func preprocessText(text string) string {
