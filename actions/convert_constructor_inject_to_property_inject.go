@@ -51,10 +51,6 @@ func ConvertInjectToProperty(_ io.Writer, state *parser.State, file *parser.File
 			return addDestroyedAction{[]utils.TextEdit{}, false}, err
 		}
 
-		if !definition.HasInjectDecorator() {
-			return addDestroyedAction{[]utils.TextEdit{}, false}, err
-		}
-
 		importEdits, err := ast.AddImportToFile(content, "@angular/core", []string{"inject"}, []string{})
 		if err != nil {
 			return action, err
@@ -84,14 +80,20 @@ func ConvertInjectToProperty(_ io.Writer, state *parser.State, file *parser.File
 			text = text + "readonly "
 		}
 
+		hasIndexDecorator := definition.HasInjectDecorator()
+
 		text = text + name + " = inject("
 
-		for _, decorator := range definition.Decorators {
-			if decorator.Name != "Inject" {
-				continue
-			}
+		if hasIndexDecorator {
+			for _, decorator := range definition.Decorators {
+				if decorator.Name != "Inject" {
+					continue
+				}
 
-			text = text + strings.Join(decorator.Arguments, ", ")
+				text = text + strings.Join(decorator.Arguments, ", ")
+			}
+		} else {
+			text += definition.Type
 		}
 
 		text = text + ");"
