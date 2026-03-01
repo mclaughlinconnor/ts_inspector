@@ -2,6 +2,7 @@ package cfg
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"ts_inspector/ast/walk"
 	"ts_inspector/parser"
@@ -422,15 +423,8 @@ func handleForIn(state *State, node *sitter.Node, content []byte) {
 
 	build(state, bodyNode, content)
 
-	if len(state.current.After) == 0 {
-		skipsAfterBlock := true
-		for _, after := range state.current.After {
-			if after == afterBlock {
-				skipsAfterBlock = false
-				break
-			}
-		}
-
+	if len(state.current.After) != 0 {
+		skipsAfterBlock := !slices.Contains(state.current.After, afterBlock)
 		if !skipsAfterBlock {
 			state.cfg().AddEdge(state.current, afterBlock)
 		}
