@@ -74,8 +74,8 @@ func HandleInitialise(writer io.Writer, logger *log.Logger, state *parser.State,
 		go (func() {
 			search.InitSearch()
 			search.IndexState(state)
+			utils.WriteResponse(writer, interfaces.BuildMessageNotification("Search index built", interfaces.MessageType.Info))
 		})()
-		utils.WriteResponse(writer, interfaces.BuildMessageNotification("Search index built", interfaces.MessageType.Info))
 	}
 
 	utils.WriteResponse(writer, interfaces.BuildMessageNotification("State ready", interfaces.MessageType.Info))
