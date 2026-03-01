@@ -14,6 +14,7 @@ import (
 	"ts_inspector/commands"
 	"ts_inspector/lsp"
 	"ts_inspector/parser"
+	"ts_inspector/search"
 	"ts_inspector/utils"
 )
 
@@ -35,19 +36,20 @@ func main() {
 	commands.InitCommands()
 	analysis.InitAnalysers()
 
-	if utils.LSP && len(os.Args) == 1 {
+	args := flag.Args()
+	if utils.LSP && len(args) == 0 {
 		startLsp()
 		return
 	}
 
-	if len(os.Args) != 2 {
+	if len(args) < 1 {
 		return
 	}
 
 	logger := utils.GetLogger("indexer")
 
 	state := parser.CreateState()
-	filenames := traversetypescriptfiles.Index(os.Args[1])
+	filenames := traversetypescriptfiles.Index(args[0])
 	for _, filename := range filenames {
 		logger.Println(filename)
 		err := parser.IndexFileFromIndexer(&state, filename)
@@ -57,6 +59,9 @@ func main() {
 	}
 
 	state.Postprocess()
+
+	search.InitSearch()
+	search.IndexState(&state)
 
 	logger.Println("Done")
 }
