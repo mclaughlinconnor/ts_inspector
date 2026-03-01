@@ -193,9 +193,11 @@ func (c *Class) GetInterestingPoints() []InterestingPoint {
 	interestingPoints := make([]InterestingPoint, 0)
 
 	class := c.Snapshot()
+	file := class.File.Snapshot()
 
-	location := interfaces.NodeToLocationWithOffsetNode(class.NameNode, class.Node, class.File.Snapshot().Content, c.Snapshot().File.Snapshot().URI)
-	interestingPoint := InterestingPoint{Location: location, Text: class.Name, Kind: interfaces.SymbolKind.Class}
+	interestingPoint := InterestingPoint{Text: class.Name, Kind: interfaces.SymbolKind.Class}
+	interestingPoint.SetPosition(interfaces.OffsetNodeByNode(class.NameNode, class.Node))
+	interestingPoint.SetFile(file.Content, file.URI)
 
 	interestingPoints = append(interestingPoints, interestingPoint)
 
@@ -209,7 +211,7 @@ func (c *Class) GetInterestingPoints() []InterestingPoint {
 			locationNode = d.Node
 		}
 
-		location := interfaces.NodeToLocationWithOffsetNode(locationNode, class.Node, class.File.Snapshot().Content, c.Snapshot().File.Snapshot().URI)
+		startOffset, endOffset := interfaces.OffsetNodeByNode(locationNode, class.Node)
 
 		var kind interfaces.TSymbolKind
 
@@ -220,14 +222,22 @@ func (c *Class) GetInterestingPoints() []InterestingPoint {
 			kind = interfaces.SymbolKind.Property
 		}
 
-		interestingPoint := InterestingPoint{Location: location, Text: class.Name + "." + d.Name, Kind: kind}
+		interestingPoint := InterestingPoint{Text: class.Name + "." + d.Name, Kind: kind}
+		interestingPoint.SetPosition(startOffset, endOffset)
+		interestingPoint.SetFile(file.Content, file.URI)
+
 		interestingPoints = append(interestingPoints, interestingPoint)
 	}
 
 	if c.HasComponent() && class.Angular.Component.SelectorNode != nil {
-		location := interfaces.NodeToLocation(class.Angular.Component.SelectorNode, c.Snapshot().File.Snapshot().URI)
+		startOffset := class.Angular.Component.SelectorNode.StartByte()
+		endOffset := class.Angular.Component.SelectorNode.EndByte()
+
 		for _, selector := range class.Angular.Component.Selectors {
-			interestingPoint := InterestingPoint{Location: location, Text: selector, Kind: interfaces.SymbolKind.Class}
+			interestingPoint := InterestingPoint{Text: selector, Kind: interfaces.SymbolKind.Class}
+			interestingPoint.SetPosition(startOffset, endOffset)
+			interestingPoint.SetFile(file.Content, file.URI)
+
 			interestingPoints = append(interestingPoints, interestingPoint)
 		}
 	}

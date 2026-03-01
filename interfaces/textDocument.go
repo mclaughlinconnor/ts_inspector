@@ -51,3 +51,13 @@ func NodeToLocationWithOffsetNode(node *sitter.Node, offsetNode *sitter.Node, co
 
 	return Location{Uri: Uri, Range: utils.Range{End: endPosition, Start: startPosition}}
 }
+
+func OffsetNodeByNode(node *sitter.Node, offsetNode *sitter.Node) (uint32, uint32) {
+	startByte := node.StartByte()
+	endByte := node.EndByte()
+
+	startByte += offsetNode.StartByte()
+	endByte += offsetNode.StartByte()
+
+	return startByte, endByte
+}

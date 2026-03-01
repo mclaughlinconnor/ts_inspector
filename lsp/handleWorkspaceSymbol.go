@@ -29,7 +29,7 @@ func HandleWorkspaceSymbol(writer io.Writer, logger *log.Logger, state *parser.S
 
 	symbols := make([]interfaces.WorkspaceSymbol, 0)
 	for _, ip := range interestingPoints {
-		symbol := interfaces.WorkspaceSymbol{Name: ip.Text, Location: ip.Location, Kind: ip.Kind}
+		symbol := interfaces.WorkspaceSymbol{Name: ip.Text, Location: ip.ResolveLocation(), Kind: ip.Kind}
 		symbols = append(symbols, symbol)
 	}
 
