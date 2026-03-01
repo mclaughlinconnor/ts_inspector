@@ -5,6 +5,7 @@ import (
 	"math"
 	"slices"
 	"strings"
+	"ts_inspector/parser"
 
 	"github.com/junegunn/fzf/src/algo"
 	"github.com/junegunn/fzf/src/util"
@@ -55,4 +56,12 @@ func SearchFZF(queryText string, resultsCount int64) []Result {
 	slices.SortFunc(finalResults, func(a Result, b Result) int { return cmp.Compare(b.Distance, a.Distance) })
 
 	return finalResults[:min(resultsCount, int64(len(finalResults)))]
+}
+
+func indexFzf(interestingPoints []parser.InterestingPoint, ids []int64) {
+	for i, interestingPoint := range interestingPoints {
+		ppText := preprocessText(interestingPoint.Text)
+
+		AddToFZF(ppText, ids[i])
+	}
 }

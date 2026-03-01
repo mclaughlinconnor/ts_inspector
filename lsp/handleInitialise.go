@@ -71,9 +71,12 @@ func HandleInitialise(writer io.Writer, logger *log.Logger, state *parser.State,
 
 	if utils.SemanticSearch {
 		utils.WriteResponse(writer, interfaces.BuildMessageNotification("Building search indexes...", interfaces.MessageType.Info))
-		search.InitSearch()
-		search.IndexState(state)
+		go (func() {
+			search.InitSearch()
+			search.IndexState(state)
+		})()
+		utils.WriteResponse(writer, interfaces.BuildMessageNotification("Search index built", interfaces.MessageType.Info))
 	}
 
-	utils.WriteResponse(writer, interfaces.BuildMessageNotification("Indexing finished", interfaces.MessageType.Info))
+	utils.WriteResponse(writer, interfaces.BuildMessageNotification("State ready", interfaces.MessageType.Info))
 }

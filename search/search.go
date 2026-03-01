@@ -42,10 +42,8 @@ func IndexState(state *parser.State) {
 	hash := fnv.New64a()
 	hash.Sum64()
 
-	vectors := make([]Vector, len(interestingPoints))
-	i := 0
+	ids := make([]int64, 0)
 	for _, interestingPoint := range interestingPoints {
-		ppText := preprocessText(interestingPoint.Text)
 		ipId := interestingPoint.Id()
 
 		hash.Write([]byte(ipId))
@@ -53,19 +51,13 @@ func IndexState(state *parser.State) {
 		hash.Reset()
 
 		interestingPointsIdCache[id] = interestingPoint
-
-		vector := GetEmbedding(ppText)
-		vectors[i] = Vector{id, vector}
-		i++
-
-		AddToFZF(ppText, id)
+		ids = append(ids, id)
 	}
 
-	if len(vectors) == 0 {
-		return
-	}
+	go indexEmbeddings(interestingPoints, ids)
+	indexFzf(interestingPoints, ids)
 
-	AddToFAISS(vectors)
+	setSearchReady()
 }
 
 func InitSearch() {
@@ -74,10 +66,13 @@ func InitSearch() {
 }
 
 func FindInterestingPoints(text string) ([]parser.InterestingPoint, error) {
+	if !canSearch() {
+		return []parser.InterestingPoint{}, nil
+	}
+
 	ppText := preprocessText(text)
 
-	query := GetEmbedding(ppText)
-	results, err := SearchFAISS(query, EmbeddingResultsCount)
+	results, err := SearchFAISS(ppText, EmbeddingResultsCount)
 	if err != nil {
 		return []parser.InterestingPoint{}, err
 	}

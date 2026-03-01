@@ -40,7 +40,12 @@ func AddToFAISS(vectors []Vector) {
 	addWithIds(faissIndex, nVectors, combinedVectors, ids)
 }
 
-func SearchFAISS(queryVector []float32, resultsCount int64) ([]Result, error) {
+func SearchFAISS(queryText string, resultsCount int64) ([]Result, error) {
+	if !canUseEmbeddings() {
+		return []Result{}, nil
+	}
+
+	queryVector := GetEmbedding(queryText)
 	distances, labels := indexSearch(queryVector, resultsCount)
 
 	results := make([]Result, resultsCount)

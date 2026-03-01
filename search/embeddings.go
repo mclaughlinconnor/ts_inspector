@@ -2,6 +2,7 @@ package search
 
 import (
 	"math"
+	"ts_inspector/parser"
 
 	"github.com/hybridgroup/yzma/pkg/llama"
 )
@@ -14,7 +15,10 @@ func GetEmbedding(text string) []float32 {
 	tokens := llama.Tokenize(vocab, text, true, true)
 
 	batch := llama.BatchGetOne(tokens)
-	llama.Decode(context, batch)
+	_, err := llama.Decode(context, batch)
+	if err != nil {
+		panic(err)
+	}
 
 	embeddingDimensions := llama.ModelNEmbd(model)
 	embedding, err := llama.GetEmbeddingsSeq(context, 0, embeddingDimensions)
@@ -36,6 +40,25 @@ func GetEmbedding(text string) []float32 {
 	}
 
 	return normalisedEmbedding
+}
+
+func indexEmbeddings(interestingPoints []parser.InterestingPoint, ids []int64) {
+	vectors := make([]Vector, len(interestingPoints))
+
+	for i, interestingPoint := range interestingPoints {
+		ppText := preprocessText(interestingPoint.Text)
+
+		vector := GetEmbedding(ppText)
+		vectors[i] = Vector{ids[i], vector}
+	}
+
+	if len(vectors) == 0 {
+		return
+	}
+
+	AddToFAISS(vectors)
+
+	setEmbeddingsReady()
 }
 
 func initEmbedding() {
