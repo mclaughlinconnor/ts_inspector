@@ -95,10 +95,18 @@ func getAttrCompletions(state *parser.State, file *parser.File, class *parser.Cl
 		cursorPosition := utils.GetPositionForOffset(file.Snapshot().Content, cursorOffset)
 		cursorRange := utils.Range{Start: cursorPosition, End: cursorPosition}
 
-		build := func(definition parser.ClassedDefinition, openChar string, closeChar string) interfaces.CompletionItem {
+		build := func(definition parser.ClassedDefinition, openChar string, closeChar string, input bool, output bool) interfaces.CompletionItem {
 			item := interfaces.CompletionItem{}
 
-			name := openChar + definition.Name + closeChar
+			name := openChar
+			if input {
+				name += definition.GetInputName()
+			}
+			if output {
+				name += definition.GetOutputName()
+			}
+			name += closeChar
+
 			insertText := name + "='$0'"
 			item.InsertText = &insertText
 			item.InsertTextFormat = &interfaces.InsertTextFormat.Snippet
@@ -125,11 +133,11 @@ func getAttrCompletions(state *parser.State, file *parser.File, class *parser.Cl
 		}
 
 		for _, i := range c.GetInputs() {
-			items = append(items, build(i, "[", "]"))
+			items = append(items, build(i, "[", "]", true, false))
 		}
 
 		for _, i := range c.GetOutputs() {
-			items = append(items, build(i, "(", ")"))
+			items = append(items, build(i, "(", ")", false, true))
 		}
 	}
 

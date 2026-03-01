@@ -3,6 +3,7 @@ package parser
 import (
 	"fmt"
 	"strings"
+	"ts_inspector/utils"
 
 	sitter "github.com/smacker/go-tree-sitter"
 )
@@ -137,6 +138,14 @@ func (d *Definition) GetDocumentation(includeDefinitionName bool) string {
 	return strings.Join(documentation, "\n")
 }
 
+func (d *Definition) GetInputName() string {
+	return d.getDefinitionNameByDecoratorArg("Input")
+}
+
+func (d *Definition) GetOutputName() string {
+	return d.getDefinitionNameByDecoratorArg("Output")
+}
+
 func (d *Definition) HasAngularDecorator() bool {
 	for _, decorator := range d.Decorators {
 		if decorator.IsAngular {
@@ -168,6 +177,27 @@ func (d *Definition) IsProtected() bool        { return d.AccessModifier == Prot
 func (d *Definition) IsPublic() bool           { return d.AccessModifier == PublicAccessibility }
 func (d *Definition) IsUsed() bool             { return len(d.Usages) != 0 }
 
+func (d *Definition) NameMatchesString(name string) bool {
+	stripped, mode := utils.StripAngularFromAttribute(name)
+	if mode == utils.NeitherAngularStripped {
+		return d.Name == stripped
+	}
+
+	if (mode & utils.InputAngularStripped) > 0 {
+		if d.GetInputName() == stripped {
+			return true
+		}
+	}
+
+	if (mode & utils.OutputAngularStripped) > 0 {
+		if d.GetOutputName() == stripped {
+			return true
+		}
+	}
+
+	return false
+}
+
 func CalculateAccessibilityFromString(a string) (accessibility, error) {
 	switch a {
 	case "public":
@@ -189,4 +219,31 @@ func CalculateNewAccessType(new access, old access) access {
 
 func CreatePropertyDefinition(accessModifier accessibility, decorators []Decorator, name string, node *sitter.Node) Definition {
 	return Definition{AccessModifier: accessModifier, Async: false, Decorators: decorators, Generator: false, Getter: false, IsAngularesqueMethod: false, Name: name, Node: node, Override: false, Readonly: false, Setter: false, Static: false, UsageAccess: access{}, Usages: []*UsageInstance{}}
+}
+
+func (d *Definition) getDefinitionNameByDecoratorArg(decoratorName string) string {
+	for _, decorator := range d.Decorators {
+		if decorator.Name != decoratorName {
+			continue
+		}
+		if len(decorator.Arguments) != 1 {
+			return d.Name // There can't be two @Outputs or @Inputs on one prop
+		}
+
+		arg := decorator.Arguments[0]
+		hasDoubleQuote := strings.HasPrefix(arg, "\"") && strings.HasSuffix(arg, "\"")
+		hasSingleQuote := strings.HasPrefix(arg, "'") && strings.HasSuffix(arg, "'")
+		if !(hasDoubleQuote || hasSingleQuote) {
+			return d.Name
+		}
+
+		quote := "'"
+		if hasDoubleQuote {
+			quote = "\""
+		}
+
+		return strings.TrimPrefix(strings.TrimSuffix(arg, quote), quote)
+	}
+
+	return d.Name
 }

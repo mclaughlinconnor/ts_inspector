@@ -464,8 +464,8 @@ func (c *Class) GetDocumentation(includeClassName bool) string {
 		documentation = append(documentation, "**Declared in:** "+strings.Join(modules, ", "))
 	}
 
-	documentation = append(documentation, buildDefinitionSection("Inputs", c.GetInputs()))
-	documentation = append(documentation, buildDefinitionSection("Outputs", c.GetOutputs()))
+	documentation = append(documentation, buildDefinitionSection("Inputs", c.GetInputs(), true, false))
+	documentation = append(documentation, buildDefinitionSection("Outputs", c.GetOutputs(), false, true))
 
 	text := strings.Join(documentation, "\n\n")
 
@@ -664,14 +664,21 @@ func NewClass(content string, file *File, node *sitter.Node) Class {
 	return Class{state: state}
 }
 
-func buildDefinitionSection(sectionName string, definitions []ClassedDefinition) string {
+func buildDefinitionSection(sectionName string, definitions []ClassedDefinition, isInput bool, isOutput bool) string {
 	section := make([]string, 0)
 
 	slices.SortFunc(definitions, func(a ClassedDefinition, b ClassedDefinition) int { return cmp.Compare(a.Name, b.Name) })
 	if len(definitions) > 0 {
 		section = append(section, "**"+sectionName+":**")
-		for _, input := range definitions {
-			section = append(section, "  "+input.Name+" (*"+input.Class.Snapshot().Name+"*)")
+		for _, def := range definitions {
+			var name string
+			if isInput {
+				name = def.GetInputName()
+			} else if isOutput {
+				name = def.GetOutputName()
+			}
+
+			section = append(section, "  "+name+" (*"+def.Class.Snapshot().Name+"*)")
 		}
 	}
 

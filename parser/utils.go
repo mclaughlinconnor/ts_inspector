@@ -93,7 +93,6 @@ func FindDefinition(state *State, file *File, cursorOffset uint32) []interfaces.
 
 		components := c.Snapshot().Angular.Component.GetAvailableComponents(state)
 		for _, c := range components {
-
 			selectors := c.Snapshot().Angular.Component.Selectors
 			for _, selector := range selectors {
 				if cursorOnTagName && selector == tagName {
@@ -115,7 +114,7 @@ func FindDefinition(state *State, file *File, cursorOffset uint32) []interfaces.
 }
 
 func handleAttributeOfTag(locations []interfaces.Location, class *Class, attributeName string) []interfaces.Location {
-	for _, definition := range class.FilterAllDefinitions(func(def ClassedDefinition) bool { return def.Name == utils.StripAngularFromAttribute(attributeName) }) {
+	for _, definition := range class.FilterAllDefinitions(func(def ClassedDefinition) bool { return def.NameMatchesString(attributeName) }) {
 		c := definition.Class.Snapshot()
 		cOffset := c.Node.StartByte()
 		file := c.File.Snapshot()

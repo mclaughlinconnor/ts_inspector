@@ -66,9 +66,7 @@ func HandleHover(writer io.Writer, logger *log.Logger, state *parser.State, requ
 }
 
 func handleAttributeHover(sb []string, class *parser.Class, attributeName string) []string {
-	for _, definition := range class.FilterAllDefinitions(func(def parser.ClassedDefinition) bool {
-		return def.Name == utils.StripAngularFromAttribute(attributeName)
-	}) {
+	for _, definition := range class.FilterAllDefinitions(func(def parser.ClassedDefinition) bool { return def.NameMatchesString(attributeName) }) {
 		sb = append(sb, definition.GetDocumentation(true))
 	}
 
