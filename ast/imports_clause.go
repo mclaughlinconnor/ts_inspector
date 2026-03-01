@@ -31,7 +31,19 @@ func doExtractImports(node *sitter.Node, content []byte) ([]*ImportParseResult, 
 			state.Clause = node
 
 			for i := range node.ChildCount() {
-				walk.VisitNode(node.Child(int(i)), state, int(i), internalFuncMap, false)
+				child := node.Child(int(i))
+				if child.Type() == "identifier" {
+					imp := ImportIdentifier{
+						ForeignIdentifier: child.Content(content),
+						IsType:            isType,
+						LocalIdentifier:   child.Content(content),
+					}
+
+					state.Imports = append(state.Imports, imp)
+					state.Import = importNode
+				} else {
+					walk.VisitNode(node.Child(int(i)), state, int(i), internalFuncMap, false)
+				}
 			}
 
 			return state
