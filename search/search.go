@@ -121,6 +121,10 @@ func preprocessText(text string) string {
 
 	split := camelcase.Split(text)
 	for _, s := range split {
+		if s == " " {
+			continue
+		}
+
 		ss := strings.FieldsFunc(s, unicode.IsPunct)
 		partials = append(partials, ss...)
 	}
