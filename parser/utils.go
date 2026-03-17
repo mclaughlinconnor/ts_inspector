@@ -80,10 +80,10 @@ func FindDefinition(state *State, file *File, cursorOffset uint32) []interfaces.
 
 	tagName, cursorOnTagName := ast.GetTagNameAtOffset(file.Snapshot().Content, cursorOffset)
 
-	var tagUnderCursor string
+	var tagUnderCursor ast.Tag
 	attributeName, cursorOnAttributeName := ast.GetAttributeNameAtOffset(file.Snapshot().Content, cursorOffset)
 	if cursorOnAttributeName {
-		tagUnderCursor, _ = ast.GetNameOfTagAtOffset(file.Snapshot().Content, cursorOffset)
+		tagUnderCursor, _ = ast.GetTagAtOffset(file.Snapshot().Content, cursorOffset)
 	}
 
 	for _, c := range file.Snapshot().Classes {
@@ -100,8 +100,8 @@ func FindDefinition(state *State, file *File, cursorOffset uint32) []interfaces.
 				}
 
 				if cursorOnAttributeName {
-					if selector == tagUnderCursor {
-						locations = handleAttributeOfTag(locations, c, attributeName)
+					if tagUnderCursor.MatchesSelector(selector) {
+						locations = handleAttributeOfTag(locations, c, attributeName, selector)
 					} else if selector == attributeName { // component with `selector: '[formControl]`
 						locations = handleDefinitionOfTag(locations, c)
 					}
@@ -113,7 +113,7 @@ func FindDefinition(state *State, file *File, cursorOffset uint32) []interfaces.
 	return locations
 }
 
-func handleAttributeOfTag(locations []interfaces.Location, class *Class, attributeName string) []interfaces.Location {
+func handleAttributeOfTag(locations []interfaces.Location, class *Class, attributeName string, selector string) []interfaces.Location {
 	for _, definition := range class.FilterAllDefinitions(func(def ClassedDefinition) bool { return def.NameMatchesString(attributeName) }) {
 		c := definition.Class.Snapshot()
 		cOffset := c.Node.StartByte()
@@ -131,6 +131,21 @@ func handleAttributeOfTag(locations []interfaces.Location, class *Class, attribu
 		end := utils.GetPositionForOffset(cContent, cOffset+nameNode.StartByte())
 
 		locations = append(locations, interfaces.Location{Uri: file.URI, Range: utils.Range{Start: start, End: end}})
+	}
+
+	if !strings.HasPrefix(attributeName, "[") && !strings.HasSuffix(attributeName, "]") {
+		valid, _, attrName := ast.ExtractTagNameAndAttrFromSelector(selector)
+		if valid && attrName == attributeName {
+			c := class.Snapshot()
+			f := c.File.Snapshot()
+
+			startOffset, endOffset := interfaces.OffsetNodeByNode(c.NameNode, c.Node)
+
+			start := utils.GetPositionForOffset(f.Content, startOffset)
+			end := utils.GetPositionForOffset(f.Content, endOffset)
+
+			locations = append(locations, interfaces.Location{Uri: f.URI, Range: utils.Range{Start: start, End: end}})
+		}
 	}
 
 	return locations

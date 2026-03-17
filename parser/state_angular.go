@@ -48,6 +48,7 @@ type TagUsage struct {
 	Usages []*UsageInstance
 }
 
+// TODO: this string should probably be ast.Tag so that I can handle selectors like `li[cmData]`
 type TagUsages map[string]TagUsage
 
 type Template struct {

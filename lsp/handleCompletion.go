@@ -72,7 +72,7 @@ func getAttrCompletions(state *parser.State, file *parser.File, class *parser.Cl
 		return items
 	}
 
-	tagName, found := ast.GetNameOfTagAtOffset(file.Snapshot().Content, cursorOffset)
+	tagName, found := ast.GetTagAtOffset(file.Snapshot().Content, cursorOffset)
 	if !found {
 		return items
 	}
@@ -85,7 +85,10 @@ func getAttrCompletions(state *parser.State, file *parser.File, class *parser.Cl
 
 		matches := false
 		for _, s := range c.Snapshot().Angular.Component.Selectors {
-			matches = matches || s == tagName
+			if tagName.MatchesSelector(s) {
+				matches = true
+				break
+			}
 		}
 
 		if !matches {

@@ -22,6 +22,7 @@ func recursiveTemplate(_ *parser.State, file *parser.File) []Analysis {
 		message := "Component recursively uses itself"
 
 		for _, selector := range component.Selectors {
+			// TODO: selectors aren't necessarily the tag name
 			for _, u := range component.Template.TagUsages[selector].Usages {
 				startPosition := utils.PositionFromPoint(u.Node.StartPoint())
 				endPosition := utils.PositionFromPoint(u.Node.EndPoint())

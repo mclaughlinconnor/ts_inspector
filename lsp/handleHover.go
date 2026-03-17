@@ -23,10 +23,10 @@ func HandleHover(writer io.Writer, logger *log.Logger, state *parser.State, requ
 
 	tagName, cursorOnTagName := ast.GetTagNameAtOffset(file.Snapshot().Content, cursorOffset)
 
-	var tagUnderCursor string
+	var tagUnderCursor ast.Tag
 	attributeName, cursorOnAttributeName := ast.GetAttributeNameAtOffset(file.Snapshot().Content, cursorOffset)
 	if cursorOnAttributeName {
-		tagUnderCursor, _ = ast.GetNameOfTagAtOffset(file.Snapshot().Content, cursorOffset)
+		tagUnderCursor, _ = ast.GetTagAtOffset(file.Snapshot().Content, cursorOffset)
 	}
 
 	sb := []string{}
@@ -46,8 +46,8 @@ func HandleHover(writer io.Writer, logger *log.Logger, state *parser.State, requ
 				}
 
 				if cursorOnAttributeName {
-					if selector == tagUnderCursor {
-						sb = handleAttributeHover(sb, c, attributeName)
+					if tagUnderCursor.MatchesSelector(selector) {
+						sb = handleAttributeHover(sb, c, attributeName, selector)
 					} else if selector == attributeName { // component with `selector: '[formControl]`
 						sb = handleTagHover(sb, c)
 					}
@@ -65,9 +65,16 @@ func HandleHover(writer io.Writer, logger *log.Logger, state *parser.State, requ
 	utils.WriteResponse(writer, interfaces.HoverResponse{Result: hover, Response: interfaces.Response{ID: &request.ID, RPC: "2.0"}})
 }
 
-func handleAttributeHover(sb []string, class *parser.Class, attributeName string) []string {
+func handleAttributeHover(sb []string, class *parser.Class, attributeName string, selector string) []string {
 	for _, definition := range class.FilterAllDefinitions(func(def parser.ClassedDefinition) bool { return def.NameMatchesString(attributeName) }) {
 		sb = append(sb, definition.GetDocumentation(true))
+	}
+
+	if !strings.HasPrefix(attributeName, "[") && !strings.HasSuffix(attributeName, "]") {
+		valid, _, attrName := ast.ExtractTagNameAndAttrFromSelector(selector)
+		if valid && attrName == attributeName {
+			sb = append(sb, class.GetDocumentation(true))
+		}
 	}
 
 	return sb
