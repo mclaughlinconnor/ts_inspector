@@ -24,34 +24,32 @@ func HandleReferences(writer io.Writer, logger *log.Logger, state *parser.State,
 	// TODO: needs to find usages for every selector on a component
 
 	tagName, found := ast.GetTagNameAtOffset(file.Snapshot().Content, offset)
-	if !found {
-		utils.WriteResponse(writer, interfaces.DefinitionResponse{Result: locations, Response: interfaces.Response{ID: &request.ID, RPC: "2.0"}})
-	}
+	if found {
+		for _, c := range *state.GetClasses() {
+			if !c.HasComponent() {
+				continue
+			}
 
-	for _, c := range *state.GetClasses() {
-		if !c.HasComponent() {
-			continue
-		}
+			template := c.Snapshot().Angular.Component.Template
+			if template == nil {
+				continue
+			}
 
-		template := c.Snapshot().Angular.Component.Template
-		if template == nil {
-			continue
-		}
+			usages, found := template.TagUsages[tagName]
+			if !found || len(usages.Usages) == 0 {
+				continue
+			}
 
-		usages, found := template.TagUsages[tagName]
-		if !found || len(usages.Usages) == 0 {
-			continue
-		}
+			templateFile := c.Snapshot().Angular.Component.TemplateUrlFile
 
-		templateFile := c.Snapshot().Angular.Component.TemplateUrlFile
+			for _, usage := range usages.Usages {
+				tf := templateFile.Snapshot()
 
-		for _, usage := range usages.Usages {
-			tf := templateFile.Snapshot()
+				start := utils.GetPositionForOffset(tf.Content, usage.Node.StartByte())
+				end := utils.GetPositionForOffset(tf.Content, usage.Node.EndByte())
 
-			start := utils.GetPositionForOffset(tf.Content, usage.Node.StartByte())
-			end := utils.GetPositionForOffset(tf.Content, usage.Node.EndByte())
-
-			locations = append(locations, interfaces.Location{Uri: tf.URI, Range: utils.Range{Start: start, End: end}})
+				locations = append(locations, interfaces.Location{Uri: tf.URI, Range: utils.Range{Start: start, End: end}})
+			}
 		}
 	}
 
