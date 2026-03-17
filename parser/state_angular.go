@@ -3,8 +3,6 @@ package parser
 import (
 	"slices"
 	"sort"
-	"sync"
-	"ts_inspector/utils"
 
 	sitter "github.com/smacker/go-tree-sitter"
 )
@@ -16,8 +14,7 @@ type Angular struct {
 
 type Component struct {
 	DeclaredIn      []*Class
-	Imports         References
-	ImportsIdents   []string
+	Imports         *Value
 	Providers       []*Provider
 	Selectors       []string
 	SelectorNode    *sitter.Node
@@ -27,14 +24,10 @@ type Component struct {
 }
 
 type Module struct {
-	Declarations      *Value
-	Exports           References
-	ExportsIdents     []string
-	ExportsIdentNodes []*sitter.Node // Note: These are file based nodes
-	Imports           References
-	ImportsIdents     []string
-	ImportsIdentNodes []*sitter.Node // Note: These are file based nodes
-	Providers         []*Provider
+	Declarations *Value
+	Exports      *Value
+	Imports      *Value
+	Providers    []*Provider
 }
 
 type Provider struct {
@@ -63,11 +56,11 @@ type Template struct {
 
 func (a *Angular) DoesImport(class *Class) bool {
 	if a.Component != nil {
-		return a.Component.Imports.ContainsClass(class)
+		return a.Component.Imports.IsOrHas(class)
 	}
 
 	if a.Module != nil {
-		return a.Module.Imports.ContainsClass(class)
+		return a.Module.Imports.IsOrHas(class)
 	}
 
 	return false
@@ -86,10 +79,6 @@ func (a *Angular) EnsureModule() {
 }
 
 func (a *Angular) Postprocess(state *State, class *Class) {
-	if a.Component != nil {
-		a.Component.Postprocess(state, class)
-	}
-
 	if a.Module != nil {
 		a.Module.Postprocess(state, class)
 	}
@@ -128,7 +117,8 @@ func (c *Component) GetAvailableComponents(state *State) []*Class {
 		selectors = append(selectors, declaringClass.Snapshot().Angular.Module.GetComponentsFromInside(state)...)
 	}
 
-	for _, imp := range c.Imports {
+	for imp := range c.Imports.FlattenReferenceArraysToReferences(state) {
+		imp.Resolve(state)
 		if imp == nil || imp.Class == nil {
 			continue
 		}
@@ -138,7 +128,7 @@ func (c *Component) GetAvailableComponents(state *State) []*Class {
 		}
 
 		if imp.Class.HasModule() {
-			selectors = append(selectors, imp.Class.Snapshot().Angular.Module.GetComponentsFromOutside()...)
+			selectors = append(selectors, imp.Class.Snapshot().Angular.Module.GetComponentsFromOutside(state)...)
 		}
 	}
 
@@ -147,21 +137,12 @@ func (c *Component) GetAvailableComponents(state *State) []*Class {
 	return slices.Compact(selectors)
 }
 
-func (c *Component) Postprocess(state *State, class *Class) {
-	imports := resolveIdents(c.ImportsIdents, class.Snapshot().File, state)
-	c.Imports = imports
-}
-
 func (m *Module) DoesDeclare(class *Class) bool {
-	if m.Declarations.IsOrHas(class) {
-		return true
-	}
-
-	return false
+	return m.Declarations.IsOrHas(class)
 }
 
-func (m *Module) DoesExport(class *Class) bool {
-	for _, exp := range m.Exports {
+func (m *Module) DoesExport(state *State, class *Class) bool {
+	for exp := range m.Exports.FlattenReferenceArraysToReferences(state) {
 		if exp == nil || exp.Class == nil {
 			// Should have been resolved by now
 			continue
@@ -218,17 +199,17 @@ func (m *Module) GetDeclaredComponents(state *State) []*Class {
 
 		// Illegal
 		if angular.Module != nil {
-			selectors = append(selectors, angular.Module.GetExportedComponents()...)
+			selectors = append(selectors, angular.Module.GetExportedComponents(state)...)
 		}
 	}
 
 	return selectors
 }
 
-func (m *Module) GetExportedComponents() []*Class {
+func (m *Module) GetExportedComponents(state *State) []*Class {
 	selectors := make([]*Class, 0)
 
-	for _, exp := range m.Exports {
+	for exp := range m.Exports.FlattenReferenceArraysToReferences(state) {
 		if exp == nil || exp.Class == nil {
 			// Should have been resolved by now
 			continue
@@ -244,17 +225,17 @@ func (m *Module) GetExportedComponents() []*Class {
 		}
 
 		if angular.Module != nil {
-			selectors = append(selectors, angular.Module.GetImportedComponents()...)
+			selectors = append(selectors, angular.Module.GetImportedComponents(state)...)
 		}
 	}
 
 	return selectors
 }
 
-func (m *Module) GetImportedComponents() []*Class {
+func (m *Module) GetImportedComponents(state *State) []*Class {
 	selectors := make([]*Class, 0)
 
-	for _, imp := range m.Imports {
+	for imp := range m.Imports.FlattenReferenceArraysToReferences(state) {
 		if imp == nil || imp.Class == nil {
 			// Should have been resolved by now
 			continue
@@ -270,7 +251,7 @@ func (m *Module) GetImportedComponents() []*Class {
 		}
 
 		if angular.Module != nil {
-			selectors = append(selectors, angular.Module.GetExportedComponents()...)
+			selectors = append(selectors, angular.Module.GetExportedComponents(state)...)
 		}
 	}
 
@@ -279,34 +260,16 @@ func (m *Module) GetImportedComponents() []*Class {
 
 func (m *Module) GetComponentsFromInside(state *State) []*Class {
 	selectors := m.GetDeclaredComponents(state)
-	selectors = append(selectors, m.GetImportedComponents()...)
+	selectors = append(selectors, m.GetImportedComponents(state)...)
 
 	return selectors
 }
 
-func (m *Module) GetComponentsFromOutside() []*Class {
-	return m.GetExportedComponents()
+func (m *Module) GetComponentsFromOutside(state *State) []*Class {
+	return m.GetExportedComponents(state)
 }
 
 func (m *Module) Postprocess(state *State, class *Class) {
-	wg := sync.WaitGroup{}
-
-	wg.Go(func() { m.Imports = resolveIdents(m.ImportsIdents, class.Snapshot().File, state) })
-	if !utils.Concurrency {
-		wg.Wait()
-	}
-
-	wg.Go(func() { m.Exports = resolveIdents(m.ExportsIdents, class.Snapshot().File, state) })
-	if !utils.Concurrency {
-		wg.Wait()
-	}
-
-	if !utils.Concurrency {
-		wg.Wait()
-	}
-
-	wg.Wait()
-
 	for declaration := range m.Declarations.FlattenReferenceArraysToReferences(state) {
 		if declaration == nil {
 			continue

@@ -95,7 +95,7 @@ func extractProvider(node *sitter.Node, content []byte) *Provider {
 func handleComponentKv(class *Class, vNode *sitter.Node, content []byte, keyName string) {
 	switch kn := keyName; kn {
 	case "imports":
-		handleImportsComponentKv(class, vNode, content)
+		handleImportsComponentKv(class, vNode)
 	case "providers":
 		handleProvidersComponentKv(class, vNode, content)
 	case "selector":
@@ -108,89 +108,53 @@ func handleComponentKv(class *Class, vNode *sitter.Node, content []byte, keyName
 func handleModuleKv(class *Class, vNode *sitter.Node, content []byte, keyName string) {
 	switch kn := keyName; kn {
 	case "imports":
-		handleImportsModuleKv(class, vNode, content)
+		handleImportsModuleKv(class, vNode)
 	case "exports":
-		handleExportsKv(class, vNode, content)
+		handleExportsKv(class, vNode)
 	case "declarations":
-		handleDeclarationsKv(class, vNode, content)
+		handleDeclarationsKv(class, vNode)
 	case "providers":
 		handleProvidersModuleKv(class, vNode, content)
 	}
 }
 
-func handleDeclarationsKv(class *Class, vNode *sitter.Node, content []byte) {
+func handleDeclarationsKv(class *Class, vNode *sitter.Node) {
 	file := class.Snapshot().File
 	class.Update(func(data *classState) {
 		data.Angular.Module.Declarations = NodeToValue(file, vNode)
 	})
 }
 
-func handleExportsKv(class *Class, vNode *sitter.Node, content []byte) {
+func handleExportsKv(class *Class, vNode *sitter.Node) {
 	if vNode.Type() != "array" {
 		return
 	}
 
-	idents := make([]string, 0)
-	identNodes := make([]*sitter.Node, 0)
-
-	for i := range vNode.NamedChildCount() {
-		ident := vNode.NamedChild(int(i))
-		if ident.Type() != "identifier" {
-			continue
-		}
-
-		idents = append(idents, ident.Content(content))
-		identNodes = append(identNodes, ident)
-	}
-
+	file := class.Snapshot().File
 	class.Update(func(data *classState) {
-		data.Angular.Module.ExportsIdents = idents
-		data.Angular.Module.ExportsIdentNodes = identNodes
+		data.Angular.Module.Exports = NodeToValue(file, vNode)
 	})
 }
 
-func handleImportsComponentKv(class *Class, vNode *sitter.Node, content []byte) {
+func handleImportsComponentKv(class *Class, vNode *sitter.Node) {
 	if vNode.Type() != "array" {
 		return
 	}
 
-	idents := make([]string, 0)
-
-	for i := range vNode.NamedChildCount() {
-		ident := vNode.NamedChild(int(i))
-		if ident.Type() != "identifier" {
-			continue
-		}
-
-		idents = append(idents, ident.Content(content))
-	}
-
+	file := class.Snapshot().File
 	class.Update(func(data *classState) {
-		data.Angular.Component.ImportsIdents = idents
+		data.Angular.Component.Imports = NodeToValue(file, vNode)
 	})
 }
 
-func handleImportsModuleKv(class *Class, vNode *sitter.Node, content []byte) {
+func handleImportsModuleKv(class *Class, vNode *sitter.Node) {
 	if vNode.Type() != "array" {
 		return
 	}
 
-	idents := make([]string, 0)
-	identNodes := make([]*sitter.Node, 0)
-
-	for i := range vNode.NamedChildCount() {
-		ident := vNode.NamedChild(int(i))
-		if ident.Type() != "identifier" {
-			continue
-		}
-
-		idents = append(idents, ident.Content(content))
-		identNodes = append(identNodes, ident)
-	}
-
+	file := class.Snapshot().File
 	class.Update(func(data *classState) {
-		data.Angular.Module.ImportsIdents = idents
-		data.Angular.Module.ImportsIdentNodes = identNodes
+		data.Angular.Module.Imports = NodeToValue(file, vNode)
 	})
 }
 

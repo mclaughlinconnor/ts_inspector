@@ -64,6 +64,11 @@ func (v *Value) FlattenArray(state *State) func(func(*Reference) bool) {
 
 func (v *Value) FlattenReferenceArraysToReferences(state *State) func(func(*Reference) bool) {
 	return func(yield func(*Reference) bool) {
+		y := func(r *Reference) bool {
+			r.Resolve(state)
+			return yield(r)
+		}
+
 		if v == nil {
 			return
 		}
@@ -71,27 +76,27 @@ func (v *Value) FlattenReferenceArraysToReferences(state *State) func(func(*Refe
 		if v.Type == "reference" {
 			v.Reference.Resolve(state)
 			if v.Reference.Class != nil {
-				if !yield(v.Reference) {
+				if !y(v.Reference) {
 					return
 				}
 			}
 
 			if v.Reference.Variable != nil && v.Reference.Variable.Value != nil && v.Reference.Variable.Value.Type == "array" {
 				for element := range v.Reference.Variable.Value.FlattenArray(state) {
-					if !yield(element) {
+					if !y(element) {
 						return
 					}
 				}
 			}
 
-			if !yield(v.Reference) {
+			if !y(v.Reference) {
 				return
 			}
 		}
 
 		if v.Type == "array" {
 			for element := range v.FlattenArray(state) {
-				if !yield(element) {
+				if !y(element) {
 					return
 				}
 			}
