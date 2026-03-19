@@ -126,10 +126,6 @@ func handleDeclarationsKv(class *Class, vNode *sitter.Node) {
 }
 
 func handleExportsKv(class *Class, vNode *sitter.Node) {
-	if vNode.Type() != "array" {
-		return
-	}
-
 	file := class.Snapshot().File
 	class.Update(func(data *classState) {
 		data.Angular.Module.Exports = NodeToValue(file, vNode)
@@ -137,10 +133,6 @@ func handleExportsKv(class *Class, vNode *sitter.Node) {
 }
 
 func handleImportsComponentKv(class *Class, vNode *sitter.Node) {
-	if vNode.Type() != "array" {
-		return
-	}
-
 	file := class.Snapshot().File
 	class.Update(func(data *classState) {
 		data.Angular.Component.Imports = NodeToValue(file, vNode)
@@ -148,10 +140,6 @@ func handleImportsComponentKv(class *Class, vNode *sitter.Node) {
 }
 
 func handleImportsModuleKv(class *Class, vNode *sitter.Node) {
-	if vNode.Type() != "array" {
-		return
-	}
-
 	file := class.Snapshot().File
 	class.Update(func(data *classState) {
 		data.Angular.Module.Imports = NodeToValue(file, vNode)
