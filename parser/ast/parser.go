@@ -1,6 +1,7 @@
 package ast
 
 import (
+	"ts_inspector/ast"
 	"ts_inspector/ast/walk"
 	"ts_inspector/utils"
 
@@ -8,9 +9,9 @@ import (
 )
 
 type Ast struct {
-	Children []*Node
+	Children HelpfulArray[*Node]
 	Content  []byte
-	Current  *Node
+	Current  utils.Stack[*Node]
 }
 
 const (
@@ -20,17 +21,38 @@ const (
 )
 
 type Node struct {
-	Attributes []*Node
-	Content    []*TagContent
-	Children   []*Node
-	Kind       int
+	Tag       *Tag
+	Attribute *Attribute
+	Kind      int
+}
+
+type Attribute struct {
+	Name  string
+	Value string
+}
+
+type HelpfulArray[T any] struct {
+	elems []T
+}
+
+type Root struct {
+	Children HelpfulArray[*Node]
+}
+
+type Tag struct {
+	Attributes HelpfulArray[*Node]
+	Content    HelpfulArray[*TagContent]
+	Children   HelpfulArray[*Node]
 	Name       string
-	Value      string
 }
 
 type TagContent struct {
 	Text          string
 	Interpolation string
+}
+
+type TagContentArray struct {
+	elems []*TagContent
 }
 
 var visitorFuncMap = walk.NewVisitorFuncsMap[*Ast]()
@@ -55,103 +77,35 @@ func Parse(state *Ast, root *sitter.Node) {
 	walk.VisitNode(root, state, 0, optimisedMap, true)
 }
 
-func handleAttribute(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) *Ast {
-	attribute := Node{Kind: KindAttribute, Name: "", Value: ""}
+func (h *HelpfulArray[T]) add(elem T) {
+	h.elems = append(h.elems, elem)
+}
 
-	prev := state.Current
+func (t *Tag) addAttribute(attribute *Attribute) *Node {
+	node := newAttributeNode(attribute)
 
-	ap := &attribute
+	t.Attributes.add(node)
 
-	state.Current.Attributes = append(state.Current.Attributes, ap)
-	state.Current = ap
+	return node
+}
 
-	for i := range node.NamedChildCount() {
-		Parse(state, node.NamedChild(int(i)))
+func (t *Tag) matchesSelector(selector string) bool {
+	if t.Name == selector {
+		return true
 	}
 
-	state.Current = prev
-
-	return state
-}
-
-func handleAttributeName(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) *Ast {
-	state.Current.Name = node.Content(state.Content)
-
-	return state
-}
-
-func handleAttributeValue(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) *Ast {
-	state.Current.Value = node.Content(state.Content)
-
-	return state
-}
-
-func handleChildNodes(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) *Ast {
-	prev := state.Current
-
-	for i := range node.NamedChildCount() {
-		Parse(state, node.NamedChild(int(i)))
+	valid, tagName, attrName := ast.ExtractTagNameAndAttrFromSelector(selector)
+	if !valid || (tagName != "" && t.Name != tagName) {
+		return false
 	}
 
-	state.Current = prev
-
-	return state
-}
-
-func handleTag(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) *Ast {
-	tag := Node{Kind: KindTag, Children: []*Node{}, Name: ""}
-
-	prev := state.Current
-
-	tp := &tag
-
-	state.Current.Children = append(state.Current.Children, tp)
-	state.Current = tp
-
-	for i := range node.NamedChildCount() {
-		Parse(state, node.NamedChild(int(i)))
-	}
-
-	state.Current = prev
-
-	return state
-}
-
-func handleTagContent(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) *Ast {
-	utils.ParseText([]byte(node.Content(state.Content)), utils.AngularContent, nil, func(root *sitter.Node, content []byte, _ *sitter.Node) (*sitter.Node, error) {
-		for i := range root.ChildCount() {
-			child := root.Child(int(i))
-
-			tagContent := TagContent{}
-			switch child.Type() {
-			case "text":
-				tagContent.Text = child.Content(content)
-			case "interpolation":
-				tagContent.Interpolation = child.Content(content)
-
-				interpolationContentWithBraces := child.Content(content)
-				interpolationContent := interpolationContentWithBraces[2 : len(interpolationContentWithBraces)-2]
-
-				utils.ParseText([]byte(interpolationContent), utils.AngularExpr, nil, func(root *sitter.Node, content []byte, _ *sitter.Node) (*sitter.Node, error) {
-					// TODO: also parse the interpolation content
-					
-					return nil, nil
-				})
-			}
-
-			state.Current.Content = append(state.Current.Content, &tagContent)
+	for _, attr := range t.Attributes.elems {
+		attr := attr.Attribute.Name
+		if attr == attrName || attr[1:len(attr)-1] == attrName {
+			return true
 		}
+	}
 
-		return nil, nil
-	})
-
-	state.Current.Name = node.Content(state.Content)
-
-	return state
+	return false
 }
 
-func handleTagName(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) *Ast {
-	state.Current.Name = node.Content(state.Content)
-
-	return state
-}
