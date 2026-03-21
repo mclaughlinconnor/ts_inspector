@@ -23,6 +23,7 @@ const (
 type Node struct {
 	Tag       *Tag
 	Attribute *Attribute
+	Variable  *Variable
 	Kind      int
 }
 
@@ -53,6 +54,10 @@ type TagContent struct {
 
 type TagContentArray struct {
 	elems []*TagContent
+}
+
+type Variable struct {
+	Name string
 }
 
 var visitorFuncMap = walk.NewVisitorFuncsMap[*Ast]()
@@ -108,4 +113,3 @@ func (t *Tag) matchesSelector(selector string) bool {
 
 	return false
 }
-
