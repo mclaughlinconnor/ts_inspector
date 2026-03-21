@@ -3,6 +3,7 @@ package ast
 import (
 	"ts_inspector/ast"
 	"ts_inspector/ast/walk"
+	"ts_inspector/parser"
 	"ts_inspector/utils"
 
 	sitter "github.com/smacker/go-tree-sitter"
@@ -28,8 +29,9 @@ type Node struct {
 }
 
 type Attribute struct {
-	Name  string
-	Value string
+	Name        string
+	SourceClass *parser.Class
+	Value       string
 }
 
 type HelpfulArray[T any] struct {
@@ -41,10 +43,11 @@ type Root struct {
 }
 
 type Tag struct {
-	Attributes HelpfulArray[*Node]
-	Content    HelpfulArray[*TagContent]
-	Children   HelpfulArray[*Node]
-	Name       string
+	Attributes  HelpfulArray[*Node]
+	Content     HelpfulArray[*TagContent]
+	Children    HelpfulArray[*Node]
+	Name        string
+	SourceClass *parser.Class
 }
 
 type TagContent struct {
