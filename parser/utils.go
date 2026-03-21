@@ -91,19 +91,27 @@ func FindDefinition(state *State, file *File, cursorOffset uint32) []interfaces.
 			continue
 		}
 
-		components := c.Snapshot().Angular.Component.GetAvailableComponents(state)
-		for _, c := range components {
-			selectors := c.Snapshot().Angular.Component.Selectors
+		things := c.Snapshot().Angular.Component.GetAvailableThings(state)
+		for _, thing := range things {
+			selectors := []string{}
+			if thing.HasComponent() {
+				selectors = append(selectors, thing.Snapshot().Angular.Component.Selectors...)
+			}
+
+			if thing.HasDirective() {
+				selectors = append(selectors, thing.Snapshot().Angular.Directive.Selectors...)
+			}
+
 			for _, selector := range selectors {
 				if cursorOnTagName && selector == tagName {
-					locations = handleDefinitionOfTag(locations, c)
+					locations = handleDefinitionOfTag(locations, thing)
 				}
 
 				if cursorOnAttributeName {
 					if tagUnderCursor.MatchesSelector(selector) {
-						locations = handleAttributeOfTag(locations, c, attributeName, selector)
+						locations = handleAttributeOfTag(locations, thing, attributeName, selector)
 					} else if selector == attributeName { // component with `selector: '[formControl]`
-						locations = handleDefinitionOfTag(locations, c)
+						locations = handleDefinitionOfTag(locations, thing)
 					}
 				}
 			}

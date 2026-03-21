@@ -77,70 +77,14 @@ func getAttrCompletions(state *parser.State, file *parser.File, class *parser.Cl
 		return items
 	}
 
-	components := class.Snapshot().Angular.Component.GetAvailableComponents(state)
-	for _, c := range components {
-		if !c.HasComponent() {
-			continue
+	things := class.Snapshot().Angular.Component.GetAvailableThings(state)
+	for _, thing := range things {
+		if thing.HasComponent() {
+			items = forComponentThing(thing, file, cursorOffset, &tagName, items)
 		}
 
-		matches := false
-		for _, s := range c.Snapshot().Angular.Component.Selectors {
-			if tagName.MatchesSelector(s) {
-				matches = true
-				break
-			}
-		}
-
-		if !matches {
-			continue
-		}
-
-		cursorPosition := utils.GetPositionForOffset(file.Snapshot().Content, cursorOffset)
-		cursorRange := utils.Range{Start: cursorPosition, End: cursorPosition}
-
-		build := func(definition parser.ClassedDefinition, openChar string, closeChar string, input bool, output bool) interfaces.CompletionItem {
-			item := interfaces.CompletionItem{}
-
-			name := openChar
-			if input {
-				name += definition.GetInputName()
-			}
-			if output {
-				name += definition.GetOutputName()
-			}
-			name += closeChar
-
-			insertText := name + "='$0'"
-			item.InsertText = &insertText
-			item.InsertTextFormat = &interfaces.InsertTextFormat.Snippet
-
-			// Can't use insertText because clients can do post-processing on the text, which can lead to tag((output)) losing some brackets
-			textEdit := interfaces.TextEdit{}
-			textEdit.Range = cursorRange
-			textEdit.NewText = name + "='$0'"
-			item.TextEdit = &textEdit
-
-			item.Kind = &interfaces.CompletionItemKind.Property
-			item.Label = name
-
-			documentation := interfaces.MarkupContent{Kind: interfaces.MarkupKind.PlainText, Value: definition.Name + ": " + definition.Type}
-			item.Documentation = &documentation
-
-			details := interfaces.CompletionItemLabelDetails{
-				Description: definition.Class.Snapshot().Name,
-			}
-
-			item.LabelDetails = &details
-
-			return item
-		}
-
-		for _, i := range c.GetInputs() {
-			items = append(items, build(i, "[", "]", true, false))
-		}
-
-		for _, i := range c.GetOutputs() {
-			items = append(items, build(i, "(", ")", false, true))
+		if thing.HasDirective() {
+			items = forDirectiveThing(thing, file, cursorOffset, &tagName, items)
 		}
 	}
 
@@ -197,13 +141,20 @@ func getTagCompletions(state *parser.State, class *parser.Class) []interfaces.Co
 		return items
 	}
 
-	components := class.Snapshot().Angular.Component.GetAvailableComponents(state)
-	for _, c := range components {
+	things := class.Snapshot().Angular.Component.GetAvailableThings(state)
+	for _, thing := range things {
 		details := interfaces.CompletionItemLabelDetails{
-			Description: c.Snapshot().Name,
+			Description: thing.Snapshot().Name,
 		}
 
-		selectors := c.Snapshot().Angular.Component.Selectors
+		selectors := []string{}
+		if thing.HasComponent() {
+			selectors = append(selectors, thing.Snapshot().Angular.Component.Selectors...)
+		}
+
+		if thing.HasDirective() {
+			selectors = append(selectors, thing.Snapshot().Angular.Directive.Selectors...)
+		}
 
 		item := interfaces.CompletionItem{
 			LabelDetails:     &details,
@@ -211,7 +162,7 @@ func getTagCompletions(state *parser.State, class *parser.Class) []interfaces.Co
 			InsertTextFormat: &interfaces.InsertTextFormat.Snippet,
 		}
 
-		documentation := c.GetDocumentation(false)
+		documentation := thing.GetDocumentation(false)
 		item.Documentation = &interfaces.MarkupContent{Kind: interfaces.MarkupKind.Markdown, Value: documentation}
 
 		for _, selector := range selectors {
@@ -223,6 +174,110 @@ func getTagCompletions(state *parser.State, class *parser.Class) []interfaces.Co
 
 			items = append(items, i)
 		}
+	}
+
+	return items
+}
+
+func build(definition parser.ClassedDefinition, cursorRange utils.Range, openChar string, closeChar string, input bool, output bool) interfaces.CompletionItem {
+	item := interfaces.CompletionItem{}
+
+	name := openChar
+	if input {
+		name += definition.GetInputName()
+	}
+	if output {
+		name += definition.GetOutputName()
+	}
+	name += closeChar
+
+	insertText := name + "='$0'"
+	item.InsertText = &insertText
+	item.InsertTextFormat = &interfaces.InsertTextFormat.Snippet
+
+	// Can't use insertText because clients can do post-processing on the text, which can lead to tag((output)) losing some brackets
+	textEdit := interfaces.TextEdit{}
+	textEdit.Range = cursorRange
+	textEdit.NewText = name + "='$0'"
+	item.TextEdit = &textEdit
+
+	item.Kind = &interfaces.CompletionItemKind.Property
+	item.Label = name
+
+	documentation := interfaces.MarkupContent{Kind: interfaces.MarkupKind.PlainText, Value: definition.Name + ": " + definition.Type}
+	item.Documentation = &documentation
+
+	details := interfaces.CompletionItemLabelDetails{
+		Description: definition.Class.Snapshot().Name,
+	}
+
+	item.LabelDetails = &details
+
+	return item
+}
+
+func forComponentThing(thing *parser.Class, file *parser.File, cursorOffset uint32, tagName *ast.Tag, items []interfaces.CompletionItem) []interfaces.CompletionItem {
+	matches := false
+	for _, s := range thing.Snapshot().Angular.Component.Selectors {
+		if tagName.MatchesSelector(s) {
+			matches = true
+			break
+		}
+	}
+
+	if !matches {
+		return items
+	}
+
+	cursorPosition := utils.GetPositionForOffset(file.Snapshot().Content, cursorOffset)
+	cursorRange := utils.Range{Start: cursorPosition, End: cursorPosition}
+
+	for _, i := range thing.GetInputs() {
+		items = append(items, build(i, cursorRange, "[", "]", true, false))
+	}
+
+	for _, i := range thing.GetOutputs() {
+		items = append(items, build(i, cursorRange, "(", ")", false, true))
+	}
+
+	return items
+}
+
+func forDirectiveThing(thing *parser.Class, file *parser.File, cursorOffset uint32, tagName *ast.Tag, items []interfaces.CompletionItem) []interfaces.CompletionItem {
+	cursorPosition := utils.GetPositionForOffset(file.Snapshot().Content, cursorOffset)
+	cursorRange := utils.Range{Start: cursorPosition, End: cursorPosition}
+
+	for _, selector := range thing.Snapshot().Angular.Directive.Selectors {
+		valid, _, attr := ast.ExtractTagNameAndAttrFromSelector(selector)
+		if !valid || attr == "" {
+			continue
+		}
+
+		item := interfaces.CompletionItem{}
+
+		insertText := selector + "='$0'"
+		item.InsertText = &insertText
+		item.InsertTextFormat = &interfaces.InsertTextFormat.Snippet
+
+		// Can't use insertText because clients can do post-processing on the text, which can lead to tag((output)) losing some brackets
+		textEdit := interfaces.TextEdit{}
+		textEdit.Range = cursorRange
+		textEdit.NewText = selector + "='$0'"
+		item.TextEdit = &textEdit
+
+		item.Kind = &interfaces.CompletionItemKind.Property
+		item.Label = selector
+
+		documentation := interfaces.MarkupContent{Kind: interfaces.MarkupKind.Markdown, Value: thing.GetDocumentation(true)}
+		item.Documentation = &documentation
+
+		details := interfaces.CompletionItemLabelDetails{
+			Description: thing.Snapshot().Name,
+		}
+
+		item.LabelDetails = &details
+
+		items = append(items, item)
 	}
 
 	return items

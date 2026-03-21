@@ -533,6 +533,10 @@ func (c *Class) HasComponent() bool {
 	return c.HasAngular() && c.Snapshot().Angular.Component != nil
 }
 
+func (c *Class) HasDirective() bool {
+	return c.HasAngular() && c.Snapshot().Angular.Directive != nil
+}
+
 func (c *Class) HasDefinition(name string) bool {
 	for _, d := range c.Snapshot().Definitions {
 		if d.Name == name {

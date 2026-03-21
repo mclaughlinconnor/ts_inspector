@@ -31,6 +31,10 @@ func ExtractComponentData(class *Class, node *sitter.Node, content []byte) {
 			class.EnsureAngular()
 			class.Snapshot().Angular.EnsureComponent()
 			walkComponentDecoratorParams(class, node, content)
+		case "Directive":
+			class.EnsureAngular()
+			class.Snapshot().Angular.EnsureDirective()
+			walkDirectiveDecoratorParams(class, node, content)
 		case "NgModule":
 			class.EnsureAngular()
 			class.Snapshot().Angular.EnsureModule()
@@ -99,9 +103,20 @@ func handleComponentKv(class *Class, vNode *sitter.Node, content []byte, keyName
 	case "providers":
 		handleProvidersComponentKv(class, vNode, content)
 	case "selector":
-		handleSelectorKv(class, vNode, content)
+		handleSelectorComponentKv(class, vNode, content)
 	case "templateUrl":
 		handleTemplateUrlKv(class, vNode, content)
+	}
+}
+
+func handleDirectiveKv(class *Class, vNode *sitter.Node, content []byte, keyName string) {
+	switch kn := keyName; kn {
+	case "imports":
+		handleImportsDirectiveKv(class, vNode)
+	case "providers":
+		handleProvidersDirectiveKv(class, vNode, content)
+	case "selector":
+		handleSelectorDirectiveKv(class, vNode, content)
 	}
 }
 
@@ -139,6 +154,13 @@ func handleImportsComponentKv(class *Class, vNode *sitter.Node) {
 	})
 }
 
+func handleImportsDirectiveKv(class *Class, vNode *sitter.Node) {
+	file := class.Snapshot().File
+	class.Update(func(data *classState) {
+		data.Angular.Directive.Imports = NodeToValue(file, vNode)
+	})
+}
+
 func handleImportsModuleKv(class *Class, vNode *sitter.Node) {
 	file := class.Snapshot().File
 	class.Update(func(data *classState) {
@@ -169,6 +191,29 @@ func handleProvidersComponentKv(class *Class, vNode *sitter.Node, content []byte
 	})
 }
 
+func handleProvidersDirectiveKv(class *Class, vNode *sitter.Node, content []byte) {
+	if vNode.Type() != "array" {
+		return
+	}
+
+	providers := make([]*Provider, 0)
+
+	for i := range vNode.NamedChildCount() {
+		provider := vNode.NamedChild(int(i))
+
+		p := extractProvider(provider, content)
+		if p == nil {
+			continue
+		}
+
+		providers = append(providers, p)
+	}
+
+	class.Update(func(data *classState) {
+		data.Angular.Directive.Providers = providers
+	})
+}
+
 func handleProvidersModuleKv(class *Class, vNode *sitter.Node, content []byte) {
 	if vNode.Type() != "array" {
 		return
@@ -186,7 +231,7 @@ func handleProvidersModuleKv(class *Class, vNode *sitter.Node, content []byte) {
 	})
 }
 
-func handleSelectorKv(class *Class, vNode *sitter.Node, content []byte) {
+func handleSelectorComponentKv(class *Class, vNode *sitter.Node, content []byte) {
 	if vNode.Type() != "string" {
 		return
 	}
@@ -211,6 +256,34 @@ func handleSelectorKv(class *Class, vNode *sitter.Node, content []byte) {
 		}
 
 		data.Angular.Component.SelectorNode = fragNode
+	})
+}
+
+func handleSelectorDirectiveKv(class *Class, vNode *sitter.Node, content []byte) {
+	if vNode.Type() != "string" {
+		return
+	}
+
+	if vNode.NamedChildCount() != 1 {
+		return
+	}
+
+	fragNode := vNode.NamedChild(0)
+	if fragNode.Type() != "string_fragment" {
+		return
+	}
+
+	class.Update(func(data *classState) {
+		selectors := fragNode.Content(content)
+
+		split := strings.SplitSeq(selectors, ",")
+		for s := range split {
+			trimmed := strings.TrimSpace(s)
+
+			data.Angular.Directive.Selectors = append(data.Angular.Directive.Selectors, trimmed)
+		}
+
+		data.Angular.Directive.SelectorNode = fragNode
 	})
 }
 
@@ -265,6 +338,29 @@ func walkComponentDecoratorParams(class *Class, node *sitter.Node, content []byt
 		}
 
 		handleComponentKv(class, valueNode, content, keyName)
+
+		return nil
+	}
+
+	walk.WalkTypeScript(node, nil, funcMap)
+}
+
+func walkDirectiveDecoratorParams(class *Class, node *sitter.Node, content []byte) {
+	funcMap := walk.NewVisitorFuncsMap[any]()
+
+	funcMap["pair"] = func(node *sitter.Node, _ any, indexInParent int, funcMap walk.VisitorFuncMap[any]) any {
+		keyNode := node.ChildByFieldName("key")
+		if keyNode == nil {
+			return nil
+		}
+
+		keyName := keyNode.Content(content)
+		valueNode := node.ChildByFieldName("value")
+		if valueNode == nil {
+			return nil
+		}
+
+		handleDirectiveKv(class, valueNode, content, keyName)
 
 		return nil
 	}

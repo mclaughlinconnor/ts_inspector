@@ -36,20 +36,28 @@ func HandleHover(writer io.Writer, logger *log.Logger, state *parser.State, requ
 			continue
 		}
 
-		components := c.Snapshot().Angular.Component.GetAvailableComponents(state)
-		for _, c := range components {
+		things := c.Snapshot().Angular.Component.GetAvailableThings(state)
+		for _, thing := range things {
 
-			selectors := c.Snapshot().Angular.Component.Selectors
+			selectors := []string{}
+			if thing.HasComponent() {
+				selectors = append(selectors, thing.Snapshot().Angular.Component.Selectors...)
+			}
+
+			if thing.HasDirective() {
+				selectors = append(selectors, thing.Snapshot().Angular.Directive.Selectors...)
+			}
+
 			for _, selector := range selectors {
 				if cursorOnTagName && selector == tagName {
-					sb = handleTagHover(sb, c)
+					sb = handleTagHover(sb, thing)
 				}
 
 				if cursorOnAttributeName {
 					if tagUnderCursor.MatchesSelector(selector) {
-						sb = handleAttributeHover(sb, c, attributeName, selector)
+						sb = handleAttributeHover(sb, thing, attributeName, selector)
 					} else if selector == attributeName { // component with `selector: '[formControl]`
-						sb = handleTagHover(sb, c)
+						sb = handleTagHover(sb, thing)
 					}
 				}
 			}

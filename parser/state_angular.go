@@ -9,6 +9,7 @@ import (
 
 type Angular struct {
 	Component *Component
+	Directive *Directive
 	Module    *Module
 }
 
@@ -21,6 +22,14 @@ type Component struct {
 	Template        *Template
 	TemplateUrl     string
 	TemplateUrlFile *File
+}
+
+type Directive struct {
+	DeclaredIn   []*Class
+	Imports      *Value
+	Providers    []*Provider
+	Selectors    []string
+	SelectorNode *sitter.Node
 }
 
 type Module struct {
@@ -73,6 +82,12 @@ func (a *Angular) EnsureComponent() {
 	}
 }
 
+func (a *Angular) EnsureDirective() {
+	if a.Directive == nil {
+		a.Directive = &Directive{}
+	}
+}
+
 func (a *Angular) EnsureModule() {
 	if a.Module == nil {
 		a.Module = &Module{}
@@ -107,35 +122,34 @@ func (c *Component) EnsureTemplate() {
 	}
 }
 
-func (c *Component) GetAvailableComponents(state *State) []*Class {
-	selectors := make(Classes, 0)
+func (c *Component) GetAvailableThings(state *State) []*Class {
+	things := make(Classes, 0)
 
 	for _, declaringClass := range c.DeclaredIn {
 		if declaringClass.Snapshot().Angular == nil || declaringClass.Snapshot().Angular.Module == nil {
 			continue
 		}
 
-		selectors = append(selectors, declaringClass.Snapshot().Angular.Module.GetComponentsFromInside(state)...)
+		things = append(things, declaringClass.Snapshot().Angular.Module.GetThingsFromInside(state)...)
 	}
 
 	for imp := range c.Imports.FlattenReferenceArraysToReferences(state) {
-		imp.Resolve(state)
 		if imp == nil || imp.Class == nil {
 			continue
 		}
 
-		if imp.Class.HasComponent() {
-			selectors = append(selectors, imp.Class)
+		if imp.Class.HasComponent() || imp.Class.HasDirective() {
+			things = append(things, imp.Class)
 		}
 
 		if imp.Class.HasModule() {
-			selectors = append(selectors, imp.Class.Snapshot().Angular.Module.GetComponentsFromOutside(state)...)
+			things = append(things, imp.Class.Snapshot().Angular.Module.GetThingsFromOutside(state)...)
 		}
 	}
 
-	sort.Sort(selectors)
+	sort.Sort(things)
 
-	return slices.Compact(selectors)
+	return slices.Compact(things)
 }
 
 func (m *Module) DoesDeclare(class *Class) bool {
@@ -157,8 +171,8 @@ func (m *Module) DoesExport(state *State, class *Class) bool {
 	return false
 }
 
-func (m *Module) GetDeclaredComponents(state *State) []*Class {
-	selectors := make([]*Class, 0)
+func (m *Module) GetDeclaredThings(state *State) []*Class {
+	things := make([]*Class, 0)
 	declarations := m.Declarations
 
 	classes := []*Class{}
@@ -194,20 +208,20 @@ func (m *Module) GetDeclaredComponents(state *State) []*Class {
 			continue
 		}
 
-		if angular.Component != nil {
-			selectors = append(selectors, declaration)
+		if angular.Component != nil || angular.Directive != nil {
+			things = append(things, declaration)
 		}
 
 		// Illegal
 		if angular.Module != nil {
-			selectors = append(selectors, angular.Module.GetExportedComponents(state)...)
+			things = append(things, angular.Module.GetExportedThings(state)...)
 		}
 	}
 
-	return selectors
+	return things
 }
 
-func (m *Module) GetExportedComponents(state *State) []*Class {
+func (m *Module) GetExportedThings(state *State) []*Class {
 	selectors := make([]*Class, 0)
 
 	for exp := range m.Exports.FlattenReferenceArraysToReferences(state) {
@@ -221,19 +235,19 @@ func (m *Module) GetExportedComponents(state *State) []*Class {
 			continue
 		}
 
-		if angular.Component != nil {
+		if angular.Component != nil || angular.Directive != nil {
 			selectors = append(selectors, exp.Class)
 		}
 
 		if angular.Module != nil {
-			selectors = append(selectors, angular.Module.GetImportedComponents(state)...)
+			selectors = append(selectors, angular.Module.GetImportedThings(state)...)
 		}
 	}
 
 	return selectors
 }
 
-func (m *Module) GetImportedComponents(state *State) []*Class {
+func (m *Module) GetImportedThings(state *State) []*Class {
 	selectors := make([]*Class, 0)
 
 	for imp := range m.Imports.FlattenReferenceArraysToReferences(state) {
@@ -247,37 +261,32 @@ func (m *Module) GetImportedComponents(state *State) []*Class {
 			continue
 		}
 
-		if angular.Component != nil {
+		if angular.Component != nil || angular.Directive != nil {
 			selectors = append(selectors, imp.Class)
 		}
 
 		if angular.Module != nil {
-			selectors = append(selectors, angular.Module.GetExportedComponents(state)...)
+			selectors = append(selectors, angular.Module.GetExportedThings(state)...)
 		}
 	}
 
 	return selectors
 }
 
-func (m *Module) GetComponentsFromInside(state *State) []*Class {
-	selectors := m.GetDeclaredComponents(state)
-	selectors = append(selectors, m.GetImportedComponents(state)...)
+func (m *Module) GetThingsFromInside(state *State) []*Class {
+	selectors := m.GetDeclaredThings(state)
+	selectors = append(selectors, m.GetImportedThings(state)...)
 
 	return selectors
 }
 
-func (m *Module) GetComponentsFromOutside(state *State) []*Class {
-	return m.GetExportedComponents(state)
+func (m *Module) GetThingsFromOutside(state *State) []*Class {
+	return m.GetExportedThings(state)
 }
 
 func (m *Module) Postprocess(state *State, class *Class) {
 	for declaration := range m.Declarations.FlattenReferenceArraysToReferences(state) {
-		if declaration == nil {
-			continue
-		}
-
-		declaration.Resolve(state)
-		if declaration.Class == nil || !declaration.Class.HasComponent() {
+		if declaration.Class == nil {
 			continue
 		}
 
@@ -285,9 +294,16 @@ func (m *Module) Postprocess(state *State, class *Class) {
 		 * Editing pug files can trigger a re-postprocess, which will add the same
 		 * class without walk_typescript being able to call class.Reset()
 		 */
-		if !slices.Contains(declaration.Class.Snapshot().Angular.Component.DeclaredIn, class) {
+
+		if declaration.Class.HasComponent() && !slices.Contains(declaration.Class.Snapshot().Angular.Component.DeclaredIn, class) {
 			declaration.Class.Update(func(data *classState) {
 				data.Angular.Component.DeclaredIn = append(data.Angular.Component.DeclaredIn, class)
+			})
+		}
+
+		if declaration.Class.HasDirective() && !slices.Contains(declaration.Class.Snapshot().Angular.Directive.DeclaredIn, class) {
+			declaration.Class.Update(func(data *classState) {
+				data.Angular.Directive.DeclaredIn = append(data.Angular.Directive.DeclaredIn, class)
 			})
 		}
 	}
