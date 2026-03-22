@@ -5,8 +5,8 @@ type TcbTemplateContextOp struct {
 	scope *Scope
 }
 
-func (o *TcbTemplateContextOp) Optional() bool { return true }
-func (o *TcbTemplateContextOp) Execute() Identifier {
+func (o TcbTemplateContextOp) Optional() bool { return true }
+func (o TcbTemplateContextOp) Execute() Identifier {
 	id := o.tcb.allocateId(nil, nil)
 
 	statement := Statement{}
@@ -18,7 +18,7 @@ func (o *TcbTemplateContextOp) Execute() Identifier {
 
 	return id
 }
-func (o *TcbTemplateContextOp) CircularFallback() TcbExpr { return TcbExpr{Source: "null!"} }
+func (o TcbTemplateContextOp) CircularFallback() TcbExpr { return TcbExpr{Source: "null!"} }
 
 /**
  * A `TcbOp` which generates a variable for a `TmplAstTemplate`'s context.

@@ -2,8 +2,12 @@ package tcb
 
 import (
 	"strings"
-	"ts_inspector/parser/ast"
 )
+
+type LetDeclOpMapRecord struct {
+	opIndex int
+	node    *TmplAstNode
+}
 
 /**
  * Local scope within the type check block for a particular template.
@@ -36,43 +40,43 @@ type Scope struct {
 	* that fits instead. This has the same semantics as TypeScript itself when types are referenced
 	* circularly.
 	 */
-	opQueue []*ast.Node
+	opQueue []*TcbOp
 
 	/**
 	* A map of `TmplAstElement`s to the index of their `TcbElementOp` in the `opQueue`
 	 */
-	elementOpMap map[*ast.Node]int
+	elementOpMap map[*TmplAstNode]int
 
 	/**
 	* A map of maps which tracks the index of `TcbDirectiveCtorOp`s in the `opQueue` for each
 	* directive on a `TmplAstElement` or `TmplAstTemplate` node.
 	 */
-	directiveOpMap map[*ast.Node]map[*ast.Node]int
+	directiveOpMap map[*TmplAstNode]map[*TmplAstNode]int
 
 	/**
 	* A map of `TmplAstReference`s to the index of their `TcbReferenceOp` in the `opQueue`
 	 */
-	referenceOpMap map[*ast.Node]int
+	referenceOpMap map[*TmplAstReference]int
 
 	/**
 	* Map of immediately nested <ng-template>s (within this `Scope`) represented by `TmplAstTemplate`
 	* nodes to the index of their `TcbTemplateContextOp`s in the `opQueue`.
 	 */
-	templateCtxOpMap map[*ast.Node]int
+	templateCtxOpMap map[*TmplAstNode]int
 
 	/**
 	* Map of variables declared on the template that created this `Scope` (represented by
 	* `TmplAstVariable` nodes) to the index of their `TcbVariableOp`s in the `opQueue`, or to
 	* pre-resolved variable identifiers.
 	 */
-	varMap map[*ast.Node]Identifier
+	varMap map[*TmplAstVariable]int
 
 	/**
 	* A map of the names of `TmplAstLetDeclaration`s to the index of their op in the `opQueue`.
 	*
 	* Assumes that there won't be duplicated `@let` declarations within the same scope.
 	 */
-	letDeclOpMap map[*ast.Node]LetDeclOpMapRecord
+	letDeclOpMap map[string]LetDeclOpMapRecord
 
 	/**
 	* Statements for this template.
@@ -105,91 +109,97 @@ var forLoopContextVariableTypes = map[string]string{
 * @param children Child nodes that should be appended to the TCB.
 * @param guard an expression that is applied to this scope for type narrowing purposes.
  */
-func scopeForNodes(tcb *Context, parentScope *Scope, scopedNode *ast.Node, children []*ast.Node, guard *Expression) Scope {
+func scopeForNodes(tcb *Context, parentScope *Scope, scopedNode *TmplAstNode, children []*TmplAstNode, guard *Expression) Scope {
 	var guardExpr *Expression = nil
 
 	if guard != nil {
 		guardExpr := Expression{}
 		guardExpr = append(guardExpr, "(")
-		guardExpr = append(guardExpr, strings.Join(guard, ""))
+		guardExpr = append(guardExpr, strings.Join(*guard, ""))
 		guardExpr = append(guardExpr, ")")
 	}
 
-	scope := Scope{tcb: tcb, parent: parentScope, guard: guardExpr}
+	scope := Scope{
+		tcb:              tcb,
+		parent:           parentScope,
+		guard:            guardExpr,
+		elementOpMap:     make(map[*TmplAstNode]int),
+		directiveOpMap:   make(map[*TmplAstNode]map[*TmplAstNode]int),
+		referenceOpMap:   make(map[*TmplAstReference]int),
+		templateCtxOpMap: make(map[*TmplAstNode]int),
+		varMap:           make(map[*TmplAstVariable]int),
+		letDeclOpMap:     make(map[string]LetDeclOpMapRecord),
+	}
 
 	// If given an actual `TmplAstTemplate` instance, then process any additional information it has.
-	if scopedNode.Kind == ast.KindTmplAstTemplate {
+	if scopedNode.Kind == KindTmplAstTemplate {
 		// The template"s variable declarations need to be added as `TcbVariableOp`s.
-		varMap := map[string]*ast.TmplAstVariable{}
+		varMap := map[string]*TmplAstVariable{}
 
-		for v := range scopedNode.variables.values {
+		for _, v := range scopedNode.Variables {
 			// Validate that variables on the `TmplAstTemplate` are only declared once.
-			if !slices.Contains(varMap, v.name) {
-				varMap[v.name] = v
+			variable, found := varMap[v.Name]
+			if !found {
+				varMap[v.Name] = v
 			} else {
-				firstDecl := varMap[v.name]
+				firstDecl := variable
 				tcb.oobRecorder.duplicateTemplateVar(tcb.id, v, firstDecl)
 			}
 
-			scope.registerVariable(v, TcbTemplateVariableOp(tcb, scope, scopedNode, v))
+			scope.registerVariable(v, TcbTemplateVariableOp{tcb: tcb, scope: &scope, template: scopedNode, variable: v})
+		}
+	} else if scopedNode.Kind == KindTmplAstIfBlockBranch {
+		expression := scopedNode.Expression
+		expressionAlias := scopedNode.ExpressionAlias
+		if expression != nil && expressionAlias != nil {
+			scope.registerVariable(
+				expressionAlias,
+				TcbBlockVariableOp{
+					tcb:         tcb,
+					scope:       &scope,
+					initializer: Expression{AstToTypescript(expression)},
+					variable:    *expressionAlias,
+				},
+			)
+		}
+	} else if scopedNode.Kind == KindTmplAstForLoopBlock {
+		// Register the variable for the loop so it can be resolved by
+		// children. It'll be declared once the loop is created.
+		variable := scopedNode.Variable
+		if variable != nil {
+			loopInitializer := tcb.allocateId(variable, nil)
+			scope.varMap[variable] = loopInitializer
 		}
 
+		for _, v := range scopedNode.ContextVariables {
+			typeName, found := forLoopContextVariableTypes[v.Name]
+			if !found {
+				typeName = "any"
+			}
+
+			ttype := Expression{typeName}
+			scope.registerVariable(
+				variable,
+				TcbBlockImplicitVariableOp{tcb: tcb, scope: &scope, ttype: ttype, variable: variable, initializer: nil},
+			)
+		}
 	}
 
-	//
-	//     if (scopedNode is TmplAstTemplate) {
-	//       // The template"s variable declarations need to be added as `TcbVariableOp`s.
-	//       val varMap = mutableMapOf<String, TmplAstVariable>()
-	//
-	//       for (v in scopedNode.variables.values) {
-	//         // Validate that variables on the `TmplAstTemplate` are only declared once.
-	//         if (!varMap.contains(v.name)) {
-	//           varMap[v.name] = v
-	//         }
-	//         else {
-	//           val firstDecl = varMap[v.name]!!
-	//           tcb.oobRecorder.duplicateTemplateVar(tcb.id, v, firstDecl)
-	//         }
-	//         scope.registerVariable(v, TcbTemplateVariableOp(tcb, scope, scopedNode, v))
-	//       }
-	//     }
-	//     else if (scopedNode is TmplAstIfBlockBranch) {
-	//       val expression = scopedNode.expression
-	//       val expressionAlias = scopedNode.expressionAlias
-	//       if (expression != null && expressionAlias != null) {
-	//         scope.registerVariable(expressionAlias,
-	//                                TcbBlockVariableOp(
-	//                                  tcb, scope, tcbExpression(expression, tcb, scope), expressionAlias))
-	//       }
-	//     }
-	//     else if (scopedNode is TmplAstForLoopBlock) {
-	//       // Register the variable for the loop so it can be resolved by
-	//       // children. It'll be declared once the loop is created.
-	//       scopedNode.item?.let {
-	//         val loopInitializer = tcb.allocateId(it)
-	//         scope.varMap[it] = loopInitializer
-	//       }
-	//
-	//       for ((name, variables) in scopedNode.contextVariables.entrySet()) {
-	//         val typeName = forLoopContextVariableTypes[name] ?: "any"
-	//         for ((variable, initializer) in variables) {
-	//           scope.registerVariable(variable, TcbBlockImplicitVariableOp(tcb, scope, Expression(typeName),
-	//                                                                       variable, initializer?.let { tcbExpression(it, tcb, scope) }))
-	//         }
-	//       }
-	//     }
-	//     for (node in children) {
-	//       scope.appendNode(node)
-	//     }
-	//     // Once everything is registered, we need to check if there are `@let`
-	//     // declarations that conflict with other local symbols defined after them.
-	//     for (variable in scope.varMap.keys) {
-	//       scope.checkConflictingLet(variable)
-	//     }
-	//     for (ref in scope.referenceOpMap.keys) {
-	//       scope.checkConflictingLet(ref)
-	//     }
-	//     return scope
+	for node := range children {
+		scope.appendNode(node)
+	}
+
+	// Once everything is registered, we need to check if there are `@let`
+	// declarations that conflict with other local symbols defined after them.
+	for variable := range scope.varMap {
+		scope.checkConflictingLet(variable.TmplAstExpressionSymbol)
+	}
+
+	for ref := range scope.referenceOpMap {
+		scope.checkConflictingLet(ref.TmplAstExpressionSymbol)
+	}
+
+	return scope
 }
 
 //     val scope = Scope(tcb, parentScope, guard?.let { Expression { append("(").append(guard).append(")") } })
@@ -319,12 +329,13 @@ func scopeForNodes(tcb *Context, parentScope *Scope, scopedNode *ast.Node, child
 //   }
 //
 //
-// /** Registers a local variable with a scope. */
-// private fun registerVariable(variable: TmplAstVariable, op: TcbOp) {
-//   this.opQueue.add(op)
-//   val opIndex = this.opQueue.size - 1
-//   this.varMap[variable] = opIndex
-// }
+/** Registers a local variable with a scope. */
+func (s *Scope) registerVariable(variable *TmplAstVariable, op TcbOp) {
+	s.opQueue = append(s.opQueue, &op)
+	opIndex := len(s.opQueue) - 1
+	s.varMap[variable] = opIndex
+}
+
 //
 // /**
 //  * Look up a `Expression` representing the value of some operation in the current `Scope`,
@@ -362,17 +373,21 @@ func scopeForNodes(tcb *Context, parentScope *Scope, scopedNode *ast.Node, child
 //   }
 // }
 //
-// /**
-//  * Add a statement to this scope.
-//  */
-// fun addStatement(stmt: Statement) {
-//   this.statements.add(stmt)
-// }
-//
-// fun addStatement(expr: Expression) {
-//   this.statements.add(Statement { append(expr).append(";") })
-// }
-//
+
+/**
+ * Add a statement to this scope.
+ */
+func (s *Scope) addStatementStatement(stmt Statement) {
+	s.statements = append(s.statements, stmt)
+}
+
+/**
+ * Add a statement to this scope.
+ */
+func (s *Scope) addStatementExpression(expr Expression) {
+	s.statements = append(s.statements, Statement{append(expr, ";")})
+}
+
 // fun addStatement(builder: Expression.ExpressionBuilder.() -> Unit) {
 //   addStatement(Statement(builder))
 // }
@@ -515,70 +530,67 @@ func scopeForNodes(tcb *Context, parentScope *Scope, scopedNode *ast.Node, child
 //   return res
 // }
 //
-// private fun appendNode(node: TmplAstNode) {
-//   if (node is TmplAstElement) {
-//     this.opQueue.add(TcbElementOp(this.tcb, this, node))
-//     this.elementOpMap[node] = this.opQueue.lastIndex
-//     if (this.tcb.env.config.controlFlowPreventingContentProjection != ControlFlowPreventingContentProjectionKind.Suppress) {
-//       this.appendContentProjectionCheckOp(node)
-//     }
-//     this.appendDirectivesAndInputsOfNode(node)
-//     this.appendOutputsOfNode(node)
-//     this.appendChildren(node)
-//     this.checkAndAppendReferencesOfNode(node)
-//   }
-//   else if (node is TmplAstTemplate) {
-//     // Template children are rendered in a child scope.
-//     this.appendDirectivesAndInputsOfNode(node)
-//     this.appendOutputsOfNode(node)
-//     this.opQueue.add(TcbTemplateContextOp(this.tcb, this))
-//     this.templateCtxOpMap[node] = this.opQueue.lastIndex
-//     if (this.tcb.env.config.checkTemplateBodies) {
-//       this.opQueue.add(TcbTemplateBodyOp(this.tcb, this, node))
-//     }
-//     // WebStorm - this is done through HTML validator
-//     //else if (this.tcb.env.config.alwaysCheckSchemaInTemplateBodies) {
-//     //this.appendDeepSchemaChecks(node.children)
-//     //}
-//     this.checkAndAppendReferencesOfNode(node)
-//   }
-//   else if (node is TmplAstDeferredBlock) {
-//     this.appendDeferredBlock(node)
-//   }
-//   else if (node is TmplAstIfBlock) {
-//     this.opQueue.add(TcbIfOp(this.tcb, this, node))
-//   }
-//   else if (node is TmplAstSwitchBlock) {
-//     this.opQueue.add(TcbSwitchOp(this.tcb, this, node))
-//   }
-//   else if (node is TmplAstForLoopBlock) {
-//     this.opQueue.add(TcbForOfOp(this.tcb, this, node))
-//     if (this.tcb.env.config.checkControlFlowBodies) {
-//       this.appendChildren(node.empty)
-//     }
-//   }
-//   else if (node is TmplAstBoundText) {
-//     this.opQueue.add(TcbExpressionOp(this.tcb, this, node.value, true))
-//   }
-//   else if (node is TmplAstContent) {
-//     this.appendChildren(node)
-//   }
-//   else if (node is TmplAstLetBlock) {
-//     val declaration = node.declaration
-//     if (declaration != null) {
-//       this.opQueue.add(TcbLetDeclarationOp(this.tcb, this, declaration))
-//       if (this.isLocal(declaration)) {
-//         this.tcb.oobRecorder.conflictingDeclaration(this.tcb.id, declaration)
-//       }
-//       else {
-//         this.letDeclOpMap[declaration.name] = LetDeclOpMapRecord(opQueue.lastIndex, declaration)
-//       }
-//     }
-//   }
-//   else {
-//     throw IllegalStateException("Unsupported node: $node")
-//   }
-// }
+
+func (s *Scope) appendNode(node *TmplAstNode) {
+	if node.Kind == KindTmplAstElement {
+		var op TcbOp = TcbElementOp{tcb: s.tcb, scope: s, element: node}
+		s.opQueue = append(s.opQueue, &op)
+		s.elementOpMap[node] = len(s.opQueue) - 1
+		// if s.tcb.env.config.controlFlowPreventingContentProjection != ControlFlowPreventingContentProjectionKind.Suppress {
+		s.appendContentProjectionCheckOp(node)
+		// }
+		s.appendDirectivesAndInputsOfNode(node)
+		s.appendOutputsOfNode(node)
+		s.appendChildren(node)
+		s.checkAndAppendReferencesOfNode(node)
+	} else if node.Kind == KindTmplAstTemplate {
+		// Template children are rendered in a child scope.
+		s.appendDirectivesAndInputsOfNode(node)
+		s.appendOutputsOfNode(node)
+		contextOp := TcbOp(TcbTemplateContextOp{tcb: s.tcb, scope: s})
+		s.opQueue = append(s.opQueue, &contextOp)
+		s.templateCtxOpMap[node] = len(s.opQueue) - 1
+		// if s.tcb.env.config.checkTemplateBodies {
+		bodyOp := TcbOp(TcbTemplateBodyOp{tcb: *s.tcb, scope: *s, template: *node})
+		s.opQueue = append(s.opQueue, &bodyOp)
+		// }
+
+		// WebStorm - this is done through HTML validator. CM - checkTemplateBodies does it anyway
+		//else if (this.tcb.env.config.alwaysCheckSchemaInTemplateBodies) {
+		//this.appendDeepSchemaChecks(node.children)
+		//}
+
+		s.checkAndAppendReferencesOfNode(node)
+	} else if (node.Kind == KindTmplAstDeferredBlock) {
+	  s.appendDeferredBlock(node)
+	} else if (node.Kind == KindTmplAstIfBlock) {
+	  s.opQueue = append(s.opQueue, TcbIfOp{s.tcb, s, node})
+	} else if (node.Kind == KindTmplAstSwitchBlock) {
+	  s.opQueue = append(s.opQueue, TcbSwitchOp{s.tcb, s, node})
+	} else if (node.Kind == KindTmplAstForLoopBlock) {
+	  s.opQueue = append(s.opQueue, TcbForOfOp{s.tcb, s, node})
+	  // if (s.tcb.env.config.checkControlFlowBodies) {
+		s.appendChildren(node.empty)
+	  // }
+	} else if (node.Kind == KindTmplAstBoundText) {
+	  s.opQueue = append(s.opQueue, TcbExpressionOp{s.tcb, s, node.value, true})
+	} else if (node.Kind == KindTmplAstContent) {
+	  s.appendChildren(node)
+	} else if (node.Kind == KindTmplAstLetBlock) {
+		declaration := node.Declaration
+	  if (declaration != nil) {
+	    s.opQueue.add(TcbLetDeclarationOp{s.tcb, s, declaration})
+	    if (s.isLocal(declaration)) {
+	      s.tcb.oobRecorder.conflictingDeclaration(s.tcb.id, declaration)
+	    } else {
+	      s.letDeclOpMap[declaration.name] = LetDeclOpMapRecord(opQueue.lastIndex, declaration)
+	    }
+	  }
+	} else {
+	  // throw IllegalStateException("Unsupported node: $node")
+	}
+}
+
 //
 // private fun checkAndAppendReferencesOfNode(node: `TmplAstElement|TmplAstTemplate`) {
 //   for (ref in node.references.values) {
@@ -779,12 +791,14 @@ func scopeForNodes(tcb *Context, parentScope *Scope, scopedNode *ast.Node, child
 // //}
 //
 //
-// /** Reports a diagnostic if there are any `@let` declarations that conflict with a node. */
-// private fun checkConflictingLet(node: TmplAstExpressionSymbol) {
-//   if (letDeclOpMap.containsKey(node.name)) {
-//     tcb.oobRecorder.conflictingDeclaration(
-//       tcb.id,
-//       letDeclOpMap[node.name]!!.node,
-//     )
-//   }
-// }
+
+/** Reports a diagnostic if there are any `@let` declarations that conflict with a node. */
+func (s *Scope) checkConflictingLet(node TmplAstExpressionSymbol) {
+	op, found := s.letDeclOpMap[node.Name]
+	if found {
+		s.tcb.oobRecorder.conflictingDeclaration(
+			s.tcb.id,
+			op.node,
+		)
+	}
+}

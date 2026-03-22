@@ -40,7 +40,7 @@ func IdentifierName(id Identifier) string {
 }
 
 func (o *OobRecorder) duplicateTemplateVar(a any, b any, c any) {}
-func (o *OobRecorder) conflictingDeclaration(a any, b any) {}
+func (o *OobRecorder) conflictingDeclaration(a any, b any)      {}
 
 // TODO: check all usages for params
 func (t *Context) allocateId(a any, b any) Identifier {

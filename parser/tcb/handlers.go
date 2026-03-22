@@ -47,7 +47,7 @@ func handleChildNodes(node *sitter.Node, state *Ast, indexInParent int, internal
 }
 
 func handleTag(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) *Ast {
-	tag := Tag{Children: HelpfulArray[*Node]{}, Name: ""}
+	tag := Tag{Children: HelpfulArray[*TmplAstNode]{}, Name: ""}
 	tagNode := newTagNode(&tag)
 
 	(*state.Current.Peek()).Tag.Children.add(tagNode)
@@ -99,10 +99,10 @@ func handleTagName(node *sitter.Node, state *Ast, indexInParent int, internalFun
 	return state
 }
 
-func newAttributeNode(attribute *Attribute) *Node {
-	return &Node{Kind: KindTag, Attribute: attribute}
+func newAttributeNode(attribute *Attribute) *TmplAstNode {
+	return &TmplAstNode{Kind: KindTag, Attribute: attribute}
 }
 
-func newTagNode(tag *Tag) *Node {
-	return &Node{Kind: KindTag, Tag: tag}
+func newTagNode(tag *Tag) *TmplAstNode {
+	return &TmplAstNode{Kind: KindTag, Tag: tag}
 }

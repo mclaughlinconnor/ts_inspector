@@ -10,9 +10,9 @@ import (
 )
 
 type Ast struct {
-	Children HelpfulArray[*Node]
+	Children HelpfulArray[*TmplAstNode]
 	Content  []byte
-	Current  utils.Stack[*Node]
+	Current  utils.Stack[*TmplAstNode]
 }
 
 type Statement struct {
@@ -50,10 +50,12 @@ const (
 	KindTmplAstDeferredBlock
 	KindTmplAstBoundText
 	KindTmplAstLetBlock
+	KindTmplAstElement
+	KindTmplAstContent
 )
 
 // TmplAstNode
-type Node struct {
+type TmplAstNode struct {
 	Tag       *Tag
 	Attribute *Attribute
 	Kind      int
@@ -71,8 +73,8 @@ type Node struct {
 	ExpressionAlias *TmplAstVariable
 
 	// For blocks
-	Variable *TmplAstVariable
-	ContextVariables []*TmplAstVariable 
+	Variable         *TmplAstVariable
+	ContextVariables []*TmplAstVariable
 }
 
 type Attribute struct {
@@ -87,13 +89,13 @@ type HelpfulArray[T any] struct {
 }
 
 type Root struct {
-	Children HelpfulArray[*Node]
+	Children HelpfulArray[*TmplAstNode]
 }
 
 type Tag struct {
-	Attributes  HelpfulArray[*Node]
+	Attributes  HelpfulArray[*TmplAstNode]
 	Content     HelpfulArray[*TagContent]
-	Children    HelpfulArray[*Node]
+	Children    HelpfulArray[*TmplAstNode]
 	Name        string
 	SourceClass *parser.Class
 	Sitter      *sitter.Node
@@ -109,9 +111,21 @@ type TagContentArray struct {
 	elems []*TagContent
 }
 
+type TmplAstExpressionSymbol struct {
+	Name  string
+	Value *string
+	Node  *sitter.Node
+}
+
 type TmplAstVariable struct {
-	Name   string
-	Sitter *sitter.Node
+	TmplAstExpressionSymbol
+	// Name  string
+	// Value *string
+	// Node  *sitter.Node
+}
+
+type TmplAstReference struct {
+	TmplAstExpressionSymbol
 }
 
 var astOptimisedMap walk.VisitorFuncMap[*Ast]
@@ -141,7 +155,7 @@ func (h *HelpfulArray[T]) add(elem T) {
 	h.elems = append(h.elems, elem)
 }
 
-func (t *Tag) addAttribute(attribute *Attribute) *Node {
+func (t *Tag) addAttribute(attribute *Attribute) *TmplAstNode {
 	node := newAttributeNode(attribute)
 
 	t.Attributes.add(node)

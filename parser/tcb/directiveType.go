@@ -14,7 +14,7 @@ import (
  * Executing this operation returns a reference to the directive instance variable with its inferred
  * type.
  */
-func handleTcbNonGenericDirectiveType(state *parser.State, file *parser.File, tcb *Context, scope *Scope, node Node, dir Node) {
+func handleTcbNonGenericDirectiveType(state *parser.State, file *parser.File, tcb *Context, scope *Scope, node TmplAstNode, dir TmplAstNode) {
 	/**
 	 * Creates a variable declaration for this op's directive of the argument type. Returns the id of
 	 * the newly created variable.
@@ -30,7 +30,7 @@ func handleTcbNonGenericDirectiveType(state *parser.State, file *parser.File, tc
  * Executing this operation returns a reference to the directive instance variable with its generic
  * type parameters set to `any`.
  */
-func handleGenericDirectiveTypeWithAnyParams(state *parser.State, file *parser.File, tcb *Context, scope *Scope, node Node, dir Node) {
+func handleGenericDirectiveTypeWithAnyParams(state *parser.State, file *parser.File, tcb *Context, scope *Scope, node TmplAstNode, dir TmplAstNode) {
 	directiveTypeBase(state, file, tcb, scope, node, dir)
 }
 
@@ -38,7 +38,7 @@ func handleGenericDirectiveTypeWithAnyParams(state *parser.State, file *parser.F
  * A `TcbOp` which constructs an instance of a directive. For generic directives, generic
  * parameters are set to `any` type.
  */
-func directiveTypeBase(state *parser.State, file *parser.File, tcb *Context, scope *Scope, node Node, dir Node) Identifier {
+func directiveTypeBase(state *parser.State, file *parser.File, tcb *Context, scope *Scope, node TmplAstNode, dir TmplAstNode) Identifier {
 	exitAny := func() int {
 		id := tcb.allocateId(nil, nil)
 		scope.addStatementStatement(tsDeclareVariable(id, Expression{"any"}, nil))

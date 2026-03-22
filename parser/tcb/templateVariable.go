@@ -8,7 +8,7 @@ type TcbTemplateVariableOp struct {
 	TcbOp
 	tcb      *Context
 	scope    *Scope
-	template *Node
+	template *TmplAstNode
 	variable *TmplAstVariable
 }
 
@@ -55,7 +55,7 @@ func (o TcbTemplateVariableOp) CircularFallback() TcbExpr { return TcbExpr{Sourc
  *
  * Executing this operation returns a reference to the variable variable (lol).
  */
-func handleTemplateVariable(tcb *Context, scope *Scope, variable *Node, template *Node) Identifier {
+func handleTemplateVariable(tcb *Context, scope *Scope, variable *TmplAstNode, template *TmplAstNode) Identifier {
 	op := &TcbTemplateVariableOp{tcb: tcb, scope: scope, template: template, variable: variable.Variable}
 
 	return op.Execute()
