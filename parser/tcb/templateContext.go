@@ -11,7 +11,8 @@ func handleTemplateContext(tcb *Tcb, scope *Scope) Identifier {
 	ctx := tcb.allocateId()
 
 	statement := Statement{}
-	statement = append(statement, "var ${ctx} = null! as any;")
+	statement.AddPart("var ${ctx} = null! as any;")
+
 	scope.addStatement(statement)
 
 	return ctx

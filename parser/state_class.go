@@ -28,6 +28,7 @@ type classState struct {
 	Name                 string
 	NameNode             *sitter.Node
 	Node                 *sitter.Node
+	TypeParameters       []string
 	Usages               Usages
 }
 
@@ -576,6 +577,7 @@ func (c *Class) Reset() {
 		data.ImplementsIdentNames = make([]string, 0)
 		data.Name = ""
 		data.Node = nil
+		data.TypeParameters = make([]string, 0)
 		clear(data.Usages)
 	})
 }
@@ -663,7 +665,19 @@ func (c *Class) resolveExtendsImplements(state *State) {
 func ClassId(uri string, className string) string { return uri + "-" + className }
 
 func NewClass(content string, file *File, node *sitter.Node) Class {
-	state := classState{Content: content, Definitions: make(map[string]Definition), Extends: []*Reference{}, ExtendsIdentNames: []string{}, File: file, Implements: []*Reference{}, ImplementsIdentNames: []string{}, Name: "", Node: node, Usages: make(map[string]Usage)}
+	state := classState{
+		Content:              content,
+		Definitions:          make(map[string]Definition),
+		Extends:              []*Reference{},
+		ExtendsIdentNames:    []string{},
+		File:                 file,
+		Implements:           []*Reference{},
+		ImplementsIdentNames: []string{},
+		Name:                 "",
+		Node:                 node,
+		TypeParameters:       []string{},
+		Usages:               make(map[string]Usage),
+	}
 
 	return Class{state: state}
 }

@@ -13,7 +13,7 @@ import (
 func handleElement(tcb *Tcb, scope *Scope, tag *ast.Node) Identifier {
 	id := tcb.allocateId()
 
-	variable := tsCreateVariable(id, Expression("document.createElement(\"${element.name}\")"), false)
+	variable := tsCreateVariable(id, Expression{"document.createElement(\"${element.name}\")"}, false)
 	scope.addStatement(variable)
 
 	return id

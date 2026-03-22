@@ -18,6 +18,12 @@ func WalkAngular[T any](node *sitter.Node, state T, visitorFuncMap InitVisitorFu
 	return Walk(node, state, visitorFuncMap, lang, false)
 }
 
+func WalkAngularExpr[T any](node *sitter.Node, state T, visitorFuncMap InitVisitorFuncMap[T]) T {
+	lang := utils.GetLanguage(utils.AngularContent)
+
+	return Walk(node, state, visitorFuncMap, lang, false)
+}
+
 func WalkJavaScript[T any](node *sitter.Node, state T, visitorFuncMap InitVisitorFuncMap[T]) T {
 	lang := utils.GetLanguage(utils.JavaScript)
 

@@ -63,26 +63,27 @@ type Variable struct {
 	Name string
 }
 
-var visitorFuncMap = walk.NewVisitorFuncsMap[*Ast]()
-var optimisedMap walk.VisitorFuncMap[*Ast]
+var astOptimisedMap walk.VisitorFuncMap[*Ast]
 
 func InitAstParser() {
-	visitorFuncMap["content"] = handleTagContent
-	visitorFuncMap["attribute"] = handleAttribute
-	visitorFuncMap["attribute_name"] = handleAttributeName
-	visitorFuncMap["attributes"] = handleChildNodes
-	visitorFuncMap["children"] = handleChildNodes
-	visitorFuncMap["quoted_attribute_value"] = handleAttributeValue
-	visitorFuncMap["source_file"] = handleChildNodes
-	visitorFuncMap["tag"] = handleTag
-	visitorFuncMap["tag_name"] = handleTagName
+	astVisitorFuncMap := walk.NewVisitorFuncsMap[*Ast]()
+
+	astVisitorFuncMap["content"] = handleTagContent
+	astVisitorFuncMap["attribute"] = handleAttribute
+	astVisitorFuncMap["attribute_name"] = handleAttributeName
+	astVisitorFuncMap["attributes"] = handleChildNodes
+	astVisitorFuncMap["children"] = handleChildNodes
+	astVisitorFuncMap["quoted_attribute_value"] = handleAttributeValue
+	astVisitorFuncMap["source_file"] = handleChildNodes
+	astVisitorFuncMap["tag"] = handleTag
+	astVisitorFuncMap["tag_name"] = handleTagName
 
 	pug := utils.GetLanguage(utils.Pug)
-	optimisedMap = walk.GenerateSymbolMap(pug, visitorFuncMap)
+	astOptimisedMap = walk.GenerateSymbolMap(pug, astVisitorFuncMap)
 }
 
 func Parse(state *Ast, root *sitter.Node) {
-	walk.VisitNode(root, state, 0, optimisedMap, true)
+	walk.VisitNode(root, state, 0, astOptimisedMap, true)
 }
 
 func (h *HelpfulArray[T]) add(elem T) {

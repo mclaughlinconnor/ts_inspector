@@ -3,11 +3,18 @@ package tcb
 import (
 	"regexp"
 	"strconv"
+	"ts_inspector/parser"
 	"ts_inspector/parser/ast"
 )
 
 type Expression = []string
 type Identifier = int
+
+type Import struct {
+	foreignIdentifier string
+	localIdentifier   string
+	filename          string
+}
 
 type Scope struct {
 	parentScope *Scope
@@ -21,6 +28,7 @@ type Statement struct {
 
 type Tcb struct {
 	currentId int
+	imports   []*Import
 	scopes    []*Scope
 }
 
@@ -31,6 +39,8 @@ func InitTcb() {
 	}
 
 	identifierRegex = ir
+
+	initTcbExpression()
 }
 
 func (s *Scope) addStatement(statement Statement) {
@@ -69,6 +79,19 @@ func (t *Tcb) allocateId() int {
 	t.currentId += 1
 
 	return id
+}
+
+func (t *Tcb) envReference(class *parser.Class) string {
+	localIdentifier := class.Snapshot().Name + strconv.Itoa(t.allocateId())
+
+	i := &Import{
+		filename:          class.Snapshot().File.Filename(),
+		foreignIdentifier: class.Snapshot().Name,
+		localIdentifier:   localIdentifier,
+	}
+	t.imports = append(t.imports, i)
+
+	return localIdentifier
 }
 
 // Scope.forNodes
