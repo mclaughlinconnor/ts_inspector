@@ -1,36 +1,34 @@
 package tcb
 
 import (
-	"strconv"
 	"strings"
-	"ts_inspector/parser/ast"
 )
 
-/**
- * A `TcbOp` which creates an expression for particular let- `TmplAstVariable` on a
- * `TmplAstTemplate`'s context.
- *
- * Executing this operation returns a reference to the variable variable (lol).
- */
-func handleTemplateVariable(tcb *Context, scope *Scope, variable *ast.Node, template *ast.Node) Identifier {
-	// Look for a context variable for the template.
-	ctx := scope.resolve(template, nil)
+type TcbTemplateVariableOp struct {
+	TcbOp
+	tcb      *Context
+	scope    *Scope
+	template *Node
+	variable *TmplAstVariable
+}
 
+func (o TcbTemplateVariableOp) Optional() bool { return false }
+func (o TcbTemplateVariableOp) Execute() Identifier {
+	// Look for a context variable for the template.
+	ctx := o.scope.resolve(o.template, nil)
 	// Allocate an identifier for the TmplAstVariable, and initialize it to a read of the variable
 	// on the template context.
-	id := tcb.allocateId()
+	id := o.tcb.allocateId(nil, nil)
 	statement := Statement{}
 
 	statement.AddPart("var ")
-	statement.AddPart(strconv.Itoa(id))
+	statement.AddPart(IdentifierName(id))
 	statement.AddPart(" = ")
-	statement.AddPart(ctx)
+	statement.AddPart(IdentifierName(ctx))
 
-	var name string
-	if variable.Variable.Name == "" {
+	name := o.variable.Name
+	if name == "" {
 		name = "$IMPLICIT"
-	} else {
-		name = variable.Variable.Name
 	}
 
 	if isJavascriptIdentifier(name) {
@@ -44,7 +42,21 @@ func handleTemplateVariable(tcb *Context, scope *Scope, variable *ast.Node, temp
 
 	statement.AddPart(";")
 
-	scope.addStatement(statement)
+	o.scope.AddStatement(statement)
 
 	return id
+}
+
+func (o TcbTemplateVariableOp) CircularFallback() TcbExpr { return TcbExpr{Source: "null!"} }
+
+/**
+ * A `TcbOp` which creates an expression for particular let- `TmplAstVariable` on a
+ * `TmplAstTemplate`'s context.
+ *
+ * Executing this operation returns a reference to the variable variable (lol).
+ */
+func handleTemplateVariable(tcb *Context, scope *Scope, variable *Node, template *Node) Identifier {
+	op := &TcbTemplateVariableOp{tcb: tcb, scope: scope, template: template, variable: variable.Variable}
+
+	return op.Execute()
 }

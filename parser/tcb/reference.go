@@ -2,7 +2,6 @@ package tcb
 
 import (
 	"ts_inspector/parser"
-	"ts_inspector/parser/ast"
 )
 
 /**
@@ -25,8 +24,8 @@ import (
  * Executing this operation returns a reference to the directive instance variable with its inferred
  * type.
  */
-func handleReference(state *parser.State, file *parser.File, tcb *Context, scope *Scope, node ast.Node, host ast.Node, target ast.Node) Identifier {
-	id := tcb.allocateId()
+func handleReference(state *parser.State, file *parser.File, tcb *Context, scope *Scope, node Node, host Node, target Node) Identifier {
+	id := tcb.allocateId(nil, nil)
 
   //   val reference = Expression {
   //     append(if (target is TmplAstDirectiveContainer)

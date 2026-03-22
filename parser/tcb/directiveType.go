@@ -3,7 +3,6 @@ package tcb
 import (
 	"strings"
 	"ts_inspector/parser"
-	"ts_inspector/parser/ast"
 )
 
 /**
@@ -15,7 +14,7 @@ import (
  * Executing this operation returns a reference to the directive instance variable with its inferred
  * type.
  */
-func handleTcbNonGenericDirectiveType(state *parser.State, file *parser.File, tcb *Context, scope *Scope, node ast.Node, dir ast.Node) {
+func handleTcbNonGenericDirectiveType(state *parser.State, file *parser.File, tcb *Context, scope *Scope, node Node, dir Node) {
 	/**
 	 * Creates a variable declaration for this op's directive of the argument type. Returns the id of
 	 * the newly created variable.
@@ -31,7 +30,7 @@ func handleTcbNonGenericDirectiveType(state *parser.State, file *parser.File, tc
  * Executing this operation returns a reference to the directive instance variable with its generic
  * type parameters set to `any`.
  */
-func handleGenericDirectiveTypeWithAnyParams(state *parser.State, file *parser.File, tcb *Context, scope *Scope, node ast.Node, dir ast.Node) {
+func handleGenericDirectiveTypeWithAnyParams(state *parser.State, file *parser.File, tcb *Context, scope *Scope, node Node, dir Node) {
 	directiveTypeBase(state, file, tcb, scope, node, dir)
 }
 
@@ -39,10 +38,10 @@ func handleGenericDirectiveTypeWithAnyParams(state *parser.State, file *parser.F
  * A `TcbOp` which constructs an instance of a directive. For generic directives, generic
  * parameters are set to `any` type.
  */
-func directiveTypeBase(state *parser.State, file *parser.File, tcb *Context, scope *Scope, node ast.Node, dir ast.Node) Identifier {
+func directiveTypeBase(state *parser.State, file *parser.File, tcb *Context, scope *Scope, node Node, dir Node) Identifier {
 	exitAny := func() int {
-		id := tcb.allocateId()
-		scope.addStatement(tsDeclareVariable(id, Expression{"any"}, nil))
+		id := tcb.allocateId(nil, nil)
+		scope.addStatementStatement(tsDeclareVariable(id, Expression{"any"}, nil))
 		return id
 	}
 
@@ -75,9 +74,9 @@ func directiveTypeBase(state *parser.State, file *parser.File, tcb *Context, sco
 		ttype = append(ttype, ">")
 	}
 
-	id := tcb.allocateId()
+	id := tcb.allocateId(nil, nil)
 
-	scope.addStatement(tsDeclareVariable(id, ttype, nil))
+	scope.addStatementStatement(tsDeclareVariable(id, ttype, nil))
 
 	return id
 }

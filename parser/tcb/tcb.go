@@ -4,11 +4,17 @@ import (
 	"regexp"
 	"strconv"
 	"ts_inspector/parser"
-	"ts_inspector/parser/ast"
 )
 
-type Expression = []string
 type Identifier = int
+
+type Context struct {
+	currentId   int
+	id          int
+	imports     []*Import
+	oobRecorder *OobRecorder
+	scopes      []*Scope
+}
 
 type Import struct {
 	foreignIdentifier string
@@ -16,21 +22,7 @@ type Import struct {
 	filename          string
 }
 
-type Scope struct {
-	parentScope *Scope
-	statements  []Statement
-	tcb         *Context
-}
-
-type Statement struct {
-	parts []string
-}
-
-type Context struct {
-	currentId int
-	imports   []*Import
-	scopes    []*Scope
-}
+type OobRecorder struct{}
 
 func InitTcb() {
 	ir, err := regexp.Compile(`[\p{L}\$_][\p{L}\d\$_]*`)
@@ -43,46 +35,23 @@ func InitTcb() {
 	initTcbExpression()
 }
 
-func (s *Scope) addStatement(statement Statement) {
-	s.statements = append(s.statements, statement)
+func IdentifierName(id Identifier) string {
+	return "_t" + strconv.Itoa(id)
 }
 
-func (s *Scope) render() []Statement {
-	line := []string{"__STATEMENT__;"}
-	first := Statement{line}
+func (o *OobRecorder) duplicateTemplateVar(a any, b any, c any) {}
+func (o *OobRecorder) conflictingDeclaration(a any, b any) {}
 
-	return []Statement{first}
-}
-
-func (s *Scope) resolve(ident *ast.Node, directive *ast.Node) string {
-	return "__RESOLVED__"
-}
-
-func (s *Statement) AddCodeBlock(builder func()) {
-	s.parts = append(s.parts, "{\n")
-	builder()
-	s.parts = append(s.parts, "\n}")
-}
-
-func (s *Statement) AddPart(part string) {
-	s.parts = append(s.parts, part)
-}
-
-func (s *Statement) AppendStatement(statement Statement) {
-	s.parts = append(s.parts, statement.parts...)
-	s.parts = append(s.parts, "\n")
-}
-
-func (t *Context) allocateId() int {
+// TODO: check all usages for params
+func (t *Context) allocateId(a any, b any) Identifier {
 	id := t.currentId
-
 	t.currentId += 1
 
 	return id
 }
 
 func (t *Context) envReference(class *parser.Class) string {
-	localIdentifier := class.Snapshot().Name + strconv.Itoa(t.allocateId())
+	localIdentifier := class.Snapshot().Name + strconv.Itoa(t.allocateId(nil, nil))
 
 	i := &Import{
 		filename:          class.Snapshot().File.Filename(),
@@ -94,21 +63,14 @@ func (t *Context) envReference(class *parser.Class) string {
 	return localIdentifier
 }
 
-// Scope.forNodes
-func scopeForNodes(tcb *Context, parentScope *Scope, scopedNode *ast.Node, children []*ast.Node, guard *Expression) Scope {
-	scope := Scope{parentScope, []Statement{}, tcb}
-
-	return scope
-}
-
 type TcbExpr struct {
 	Source string
 }
 
 type TcbOp interface {
-	Optional() bool
-	Execute() *TcbExpr
 	CircularFallback() TcbExpr
+	Execute() Identifier
+	Optional() bool
 }
 
 /**
@@ -125,8 +87,8 @@ func tsDeclareVariable(id Identifier, ttype Expression, initializer *Expression)
 
 	statement := Statement{}
 
-	statement.AddPart("var")
-	statement.AddPart(strconv.Itoa(id))
+	statement.AddPart("var ")
+	statement.AddPart(IdentifierName(id))
 
 	if initializer != nil {
 		statement.AddPart(" : ")
@@ -164,7 +126,7 @@ func tsCreateVariable(id Identifier, initializer Expression, isConst bool) State
 		statement.AddPart("var ")
 	}
 
-	statement.AddPart(strconv.Itoa(id))
+	statement.AddPart(IdentifierName(id))
 	statement.AddPart(" = ")
 
 	for _, i := range initializer {

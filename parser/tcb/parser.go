@@ -1,4 +1,4 @@
-package ast
+package tcb
 
 import (
 	"ts_inspector/ast"
@@ -15,6 +15,27 @@ type Ast struct {
 	Current  utils.Stack[*Node]
 }
 
+type Statement struct {
+	parts []string
+}
+
+func (s *Statement) AddCodeBlock(builder func()) {
+	s.parts = append(s.parts, "{\n")
+	builder()
+	s.parts = append(s.parts, "\n}")
+}
+
+func (s *Statement) AddPart(part string) {
+	s.parts = append(s.parts, part)
+}
+
+func (s *Statement) AppendStatement(statement Statement) {
+	s.parts = append(s.parts, statement.parts...)
+	s.parts = append(s.parts, "\n")
+}
+
+type Expression = []string
+
 const (
 	KindRoot int = iota
 	KindTag
@@ -22,20 +43,43 @@ const (
 
 	KindTmplAstTemplate
 	KindTmplAstVariable
+	KindTmplAstIfBlock
+	KindTmplAstIfBlockBranch
+	KindTmplAstForLoopBlock
+	KindTmplAstSwitchBlock
+	KindTmplAstDeferredBlock
+	KindTmplAstBoundText
+	KindTmplAstLetBlock
 )
 
 // TmplAstNode
 type Node struct {
 	Tag       *Tag
 	Attribute *Attribute
-	Variable  *TmplAstVariable
 	Kind      int
+
+	// For expressions and content
+	Content []byte
+	Sitter  *sitter.Node
+
+	// For templates
+	// Children  []*Node
+	Variables map[string]*TmplAstVariable
+
+	// If blocks
+	Expression      *Expression
+	ExpressionAlias *TmplAstVariable
+
+	// For blocks
+	Variable *TmplAstVariable
+	ContextVariables []*TmplAstVariable 
 }
 
 type Attribute struct {
 	Name        string
 	SourceClass *parser.Class
 	Value       string
+	Sitter      *sitter.Node
 }
 
 type HelpfulArray[T any] struct {
@@ -52,11 +96,13 @@ type Tag struct {
 	Children    HelpfulArray[*Node]
 	Name        string
 	SourceClass *parser.Class
+	Sitter      *sitter.Node
 }
 
 type TagContent struct {
 	Text          string
 	Interpolation string
+	Sitter        *sitter.Node
 }
 
 type TagContentArray struct {
@@ -64,7 +110,8 @@ type TagContentArray struct {
 }
 
 type TmplAstVariable struct {
-	Name string
+	Name   string
+	Sitter *sitter.Node
 }
 
 var astOptimisedMap walk.VisitorFuncMap[*Ast]
