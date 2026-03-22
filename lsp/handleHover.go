@@ -1,13 +1,16 @@
 package lsp
 
 import (
+	// "fmt"
 	"io"
 	"log"
 	"strings"
 	"ts_inspector/ast"
 	"ts_inspector/interfaces"
 	"ts_inspector/parser"
+	// aast "ts_inspector/parser/ast"
 	"ts_inspector/utils"
+	// sitter "github.com/smacker/go-tree-sitter"
 )
 
 func HandleHover(writer io.Writer, logger *log.Logger, state *parser.State, request interfaces.HoverRequest) {
@@ -18,6 +21,18 @@ func HandleHover(writer io.Writer, logger *log.Logger, state *parser.State, requ
 
 		return
 	}
+
+	// utils.ParseFile(false, file.Snapshot().Content, utils.Pug, nil, func(root *sitter.Node, content []byte, edits any) (any, error) {
+	// 	current := &aast.Node{Kind: aast.KindRoot, Children: []*aast.Node{}, Attributes: []*aast.Node{}, Name: "", Value: ""}
+	// 	state := aast.Ast{Children: []*aast.Node{current}, Content: content, Current: current}
+	//
+	// 	aast.InitAstParser()
+	// 	aast.Parse(&state, root)
+	//
+	// 	fmt.Printf("%+v\n", state)
+	//
+	// 	return nil, nil
+	// })
 
 	cursorOffset := file.GetOffsetForPosition(request.Params.Position)
 
@@ -55,7 +70,14 @@ func HandleHover(writer io.Writer, logger *log.Logger, state *parser.State, requ
 
 				if cursorOnAttributeName {
 					if tagUnderCursor.MatchesSelector(selector) {
-						sb = handleAttributeHover(sb, thing, attributeName, selector)
+						if thing.HasComponent() {
+							sb = handleAttributeHover(sb, thing, attributeName, selector)
+						}
+
+						if thing.HasDirective() {
+							sb = handleTagHover(sb, thing)
+						}
+
 					} else if selector == attributeName { // component with `selector: '[formControl]`
 						sb = handleTagHover(sb, thing)
 					}
@@ -77,6 +99,8 @@ func handleAttributeHover(sb []string, class *parser.Class, attributeName string
 	for _, definition := range class.FilterAllDefinitions(func(def parser.ClassedDefinition) bool { return def.NameMatchesString(attributeName) }) {
 		sb = append(sb, definition.GetDocumentation(true))
 	}
+
+	// TODO: get directives here
 
 	if !strings.HasPrefix(attributeName, "[") && !strings.HasSuffix(attributeName, "]") {
 		valid, _, attrName := ast.ExtractTagNameAndAttrFromSelector(selector)

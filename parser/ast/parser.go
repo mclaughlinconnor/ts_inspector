@@ -19,12 +19,16 @@ const (
 	KindRoot int = iota
 	KindTag
 	KindAttribute
+
+	KindTmplAstTemplate
+	KindTmplAstVariable
 )
 
+// TmplAstNode
 type Node struct {
 	Tag       *Tag
 	Attribute *Attribute
-	Variable  *Variable
+	Variable  *TmplAstVariable
 	Kind      int
 }
 
@@ -59,7 +63,7 @@ type TagContentArray struct {
 	elems []*TagContent
 }
 
-type Variable struct {
+type TmplAstVariable struct {
 	Name string
 }
 

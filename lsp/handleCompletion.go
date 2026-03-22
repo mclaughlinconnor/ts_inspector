@@ -248,21 +248,23 @@ func forDirectiveThing(thing *parser.Class, file *parser.File, cursorOffset uint
 	cursorRange := utils.Range{Start: cursorPosition, End: cursorPosition}
 
 	for _, selector := range thing.Snapshot().Angular.Directive.Selectors {
-		valid, _, attr := ast.ExtractTagNameAndAttrFromSelector(selector)
-		if !valid || attr == "" {
+		valid, tag, attr := ast.ExtractTagNameAndAttrFromSelector(selector)
+		if !valid || attr == "" || tag != tagName.Name {
 			continue
 		}
 
 		item := interfaces.CompletionItem{}
 
-		insertText := selector + "='$0'"
+		attrText := "[" + attr + "]"
+
+		insertText := attrText + "='$0'"
 		item.InsertText = &insertText
 		item.InsertTextFormat = &interfaces.InsertTextFormat.Snippet
 
 		// Can't use insertText because clients can do post-processing on the text, which can lead to tag((output)) losing some brackets
 		textEdit := interfaces.TextEdit{}
 		textEdit.Range = cursorRange
-		textEdit.NewText = selector + "='$0'"
+		textEdit.NewText = attrText + "='$0'"
 		item.TextEdit = &textEdit
 
 		item.Kind = &interfaces.CompletionItemKind.Property

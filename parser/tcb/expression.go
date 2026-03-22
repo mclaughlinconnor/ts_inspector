@@ -5,7 +5,7 @@ package tcb
  *
  * Executing this operation returns nothing.
  */
-func handleExpression(tcb *Tcb, scope *Scope, expression *Expression, isBoundText bool) *Identifier {
+func handleExpression(tcb *Context, scope *Scope, expression *Expression, isBoundText bool) *Identifier {
 	if expression != nil {
 		expr := AstToTypescript(expression)
 

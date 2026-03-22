@@ -19,14 +19,14 @@ type Import struct {
 type Scope struct {
 	parentScope *Scope
 	statements  []Statement
-	tcb         *Tcb
+	tcb         *Context
 }
 
 type Statement struct {
 	parts []string
 }
 
-type Tcb struct {
+type Context struct {
 	currentId int
 	imports   []*Import
 	scopes    []*Scope
@@ -73,7 +73,7 @@ func (s *Statement) AppendStatement(statement Statement) {
 	s.parts = append(s.parts, "\n")
 }
 
-func (t *Tcb) allocateId() int {
+func (t *Context) allocateId() int {
 	id := t.currentId
 
 	t.currentId += 1
@@ -81,7 +81,7 @@ func (t *Tcb) allocateId() int {
 	return id
 }
 
-func (t *Tcb) envReference(class *parser.Class) string {
+func (t *Context) envReference(class *parser.Class) string {
 	localIdentifier := class.Snapshot().Name + strconv.Itoa(t.allocateId())
 
 	i := &Import{
@@ -95,7 +95,7 @@ func (t *Tcb) envReference(class *parser.Class) string {
 }
 
 // Scope.forNodes
-func scopeForNodes(tcb *Tcb, parentScope *Scope, scopedNode *ast.Node, children []*ast.Node, guard *Expression) Scope {
+func scopeForNodes(tcb *Context, parentScope *Scope, scopedNode *ast.Node, children []*ast.Node, guard *Expression) Scope {
 	scope := Scope{parentScope, []Statement{}, tcb}
 
 	return scope

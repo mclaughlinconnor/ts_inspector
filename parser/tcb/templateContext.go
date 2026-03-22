@@ -5,7 +5,7 @@ package tcb
  *
  * Executing this operation returns a reference to the template's context variable.
  */
-func handleTemplateContext(tcb *Tcb, scope *Scope) Identifier {
+func handleTemplateContext(tcb *Context, scope *Scope) Identifier {
 	// Allocate a template ctx variable and declare it with an 'any' type. The type of this variable
 	// may be narrowed as a result of template guard conditions.
 	ctx := tcb.allocateId()

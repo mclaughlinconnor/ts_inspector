@@ -10,7 +10,7 @@ import (
  *
  * Executing this operation returns a reference to the element variable.
  */
-func handleElement(tcb *Tcb, scope *Scope, tag *ast.Node) Identifier {
+func handleElement(tcb *Context, scope *Scope, tag *ast.Node) Identifier {
 	id := tcb.allocateId()
 
 	variable := tsCreateVariable(id, Expression{"document.createElement(\"${element.name}\")"}, false)

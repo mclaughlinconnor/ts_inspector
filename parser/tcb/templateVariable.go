@@ -12,7 +12,7 @@ import (
  *
  * Executing this operation returns a reference to the variable variable (lol).
  */
-func handleTemplateVariable(tcb *Tcb, scope *Scope, variable *ast.Node, template *ast.Node) Identifier {
+func handleTemplateVariable(tcb *Context, scope *Scope, variable *ast.Node, template *ast.Node) Identifier {
 	// Look for a context variable for the template.
 	ctx := scope.resolve(template, nil)
 
