@@ -189,8 +189,8 @@ func scopeForNodes(tcb *Context, parentScope *Scope, scopedNode *TmplAstNode, ch
 
 			ttype := Expression{typeName}
 			scope.registerVariable(
-				variable,
-				TcbBlockImplicitVariableOp{tcb: tcb, scope: &scope, ttype: ttype, variable: variable, initializer: nil},
+				v,
+				TcbBlockImplicitVariableOp{tcb: tcb, scope: &scope, ttype: ttype, variable: v, initializer: nil},
 			)
 		}
 	}
@@ -477,7 +477,7 @@ func (s *Scope) resolveLocal(ref TmplAstNode /* LocalSymbol */, directive *TmplD
 		}
 	}
 
-	if _, ok := s.templateCtxOpMap[&ref]; ref.Kind == KindTmplAstTemplate && directive != nil && ok {
+	if _, ok := s.templateCtxOpMap[&ref]; ref.Kind == KindTmplAstTemplate && directive == nil && ok {
 		// Resolving the context of the given sub-template.
 		// Execute the `TcbTemplateContextOp` for the template.
 		return s.resolveOp(s.templateCtxOpMap[&ref])
@@ -599,11 +599,12 @@ func (s *Scope) appendNode(node *TmplAstNode) {
 	} else if node.Kind == KindTmplAstLetBlock {
 		declaration := node.Declaration
 		if declaration != nil {
-			s.opQueue.add(TcbLetDeclarationOp{s.tcb, s, declaration})
+			var letDeclOp TcbOp = TcbLetDeclarationOp{s.tcb, s, declaration}
+			s.opQueue = append(s.opQueue, &TcbOpOrIdentifier{op: &letDeclOp})
 			if s.isLocal(declaration) {
 				s.tcb.oobRecorder.conflictingDeclaration(s.tcb.id, declaration)
 			} else {
-				s.letDeclOpMap[declaration.name] = LetDeclOpMapRecord(opQueue.lastIndex, declaration)
+				s.letDeclOpMap[declaration.Name] = LetDeclOpMapRecord{opIndex: len(s.opQueue) - 1, node: declaration}
 			}
 		}
 	} else {
