@@ -13,7 +13,7 @@ type TcbTemplateVariableOp struct {
 }
 
 func (o TcbTemplateVariableOp) Optional() bool { return false }
-func (o TcbTemplateVariableOp) Execute() Identifier {
+func (o TcbTemplateVariableOp) Execute() *Identifier {
 	// Look for a context variable for the template.
 	ctx := o.scope.resolve(o.template, nil)
 	// Allocate an identifier for the TmplAstVariable, and initialize it to a read of the variable

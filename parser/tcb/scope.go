@@ -9,6 +9,16 @@ type LetDeclOpMapRecord struct {
 	node    *TmplAstNode
 }
 
+type IntOrIdentifier struct {
+	integer    *int
+	identifier *Identifier
+}
+
+type TcbOpOrIdentifier struct {
+	op         *TcbOp
+	identifier *Identifier
+}
+
 /**
  * Local scope within the type check block for a particular template.
  *
@@ -40,7 +50,7 @@ type Scope struct {
 	* that fits instead. This has the same semantics as TypeScript itself when types are referenced
 	* circularly.
 	 */
-	opQueue []*TcbOp
+	opQueue []*TcbOpOrIdentifier
 
 	/**
 	* A map of `TmplAstElement`s to the index of their `TcbElementOp` in the `opQueue`
@@ -51,12 +61,12 @@ type Scope struct {
 	* A map of maps which tracks the index of `TcbDirectiveCtorOp`s in the `opQueue` for each
 	* directive on a `TmplAstElement` or `TmplAstTemplate` node.
 	 */
-	directiveOpMap map[*TmplAstNode]map[*TmplAstNode]int
+	directiveOpMap map[*TmplAstNode]map[*TmplDirectiveMetadata]int
 
 	/**
 	* A map of `TmplAstReference`s to the index of their `TcbReferenceOp` in the `opQueue`
 	 */
-	referenceOpMap map[*TmplAstReference]int
+	referenceOpMap map[*TmplAstNode]int
 
 	/**
 	* Map of immediately nested <ng-template>s (within this `Scope`) represented by `TmplAstTemplate`
@@ -69,7 +79,7 @@ type Scope struct {
 	* `TmplAstVariable` nodes) to the index of their `TcbVariableOp`s in the `opQueue`, or to
 	* pre-resolved variable identifiers.
 	 */
-	varMap map[*TmplAstVariable]int
+	varMap map[*TmplAstNode]IntOrIdentifier
 
 	/**
 	* A map of the names of `TmplAstLetDeclaration`s to the index of their op in the `opQueue`.
@@ -124,10 +134,10 @@ func scopeForNodes(tcb *Context, parentScope *Scope, scopedNode *TmplAstNode, ch
 		parent:           parentScope,
 		guard:            guardExpr,
 		elementOpMap:     make(map[*TmplAstNode]int),
-		directiveOpMap:   make(map[*TmplAstNode]map[*TmplAstNode]int),
-		referenceOpMap:   make(map[*TmplAstReference]int),
+		directiveOpMap:   make(map[*TmplAstNode]map[*TmplDirectiveMetadata]int),
+		referenceOpMap:   make(map[*TmplAstNode]int),
 		templateCtxOpMap: make(map[*TmplAstNode]int),
-		varMap:           make(map[*TmplAstVariable]int),
+		varMap:           make(map[*TmplAstNode]IntOrIdentifier),
 		letDeclOpMap:     make(map[string]LetDeclOpMapRecord),
 	}
 
@@ -185,7 +195,7 @@ func scopeForNodes(tcb *Context, parentScope *Scope, scopedNode *TmplAstNode, ch
 		}
 	}
 
-	for node := range children {
+	for _, node := range children {
 		scope.appendNode(node)
 	}
 
@@ -337,42 +347,36 @@ func (s *Scope) registerVariable(variable *TmplAstVariable, op TcbOp) {
 }
 
 //
-// /**
-//  * Look up a `Expression` representing the value of some operation in the current `Scope`,
-//  * including any parent scope(s). This method always returns a mutable clone of the
-//  * `Expression` with the comments cleared.
-//  *
-//  * @param node a `TmplAstNode` of the operation in question. The lookup performed will depend on
-//  * the type of this node:
-//  *
-//  * Assuming `directive` is not present, then `resolve` will return:
-//  *
-//  * * `TmplAstElement` - retrieve the expression for the element DOM node
-//  * * `TmplAstTemplate` - retrieve the template context variable
-//  * * `TmplAstVariable` - retrieve a template let- variable
-//  * * `TmplAstReference` - retrieve variable created for the local ref
-//  *
-//  * @param directive if present, a directive type on a `TmplAstElement` or `TmplAstTemplate` to
-//  * look up instead of the default for an element or template node.
-//  */
-// fun resolve(
-//   node: LocalSymbol,
-//   directive: TmplDirectiveMetadata? = null,
-// ): Identifier {
-//   // Attempt to resolve the operation locally.
-//   val res = this.resolveLocal(node, directive)
-//   if (res != null) {
-//     return res
-//   }
-//   else if (this.parent != null) {
-//     // Check with the parent.
-//     return this.parent.resolve(node, directive)
-//   }
-//   else {
-//     throw Error("Could not resolve ${node} / ${directive}")
-//   }
-// }
-//
+/**
+ * Look up a `Expression` representing the value of some operation in the current `Scope`,
+ * including any parent scope(s). This method always returns a mutable clone of the
+ * `Expression` with the comments cleared.
+ *
+ * @param node a `TmplAstNode` of the operation in question. The lookup performed will depend on
+ * the type of this node:
+ *
+ * Assuming `directive` is not present, then `resolve` will return:
+ *
+ * * `TmplAstElement` - retrieve the expression for the element DOM node
+ * * `TmplAstTemplate` - retrieve the template context variable
+ * * `TmplAstVariable` - retrieve a template let- variable
+ * * `TmplAstReference` - retrieve variable created for the local ref
+ *
+ * @param directive if present, a directive type on a `TmplAstElement` or `TmplAstTemplate` to
+ * look up instead of the default for an element or template node.
+ */
+func (s *Scope) resolve(node TmplAstNode /* LocalSymbol */, directive *TmplDirectiveMetadata) *Identifier {
+	// Attempt to resolve the operation locally.
+	res := s.resolveLocal(node, directive)
+	if res != nil {
+		return res
+	} else if s.parent != nil {
+		// Check with the parent.
+		return s.parent.resolve(node, directive)
+	} else {
+		panic("Could not resolve ${node} / ${directive}")
+	}
+}
 
 /**
  * Add a statement to this scope.
@@ -388,148 +392,164 @@ func (s *Scope) addStatementExpression(expr Expression) {
 	s.statements = append(s.statements, Statement{append(expr, ";")})
 }
 
-// fun addStatement(builder: Expression.ExpressionBuilder.() -> Unit) {
-//   addStatement(Statement(builder))
-// }
+//	fun addStatement(builder: Expression.ExpressionBuilder.() -> Unit) {
+//	  addStatement(Statement(builder))
+//	}
 //
 // /**
-//  * Get the statements.
-//  */
-// fun render(): List<Statement> {
-//   for (i in opQueue.indices) {
+//
+//   - Get the statements.
+//     */
+//
+//     fun render(): List<Statement> {
+//     for (i in opQueue.indices) {
 //     // Optional statements cannot be skipped when we are generating the TCB for use
 //     // by the TemplateTypeChecker.
 //     val skipOptional = !this.tcb.env.config.enableTemplateTypeChecker
 //     this.executeOp(i, skipOptional)
-//   }
-//   return this.statements
-// }
+//     }
+//     return this.statements
+//     }
 //
 // /**
-//  * Returns an expression of all template guards that apply to this scope, including those of
-//  * parent scopes. If no guards have been applied, null is returned.
-//  */
-// fun guards(): Expression? {
-//   var parentGuards: Expression? = null
-//   if (this.parent != null) {
+//
+//   - Returns an expression of all template guards that apply to this scope, including those of
+//
+//   - parent scopes. If no guards have been applied, null is returned.
+//     */
+//
+//     fun guards(): Expression? {
+//     var parentGuards: Expression? = null
+//     if (this.parent != null) {
 //     // Start with the guards from the parent scope, if present.
 //     parentGuards = this.parent.guards()
-//   }
+//     }
 //
-//   if (this.guard == null) {
+//     if (this.guard == null) {
 //     // This scope does not have a guard, so return the parent's guards as is.
 //     return parentGuards
-//   }
-//   else if (parentGuards == null) {
+//     }
+//     else if (parentGuards == null) {
 //     // There's no guards from the parent scope, so this scope's guard represents all available
 //     // guards.
 //     return this.guard
-//   }
-//   else {
+//     }
+//     else {
 //     // Both the parent scope and this scope provide a guard, so create a combination of the two.
 //     // It is important that the parent guard is used as left operand, given that it may provide
 //     // narrowing that is required for this scope's guard to be valid.
 //     return Expression {
-//       append(parentGuards)
-//       append(" && ")
-//       append(this@Scope.guard)
+//     append(parentGuards)
+//     append(" && ")
+//     append(this@Scope.guard)
 //     }
-//   }
-// }
+//     }
+//     }
 //
 // /** Returns whether a template symbol is defined locally within the current scope. */
-// fun isLocal(node: TemplateEntity): Boolean {
-//   if (node is TmplAstVariable) {
-//     return this.varMap.containsKey(node)
-//   }
-//   if (node is TmplAstLetDeclaration) {
-//     return this.letDeclOpMap.containsKey(node.name)
-//   }
-//   return this.referenceOpMap.containsKey(node)
-// }
 //
-// private fun resolveLocal(
-//   ref: LocalSymbol,
-//   directive: TmplDirectiveMetadata? = null,
-// ): Identifier? {
-//   if (ref is TmplAstReference && this.referenceOpMap.contains(ref)) {
-//     return this.resolveOp(this.referenceOpMap[ref]!!)
-//   }
-//   else if (ref is TmplAstLetDeclaration && this.letDeclOpMap.containsKey(ref.name)) {
-//     return this.resolveOp(this.letDeclOpMap[ref.name]!!.opIndex)
-//   }
-//   else if (ref is TmplAstVariable && this.varMap.contains(ref)) {
-//     // Resolving a context variable for this template.
-//     // Execute the `TcbVariableOp` associated with the `TmplAstVariable`.
-//     val opIndexOrNode = this.varMap[ref]!!
-//     return if (opIndexOrNode is Int) this.resolveOp(opIndexOrNode) else (opIndexOrNode as Identifier)
-//   }
-//   else if (
-//     ref is TmplAstTemplate && directive == null &&
-//     this.templateCtxOpMap.contains(ref)) {
-//     // Resolving the context of the given sub-template.
-//     // Execute the `TcbTemplateContextOp` for the template.
-//     return this.resolveOp(this.templateCtxOpMap[ref]!!)
-//   }
-//   else if (
-//     (ref is TmplAstElement || ref is TmplAstTemplate) &&
-//     directive != null && this.directiveOpMap.contains(ref)) {
-//     // Resolving a directive on an element or sub-template.
-//     val dirMap = this.directiveOpMap[ref]!!
-//     if (dirMap.contains(directive)) {
-//       return this.resolveOp(dirMap[directive]!!)
-//     }
-//     else {
-//       return null
-//     }
-//   }
-//   else if (ref is TmplAstElement && this.elementOpMap.contains(ref)) {
-//     // Resolving the DOM node of an element in this template.
-//     return this.resolveOp(this.elementOpMap[ref]!!)
-//   }
-//   else {
-//     return null
-//   }
-// }
-//
-// /**
-//  * Like `executeOp`, but assert that the operation actually returned `Expression`.
-//  */
-// private fun resolveOp(opIndex: Int): Identifier {
-//   val res = this.executeOp(opIndex, /* skipOptional */ false)
-//   if (res == null) {
-//     throw Error("Error resolving operation, got null")
-//   }
-//   return res
-// }
-//
-// /**
-//  * Execute a particular `TcbOp` in the `opQueue`.
-//  *
-//  * This method replaces the operation in the `opQueue` with the result of execution (once done)
-//  * and also protects against a circular dependency from the operation to itself by temporarily
-//  * setting the operation's result to a special expression.
-//  */
-// private fun executeOp(opIndex: Int, skipOptional: Boolean): Identifier? {
-//   val op = this.opQueue[opIndex]
-//   if (op == null) return op
-//   if (op is Identifier) return op
-//   if (op !is TcbOp) throw IllegalStateException(op.javaClass.toString())
-//
-//   if (skipOptional && op.optional) {
-//     return null
-//   }
-//
-//   // Set the result of the operation in the queue to its circular fallback. If executing this
-//   // operation results in a circular dependency, this will prevent an infinite loop and allow for
-//   // the resolution of such cycles.
-//   this.opQueue[opIndex] = op.circularFallback()
-//   val res = op.execute()
-//   // Once the operation has finished executing, it's safe to cache the real result.
-//   this.opQueue[opIndex] = res
-//   return res
-// }
-//
+//	fun isLocal(node: TemplateEntity): Boolean {
+//	  if (node is TmplAstVariable) {
+//	    return this.varMap.containsKey(node)
+//	  }
+//	  if (node is TmplAstLetDeclaration) {
+//	    return this.letDeclOpMap.containsKey(node.name)
+//	  }
+//	  return this.referenceOpMap.containsKey(node)
+//	}
+func (s *Scope) resolveLocal(ref TmplAstNode /* LocalSymbol */, directive *TmplDirectiveMetadata) *Identifier {
+	if _, ok := s.referenceOpMap[&ref]; ref.Kind == KindTmplAstReference && ok {
+		return s.resolveOp(s.referenceOpMap[&ref])
+	}
+
+	if _, ok := s.letDeclOpMap[ref.Name]; ref.Kind == KindTmplAstLetDeclaration && ok {
+		return s.resolveOp(s.letDeclOpMap[ref.Name].opIndex)
+	}
+
+	if _, ok := s.varMap[&ref]; ref.Kind == KindTmplAstVariable && ok {
+		// Resolving a context variable for s template.
+		// Execute the `TcbVariableOp` associated with the `TmplAstVariable`.
+		opIndexOrNode := s.varMap[&ref]
+		if opIndexOrNode.integer != nil {
+			return s.resolveOp(opIndexOrNode)
+		} else {
+			return opIndexOrNode.identifier
+		}
+	}
+
+	if _, ok := s.templateCtxOpMap[&ref]; ref.Kind == KindTmplAstTemplate && directive != nil && ok {
+		// Resolving the context of the given sub-template.
+		// Execute the `TcbTemplateContextOp` for the template.
+		return s.resolveOp(s.templateCtxOpMap[&ref])
+	}
+
+	if _, ok := s.directiveOpMap[&ref]; (ref.Kind == KindTmplAstElement || ref.Kind == KindTmplAstTemplate) &&
+		directive != nil && ok {
+		// Resolving a directive on an element or sub-template.
+		dirMap := s.directiveOpMap[&ref]
+		if _, ok := dirMap[directive]; ok {
+			return s.resolveOp(dirMap[directive])
+		} else {
+			return nil
+		}
+	}
+
+	if _, ok := s.elementOpMap[&ref]; ref.Kind == KindTmplAstElement && ok {
+		// Resolving the DOM node of an element in s template.
+		return s.resolveOp(s.elementOpMap[&ref])
+	}
+
+	return nil
+}
+
+/**
+ * Like `executeOp`, but assert that the operation actually returned `Expression`.
+ */
+func (s *Scope) resolveOp(opIndex int) Identifier {
+	res := s.executeOp(opIndex /* skipOptional */, false)
+	if res == nil {
+		panic("Error resolving operation, got null")
+	}
+
+	return res
+}
+
+/**
+ * Execute a particular `TcbOp` in the `opQueue`.
+ *
+ * This method replaces the operation in the `opQueue` with the result of execution (once done)
+ * and also protects against a circular dependency from the operation to itself by temporarily
+ * setting the operation's result to a special expression.
+ */
+func (s *Scope) executeOp(opIndex int, skipOptional bool) *Identifier {
+	op := s.opQueue[opIndex]
+
+	if op == nil {
+		return op.identifier
+	}
+	if op.identifier != nil {
+		return op.identifier
+	}
+	if op.op == nil {
+		panic(op)
+	}
+
+	o := (*op.op)
+
+	if skipOptional && o.Optional() {
+		return nil
+	}
+
+	// Set the result of the operation in the queue to its circular fallback. If executing this
+	// operation results in a circular dependency, this will prevent an infinite loop and allow for
+	// the resolution of such cycles.
+	var fallback TcbOp = o.CircularFallback()
+	s.opQueue[opIndex] = &TcbOpOrIdentifier{op: &fallback}
+	var res *Identifier = o.Execute()
+	// Once the operation has finished executing, it's safe to cache the real result.
+	s.opQueue[opIndex] = &TcbOpOrIdentifier{identifier: res}
+	return res
+}
 
 func (s *Scope) appendNode(node *TmplAstNode) {
 	if node.Kind == KindTmplAstElement {
@@ -561,33 +581,33 @@ func (s *Scope) appendNode(node *TmplAstNode) {
 		//}
 
 		s.checkAndAppendReferencesOfNode(node)
-	} else if (node.Kind == KindTmplAstDeferredBlock) {
-	  s.appendDeferredBlock(node)
-	} else if (node.Kind == KindTmplAstIfBlock) {
-	  s.opQueue = append(s.opQueue, TcbIfOp{s.tcb, s, node})
-	} else if (node.Kind == KindTmplAstSwitchBlock) {
-	  s.opQueue = append(s.opQueue, TcbSwitchOp{s.tcb, s, node})
-	} else if (node.Kind == KindTmplAstForLoopBlock) {
-	  s.opQueue = append(s.opQueue, TcbForOfOp{s.tcb, s, node})
-	  // if (s.tcb.env.config.checkControlFlowBodies) {
+	} else if node.Kind == KindTmplAstDeferredBlock {
+		s.appendDeferredBlock(node)
+	} else if node.Kind == KindTmplAstIfBlock {
+		s.opQueue = append(s.opQueue, TcbIfOp{s.tcb, s, node})
+	} else if node.Kind == KindTmplAstSwitchBlock {
+		s.opQueue = append(s.opQueue, TcbSwitchOp{s.tcb, s, node})
+	} else if node.Kind == KindTmplAstForLoopBlock {
+		s.opQueue = append(s.opQueue, TcbForOfOp{s.tcb, s, node})
+		// if (s.tcb.env.config.checkControlFlowBodies) {
 		s.appendChildren(node.empty)
-	  // }
-	} else if (node.Kind == KindTmplAstBoundText) {
-	  s.opQueue = append(s.opQueue, TcbExpressionOp{s.tcb, s, node.value, true})
-	} else if (node.Kind == KindTmplAstContent) {
-	  s.appendChildren(node)
-	} else if (node.Kind == KindTmplAstLetBlock) {
+		// }
+	} else if node.Kind == KindTmplAstBoundText {
+		s.opQueue = append(s.opQueue, TcbExpressionOp{s.tcb, s, node.value, true})
+	} else if node.Kind == KindTmplAstContent {
+		s.appendChildren(node)
+	} else if node.Kind == KindTmplAstLetBlock {
 		declaration := node.Declaration
-	  if (declaration != nil) {
-	    s.opQueue.add(TcbLetDeclarationOp{s.tcb, s, declaration})
-	    if (s.isLocal(declaration)) {
-	      s.tcb.oobRecorder.conflictingDeclaration(s.tcb.id, declaration)
-	    } else {
-	      s.letDeclOpMap[declaration.name] = LetDeclOpMapRecord(opQueue.lastIndex, declaration)
-	    }
-	  }
+		if declaration != nil {
+			s.opQueue.add(TcbLetDeclarationOp{s.tcb, s, declaration})
+			if s.isLocal(declaration) {
+				s.tcb.oobRecorder.conflictingDeclaration(s.tcb.id, declaration)
+			} else {
+				s.letDeclOpMap[declaration.name] = LetDeclOpMapRecord(opQueue.lastIndex, declaration)
+			}
+		}
 	} else {
-	  // throw IllegalStateException("Unsupported node: $node")
+		// throw IllegalStateException("Unsupported node: $node")
 	}
 }
 
@@ -738,47 +758,52 @@ func (s *Scope) appendNode(node *TmplAstNode) {
 //     }
 //   }
 // }
-//
-// private fun appendChildren(container: TmplAstNodeWithChildren?) {
-//   if (container != null) {
-//     for (child in container.children) {
-//       this.appendNode(child)
-//     }
-//   }
-// }
-//
-// private fun appendDeferredBlock(block: TmplAstDeferredBlock) {
-//   this.appendDeferredTriggers(block, block.triggers)
-//   this.appendDeferredTriggers(block, block.prefetchTriggers)
-//   if (block.hydrateTriggers.`when` != null) {
-//     this.opQueue.add(TcbExpressionOp(this.tcb, this, block.hydrateTriggers.`when`.value))
-//   }
-//   this.appendChildren(block)
-//   this.appendChildren(block.placeholder)
-//   this.appendChildren(block.loading)
-//   this.appendChildren(block.error)
-// }
-//
-// private fun appendDeferredTriggers(
-//   block: TmplAstDeferredBlock, triggers: TmplAstDeferredBlockTriggers,
-// ) {
-//   if (triggers.`when` != null) {
-//     this.opQueue.add(TcbExpressionOp(this.tcb, this, triggers.`when`.value))
-//   }
-//   // WebStorm - this is validated through WebStorm inspections
-//   //
-//   //if (triggers.hover != null) {
-//   //  this.appendReferenceBasedDeferredTrigger(block, triggers.hover)
-//   //}
-//   //
-//   //if (triggers.interaction != null) {
-//   //  this.appendReferenceBasedDeferredTrigger(block, triggers.interaction)
-//   //}
-//   //
-//   //if (triggers.viewport != null) {
-//   //  this.appendReferenceBasedDeferredTrigger(block, triggers.viewport)
-//   //}
-// }
+
+func (s *Scope) appendChildren(container *TmplAstNode /* KindTmplAstNodeWithChildren */) {
+	if container == nil {
+		return
+	}
+
+	for _, child := range container.children {
+		s.appendNode(child)
+	}
+}
+
+func (s *Scope) appendDeferredBlock(block TmplAstNode /* KindTmplAstDeferredBlock */) {
+	s.appendDeferredTriggers(block, block.triggers)
+	s.appendDeferredTriggers(block, block.prefetchTriggers)
+
+	if block.hydrateTriggers.when != nil {
+		var expression TcbOp = TcbExpressionOp{tcb: s.tcb, scope: s, expression: block.hydrateTriggers.when.value, isBoundText: false}
+		s.opQueue = append(s.opQueue, &expression)
+	}
+
+	s.appendChildren(&block)
+	s.appendChildren(block.placeholder)
+	s.appendChildren(block.loading)
+	s.appendChildren(block.err)
+}
+
+func (s *Scope) appendDeferredTriggers(block TmplAstNode /*TmplAstDeferredBlock*/, triggers TmplAstDeferredBlockTriggers) {
+	if triggers.when != nil {
+		var expression TcbOp = TcbExpressionOp{tcb: s.tcb, scope: s, expression: triggers.when.value, isBoundText: false}
+		s.opQueue = append(s.opQueue, &expression)
+	}
+	// WebStorm - this is validated through WebStorm inspections
+	//
+	//if (triggers.hover != null) {
+	//  this.appendReferenceBasedDeferredTrigger(block, triggers.hover)
+	//}
+	//
+	//if (triggers.interaction != null) {
+	//  this.appendReferenceBasedDeferredTrigger(block, triggers.interaction)
+	//}
+	//
+	//if (triggers.viewport != null) {
+	//  this.appendReferenceBasedDeferredTrigger(block, triggers.viewport)
+	//}
+}
+
 //
 // // WebStorm - this is validated through WebStorm inspections
 // //private fun appendReferenceBasedDeferredTrigger(

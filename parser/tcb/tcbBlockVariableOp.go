@@ -9,13 +9,13 @@ type TcbBlockVariableOp struct {
 }
 
 func (o TcbBlockVariableOp) Optional() bool { return false }
-func (o TcbBlockVariableOp) Execute() Identifier {
+func (o TcbBlockVariableOp) Execute() *Identifier {
 	id := o.tcb.allocateId(o.variable, nil)
 
 	variable := tsCreateVariable(id, o.initializer, false)
 	o.scope.addStatementStatement(variable)
 
-	return id
+	return &id
 }
 
 /**

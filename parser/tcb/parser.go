@@ -52,6 +52,12 @@ const (
 	KindTmplAstLetBlock
 	KindTmplAstElement
 	KindTmplAstContent
+	KindTmplAstNodeWithChildren
+	KindTmplAstDeferredBlockError
+	KindTmplAstDeferredBlockLoading
+	KindTmplAstDeferredBlockPlaceholder
+	KindTmplAstReference
+	KindTmplAstLetDeclaration
 )
 
 // TmplAstNode
@@ -75,6 +81,22 @@ type TmplAstNode struct {
 	// For blocks
 	Variable         *TmplAstVariable
 	ContextVariables []*TmplAstVariable
+
+	// KindTmplAstNodeWithChildren
+	Children []*TmplAstNode
+
+	// KindTmplAstDeferredBlock
+	triggers         TmplAstDeferredBlockTriggers
+	prefetchTriggers TmplAstDeferredBlockTriggers
+	hydrateTriggers  TmplAstDeferredBlockTriggers
+	err              *TmplAstNode
+	loading          *TmplAstNode
+	placeholder      *TmplAstNode
+	children         []*TmplAstNode
+
+	Name  string
+	Value *string
+	Node  *sitter.Node
 }
 
 type Attribute struct {
@@ -126,6 +148,40 @@ type TmplAstVariable struct {
 
 type TmplAstReference struct {
 	TmplAstExpressionSymbol
+}
+
+type TmplAstDeferredBlockTriggers struct {
+	when *TmplAstBoundDeferredTrigger
+	// Most triggers do not produce any code in TCB - ignore them
+	//val hover: TmplAstHoverDeferredTrigger?,
+	//val interaction: TmplAstInteractionDeferredTrigger?,
+	//val viewport: TmplAstViewportDeferredTrigger?,
+	//val idle: TmplAstIdleDeferredTrigger?,
+	//val immediate: TmplAstImmediateDeferredTrigger?,
+	//val timer: TmplAstTimerDeferredTrigger?,
+}
+
+type TmplAstBoundDeferredTrigger struct {
+	// nameSpan: TextRange?,
+	value *Expression
+}
+
+type TmplAstDeferredBlockError struct {
+	TmplAstNode
+	// override val nameSpan: TextRange?,
+	children []*TmplAstNode
+}
+
+type TmplAstDeferredBlockLoading struct {
+	TmplAstNode
+	// override val nameSpan: TextRange?,
+	children []*TmplAstNode
+}
+
+type TmplAstDeferredBlockPlaceholder struct {
+	TmplAstNode
+	// override val nameSpan: TextRange?,
+	children []*TmplAstNode
 }
 
 var astOptimisedMap walk.VisitorFuncMap[*Ast]

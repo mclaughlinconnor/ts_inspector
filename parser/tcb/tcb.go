@@ -64,12 +64,13 @@ func (t *Context) envReference(class *parser.Class) string {
 }
 
 type TcbExpr struct {
+	TcbOp
 	Source string
 }
 
 type TcbOp interface {
 	CircularFallback() TcbExpr
-	Execute() Identifier
+	Execute() *Identifier
 	Optional() bool
 }
 
