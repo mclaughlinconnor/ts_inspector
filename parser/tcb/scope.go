@@ -2,6 +2,7 @@ package tcb
 
 import (
 	"strings"
+	"ts_inspector/parser"
 )
 
 type LetDeclOpMapRecord struct {
@@ -812,7 +813,78 @@ func (s *Scope) checkAndAppendReferencesOfNode(node *TmplAstNode) {
 }
 
 func (s *Scope) appendDirectivesAndInputsOfNode(node *TmplAstNode) {
-	// TODO: implement — see Kotlin reference above
+	if node.Tag == nil {
+		return
+	}
+
+	state := s.tcb.state
+	file := s.tcb.file
+	if state == nil || file == nil {
+		return
+	}
+
+	fileClasses := file.Snapshot().Classes
+	if len(fileClasses) == 0 {
+		return
+	}
+	currentClass := fileClasses[0]
+	if currentClass == nil || !currentClass.HasComponent() {
+		return
+	}
+
+	// Get all available things (directives/components) from the component's scope
+	availableThings := currentClass.Snapshot().Angular.Component.GetAvailableThings(state)
+
+	// Find directives that match this node's tag via selector matching
+	var matchingClasses []*parser.Class
+	for _, thing := range availableThings {
+		if !thing.HasDirective() && !thing.HasComponent() {
+			continue
+		}
+
+		var selectors []string
+		if thing.HasDirective() {
+			selectors = thing.Snapshot().Angular.Directive.Selectors
+		} else if thing.HasComponent() {
+			selectors = thing.Snapshot().Angular.Component.Selectors
+		}
+
+		for _, selector := range selectors {
+			if node.Tag.matchesSelector(selector) {
+				matchingClasses = append(matchingClasses, thing)
+				break
+			}
+		}
+	}
+
+	if len(matchingClasses) == 0 {
+		// No directives match — all inputs are unclaimed.
+		// TODO: queue TcbUnclaimedInputsOp if node is an element
+		return
+	}
+
+	// For each matching directive, create a directive type op
+	dirMap := make(map[*TmplDirectiveMetadata]int)
+	for _, cls := range matchingClasses {
+		var directive *parser.Directive
+		if cls.HasDirective() {
+			directive = cls.Snapshot().Angular.Directive
+		}
+
+		meta := &TmplDirectiveMetadata{
+			directive: directive,
+		}
+
+		// Create directive type variable using directiveTypeBase
+		dirId := directiveTypeBase(state, file, s.tcb, s, *node, TmplAstNode{Tag: node.Tag})
+		_ = dirId // The id is allocated and statement added by directiveTypeBase
+
+		opIndex := len(s.opQueue) - 1
+		dirMap[meta] = opIndex
+
+		// TODO: queue TcbDirectiveInputsOp(s.tcb, s, node, meta) when implemented
+	}
+	s.directiveOpMap[node] = dirMap
 }
 
 func (s *Scope) appendOutputsOfNode(node *TmplAstNode) {

@@ -14,6 +14,8 @@ type Context struct {
 	imports     []*Import
 	oobRecorder *OobRecorder
 	scopes      []*Scope
+	state       *parser.State
+	file        *parser.File
 }
 
 type Import struct {
