@@ -1,4 +1,4 @@
-package tcb
+package tcb_port
 
 import (
 	"strings"
@@ -863,7 +863,7 @@ func (s *Scope) appendDirectivesAndInputsOfNode(node *TmplAstNode) {
 		return
 	}
 
-	// For each matching directive, create a directive type op
+	// For each matching directive, create a directive type op and inputs op
 	dirMap := make(map[*TmplDirectiveMetadata]int)
 	for _, cls := range matchingClasses {
 		var directive *parser.Directive
@@ -882,7 +882,8 @@ func (s *Scope) appendDirectivesAndInputsOfNode(node *TmplAstNode) {
 		opIndex := len(s.opQueue) - 1
 		dirMap[meta] = opIndex
 
-		// TODO: queue TcbDirectiveInputsOp(s.tcb, s, node, meta) when implemented
+		// Queue directive inputs checking
+		s.addOp(TcbDirectiveInputsOp{tcb: s.tcb, scope: s, node: node, dir: meta, cls: cls})
 	}
 	s.directiveOpMap[node] = dirMap
 }

@@ -14,7 +14,7 @@ import (
 	"ts_inspector/commands"
 	"ts_inspector/lsp"
 	"ts_inspector/parser"
-	"ts_inspector/parser/tcb"
+	"ts_inspector/parser/tcb_port"
 	"ts_inspector/search"
 	"ts_inspector/utils"
 )
@@ -36,9 +36,9 @@ func main() {
 	actions.InitActions()
 	commands.InitCommands()
 	analysis.InitAnalysers()
-	tcb.InitTcb()
+	tcb_port.InitTcb()
 
-	output := tcb.AstToTypescript(&tcb.Expression{"x?.y"})
+	output := tcb_port.AstToTypescript(&tcb_port.Expression{"x?.y"})
 	println(output)
 
 	args := flag.Args()

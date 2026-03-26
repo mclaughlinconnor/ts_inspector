@@ -1,4 +1,4 @@
-package tcb
+package tcb_port
 
 var NG_TEMPLATE_CONTEXT_GUARD string = "ngTemplateContextGuard"
 var NG_TEMPLATE_GUARD_PREFIX string = "ngTemplateGuard_"
