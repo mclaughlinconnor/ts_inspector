@@ -16,7 +16,7 @@ func (t TcbExpressionOp) Execute() *Identifier {
 		return nil
 	}
 
-	expr := AstToTypescript(&t.expression)
+	expr := AstToTypescript(t.expression)
 
 	statement := Statement{}
 	if t.isBoundText {

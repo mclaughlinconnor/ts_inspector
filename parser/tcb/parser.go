@@ -94,9 +94,20 @@ type TmplAstNode struct {
 	placeholder      *TmplAstNode
 	children         []*TmplAstNode
 
+	// KindTmplAstLetBlock
+	Declaration *TmplAstLetDeclaration
+
+	// KindTmplAstForLoopBlock
+	Empty *TmplAstNode
+
 	Name  string
 	Value *string
 	Node  *sitter.Node
+}
+
+type TmplAstLetDeclaration struct {
+	Name string
+	Node *sitter.Node
 }
 
 type Attribute struct {

@@ -6,7 +6,7 @@ type TcbTemplateContextOp struct {
 }
 
 func (o TcbTemplateContextOp) Optional() bool { return true }
-func (o TcbTemplateContextOp) Execute() Identifier {
+func (o TcbTemplateContextOp) Execute() *Identifier {
 	id := o.tcb.allocateId(nil, nil)
 
 	statement := Statement{}
@@ -16,7 +16,7 @@ func (o TcbTemplateContextOp) Execute() Identifier {
 
 	o.scope.addStatementStatement(statement)
 
-	return id
+	return &id
 }
 func (o TcbTemplateContextOp) CircularFallback() TcbExpr { return TcbExpr{Source: "null!"} }
 
@@ -25,7 +25,7 @@ func (o TcbTemplateContextOp) CircularFallback() TcbExpr { return TcbExpr{Source
  *
  * Executing this operation returns a reference to the template's context variable.
  */
-func handleTemplateContext(tcb *Context, scope *Scope) Identifier {
+func handleTemplateContext(tcb *Context, scope *Scope) *Identifier {
 	op := &TcbTemplateContextOp{tcb: tcb, scope: scope}
 	return op.Execute()
 }

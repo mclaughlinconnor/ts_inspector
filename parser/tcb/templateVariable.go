@@ -15,7 +15,7 @@ type TcbTemplateVariableOp struct {
 func (o TcbTemplateVariableOp) Optional() bool { return false }
 func (o TcbTemplateVariableOp) Execute() *Identifier {
 	// Look for a context variable for the template.
-	ctx := o.scope.resolve(o.template, nil)
+	ctx := o.scope.resolve(*o.template, nil)
 	// Allocate an identifier for the TmplAstVariable, and initialize it to a read of the variable
 	// on the template context.
 	id := o.tcb.allocateId(nil, nil)
@@ -24,7 +24,9 @@ func (o TcbTemplateVariableOp) Execute() *Identifier {
 	statement.AddPart("var ")
 	statement.AddPart(IdentifierName(id))
 	statement.AddPart(" = ")
-	statement.AddPart(IdentifierName(ctx))
+	if ctx != nil {
+		statement.AddPart(IdentifierName(*ctx))
+	}
 
 	name := o.variable.Name
 	if name == "" {
@@ -42,9 +44,9 @@ func (o TcbTemplateVariableOp) Execute() *Identifier {
 
 	statement.AddPart(";")
 
-	o.scope.AddStatement(statement)
+	o.scope.addStatementStatement(statement)
 
-	return id
+	return &id
 }
 
 func (o TcbTemplateVariableOp) CircularFallback() TcbExpr { return TcbExpr{Source: "null!"} }
@@ -55,7 +57,7 @@ func (o TcbTemplateVariableOp) CircularFallback() TcbExpr { return TcbExpr{Sourc
  *
  * Executing this operation returns a reference to the variable variable (lol).
  */
-func handleTemplateVariable(tcb *Context, scope *Scope, variable *TmplAstNode, template *TmplAstNode) Identifier {
+func handleTemplateVariable(tcb *Context, scope *Scope, variable *TmplAstNode, template *TmplAstNode) *Identifier {
 	op := &TcbTemplateVariableOp{tcb: tcb, scope: scope, template: template, variable: variable.Variable}
 
 	return op.Execute()

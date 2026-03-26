@@ -15,9 +15,54 @@ type IntOrIdentifier struct {
 }
 
 type TcbOpOrIdentifier struct {
-	op         *TcbOp
+	op         TcbOp
 	identifier *Identifier
 }
+
+// Stub types for ops not yet implemented
+type TcbIfOp struct {
+	TcbOp
+	tcb   *Context
+	scope *Scope
+	block *TmplAstNode
+}
+
+func (o TcbIfOp) Optional() bool            { return false }
+func (o TcbIfOp) CircularFallback() TcbExpr { return TcbExpr{Source: "null!"} }
+func (o TcbIfOp) Execute() *Identifier      { return nil }
+
+type TcbSwitchOp struct {
+	TcbOp
+	tcb   *Context
+	scope *Scope
+	block *TmplAstNode
+}
+
+func (o TcbSwitchOp) Optional() bool            { return false }
+func (o TcbSwitchOp) CircularFallback() TcbExpr { return TcbExpr{Source: "null!"} }
+func (o TcbSwitchOp) Execute() *Identifier      { return nil }
+
+type TcbForOfOp struct {
+	TcbOp
+	tcb   *Context
+	scope *Scope
+	block *TmplAstNode
+}
+
+func (o TcbForOfOp) Optional() bool            { return false }
+func (o TcbForOfOp) CircularFallback() TcbExpr { return TcbExpr{Source: "null!"} }
+func (o TcbForOfOp) Execute() *Identifier      { return nil }
+
+type TcbLetDeclarationOp struct {
+	TcbOp
+	tcb         *Context
+	scope       *Scope
+	declaration *TmplAstLetDeclaration
+}
+
+func (o TcbLetDeclarationOp) Optional() bool            { return false }
+func (o TcbLetDeclarationOp) CircularFallback() TcbExpr { return TcbExpr{Source: "null!"} }
+func (o TcbLetDeclarationOp) Execute() *Identifier      { return nil }
 
 /**
  * Local scope within the type check block for a particular template.
@@ -79,7 +124,7 @@ type Scope struct {
 	* `TmplAstVariable` nodes) to the index of their `TcbVariableOp`s in the `opQueue`, or to
 	* pre-resolved variable identifiers.
 	 */
-	varMap map[*TmplAstNode]IntOrIdentifier
+	varMap map[*TmplAstVariable]IntOrIdentifier
 
 	/**
 	* A map of the names of `TmplAstLetDeclaration`s to the index of their op in the `opQueue`.
@@ -108,6 +153,12 @@ var forLoopContextVariableTypes = map[string]string{
 	"$count": "number",
 }
 
+// addOp is a helper that appends a TcbOp to the opQueue wrapped in TcbOpOrIdentifier.
+func (s *Scope) addOp(op TcbOp) int {
+	s.opQueue = append(s.opQueue, &TcbOpOrIdentifier{op: op})
+	return len(s.opQueue) - 1
+}
+
 /**
 * Constructs a `Scope` given either a `TmplAstTemplate` or a list of `TmplAstNode`s.
 *
@@ -123,10 +174,11 @@ func scopeForNodes(tcb *Context, parentScope *Scope, scopedNode *TmplAstNode, ch
 	var guardExpr *Expression = nil
 
 	if guard != nil {
-		guardExpr := Expression{}
-		guardExpr = append(guardExpr, "(")
-		guardExpr = append(guardExpr, strings.Join(*guard, ""))
-		guardExpr = append(guardExpr, ")")
+		g := Expression{}
+		g = append(g, "(")
+		g = append(g, strings.Join(*guard, ""))
+		g = append(g, ")")
+		guardExpr = &g
 	}
 
 	scope := Scope{
@@ -137,7 +189,7 @@ func scopeForNodes(tcb *Context, parentScope *Scope, scopedNode *TmplAstNode, ch
 		directiveOpMap:   make(map[*TmplAstNode]map[*TmplDirectiveMetadata]int),
 		referenceOpMap:   make(map[*TmplAstNode]int),
 		templateCtxOpMap: make(map[*TmplAstNode]int),
-		varMap:           make(map[*TmplAstNode]IntOrIdentifier),
+		varMap:           make(map[*TmplAstVariable]IntOrIdentifier),
 		letDeclOpMap:     make(map[string]LetDeclOpMapRecord),
 	}
 
@@ -178,7 +230,7 @@ func scopeForNodes(tcb *Context, parentScope *Scope, scopedNode *TmplAstNode, ch
 		variable := scopedNode.Variable
 		if variable != nil {
 			loopInitializer := tcb.allocateId(variable, nil)
-			scope.varMap[variable] = loopInitializer
+			scope.varMap[variable] = IntOrIdentifier{identifier: &loopInitializer}
 		}
 
 		for _, v := range scopedNode.ContextVariables {
@@ -206,7 +258,7 @@ func scopeForNodes(tcb *Context, parentScope *Scope, scopedNode *TmplAstNode, ch
 	}
 
 	for ref := range scope.referenceOpMap {
-		scope.checkConflictingLet(ref.TmplAstExpressionSymbol)
+		scope.checkConflictingLet(TmplAstExpressionSymbol{Name: ref.Name})
 	}
 
 	return scope
@@ -341,9 +393,8 @@ func scopeForNodes(tcb *Context, parentScope *Scope, scopedNode *TmplAstNode, ch
 //
 /** Registers a local variable with a scope. */
 func (s *Scope) registerVariable(variable *TmplAstVariable, op TcbOp) {
-	s.opQueue = append(s.opQueue, &op)
-	opIndex := len(s.opQueue) - 1
-	s.varMap[variable] = opIndex
+	opIndex := s.addOp(op)
+	s.varMap[variable] = IntOrIdentifier{integer: &opIndex}
 }
 
 //
@@ -446,17 +497,15 @@ func (s *Scope) addStatementExpression(expr Expression) {
 //     }
 //     }
 //
-// /** Returns whether a template symbol is defined locally within the current scope. */
-//
-//	fun isLocal(node: TemplateEntity): Boolean {
-//	  if (node is TmplAstVariable) {
-//	    return this.varMap.containsKey(node)
-//	  }
-//	  if (node is TmplAstLetDeclaration) {
-//	    return this.letDeclOpMap.containsKey(node.name)
-//	  }
-//	  return this.referenceOpMap.containsKey(node)
-//	}
+
+/** Returns whether a template symbol is defined locally within the current scope. */
+func (s *Scope) isLocal(node *TmplAstLetDeclaration) bool {
+	if node == nil {
+		return false
+	}
+	_, found := s.letDeclOpMap[node.Name]
+	return found
+}
 func (s *Scope) resolveLocal(ref TmplAstNode /* LocalSymbol */, directive *TmplDirectiveMetadata) *Identifier {
 	if _, ok := s.referenceOpMap[&ref]; ref.Kind == KindTmplAstReference && ok {
 		return s.resolveOp(s.referenceOpMap[&ref])
@@ -466,14 +515,16 @@ func (s *Scope) resolveLocal(ref TmplAstNode /* LocalSymbol */, directive *TmplD
 		return s.resolveOp(s.letDeclOpMap[ref.Name].opIndex)
 	}
 
-	if _, ok := s.varMap[&ref]; ref.Kind == KindTmplAstVariable && ok {
-		// Resolving a context variable for s template.
-		// Execute the `TcbVariableOp` associated with the `TmplAstVariable`.
-		opIndexOrNode := s.varMap[&ref]
-		if opIndexOrNode.integer != nil {
-			return s.resolveOp(opIndexOrNode)
-		} else {
-			return opIndexOrNode.identifier
+	if ref.Kind == KindTmplAstVariable && ref.Variable != nil {
+		if _, ok := s.varMap[ref.Variable]; ok {
+			// Resolving a context variable for s template.
+			// Execute the `TcbVariableOp` associated with the `TmplAstVariable`.
+			opIndexOrNode := s.varMap[ref.Variable]
+			if opIndexOrNode.integer != nil {
+				return s.resolveOp(*opIndexOrNode.integer)
+			} else {
+				return opIndexOrNode.identifier
+			}
 		}
 	}
 
@@ -505,7 +556,7 @@ func (s *Scope) resolveLocal(ref TmplAstNode /* LocalSymbol */, directive *TmplD
 /**
  * Like `executeOp`, but assert that the operation actually returned `Expression`.
  */
-func (s *Scope) resolveOp(opIndex int) Identifier {
+func (s *Scope) resolveOp(opIndex int) *Identifier {
 	res := s.executeOp(opIndex /* skipOptional */, false)
 	if res == nil {
 		panic("Error resolving operation, got null")
@@ -525,7 +576,7 @@ func (s *Scope) executeOp(opIndex int, skipOptional bool) *Identifier {
 	op := s.opQueue[opIndex]
 
 	if op == nil {
-		return op.identifier
+		return nil
 	}
 	if op.identifier != nil {
 		return op.identifier
@@ -534,7 +585,7 @@ func (s *Scope) executeOp(opIndex int, skipOptional bool) *Identifier {
 		panic(op)
 	}
 
-	o := (*op.op)
+	o := op.op
 
 	if skipOptional && o.Optional() {
 		return nil
@@ -543,9 +594,9 @@ func (s *Scope) executeOp(opIndex int, skipOptional bool) *Identifier {
 	// Set the result of the operation in the queue to its circular fallback. If executing this
 	// operation results in a circular dependency, this will prevent an infinite loop and allow for
 	// the resolution of such cycles.
-	var fallback TcbOp = o.CircularFallback()
-	s.opQueue[opIndex] = &TcbOpOrIdentifier{op: &fallback}
-	var res *Identifier = o.Execute()
+	fallback := o.CircularFallback()
+	s.opQueue[opIndex] = &TcbOpOrIdentifier{op: fallback}
+	res := o.Execute()
 	// Once the operation has finished executing, it's safe to cache the real result.
 	s.opQueue[opIndex] = &TcbOpOrIdentifier{identifier: res}
 	return res
@@ -553,9 +604,8 @@ func (s *Scope) executeOp(opIndex int, skipOptional bool) *Identifier {
 
 func (s *Scope) appendNode(node *TmplAstNode) {
 	if node.Kind == KindTmplAstElement {
-		var op TcbOp = TcbElementOp{tcb: s.tcb, scope: s, element: node}
-		s.opQueue = append(s.opQueue, &op)
-		s.elementOpMap[node] = len(s.opQueue) - 1
+		opIndex := s.addOp(TcbElementOp{tcb: s.tcb, scope: s, element: node})
+		s.elementOpMap[node] = opIndex
 		// if s.tcb.env.config.controlFlowPreventingContentProjection != ControlFlowPreventingContentProjectionKind.Suppress {
 		s.appendContentProjectionCheckOp(node)
 		// }
@@ -567,12 +617,10 @@ func (s *Scope) appendNode(node *TmplAstNode) {
 		// Template children are rendered in a child scope.
 		s.appendDirectivesAndInputsOfNode(node)
 		s.appendOutputsOfNode(node)
-		contextOp := TcbOp(TcbTemplateContextOp{tcb: s.tcb, scope: s})
-		s.opQueue = append(s.opQueue, &contextOp)
-		s.templateCtxOpMap[node] = len(s.opQueue) - 1
+		opIndex := s.addOp(TcbTemplateContextOp{tcb: s.tcb, scope: s})
+		s.templateCtxOpMap[node] = opIndex
 		// if s.tcb.env.config.checkTemplateBodies {
-		bodyOp := TcbOp(TcbTemplateBodyOp{tcb: *s.tcb, scope: *s, template: *node})
-		s.opQueue = append(s.opQueue, &bodyOp)
+		s.addOp(TcbTemplateBodyOp{tcb: *s.tcb, scope: *s, template: *node})
 		// }
 
 		// WebStorm - this is done through HTML validator. CM - checkTemplateBodies does it anyway
@@ -582,29 +630,28 @@ func (s *Scope) appendNode(node *TmplAstNode) {
 
 		s.checkAndAppendReferencesOfNode(node)
 	} else if node.Kind == KindTmplAstDeferredBlock {
-		s.appendDeferredBlock(node)
+		s.appendDeferredBlock(*node)
 	} else if node.Kind == KindTmplAstIfBlock {
-		s.opQueue = append(s.opQueue, TcbIfOp{s.tcb, s, node})
+		s.addOp(TcbIfOp{tcb: s.tcb, scope: s, block: node})
 	} else if node.Kind == KindTmplAstSwitchBlock {
-		s.opQueue = append(s.opQueue, TcbSwitchOp{s.tcb, s, node})
+		s.addOp(TcbSwitchOp{tcb: s.tcb, scope: s, block: node})
 	} else if node.Kind == KindTmplAstForLoopBlock {
-		s.opQueue = append(s.opQueue, TcbForOfOp{s.tcb, s, node})
+		s.addOp(TcbForOfOp{tcb: s.tcb, scope: s, block: node})
 		// if (s.tcb.env.config.checkControlFlowBodies) {
-		s.appendChildren(node.empty)
+		s.appendChildren(node.Empty)
 		// }
 	} else if node.Kind == KindTmplAstBoundText {
-		s.opQueue = append(s.opQueue, TcbExpressionOp{s.tcb, s, node.value, true})
+		s.addOp(TcbExpressionOp{tcb: s.tcb, scope: s, expression: node.Expression, isBoundText: true})
 	} else if node.Kind == KindTmplAstContent {
 		s.appendChildren(node)
 	} else if node.Kind == KindTmplAstLetBlock {
 		declaration := node.Declaration
 		if declaration != nil {
-			var letDeclOp TcbOp = TcbLetDeclarationOp{s.tcb, s, declaration}
-			s.opQueue = append(s.opQueue, &TcbOpOrIdentifier{op: &letDeclOp})
+			s.addOp(TcbLetDeclarationOp{tcb: s.tcb, scope: s, declaration: declaration})
 			if s.isLocal(declaration) {
 				s.tcb.oobRecorder.conflictingDeclaration(s.tcb.id, declaration)
 			} else {
-				s.letDeclOpMap[declaration.Name] = LetDeclOpMapRecord{opIndex: len(s.opQueue) - 1, node: declaration}
+				s.letDeclOpMap[declaration.Name] = LetDeclOpMapRecord{opIndex: len(s.opQueue) - 1, node: node}
 			}
 		}
 	} else {
@@ -612,153 +659,169 @@ func (s *Scope) appendNode(node *TmplAstNode) {
 	}
 }
 
+//	private fun checkAndAppendReferencesOfNode(node: `TmplAstElement|TmplAstTemplate`) {
+//	  for (ref in node.references.values) {
+//	    val target = this.tcb.boundTarget.getReferenceTarget(ref)
 //
-// private fun checkAndAppendReferencesOfNode(node: `TmplAstElement|TmplAstTemplate`) {
-//   for (ref in node.references.values) {
-//     val target = this.tcb.boundTarget.getReferenceTarget(ref)
+//	    if (target == null) {
+//	      // The reference is invalid if it doesn't have a target, so report it as an error.
+//	      this.tcb.oobRecorder.missingReferenceTarget(this.tcb.id, ref)
 //
-//     if (target == null) {
-//       // The reference is invalid if it doesn't have a target, so report it as an error.
-//       this.tcb.oobRecorder.missingReferenceTarget(this.tcb.id, ref)
+//	      // Any usages of the invalid reference will be resolved to a variable of type any.
+//	      this.opQueue.add(TcbInvalidReferenceOp(this.tcb, this))
+//	    }
+//	    else {
+//	      this.opQueue.add(TcbReferenceOp(this.tcb, this, ref, node, target))
+//	    }
+//	    this.referenceOpMap[ref] = this.opQueue.lastIndex
+//	  }
+//	}
 //
-//       // Any usages of the invalid reference will be resolved to a variable of type any.
-//       this.opQueue.add(TcbInvalidReferenceOp(this.tcb, this))
-//     }
-//     else {
-//       this.opQueue.add(TcbReferenceOp(this.tcb, this, ref, node, target))
-//     }
-//     this.referenceOpMap[ref] = this.opQueue.lastIndex
-//   }
-// }
+//	private fun appendDirectivesAndInputsOfNode(node: `TmplAstElement|TmplAstTemplate`) {
+//	  // Collect all the inputs on the element.
+//	  val claimedInputs = mutableSetOf<String>()
+//	  val directives = this.tcb.boundTarget.getDirectivesOfNode(node)
+//	  if (directives.isEmpty()) {
+//	    // If there are no directives, then all inputs are unclaimed inputs, so queue an operation
+//	    // to add them if needed.
+//	    if (node is TmplAstElement) {
+//	      this.opQueue.add(TcbUnclaimedInputsOp(this.tcb, this, node, claimedInputs))
 //
-// private fun appendDirectivesAndInputsOfNode(node: `TmplAstElement|TmplAstTemplate`) {
-//   // Collect all the inputs on the element.
-//   val claimedInputs = mutableSetOf<String>()
-//   val directives = this.tcb.boundTarget.getDirectivesOfNode(node)
-//   if (directives.isEmpty()) {
-//     // If there are no directives, then all inputs are unclaimed inputs, so queue an operation
-//     // to add them if needed.
-//     if (node is TmplAstElement) {
-//       this.opQueue.add(TcbUnclaimedInputsOp(this.tcb, this, node, claimedInputs))
+//	      // WebStorm - this is done through HTML validator
+//	      //this.opQueue.add(
+//	      //  TcbDomSchemaCheckerOp(this.tcb, node, /* checkElement */ true, claimedInputs))
+//	    }
+//	    return
+//	  }
+//	  else {
+//	    if (node is TmplAstElement) {
+//	      val isDeferred = this.tcb.boundTarget.isDeferred(node)
+//	      if (!isDeferred && directives.any { dir -> this.tcb.env.isExplicitlyDeferred(dir) }) {
+//	        // This node has directives/components that were defer-loaded (included into
+//	        // `@Component.deferredImports`), but the node itself was used outside of a
+//	        // `@defer` block, which is the error.
+//	        this.tcb.oobRecorder.deferredComponentUsedEagerly(this.tcb.id, node)
+//	      }
+//	    }
+//	  }
 //
-//       // WebStorm - this is done through HTML validator
-//       //this.opQueue.add(
-//       //  TcbDomSchemaCheckerOp(this.tcb, node, /* checkElement */ true, claimedInputs))
-//     }
-//     return
-//   }
-//   else {
-//     if (node is TmplAstElement) {
-//       val isDeferred = this.tcb.boundTarget.isDeferred(node)
-//       if (!isDeferred && directives.any { dir -> this.tcb.env.isExplicitlyDeferred(dir) }) {
-//         // This node has directives/components that were defer-loaded (included into
-//         // `@Component.deferredImports`), but the node itself was used outside of a
-//         // `@defer` block, which is the error.
-//         this.tcb.oobRecorder.deferredComponentUsedEagerly(this.tcb.id, node)
-//       }
-//     }
-//   }
+//	  val dirMap = mutableMapOf<TmplDirectiveMetadata, Int>()
+//	  for (dir in directives) {
+//	    var directiveOp: TcbOp
 //
-//   val dirMap = mutableMapOf<TmplDirectiveMetadata, Int>()
-//   for (dir in directives) {
-//     var directiveOp: TcbOp
+//	    if (!dir.isGeneric) {
+//	      // The most common case is that when a directive is not generic, we use the normal
+//	      // `TcbNonDirectiveTypeOp`.
+//	      directiveOp = TcbNonGenericDirectiveTypeOp(this.tcb, this, node, dir)
+//	    }
+//	    else if (
+//	      !requiresInlineTypeCtor(dir.typeScriptClass, this.tcb.env) ||
+//	      this.tcb.env.config.useInlineTypeConstructors) {
+//	      // For generic directives, we use a type constructor to infer types. If a directive requires
+//	      // an inline type constructor, then inlining must be available to use the
+//	      // `TcbDirectiveCtorOp`. If not we, we fallback to using `any` – see below.
+//	      directiveOp = TcbDirectiveCtorOp(this.tcb, this, node, dir)
+//	    }
+//	    else {
+//	      // If inlining is not available, then we give up on inferring the generic params, and use
+//	      // `any` type for the directive's generic parameters.
+//	      directiveOp = TcbGenericDirectiveTypeWithAnyParamsOp(this.tcb, this, node, dir)
+//	    }
 //
-//     if (!dir.isGeneric) {
-//       // The most common case is that when a directive is not generic, we use the normal
-//       // `TcbNonDirectiveTypeOp`.
-//       directiveOp = TcbNonGenericDirectiveTypeOp(this.tcb, this, node, dir)
-//     }
-//     else if (
-//       !requiresInlineTypeCtor(dir.typeScriptClass, this.tcb.env) ||
-//       this.tcb.env.config.useInlineTypeConstructors) {
-//       // For generic directives, we use a type constructor to infer types. If a directive requires
-//       // an inline type constructor, then inlining must be available to use the
-//       // `TcbDirectiveCtorOp`. If not we, we fallback to using `any` – see below.
-//       directiveOp = TcbDirectiveCtorOp(this.tcb, this, node, dir)
-//     }
-//     else {
-//       // If inlining is not available, then we give up on inferring the generic params, and use
-//       // `any` type for the directive's generic parameters.
-//       directiveOp = TcbGenericDirectiveTypeWithAnyParamsOp(this.tcb, this, node, dir)
-//     }
+//	    this.opQueue.add(directiveOp)
+//	    dirMap[dir] = this.opQueue.lastIndex
 //
-//     this.opQueue.add(directiveOp)
-//     dirMap[dir] = this.opQueue.lastIndex
+//	    this.opQueue.add(TcbDirectiveInputsOp(this.tcb, this, node, dir))
+//	  }
+//	  this.directiveOpMap[node] = dirMap
 //
-//     this.opQueue.add(TcbDirectiveInputsOp(this.tcb, this, node, dir))
-//   }
-//   this.directiveOpMap[node] = dirMap
+//	  // After expanding the directives, we might need to queue an operation to check any unclaimed
+//	  // inputs.
+//	  if (node is TmplAstElement) {
+//	    // Go through the directives and remove any inputs that it claims from `elementInputs`.
+//	    for (dir in directives) {
+//	      for (propertyName in dir.inputs.keys) {
+//	        claimedInputs.add(propertyName)
+//	      }
+//	    }
 //
-//   // After expanding the directives, we might need to queue an operation to check any unclaimed
-//   // inputs.
-//   if (node is TmplAstElement) {
-//     // Go through the directives and remove any inputs that it claims from `elementInputs`.
-//     for (dir in directives) {
-//       for (propertyName in dir.inputs.keys) {
-//         claimedInputs.add(propertyName)
-//       }
-//     }
+//	    this.opQueue.add(TcbUnclaimedInputsOp(this.tcb, this, node, claimedInputs))
+//	    // If there are no directives which match this element, then it's a "plain" DOM element (or a
+//	    // web component), and should be checked against the DOM schema. If any directives match,
+//	    // we must assume that the element could be custom (either a component, or a directive like
+//	    // <router-outlet>) and shouldn't validate the element name itself.
 //
-//     this.opQueue.add(TcbUnclaimedInputsOp(this.tcb, this, node, claimedInputs))
-//     // If there are no directives which match this element, then it's a "plain" DOM element (or a
-//     // web component), and should be checked against the DOM schema. If any directives match,
-//     // we must assume that the element could be custom (either a component, or a directive like
-//     // <router-outlet>) and shouldn't validate the element name itself.
+//	    // WebStorm - this is done through HTML validator
 //
-//     // WebStorm - this is done through HTML validator
+//	    //val checkElement = directives.isEmpty()
+//	    //this.opQueue.add(TcbDomSchemaCheckerOp(this.tcb, node, checkElement, claimedInputs))
+//	  }
+//	}
 //
-//     //val checkElement = directives.isEmpty()
-//     //this.opQueue.add(TcbDomSchemaCheckerOp(this.tcb, node, checkElement, claimedInputs))
-//   }
-// }
+//	private fun appendOutputsOfNode(node: `TmplAstElement|TmplAstTemplate`) {
+//	  // Collect all the outputs on the element.
+//	  val claimedOutputs = mutableSetOf<String>()
+//	  val directives = this.tcb.boundTarget.getDirectivesOfNode(node)
+//	  if (directives.isEmpty()) {
+//	    // If there are no directives, then all outputs are unclaimed outputs, so queue an operation
+//	    // to add them if needed.
+//	    if (node is TmplAstElement) {
+//	      this.opQueue.add(TcbUnclaimedOutputsOp(this.tcb, this, node, claimedOutputs))
+//	    }
+//	    return
+//	  }
 //
-// private fun appendOutputsOfNode(node: `TmplAstElement|TmplAstTemplate`) {
-//   // Collect all the outputs on the element.
-//   val claimedOutputs = mutableSetOf<String>()
-//   val directives = this.tcb.boundTarget.getDirectivesOfNode(node)
-//   if (directives.isEmpty()) {
-//     // If there are no directives, then all outputs are unclaimed outputs, so queue an operation
-//     // to add them if needed.
-//     if (node is TmplAstElement) {
-//       this.opQueue.add(TcbUnclaimedOutputsOp(this.tcb, this, node, claimedOutputs))
-//     }
-//     return
-//   }
+//	  // Queue operations for all directives to check the relevant outputs for a directive.
+//	  for (dir in directives) {
+//	    this.opQueue.add(TcbDirectiveOutputsOp(this.tcb, this, node, dir))
+//	  }
 //
-//   // Queue operations for all directives to check the relevant outputs for a directive.
-//   for (dir in directives) {
-//     this.opQueue.add(TcbDirectiveOutputsOp(this.tcb, this, node, dir))
-//   }
+//	  // After expanding the directives, we might need to queue an operation to check any unclaimed
+//	  // outputs.
+//	  if (node is TmplAstElement) {
+//	    // Go through the directives and register any outputs that it claims in `claimedOutputs`.
+//	    for (dir in directives) {
+//	      for (outputProperty in dir.outputs.keys) {
+//	        claimedOutputs.add(outputProperty)
+//	      }
+//	    }
 //
-//   // After expanding the directives, we might need to queue an operation to check any unclaimed
-//   // outputs.
-//   if (node is TmplAstElement) {
-//     // Go through the directives and register any outputs that it claims in `claimedOutputs`.
-//     for (dir in directives) {
-//       for (outputProperty in dir.outputs.keys) {
-//         claimedOutputs.add(outputProperty)
-//       }
-//     }
+//	    this.opQueue.add(TcbUnclaimedOutputsOp(this.tcb, this, node, claimedOutputs))
+//	  }
+//	}
 //
-//     this.opQueue.add(TcbUnclaimedOutputsOp(this.tcb, this, node, claimedOutputs))
-//   }
-// }
+//	private fun appendContentProjectionCheckOp(root: TmplAstElement) {
+//	  val meta =
+//	    this.tcb.boundTarget.getDirectivesOfNode(root).firstNotNullOfOrNull { it.directive as? Angular2Component }
 //
-// private fun appendContentProjectionCheckOp(root: TmplAstElement) {
-//   val meta =
-//     this.tcb.boundTarget.getDirectivesOfNode(root).firstNotNullOfOrNull { it.directive as? Angular2Component }
+//	  if (meta?.ngContentSelectors != null && meta.ngContentSelectors.isNotEmpty()) {
+//	    val selectors = meta.ngContentSelectors
 //
-//   if (meta?.ngContentSelectors != null && meta.ngContentSelectors.isNotEmpty()) {
-//     val selectors = meta.ngContentSelectors
+//	    // We don't need to generate anything for components that don't have projection
+//	    // slots, or they only have one catch-all slot (represented by `*`).
+//	    if (selectors.size > 1 || (selectors.size == 1 && selectors[0].text.trim() != "*")) {
+//	      this.opQueue.add(
+//	        TcbControlFlowContentProjectionOp(this.tcb, root, selectors, meta.entitySourceName))
+//	    }
+//	  }
+//	}
 //
-//     // We don't need to generate anything for components that don't have projection
-//     // slots, or they only have one catch-all slot (represented by `*`).
-//     if (selectors.size > 1 || (selectors.size == 1 && selectors[0].text.trim() != "*")) {
-//       this.opQueue.add(
-//         TcbControlFlowContentProjectionOp(this.tcb, root, selectors, meta.entitySourceName))
-//     }
-//   }
-// }
+// Stub methods for not-yet-implemented functionality (referenced in appendNode)
+func (s *Scope) checkAndAppendReferencesOfNode(node *TmplAstNode) {
+	// TODO: implement — see Kotlin reference above
+}
+
+func (s *Scope) appendDirectivesAndInputsOfNode(node *TmplAstNode) {
+	// TODO: implement — see Kotlin reference above
+}
+
+func (s *Scope) appendOutputsOfNode(node *TmplAstNode) {
+	// TODO: implement — see Kotlin reference above
+}
+
+func (s *Scope) appendContentProjectionCheckOp(node *TmplAstNode) {
+	// TODO: implement — see Kotlin reference above
+}
 
 func (s *Scope) appendChildren(container *TmplAstNode /* KindTmplAstNodeWithChildren */) {
 	if container == nil {
@@ -775,8 +838,7 @@ func (s *Scope) appendDeferredBlock(block TmplAstNode /* KindTmplAstDeferredBloc
 	s.appendDeferredTriggers(block, block.prefetchTriggers)
 
 	if block.hydrateTriggers.when != nil {
-		var expression TcbOp = TcbExpressionOp{tcb: s.tcb, scope: s, expression: block.hydrateTriggers.when.value, isBoundText: false}
-		s.opQueue = append(s.opQueue, &expression)
+		s.addOp(TcbExpressionOp{tcb: s.tcb, scope: s, expression: block.hydrateTriggers.when.value, isBoundText: false})
 	}
 
 	s.appendChildren(&block)
@@ -787,8 +849,7 @@ func (s *Scope) appendDeferredBlock(block TmplAstNode /* KindTmplAstDeferredBloc
 
 func (s *Scope) appendDeferredTriggers(block TmplAstNode /*TmplAstDeferredBlock*/, triggers TmplAstDeferredBlockTriggers) {
 	if triggers.when != nil {
-		var expression TcbOp = TcbExpressionOp{tcb: s.tcb, scope: s, expression: triggers.when.value, isBoundText: false}
-		s.opQueue = append(s.opQueue, &expression)
+		s.addOp(TcbExpressionOp{tcb: s.tcb, scope: s, expression: triggers.when.value, isBoundText: false})
 	}
 	// WebStorm - this is validated through WebStorm inspections
 	//

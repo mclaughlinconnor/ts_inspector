@@ -8,10 +8,10 @@ type TcbElementOp struct {
 }
 
 func (o TcbElementOp) Optional() bool { return true }
-func (o TcbElementOp) Execute() Identifier {
+func (o TcbElementOp) Execute() *Identifier {
 	id := o.tcb.allocateId(nil, nil)
 	o.scope.addStatementStatement(tsCreateVariable(id, []string{"document.createElement(\"", o.element.Tag.Name, "\")"}, true))
-	return id
+	return &id
 }
 func (o TcbElementOp) CircularFallback() TcbExpr { return TcbExpr{Source: "null!"} }
 
@@ -21,7 +21,7 @@ func (o TcbElementOp) CircularFallback() TcbExpr { return TcbExpr{Source: "null!
  *
  * Executing this operation returns a reference to the element variable.
  */
-func handleElement(tcb *Context, scope *Scope, tag *TmplAstNode) Identifier {
+func handleElement(tcb *Context, scope *Scope, tag *TmplAstNode) *Identifier {
 	op := &TcbElementOp{tcb: tcb, scope: scope, element: tag}
 	return op.Execute()
 }

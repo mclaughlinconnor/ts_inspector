@@ -35,11 +35,11 @@ type TcbBlockImplicitVariableOp struct {
 }
 
 func (o TcbBlockImplicitVariableOp) Optional() bool { return true }
-func (o TcbBlockImplicitVariableOp) Execute() Identifier {
+func (o TcbBlockImplicitVariableOp) Execute() *Identifier {
 	id := o.tcb.allocateId(o.variable, nil)
 
 	variable := tsDeclareVariable(id, o.ttype, o.initializer)
 	o.scope.addStatementStatement(variable)
 
-	return id
+	return &id
 }
