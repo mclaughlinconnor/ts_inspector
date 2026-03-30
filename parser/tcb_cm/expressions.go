@@ -1,5 +1,11 @@
 package tcb_cm
 
+import "strings"
+
+type Expression struct {
+	Parts []StatementParts
+}
+
 type StatementParts struct {
 	Parts []string
 }
@@ -19,6 +25,6 @@ func (s *StatementParts) AppendStatement(statement StatementParts) {
 	s.Parts = append(s.Parts, "\n")
 }
 
-type Expression struct {
-	Parts []StatementParts
+func (s *StatementParts) ToString() string {
+	return strings.Join(s.Parts, "")
 }

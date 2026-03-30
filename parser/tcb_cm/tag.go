@@ -59,11 +59,12 @@ func (t *Tag) matchesSelector(selector string) bool {
 func (t *Tag) Render() {
 	tcb := t.Tcb()
 
-	tcb.AddPart("var _t")
-	tcb.AddPart(tcb.GetNextIdString())
-	tcb.AddPart(" = document.createElement(\"")
-	tcb.AddPart(t.Name)
-	tcb.AddPart("\");\n")
+	value := StatementParts{}
+	value.AddPart("document.createElement(\"")
+	value.AddPart(t.Name)
+	value.AddPart("\")")
+
+	tcb.CreateVar(value)
 }
 
 func (t *Tag) Tcb() *Tcb {

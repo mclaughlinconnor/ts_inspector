@@ -1,12 +1,20 @@
 package tcb_cm
 
 import (
+	"slices"
 	"strconv"
 	"ts_inspector/parser"
 	"ts_inspector/utils"
 )
 
+type Import struct {
+	Class      *parser.Class
+	File       *parser.File
+	Identifier string
+}
+
 type Tcb struct {
+	Imports  []*Import
 	NextId   int
 	Scope    *utils.Stack[Scope]
 	State    *parser.State
@@ -27,6 +35,34 @@ func (t *Tcb) GetNextIdString() string {
 	return strconv.Itoa(id)
 }
 
+func (t *Tcb) AddAssignment(identifer string, value StatementParts) {
+	t.AddPart(identifer)
+	t.AddPart(" = ")
+
+	for _, p := range value.Parts {
+		t.AddPart(p)
+	}
+
+	t.AddPart(";\n")
+}
+
+func (t *Tcb) AddImport(class *parser.Class) string {
+	f := class.Snapshot().File
+	uri := f.Snapshot().URI
+
+	var i *Import
+
+	index := slices.IndexFunc(t.Imports, func(i *Import) bool { return i.File.Snapshot().URI == uri })
+	if index != -1 {
+		i = t.Imports[index]
+	} else {
+		i = &Import{Class: class, Identifier: t.GetNextIdString()}
+		t.Imports = append(t.Imports, i)
+	}
+
+	return "i" + i.Identifier + "." + class.Snapshot().Name
+}
+
 func (t *Tcb) AddPart(part string) {
 	t.GetScope().AddPart(part)
 }
@@ -34,6 +70,27 @@ func (t *Tcb) AddPart(part string) {
 func (t *Tcb) BeginScope() {
 	t.NewScope()
 	t.AddPart("{\n")
+}
+
+func (t *Tcb) CreateVar(value StatementParts) string {
+	if v := t.GetScope().GetVariable(value); v != nil {
+		return v.Identifier
+	}
+
+	name := "_t" + t.GetNextIdString()
+	t.AddPart("var ")
+	t.AddPart(name)
+	t.AddPart(" = ")
+
+	for _, p := range value.Parts {
+		t.AddPart(p)
+	}
+
+	t.AddPart(";\n")
+
+	t.GetScope().AddVariable(&Variable{Identifier: name, Value: value.ToString()})
+
+	return name
 }
 
 func (t *Tcb) EndScope() {

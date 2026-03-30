@@ -245,6 +245,18 @@ func (c *Class) GetInterestingPoints() []InterestingPoint {
 	return interestingPoints
 }
 
+func (c *Class) GetSelectors() []string {
+	if c.HasComponent() {
+		return c.Snapshot().Angular.Component.Selectors
+	}
+
+	if c.HasDirective() {
+		return c.Snapshot().Angular.Directive.Selectors
+	}
+
+	return []string{}
+}
+
 func (c *Class) FilterOwnDefinitions(cond func(d ClassedDefinition) bool) []ClassedDefinition {
 	arr := []ClassedDefinition{}
 	for _, definition := range c.GetClassedDefinitions() {
@@ -445,6 +457,10 @@ func (c *Class) GetClassedDefinitions() []ClassedDefinition {
 	}
 
 	return classedDefinitions
+}
+
+func (c *Class) GetAllDefinitions() []ClassedDefinition {
+	return c.FilterAllDefinitions(func(d ClassedDefinition) bool { return true })
 }
 
 func (c *Class) GetDocumentation(includeClassName bool) string {
