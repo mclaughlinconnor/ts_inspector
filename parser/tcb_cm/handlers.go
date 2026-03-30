@@ -1,4 +1,4 @@
-package ast
+package tcb_cm
 
 import (
 	"ts_inspector/ast/walk"
