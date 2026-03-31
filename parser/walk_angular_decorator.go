@@ -241,9 +241,11 @@ func handleCompiledInputs(class *Class, inputMapNode *sitter.Node) {
 				}
 
 				def := class.GetDefinition(name)
-				class.Update(func(data *classState) {
-					def.Decorators = append(def.Decorators, dec)
-				})
+				if def != nil {
+					class.Update(func(data *classState) {
+						def.Decorators = append(def.Decorators, dec)
+					})
+				}
 			}
 		}
 	}
