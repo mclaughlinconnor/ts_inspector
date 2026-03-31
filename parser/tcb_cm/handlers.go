@@ -30,7 +30,9 @@ func handleAttributeName(node *sitter.Node, state *Ast, indexInParent int, inter
 
 func handleAttributeValue(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) *Ast {
 	attributeValueNode := node.NamedChild(0)
-	(*state.Current.Peek()).Attribute.Value = attributeValueNode.Content(state.Content)
+	if attributeValueNode != nil {
+		(*state.Current.Peek()).Attribute.Value = attributeValueNode.Content(state.Content)
+	}
 
 	return state
 }
