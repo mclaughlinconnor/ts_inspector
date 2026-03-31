@@ -259,19 +259,15 @@ func handleCompiledOutputs(class *Class, inputMapNode *sitter.Node) {
 		}
 
 		nameNode := child.ChildByFieldName("name")
-		name := nameNode.Content([]byte(class.Snapshot().Content))
+		n := nameNode.Content([]byte(class.Snapshot().Content))
+		name := strings.TrimSuffix(strings.TrimPrefix(n, "\""), "\"")
 
 		tNode := child.ChildByFieldName("type")
 		if tNode == nil || tNode.Type() != "type_annotation" {
 			continue
 		}
 
-		objectNode := tNode.NamedChild(0)
-		if objectNode == nil || objectNode.Type() != "object_type" {
-			continue
-		}
-
-		actualType := objectNode.NamedChild(0)
+		actualType := tNode.NamedChild(0)
 		if actualType == nil {
 			continue
 		}
@@ -285,9 +281,11 @@ func handleCompiledOutputs(class *Class, inputMapNode *sitter.Node) {
 				}
 
 				def := class.GetDefinition(name)
-				class.Update(func(data *classState) {
-					def.Decorators = append(def.Decorators, Decorator{Arguments: []string{str.Content([]byte(data.Content))}, IsAngular: true, Name: "Input"})
-				})
+				if def != nil {
+					class.Update(func(data *classState) {
+						def.Decorators = append(def.Decorators, Decorator{Arguments: []string{str.Content([]byte(data.Content))}, IsAngular: true, Name: "Output"})
+					})
+				}
 			}
 		}
 	}
