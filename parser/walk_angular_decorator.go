@@ -10,6 +10,8 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
+// TODO: needs despaghetti-ing
+
 func ExtractComponentData(class *Class, node *sitter.Node, content []byte) {
 	funcMap := walk.NewVisitorFuncsMap[any]()
 
@@ -45,6 +47,11 @@ func ExtractComponentData(class *Class, node *sitter.Node, content []byte) {
 	}
 
 	walk.WalkTypeScript(node, nil, funcMap)
+
+	dirDef := class.GetDefinition(DIR_PROP)
+	if dirDef != nil {
+		handleCompiledDirectiveProp(class, dirDef)
+	}
 }
 
 func extractProvider(node *sitter.Node, content []byte) *Provider {
@@ -106,6 +113,181 @@ func handleComponentKv(class *Class, vNode *sitter.Node, content []byte, keyName
 		handleSelectorComponentKv(class, vNode, content)
 	case "templateUrl":
 		handleTemplateUrlKv(class, vNode, content)
+	}
+}
+
+func handleCompiledDirectiveProp(class *Class, def *Definition) {
+	node := def.Node
+	tNode := node.ChildByFieldName("type")
+	if tNode == nil || tNode.Type() != "type_annotation" {
+		return
+	}
+
+	gTypeNode := tNode.NamedChild(0)
+	if gTypeNode == nil || gTypeNode.Type() != "generic_type" {
+		return
+	}
+
+	args := gTypeNode.ChildByFieldName("type_arguments")
+	if args == nil || args.Type() != "type_arguments" {
+		return
+	}
+
+	selectorsNode := args.NamedChild(1)
+	if selectorsNode == nil || selectorsNode.Type() != "literal_type" {
+		return
+	}
+
+	inputMapNode := args.NamedChild(3)
+	if inputMapNode == nil || inputMapNode.Type() != "object_type" {
+		return
+	}
+
+	outputMapNode := args.NamedChild(4)
+	if outputMapNode == nil || outputMapNode.Type() != "object_type" {
+		return
+	}
+
+	class.EnsureAngular()
+	class.Snapshot().Angular.EnsureDirective()
+
+	selectorsStringNode := selectorsNode.NamedChild(0)
+	if selectorsStringNode == nil || selectorsStringNode.Type() != "string" {
+		return
+	}
+
+	selectorsFragNode := selectorsStringNode.NamedChild(0)
+	if selectorsFragNode == nil || selectorsFragNode.Type() != "string_fragment" {
+		return
+	}
+
+	selectorSplit := strings.SplitSeq(selectorsFragNode.Content([]byte(class.Snapshot().Content)), ",")
+	for s := range selectorSplit {
+		trimmed := strings.TrimSpace(s)
+
+		class.Update(func(data *classState) {
+			data.Angular.Directive.Selectors = append(data.Angular.Directive.Selectors, trimmed)
+		})
+	}
+
+	class.Update(func(data *classState) {
+		data.Angular.Directive.SelectorNode = selectorsNode
+	})
+
+	handleCompiledInputs(class, inputMapNode)
+	handleCompiledOutputs(class, outputMapNode)
+}
+
+func handleCompiledInputs(class *Class, inputMapNode *sitter.Node) {
+	for i := range inputMapNode.NamedChildCount() {
+		child := inputMapNode.NamedChild(int(i))
+		if child == nil || child.Type() != "property_signature" {
+			continue
+		}
+
+		nameNode := child.ChildByFieldName("name")
+		n := nameNode.Content([]byte(class.Snapshot().Content))
+		name := strings.TrimSuffix(strings.TrimPrefix(n, "\""), "\"")
+
+		tNode := child.ChildByFieldName("type")
+		if tNode == nil || tNode.Type() != "type_annotation" {
+			continue
+		}
+
+		actualType := tNode.NamedChild(0)
+		if actualType == nil {
+			continue
+		}
+
+		switch actualType.Type() {
+		case "literal_type":
+			{
+				str := actualType.NamedChild(0)
+				if str == nil {
+					continue
+				}
+
+				def := class.GetDefinition(name)
+				class.Update(func(data *classState) {
+					def.Decorators = append(def.Decorators, Decorator{Arguments: []string{str.Content([]byte(data.Content))}, IsAngular: true, Name: "Input"})
+				})
+			}
+		case "object_type":
+			{
+				dec := Decorator{Arguments: []string{}, IsAngular: true, Name: "Input"}
+
+				for k := range actualType.NamedChildCount() {
+					propSigKey := actualType.NamedChild(int(k))
+					if propSigKey == nil || propSigKey.Type() != "property_signature" {
+						continue
+					}
+
+					nnameNode := propSigKey.ChildByFieldName("name")
+					if nnameNode == nil {
+						continue
+					}
+
+					vvalueNode := propSigKey.ChildByFieldName("type")
+					if vvalueNode == nil {
+						continue
+					}
+
+					switch nnameNode.Content([]byte(class.Snapshot().Content)) {
+					case "alias":
+						{
+							dec.Arguments = append(dec.Arguments, vvalueNode.Content([]byte(class.Snapshot().Content)))
+						}
+					}
+				}
+
+				def := class.GetDefinition(name)
+				class.Update(func(data *classState) {
+					def.Decorators = append(def.Decorators, dec)
+				})
+			}
+		}
+	}
+}
+
+func handleCompiledOutputs(class *Class, inputMapNode *sitter.Node) {
+	for i := range inputMapNode.NamedChildCount() {
+		child := inputMapNode.NamedChild(int(i))
+		if child.Type() != "property_signature" {
+			continue
+		}
+
+		nameNode := child.ChildByFieldName("name")
+		name := nameNode.Content([]byte(class.Snapshot().Content))
+
+		tNode := child.ChildByFieldName("type")
+		if tNode == nil || tNode.Type() != "type_annotation" {
+			continue
+		}
+
+		objectNode := tNode.NamedChild(0)
+		if objectNode == nil || objectNode.Type() != "object_type" {
+			continue
+		}
+
+		actualType := objectNode.NamedChild(0)
+		if actualType == nil {
+			continue
+		}
+
+		switch actualType.Type() {
+		case "literal_type":
+			{
+				str := actualType.NamedChild(0)
+				if str == nil {
+					continue
+				}
+
+				def := class.GetDefinition(name)
+				class.Update(func(data *classState) {
+					def.Decorators = append(def.Decorators, Decorator{Arguments: []string{str.Content([]byte(data.Content))}, IsAngular: true, Name: "Input"})
+				})
+			}
+		}
 	}
 }
 

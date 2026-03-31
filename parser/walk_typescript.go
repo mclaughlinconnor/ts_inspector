@@ -457,7 +457,7 @@ func parseClasses(state *State, root *sitter.Node, file *File) {
 					ExtractComponentData(class, classWalkState.Decorator, []byte(file.Snapshot().Content))
 				}
 			} else {
-				ExtractComponentData(class, root, []byte(file.Snapshot().Content))
+				ExtractComponentData(class, node, []byte(file.Snapshot().Content))
 			}
 
 			if class.Snapshot().Angular != nil && class.Snapshot().Angular.Component != nil && class.Snapshot().Angular.Component.TemplateUrl != "" {

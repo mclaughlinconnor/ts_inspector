@@ -14,7 +14,7 @@ func angularMethodNoImplements(_ *parser.State, file *parser.File) []Analysis {
 				continue
 			}
 			for implements := range class.Snapshot().Implements.IterateResolved {
-				if implements.Class.HasDefinition(definition.Name) {
+				if implements.Class.GetDefinition(definition.Name) != nil {
 					continue OUTER
 				}
 			}

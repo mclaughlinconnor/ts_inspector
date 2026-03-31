@@ -11,7 +11,7 @@ import (
 )
 
 type Decorator struct {
-	Arguments []string
+	Arguments []string // Arguments should have "quotes" or 'quotes' on them
 	IsAngular bool
 	Name      string
 }
@@ -51,10 +51,10 @@ func (c *Class) AddDefinition(definition Definition) {
 
 	c.Update(func(data *classState) {
 		if data.Definitions == nil {
-			data.Definitions = make(map[string]Definition)
+			data.Definitions = make(map[string]*Definition)
 		}
 
-		data.Definitions[name] = definition
+		data.Definitions[name] = &definition
 	})
 }
 
@@ -176,7 +176,7 @@ func (c *Class) EnsureAngular() {
 }
 
 type ClassedDefinition struct {
-	Definition
+	*Definition
 	Class *Class
 }
 
@@ -553,14 +553,14 @@ func (c *Class) HasDirective() bool {
 	return c.HasAngular() && c.Snapshot().Angular.Directive != nil
 }
 
-func (c *Class) HasDefinition(name string) bool {
+func (c *Class) GetDefinition(name string) *Definition {
 	for _, d := range c.Snapshot().Definitions {
 		if d.Name == name {
-			return true
+			return d
 		}
 	}
 
-	return false
+	return nil
 }
 
 func (c *Class) HasModule() bool {
@@ -679,7 +679,7 @@ func (c *Class) resolveExtendsImplements(state *State) {
 func ClassId(uri string, className string) string { return uri + "-" + className }
 
 func NewClass(content string, file *File, node *sitter.Node) Class {
-	state := classState{Content: content, Definitions: make(map[string]Definition), Extends: []*Reference{}, ExtendsIdentNames: []string{}, File: file, Implements: []*Reference{}, ImplementsIdentNames: []string{}, Name: "", Node: node, Usages: make(map[string]Usage)}
+	state := classState{Content: content, Definitions: make(map[string]*Definition), Extends: []*Reference{}, ExtendsIdentNames: []string{}, File: file, Implements: []*Reference{}, ImplementsIdentNames: []string{}, Name: "", Node: node, Usages: make(map[string]Usage)}
 
 	return Class{state: state}
 }

@@ -27,7 +27,7 @@ type Definition struct {
 	Usages               []*UsageInstance
 }
 
-type Definitions map[string]Definition
+type Definitions map[string]*Definition
 
 type accessibility struct {
 	Modifier string
