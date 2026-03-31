@@ -219,8 +219,9 @@ func build(definition parser.ClassedDefinition, cursorRange utils.Range, openCha
 func forComponentThing(thing *parser.Class, file *parser.File, cursorOffset uint32, tagName *ast.Tag, items []interfaces.CompletionItem) []interfaces.CompletionItem {
 	matches := false
 	for _, s := range thing.Snapshot().Angular.Component.Selectors {
-		if tagName.MatchesSelector(s) {
-			matches = true
+		m, _ := tagName.MatchesSelector(s)
+		if m {
+			matches = m
 			break
 		}
 	}

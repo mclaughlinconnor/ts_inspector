@@ -54,9 +54,14 @@ func HandleHover(writer io.Writer, logger *log.Logger, state *parser.State, requ
 				}
 
 				if cursorOnAttributeName {
-					if tagUnderCursor.MatchesSelector(selector) {
-						sb = handleAttributeHover(sb, thing, attributeName, selector)
-					} else if selector == attributeName { // component with `selector: '[formControl]`
+					matches, parsed := tagUnderCursor.MatchesSelector(selector)
+					if !matches {
+						continue
+					}
+
+					sb = handleAttributeHover(sb, thing, attributeName, selector)
+
+					if parsed.MatchesAttribute(attributeName) { // component with `selector: '[formControl]`
 						sb = handleTagHover(sb, thing)
 					}
 				}

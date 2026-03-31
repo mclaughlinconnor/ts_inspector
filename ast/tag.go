@@ -1,6 +1,7 @@
 package ast
 
 import (
+	"slices"
 	"strings"
 	"ts_inspector/utils"
 
@@ -12,23 +13,64 @@ type Tag struct {
 	Attributes []string
 }
 
-func (t *Tag) MatchesSelector(selector string) bool {
-	if t.Name == selector {
-		return true
-	}
+func (t *Tag) HasAttribute(attribute string) bool {
+	strippedAttr, _ := utils.StripAngularFromAttribute(attribute)
+	return slices.ContainsFunc(t.Attributes, func(a string) bool { sa, _ := utils.StripAngularFromAttribute(a); return sa == strippedAttr })
+}
 
-	valid, tagName, attrName := ExtractTagNameAndAttrFromSelector(selector)
-	if !valid || (tagName != "" && t.Name != tagName) {
-		return false
-	}
-
-	for _, attr := range t.Attributes {
-		if attr == attrName || attr[1:len(attr)-1] == attrName {
-			return true
+func (t *Tag) HasAttributes(attributes []string) bool {
+	for _, attribute := range attributes {
+		if !t.HasAttribute(attribute) {
+			return false
 		}
 	}
 
-	return false
+	return true
+}
+
+func (t *Tag) NotHasAttributes(attributes []string) bool {
+	for _, attribute := range attributes {
+		if t.HasAttribute(attribute) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (t *Tag) MatchesSelector(selector string) (bool, *Selector) {
+	s, err := ParseSelector(selector)
+	if err != nil {
+		return false, s
+	}
+
+	if s.Tag != "" {
+		if t.Name != s.Tag {
+			return false, s
+		}
+	}
+
+	if len(s.Attributes) > 0 {
+		if !t.HasAttributes(s.Attributes) {
+			return false, s
+		}
+	}
+
+	if len(s.NotTags) > 0 {
+		for _, tag := range s.NotTags {
+			if t.Name == tag {
+				return false, s
+			}
+		}
+	}
+
+	if len(s.NotAttributes) > 0 {
+		if !t.NotHasAttributes(s.NotAttributes) {
+			return false, s
+		}
+	}
+
+	return true, s
 }
 
 func ExtractTagNameAndAttrFromSelector(selector string) (bool, string, string) {

@@ -108,9 +108,14 @@ func FindDefinition(state *State, file *File, cursorOffset uint32) []interfaces.
 				}
 
 				if cursorOnAttributeName {
-					if tagUnderCursor.MatchesSelector(selector) {
-						locations = handleAttributeOfTag(locations, thing, attributeName, selector)
-					} else if selector == attributeName { // component with `selector: '[formControl]`
+					matches, parsed := tagUnderCursor.MatchesSelector(selector)
+					if !matches {
+						continue
+					}
+
+					locations = handleAttributeOfTag(locations, thing, attributeName, selector)
+
+					if parsed.MatchesAttribute(attributeName) { // component with `selector: '[formControl]`
 						locations = handleDefinitionOfTag(locations, thing)
 					}
 				}
