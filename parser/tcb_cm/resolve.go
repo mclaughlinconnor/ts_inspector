@@ -1,4 +1,4 @@
-package ast
+package tcb_cm
 
 import (
 	"slices"
@@ -6,15 +6,15 @@ import (
 )
 
 func (t *Tag) ResolveSourceClassOfAttribute(state *parser.State, attribute *Attribute, currentClass *parser.Class) *parser.Class {
-	if attribute.SourceClass != nil {
-		return attribute.SourceClass
+	if attribute.GetSourceClass() != nil {
+		return attribute.GetSourceClass()
 	}
 
 	tagSourceClass := t.ResolveSourceClassOfTag(state, currentClass)
 
 	for _, definition := range tagSourceClass.FilterAllDefinitions(func(def parser.ClassedDefinition) bool { return def.NameMatchesString(attribute.Name) }) {
-		attribute.SourceClass = definition.Class
-		return attribute.SourceClass
+		attribute.SetSourceClass(definition.Class)
+		return attribute.GetSourceClass()
 	}
 
 	things := currentClass.Snapshot().Angular.Component.GetAvailableThings(state)
@@ -24,8 +24,8 @@ func (t *Tag) ResolveSourceClassOfAttribute(state *parser.State, attribute *Attr
 		}
 
 		if slices.ContainsFunc(thing.Snapshot().Angular.Directive.Selectors, t.matchesSelector) {
-			attribute.SourceClass = thing
-			return attribute.SourceClass
+			attribute.SetSourceClass(thing)
+			return attribute.GetSourceClass()
 		}
 	}
 

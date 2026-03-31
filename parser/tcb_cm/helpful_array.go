@@ -7,4 +7,3 @@ type HelpfulArray[T any] struct {
 func (h *HelpfulArray[T]) add(elem T) {
 	h.Elements = append(h.Elements, elem)
 }
-

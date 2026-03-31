@@ -11,11 +11,14 @@ type Attribute struct {
 	renderable
 	tcb *Tcb
 
-	Name        string // includes angular [] and ()
-	Node        *sitter.Node
-	Tag         *Tag
-	SourceClass *parser.Class
-	Value       string
+	Name  string // includes angular [] and ()
+	Node  *sitter.Node
+	Tag   *Tag
+	Value string
+}
+
+func (a *Attribute) GetSourceClass() *parser.Class {
+	return a.Tcb().Class
 }
 
 func (a *Attribute) IsInput() bool {
@@ -27,7 +30,7 @@ func (a *Attribute) IsOutput() bool {
 }
 
 func (a *Attribute) Render() {
-	sourceClass := a.SourceClass
+	sourceClass := a.Tcb().Class
 	if !sourceClass.HasComponent() {
 		return
 	}
@@ -53,13 +56,26 @@ THING:
 					value.AddPart("null! as " + classIdent)
 
 					compIdent := tcb.CreateVar(value)
-					tcb.AddAssignment(compIdent, StatementParts{[]string{buildTcbExpression(a.Value)}})
+
+					assInput := compIdent + "."
+
+					if a.IsInput() {
+						assInput = assInput + def.GetInputName()
+					} else if a.IsInput() {
+						assInput = assInput + def.GetOutputName()
+					}
+
+					tcb.AddAssignment(assInput, StatementParts{[]string{buildTcbExpression(a.Value)}})
 
 					continue THING
 				}
 			}
 		}
 	}
+}
+
+func (a *Attribute) SetSourceClass(class *parser.Class) {
+	a.Tcb().Class = class
 }
 
 func (a *Attribute) Tcb() *Tcb {

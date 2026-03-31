@@ -65,6 +65,10 @@ func (t *Tag) Render() {
 	value.AddPart("\")")
 
 	tcb.CreateVar(value)
+
+	for _, a := range t.Attributes.Elements {
+		a.Render()
+	}
 }
 
 func (t *Tag) Tcb() *Tcb {

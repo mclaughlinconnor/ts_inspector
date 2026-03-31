@@ -3,6 +3,7 @@ package tcb_cm
 import "slices"
 
 type Scope struct {
+	ChildScope  *Scope
 	ParentScope *Scope
 	Parts       StatementParts
 	Variables   []*Variable

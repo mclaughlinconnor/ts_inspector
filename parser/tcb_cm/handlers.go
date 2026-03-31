@@ -8,13 +8,13 @@ import (
 )
 
 func handleAttribute(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) *Ast {
-	attribute := Attribute{Name: "", Value: ""}
+	attribute := Attribute{Name: "", Tag: (*state.Current.Peek()).Tag, Value: "", tcb: state.Tcb}
 
 	a := &attribute
 	state.Current.Push((*state.Current.Peek()).Tag.addAttribute(a))
 
 	for i := range node.NamedChildCount() {
-		Parse(state, node.NamedChild(int(i)))
+		parse(state, node.NamedChild(int(i)))
 	}
 
 	state.Current.Pop()
@@ -29,7 +29,8 @@ func handleAttributeName(node *sitter.Node, state *Ast, indexInParent int, inter
 }
 
 func handleAttributeValue(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) *Ast {
-	(*state.Current.Peek()).Attribute.Value = node.Content(state.Content)
+	attributeValueNode := node.NamedChild(0)
+	(*state.Current.Peek()).Attribute.Value = attributeValueNode.Content(state.Content)
 
 	return state
 }
@@ -38,7 +39,7 @@ func handleChildNodes(node *sitter.Node, state *Ast, indexInParent int, internal
 	prev := state.Current
 
 	for i := range node.NamedChildCount() {
-		Parse(state, node.NamedChild(int(i)))
+		parse(state, node.NamedChild(int(i)))
 	}
 
 	state.Current = prev
@@ -47,14 +48,14 @@ func handleChildNodes(node *sitter.Node, state *Ast, indexInParent int, internal
 }
 
 func handleTag(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) *Ast {
-	tag := Tag{Children: HelpfulArray[*Node]{}, Name: ""}
+	tag := Tag{Children: HelpfulArray[*Node]{}, Name: "", tcb: state.Tcb}
 	tagNode := newTagNode(&tag)
 
-	(*state.Current.Peek()).Tag.Children.add(tagNode)
+	state.AddChildToCurrent(tagNode)
 	state.Current.Push(tagNode)
 
 	for i := range node.NamedChildCount() {
-		Parse(state, node.NamedChild(int(i)))
+		parse(state, node.NamedChild(int(i)))
 	}
 
 	state.Current.Pop()
@@ -94,13 +95,15 @@ func handleTagContent(node *sitter.Node, state *Ast, indexInParent int, internal
 }
 
 func handleTagName(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) *Ast {
-	(*state.Current.Peek()).Tag.Name = node.Content(state.Content)
+	if p := state.Current.Peek(); p != nil {
+		(*p).Tag.Name = node.Content(state.Content)
+	}
 
 	return state
 }
 
 func newAttributeNode(attribute *Attribute) *Node {
-	return &Node{Kind: KindTag, Attribute: attribute}
+	return &Node{Kind: KindAttribute, Attribute: attribute}
 }
 
 func newTagNode(tag *Tag) *Node {

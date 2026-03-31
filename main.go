@@ -14,6 +14,7 @@ import (
 	"ts_inspector/commands"
 	"ts_inspector/lsp"
 	"ts_inspector/parser"
+	"ts_inspector/parser/tcb_cm"
 	"ts_inspector/search"
 	"ts_inspector/utils"
 )
@@ -35,6 +36,7 @@ func main() {
 	actions.InitActions()
 	commands.InitCommands()
 	analysis.InitAnalysers()
+	tcb_cm.InitTcb()
 
 	args := flag.Args()
 	if utils.LSP && len(args) == 0 {
