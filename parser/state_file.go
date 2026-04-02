@@ -3,6 +3,7 @@ package parser
 import (
 	"fmt"
 	"log"
+	"maps"
 	"os"
 	"path"
 	"path/filepath"
@@ -53,18 +54,18 @@ func (f *File) FindImportPath(identifier string) string {
 }
 
 func (f *File) GetDependencies(state *State) []string {
-	dependents := make([]string, 0)
+	dependents := make(map[string]bool, 0)
 
 	for _, class := range *state.GetClasses() {
 		if class.GetTemplateFile() == f {
-			dependents = append(dependents, class.Snapshot().File.Filename())
+			dependents[class.Snapshot().File.Filename()] = true
 		}
 	}
 
 	for _, class := range *state.GetClasses() {
 		for _, fileClass := range f.Snapshot().Classes {
 			if class.DoesExtendOrImplement(fileClass) {
-				dependents = append(dependents, class.Snapshot().File.Filename())
+				dependents[class.Snapshot().File.Filename()] = true
 			}
 		}
 
@@ -79,17 +80,17 @@ func (f *File) GetDependencies(state *State) []string {
 			}
 
 			if d.Class.Snapshot().File == f || d.Class.GetTemplateFile() == f {
-				dependents = append(dependents, class.Snapshot().File.Filename())
+				dependents[class.Snapshot().File.Filename()] = true
 
 				eih := d.Class.GetExtendsImplementsHierarchy()
 				for _, c := range eih {
-					dependents = append(dependents, c.Snapshot().File.Filename())
+					dependents[c.Snapshot().File.Filename()] = true
 				}
 			}
 
-			for _, dep := range dependents {
+			for dep := range dependents {
 				if d.Class.Snapshot().File.Filename() == dep {
-					dependents = append(dependents, d.Class.Snapshot().File.Filename())
+					dependents[d.Class.Snapshot().File.Filename()] = true
 				}
 			}
 		}
@@ -98,7 +99,7 @@ func (f *File) GetDependencies(state *State) []string {
 	for _, class := range f.Snapshot().Classes {
 		eih := class.GetExtendsImplementsHierarchy()
 		for _, c := range eih {
-			dependents = append(dependents, c.Snapshot().File.Filename())
+			dependents[c.Snapshot().File.Filename()] = true
 		}
 
 		t := class.GetTemplateFile()
@@ -108,22 +109,23 @@ func (f *File) GetDependencies(state *State) []string {
 		}
 
 		if t == f {
-			dependents = append(dependents, t.Filename())
+			dependents[t.Filename()] = true
 		}
 
 		if class.Snapshot().File.Filename() != t.Filename() {
-			dependents = append(dependents, t.Filename())
+			dependents[t.Filename()] = true
 		}
 
 		// If there's a template, class.Angular.Component cannot not be nil
 		for _, module := range class.Snapshot().Angular.Component.DeclaredIn {
-			dependents = append(dependents, module.Snapshot().File.Filename())
+			dependents[module.Snapshot().File.Filename()] = true
 		}
 	}
 
-	slices.Sort(dependents)
+	vs := slices.Collect(maps.Keys(dependents))
+	slices.Sort(vs)
 
-	return slices.Compact(dependents)
+	return vs
 }
 
 func (f *File) GetOffsetForPosition(p utils.Position) uint32 {

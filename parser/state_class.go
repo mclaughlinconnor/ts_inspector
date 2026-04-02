@@ -705,21 +705,6 @@ func buildDefinitionSection(sectionName string, definitions []ClassedDefinition,
 	return strings.Join(section, "\n")
 }
 
-// For sorting by name
-type Classes []*Class
-
-func (c Classes) Len() int {
-	return len(c)
-}
-
-func (c Classes) Less(a int, b int) bool {
-	return c[a].Snapshot().Name < c[b].Snapshot().Name
-}
-
-func (c Classes) Swap(i, j int) {
-	c[i], c[j] = c[j], c[i]
-}
-
 func findProviderRoutes(state *State, path []*Class, visited map[*Class]bool, class *Class) [][]*Class {
 	routesToTarget := [][]*Class{}
 

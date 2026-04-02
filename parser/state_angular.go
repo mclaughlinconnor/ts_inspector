@@ -1,8 +1,9 @@
 package parser
 
 import (
+	"cmp"
+	"maps"
 	"slices"
-	"sort"
 
 	sitter "github.com/smacker/go-tree-sitter"
 )
@@ -123,14 +124,17 @@ func (c *Component) EnsureTemplate() {
 }
 
 func (c *Component) GetAvailableThings(state *State) []*Class {
-	things := make(Classes, 0)
+	things := make(map[string]*Class)
 
 	for _, declaringClass := range c.DeclaredIn {
 		if declaringClass.Snapshot().Angular == nil || declaringClass.Snapshot().Angular.Module == nil {
 			continue
 		}
 
-		things = append(things, declaringClass.Snapshot().Angular.Module.GetThingsFromInside(state)...)
+		for _, thing := range declaringClass.Snapshot().Angular.Module.GetThingsFromInside(state) {
+			things[thing.Id()] = thing
+		}
+
 	}
 
 	for imp := range c.Imports.FlattenReferenceArraysToReferences(state) {
@@ -139,17 +143,20 @@ func (c *Component) GetAvailableThings(state *State) []*Class {
 		}
 
 		if imp.Class.HasComponent() || imp.Class.HasDirective() {
-			things = append(things, imp.Class)
+			things[imp.Class.Id()] = imp.Class
 		}
 
 		if imp.Class.HasModule() {
-			things = append(things, imp.Class.Snapshot().Angular.Module.GetThingsFromOutside(state)...)
+			for _, thing := range imp.Class.Snapshot().Angular.Module.GetThingsFromOutside(state) {
+				things[thing.Id()] = thing
+			}
 		}
 	}
 
-	sort.Sort(things)
+	vs := slices.Collect(maps.Values(things))
+	slices.SortFunc(vs, func(a *Class, b *Class) int { return cmp.Compare(b.Snapshot().Name, a.Snapshot().Name) })
 
-	return slices.Compact(things)
+	return vs
 }
 
 func (m *Module) DoesDeclare(class *Class) bool {
