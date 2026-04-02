@@ -312,15 +312,27 @@ func handleCompiledInputs(class *Class, inputMapNode *sitter.Node) {
 						continue
 					}
 
+					nnameFragNode := nnameNode.NamedChild(0)
+					if nnameFragNode == nil {
+						continue
+					}
+
 					vvalueNode := propSigKey.ChildByFieldName("type")
 					if vvalueNode == nil {
 						continue
 					}
 
-					switch nnameNode.Content([]byte(class.Snapshot().Content)) {
+					vvalueFragNode := vvalueNode.NamedChild(0)
+					if vvalueFragNode == nil {
+						continue
+					}
+
+					content := []byte(class.Snapshot().Content)
+					n := nnameFragNode.Content(content)
+					switch n {
 					case "alias":
 						{
-							dec.Arguments = append(dec.Arguments, vvalueNode.Content([]byte(class.Snapshot().Content)))
+							dec.Arguments = append(dec.Arguments, vvalueFragNode.Content(content))
 						}
 					}
 				}
