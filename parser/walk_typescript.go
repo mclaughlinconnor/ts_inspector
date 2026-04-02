@@ -541,7 +541,7 @@ func parseRootVariables(state *State, root *sitter.Node, file *File) {
 		}
 
 		if valueNode != nil {
-			variable.Value = NodeToValue(file, valueNode)
+			variable.Value = NodeToValue(file, valueNode, fileContent)
 		}
 
 		variable.IsExport = varWalkState.IsExport

@@ -135,12 +135,12 @@ func (v *Value) Iterate(c any) bool {
 	return v.Is(c)
 }
 
-func NodeToValue(file *File, node *sitter.Node) *Value {
+func NodeToValue(file *File, node *sitter.Node, content []byte) *Value {
 	switch node.Type() {
 	case "array":
-		return nodeToArrayValue(file, node)
+		return nodeToArrayValue(file, node, content)
 	case "string":
-		return &Value{StringValue: node.Content([]byte(file.Snapshot().Content)), Type: "string"}
+		return &Value{StringValue: node.Content([]byte(content)), Type: "string"}
 	case "spread_element":
 		if node.NamedChildCount() != 1 {
 			return nil
@@ -151,20 +151,22 @@ func NodeToValue(file *File, node *sitter.Node) *Value {
 			return nil
 		}
 
-		return &Value{SpreadReference: nodeToReference(file, ident), Type: "spread"}
+		return &Value{SpreadReference: nodeToReference(file, ident, content), Type: "spread"}
+	case "property_identifier":
+		fallthrough
 	case "identifier":
-		return &Value{Reference: nodeToReference(file, node), Type: "reference"}
+		return &Value{Reference: nodeToReference(file, node, content), Type: "reference"}
 	default:
 		return nil
 	}
 }
 
-func nodeToArrayValue(file *File, node *sitter.Node) *Value {
+func nodeToArrayValue(file *File, node *sitter.Node, content []byte) *Value {
 	values := make([]*Value, 0)
 
 	for i := range node.NamedChildCount() {
 		element := node.NamedChild(int(i))
-		value := NodeToValue(file, element)
+		value := NodeToValue(file, element, content)
 		if value == nil {
 			continue
 		}
@@ -175,6 +177,6 @@ func nodeToArrayValue(file *File, node *sitter.Node) *Value {
 	return &Value{ArrayValues: values, Type: "array"}
 }
 
-func nodeToReference(file *File, node *sitter.Node) *Reference {
-	return &Reference{File: file, Name: node.Content([]byte(file.Snapshot().Content)), Node: node}
+func nodeToReference(file *File, node *sitter.Node, content []byte) *Reference {
+	return &Reference{File: file, Name: node.Content(content), Node: node}
 }

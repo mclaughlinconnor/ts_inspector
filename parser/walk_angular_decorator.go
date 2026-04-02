@@ -52,6 +52,11 @@ func ExtractComponentData(class *Class, node *sitter.Node, content []byte) {
 	if dirDef != nil {
 		handleCompiledDirectiveProp(class, dirDef)
 	}
+
+	modDef := class.GetDefinition(MOD_PROP)
+	if modDef != nil {
+		handleCompiledModuleProp(class, modDef)
+	}
 }
 
 func extractProvider(node *sitter.Node, content []byte) *Provider {
@@ -106,7 +111,7 @@ func extractProvider(node *sitter.Node, content []byte) *Provider {
 func handleComponentKv(class *Class, vNode *sitter.Node, content []byte, keyName string) {
 	switch kn := keyName; kn {
 	case "imports":
-		handleImportsComponentKv(class, vNode)
+		handleImportsComponentKv(class, vNode, content)
 	case "providers":
 		handleProvidersComponentKv(class, vNode, content)
 	case "selector":
@@ -176,6 +181,86 @@ func handleCompiledDirectiveProp(class *Class, def *Definition) {
 
 	handleCompiledInputs(class, inputMapNode)
 	handleCompiledOutputs(class, outputMapNode)
+}
+
+func handleCompiledModuleProp(class *Class, def *Definition) {
+	node := def.Node
+	tNode := node.ChildByFieldName("type")
+	if tNode == nil || tNode.Type() != "type_annotation" {
+		return
+	}
+
+	gTypeNode := tNode.NamedChild(0)
+	if gTypeNode == nil || gTypeNode.Type() != "generic_type" {
+		return
+	}
+
+	args := gTypeNode.ChildByFieldName("type_arguments")
+	if args == nil || args.Type() != "type_arguments" {
+		return
+	}
+
+	declarationsNode := args.NamedChild(1)
+	if declarationsNode == nil && !(declarationsNode.Type() == "tuple_type" || declarationsNode.Type() == "predefined_type") {
+		return
+	}
+
+	importsNode := args.NamedChild(2)
+	if importsNode == nil && !(importsNode.Type() == "tuple_type" || importsNode.Type() == "predefined_type") {
+		return
+	}
+
+	exportsNode := args.NamedChild(3)
+	if exportsNode == nil && !(exportsNode.Type() == "tuple_type" || exportsNode.Type() == "predefined_type") {
+		return
+	}
+
+	class.EnsureAngular()
+	class.Snapshot().Angular.EnsureModule()
+
+	declarations := handleCompiledModuleArray(class, declarationsNode)
+	imports := handleCompiledModuleArray(class, importsNode)
+	exports := handleCompiledModuleArray(class, exportsNode)
+
+	class.Update(func(data *classState) {
+		data.Angular.Module.Declarations = &Value{ArrayValues: declarations, Type: "array"}
+		data.Angular.Module.Imports = &Value{ArrayValues: imports, Type: "array"}
+		data.Angular.Module.Exports = &Value{ArrayValues: exports, Type: "array"}
+	})
+}
+
+func handleCompiledModuleArray(class *Class, arrayNode *sitter.Node) []*Value {
+	results := []*Value{}
+
+	if arrayNode.Type() == "predefined_type" {
+		return results
+	}
+
+	classSnapshot := class.Snapshot()
+	file := classSnapshot.File
+	content := []byte(classSnapshot.Content)
+
+	for i := range arrayNode.NamedChildCount() {
+		element := arrayNode.NamedChild(int(i))
+		if element == nil || element.Type() != "type_query" {
+			continue
+		}
+
+		memberExpression := element.NamedChild(0)
+		if memberExpression == nil || memberExpression.Type() != "member_expression" {
+			continue
+		}
+
+		property := memberExpression.ChildByFieldName("property")
+		if property == nil || property.Type() != "property_identifier" {
+			continue
+		}
+
+		value := NodeToValue(file, property, content)
+		results = append(results, value)
+	}
+
+	return results
 }
 
 func handleCompiledInputs(class *Class, inputMapNode *sitter.Node) {
@@ -294,7 +379,7 @@ func handleCompiledOutputs(class *Class, inputMapNode *sitter.Node) {
 func handleDirectiveKv(class *Class, vNode *sitter.Node, content []byte, keyName string) {
 	switch kn := keyName; kn {
 	case "imports":
-		handleImportsDirectiveKv(class, vNode)
+		handleImportsDirectiveKv(class, vNode, content)
 	case "providers":
 		handleProvidersDirectiveKv(class, vNode, content)
 	case "selector":
@@ -305,48 +390,48 @@ func handleDirectiveKv(class *Class, vNode *sitter.Node, content []byte, keyName
 func handleModuleKv(class *Class, vNode *sitter.Node, content []byte, keyName string) {
 	switch kn := keyName; kn {
 	case "imports":
-		handleImportsModuleKv(class, vNode)
+		handleImportsModuleKv(class, vNode, content)
 	case "exports":
-		handleExportsKv(class, vNode)
+		handleExportsKv(class, vNode, content)
 	case "declarations":
-		handleDeclarationsKv(class, vNode)
+		handleDeclarationsKv(class, vNode, content)
 	case "providers":
 		handleProvidersModuleKv(class, vNode, content)
 	}
 }
 
-func handleDeclarationsKv(class *Class, vNode *sitter.Node) {
+func handleDeclarationsKv(class *Class, vNode *sitter.Node, content []byte) {
 	file := class.Snapshot().File
 	class.Update(func(data *classState) {
-		data.Angular.Module.Declarations = NodeToValue(file, vNode)
+		data.Angular.Module.Declarations = NodeToValue(file, vNode, content)
 	})
 }
 
-func handleExportsKv(class *Class, vNode *sitter.Node) {
+func handleExportsKv(class *Class, vNode *sitter.Node, content []byte) {
 	file := class.Snapshot().File
 	class.Update(func(data *classState) {
-		data.Angular.Module.Exports = NodeToValue(file, vNode)
+		data.Angular.Module.Exports = NodeToValue(file, vNode, content)
 	})
 }
 
-func handleImportsComponentKv(class *Class, vNode *sitter.Node) {
+func handleImportsComponentKv(class *Class, vNode *sitter.Node, content []byte) {
 	file := class.Snapshot().File
 	class.Update(func(data *classState) {
-		data.Angular.Component.Imports = NodeToValue(file, vNode)
+		data.Angular.Component.Imports = NodeToValue(file, vNode, content)
 	})
 }
 
-func handleImportsDirectiveKv(class *Class, vNode *sitter.Node) {
+func handleImportsDirectiveKv(class *Class, vNode *sitter.Node, content []byte) {
 	file := class.Snapshot().File
 	class.Update(func(data *classState) {
-		data.Angular.Directive.Imports = NodeToValue(file, vNode)
+		data.Angular.Directive.Imports = NodeToValue(file, vNode, content)
 	})
 }
 
-func handleImportsModuleKv(class *Class, vNode *sitter.Node) {
+func handleImportsModuleKv(class *Class, vNode *sitter.Node, content []byte) {
 	file := class.Snapshot().File
 	class.Update(func(data *classState) {
-		data.Angular.Module.Imports = NodeToValue(file, vNode)
+		data.Angular.Module.Imports = NodeToValue(file, vNode, content)
 	})
 }
 
