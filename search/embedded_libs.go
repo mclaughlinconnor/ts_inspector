@@ -15,6 +15,8 @@ import (
 //go:embed lib.tar.gz
 var libTgzFs embed.FS
 
+// investigate https://github.com/stephantul/pynife and https://huggingface.co/blobbybob/potion-mxbai-128d-v2
+
 //go:embed granite-embedding-30m-english-Q8_0.gguf
 var modelFs embed.FS
 
