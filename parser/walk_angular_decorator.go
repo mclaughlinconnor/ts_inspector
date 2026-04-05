@@ -294,7 +294,8 @@ func handleCompiledInputs(class *Class, inputMapNode *sitter.Node) {
 
 				def := class.GetDefinition(name)
 				class.Update(func(data *classState) {
-					def.Decorators = append(def.Decorators, Decorator{Arguments: []string{str.Content([]byte(data.Content))}, IsAngular: true, Name: "Input"})
+					s := str.Content([]byte(data.Content))
+					def.Decorators = append(def.Decorators, Decorator{Arguments: []string{s}, IsAngular: true, Name: "Input"})
 				})
 			}
 		case "object_type":
@@ -332,7 +333,8 @@ func handleCompiledInputs(class *Class, inputMapNode *sitter.Node) {
 					switch n {
 					case "alias":
 						{
-							dec.Arguments = append(dec.Arguments, vvalueFragNode.Content(content))
+							v := vvalueFragNode.Content(content)
+							dec.Arguments = append(dec.Arguments, v)
 						}
 					}
 				}
@@ -380,7 +382,8 @@ func handleCompiledOutputs(class *Class, inputMapNode *sitter.Node) {
 				def := class.GetDefinition(name)
 				if def != nil {
 					class.Update(func(data *classState) {
-						def.Decorators = append(def.Decorators, Decorator{Arguments: []string{str.Content([]byte(data.Content))}, IsAngular: true, Name: "Output"})
+						s := str.Content([]byte(data.Content))
+						def.Decorators = append(def.Decorators, Decorator{Arguments: []string{s}, IsAngular: true, Name: "Output"})
 					})
 				}
 			}

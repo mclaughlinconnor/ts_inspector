@@ -57,13 +57,7 @@ THING:
 
 					compIdent := tcb.CreateVar(value)
 
-					assInput := compIdent + "."
-
-					if a.IsInput() {
-						assInput = assInput + def.GetInputName()
-					} else if a.IsInput() {
-						assInput = assInput + def.GetOutputName()
-					}
+					assInput := compIdent + "." + def.Name
 
 					attrValue := a.Value
 					if attrValue == "" {
