@@ -84,8 +84,8 @@ func (t *Tcb) BuildImports() string {
 
 	for _, i := range t.Imports {
 		ifname := i.File.Filename()
-		relative, _ := filepath.Rel(path, ifname)
-		relativePath := strings.TrimSuffix(relative, filepath.Ext(relative))
+		relative, _ := filepath.Rel(filepath.Dir(path), ifname)
+		relativePath := "./" + strings.TrimSuffix(relative, filepath.Ext(relative))
 
 		fmt.Fprintf(&sb, "import * as i%s from '%s';\n", i.Identifier, relativePath)
 	}
