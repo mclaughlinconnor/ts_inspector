@@ -9,6 +9,7 @@ import (
 
 	"ts_inspector/interfaces"
 	"ts_inspector/parser"
+	"ts_inspector/parser/tcb_cm"
 	"ts_inspector/rpc"
 	"ts_inspector/utils"
 )
@@ -16,8 +17,9 @@ import (
 var Shutdown = make(chan int, 1)
 
 func Start() {
-	logger := utils.GetLogger("ts_inspector")
-	logger.Println("Started")
+	state := parser.CreateState()
+	state.SetTcbGenerator(tcb_cm.GenerateTcb)
+	logger := state.Logger
 
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Split(rpc.Split)
@@ -26,8 +28,6 @@ func Start() {
 	scanner.Buffer(buf, big)
 
 	writer := os.Stdout
-
-	state := parser.CreateState()
 
 	for scanner.Scan() {
 		logger.Println("Scanner found the next message")
@@ -66,39 +66,39 @@ func handleMessage(logger *log.Logger, writer io.Writer, state *parser.State, me
 	switch method {
 	case "initialize":
 		request := utils.TryParseRequest[interfaces.InitializeRequest](logger, contents)
-		HandleInitialise(writer, logger, state, request)
+		lspHandleInitialise(writer, logger, state, request)
 	case "shutdown":
 		Shutdown <- 1
 	case "textDocument/didOpen":
 		request := utils.TryParseRequest[interfaces.DidOpenTextDocumentNotification](logger, contents)
-		HandleDidOpen(writer, logger, state, request)
+		lspHandleDidOpen(writer, logger, state, request)
 	case "textDocument/didChange":
 		request := utils.TryParseRequest[interfaces.DidChangeTextDocumentNotification](logger, contents)
-		HandleDidChange(writer, logger, state, request)
+		lspHandleDidChange(writer, logger, state, request)
 	case "textDocument/codeAction":
 		request := utils.TryParseRequest[interfaces.CodeActionRequest](logger, contents)
-		HandleCodeAction(writer, logger, state, request)
+		lspHandleCodeAction(writer, logger, state, request)
 	case "textDocument/completion":
 		request := utils.TryParseRequest[interfaces.CompletionRequest](logger, contents)
-		HandleCompletion(writer, logger, state, request)
+		lspHandleCompletion(writer, logger, state, request)
 	case "textDocument/definition":
 		request := utils.TryParseRequest[interfaces.DefinitionRequest](logger, contents)
-		HandleDefinition(writer, logger, state, request)
+		lspHandleDefinition(writer, logger, state, request)
 	case "textDocument/hover":
 		request := utils.TryParseRequest[interfaces.HoverRequest](logger, contents)
-		HandleHover(writer, logger, state, request)
+		lspHandleHover(writer, logger, state, request)
 	case "textDocument/references":
 		request := utils.TryParseRequest[interfaces.ReferenceRequest](logger, contents)
-		HandleReferences(writer, logger, state, request)
+		lspHandleReferences(writer, logger, state, request)
 	case "workspace/executeCommand":
 		request := utils.TryParseRequest[interfaces.ExecuteCommandRequest](logger, contents)
-		HandleExecuteCommand(writer, logger, state, request)
+		lspHandleExecuteCommand(writer, logger, state, request)
 	case "workspace/symbol":
 		request := utils.TryParseRequest[interfaces.WorkspaceSymbolRequest](logger, contents)
-		HandleWorkspaceSymbol(writer, logger, state, request)
+		lspHandleWorkspaceSymbol(writer, logger, state, request)
 	case "ts_inspector/getTcb":
 		request := utils.TryParseRequest[interfaces.TcbRequest](logger, contents)
-		HandleTcb(writer, logger, state, request)
+		lspHandleTcb(writer, logger, state, request)
 	case "initialized":
 		{
 		}

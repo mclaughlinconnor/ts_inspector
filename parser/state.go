@@ -1,19 +1,35 @@
 package parser
 
 import (
+	"log"
 	"sync"
 	"ts_inspector/utils"
+
+	sitter "github.com/smacker/go-tree-sitter"
 )
+
+// Hacky "fix" because of my badly structured packages
+type TcbGeneratorFunc func(state *State, class *Class, root *sitter.Node, content []byte) string
 
 type State struct {
 	sync.RWMutex
-	classes map[string]*Class
-	files   map[string]*File
-	rootURI string
+
+	Logger *log.Logger
+
+	classes       map[string]*Class
+	files         map[string]*File
+	rootURI       string
+	tcbGenerator  TcbGeneratorFunc
+	tsConfigFiles []string
+	tsgo          *TsGo
 }
 
 func CreateState() State {
-	return State{classes: map[string]*Class{}, files: map[string]*File{}}
+	return State{
+		Logger:  utils.GetLogger("ts_inspector"),
+		classes: map[string]*Class{},
+		files:   map[string]*File{},
+	}
 }
 
 func (s *State) GetFile(filename string) (*File, bool) {
@@ -91,6 +107,30 @@ func (s *State) GetRootPath() string {
 	return rootPath
 }
 
+func (s *State) GetTcbGenerator() TcbGeneratorFunc {
+	s.RLock()
+	gen := s.tcbGenerator
+	s.RUnlock()
+
+	return gen
+}
+
+func (s *State) GetTsConfigFiles() []string {
+	s.RLock()
+	files := s.tsConfigFiles
+	s.RUnlock()
+
+	return files
+}
+
+func (s *State) GetTsGo() *TsGo {
+	s.RLock()
+	tsgo := s.tsgo
+	s.RUnlock()
+
+	return tsgo
+}
+
 func (s *State) Postprocess() {
 	wg := sync.WaitGroup{}
 
@@ -120,5 +160,23 @@ func (s *State) SetFile(filename string, file *File) {
 func (s *State) SetRootUri(rootUri string) {
 	s.Lock()
 	s.rootURI = rootUri
+	s.Unlock()
+}
+
+func (s *State) SetTcbGenerator(gen TcbGeneratorFunc) {
+	s.Lock()
+	s.tcbGenerator = gen
+	s.Unlock()
+}
+
+func (s *State) SetTsConfigFiles(tsconfigFiles []string) {
+	s.Lock()
+	s.tsConfigFiles = tsconfigFiles
+	s.Unlock()
+}
+
+func (s *State) SetTsGo(tsgo *TsGo) {
+	s.Lock()
+	s.tsgo = tsgo
 	s.Unlock()
 }

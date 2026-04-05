@@ -10,7 +10,7 @@ import (
 	"ts_inspector/utils"
 )
 
-func HandleExecuteCommand(writer io.Writer, logger *log.Logger, state *parser.State, request interfaces.ExecuteCommandRequest) {
+func lspHandleExecuteCommand(writer io.Writer, logger *log.Logger, state *parser.State, request interfaces.ExecuteCommandRequest) {
 	commandName := request.Params.Command
 	args := request.Params.Arguments
 

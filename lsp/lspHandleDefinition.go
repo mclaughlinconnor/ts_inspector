@@ -8,7 +8,7 @@ import (
 	"ts_inspector/utils"
 )
 
-func HandleDefinition(writer io.Writer, logger *log.Logger, state *parser.State, request interfaces.DefinitionRequest) {
+func lspHandleDefinition(writer io.Writer, logger *log.Logger, state *parser.State, request interfaces.DefinitionRequest) {
 	file, _ := state.GetFile(parser.FilenameFromUri(request.Params.TextDocument.Uri))
 
 	locations := make([]interfaces.Location, 0)

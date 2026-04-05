@@ -52,11 +52,16 @@ func parseTsConfig(filename string) TsConfigFile {
 	return config
 }
 
-func readTsConfigs(root string, rootFiles []fs.DirEntry, tsConfig *TsConfig) {
+func readTsConfigs(root string, rootFiles []fs.DirEntry, tsConfig *TsConfig) []string {
+	tsconfigFiles := []string{}
+
 	for _, rootFile := range rootFiles {
 		rootFileName := rootFile.Name()
 		if strings.HasPrefix(rootFileName, "tsconfig.") && strings.HasSuffix(rootFileName, ".json") {
-			config := parseTsConfig(filepath.Join(root, rootFileName))
+			path := filepath.Join(root, rootFileName)
+			tsconfigFiles = append(tsconfigFiles, path)
+
+			config := parseTsConfig(path)
 			tsConfig.Exclude = append(tsConfig.Exclude, config.Exclude...)
 			tsConfig.Files = append(tsConfig.Files, config.Files...)
 			tsConfig.Include = append(tsConfig.Include, config.Include...)
@@ -70,4 +75,6 @@ func readTsConfigs(root string, rootFiles []fs.DirEntry, tsConfig *TsConfig) {
 	tsConfig.Exclude = utils.RemoveNonCode(tsConfig.Exclude)
 	tsConfig.Files = utils.RemoveNonCode(tsConfig.Files)
 	tsConfig.Include = utils.RemoveNonCode(tsConfig.Include)
+
+	return tsconfigFiles
 }

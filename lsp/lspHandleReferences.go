@@ -9,7 +9,7 @@ import (
 	"ts_inspector/utils"
 )
 
-func HandleReferences(writer io.Writer, logger *log.Logger, state *parser.State, request interfaces.ReferenceRequest) {
+func lspHandleReferences(writer io.Writer, logger *log.Logger, state *parser.State, request interfaces.ReferenceRequest) {
 	file, _ := state.GetFile(parser.FilenameFromUri(request.Params.TextDocument.Uri))
 
 	locations := make([]interfaces.Location, 0)

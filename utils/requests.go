@@ -22,5 +22,8 @@ func TryParseRequest[T any](logger *log.Logger, contents []byte) T {
 
 func WriteResponse(writer io.Writer, msg any) {
 	reply := rpc.EncodeMessage(msg)
-	writer.Write([]byte(reply))
+	_, e := writer.Write([]byte(reply))
+	if e != nil {
+		panic(e)
+	}
 }

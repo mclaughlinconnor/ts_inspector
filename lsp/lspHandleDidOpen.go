@@ -9,13 +9,13 @@ import (
 	"ts_inspector/utils"
 )
 
-func HandleDidChange(writer io.Writer, logger *log.Logger, state *parser.State, request interfaces.DidChangeTextDocumentNotification) {
+func lspHandleDidOpen(writer io.Writer, logger *log.Logger, state *parser.State, request interfaces.DidOpenTextDocumentNotification) {
 	err := parser.IndexFileFromLsp(
 		state,
 		request.Params.TextDocument.Uri,
 		request.Params.TextDocument.LanguageId,
 		request.Params.TextDocument.Version,
-		request.Params.ContentChanges[0].Text,
+		"", // no ContentChanges
 		logger,
 	)
 
@@ -26,6 +26,8 @@ func HandleDidChange(writer io.Writer, logger *log.Logger, state *parser.State, 
 		if file == nil {
 			return
 		}
+
+		file.SetOpen()
 
 		dependencies := file.GetDependencies(state)
 		for _, dependency := range dependencies {

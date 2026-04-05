@@ -10,7 +10,7 @@ import (
 	"ts_inspector/utils"
 )
 
-func HandleHover(writer io.Writer, logger *log.Logger, state *parser.State, request interfaces.HoverRequest) {
+func lspHandleHover(writer io.Writer, logger *log.Logger, state *parser.State, request interfaces.HoverRequest) {
 	file, _ := state.GetFile(parser.FilenameFromUri(request.Params.TextDocument.Uri))
 
 	if file == nil || file.Snapshot().Filetype != "pug" {

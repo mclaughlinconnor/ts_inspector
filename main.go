@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"runtime/pprof"
 	"syscall"
+	"time"
 	"ts_inspector/actions"
 	"ts_inspector/analysis"
 	traversetypescriptfiles "ts_inspector/ast/indexing"
@@ -38,6 +39,8 @@ func main() {
 	analysis.InitAnalysers()
 	tcb_cm.InitTcb()
 
+	time.Sleep(5 * time.Second)
+
 	args := flag.Args()
 	if utils.LSP && len(args) == 0 {
 		startLsp()
@@ -51,7 +54,8 @@ func main() {
 	logger := utils.GetLogger("indexer")
 
 	state := parser.CreateState()
-	filenames := traversetypescriptfiles.Index(args[0])
+	state.SetTcbGenerator(tcb_cm.GenerateTcb)
+	filenames, _ := traversetypescriptfiles.Index(args[0])
 	for _, filename := range filenames {
 		logger.Println(filename)
 		err := parser.IndexFileFromIndexer(&state, filename)

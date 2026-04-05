@@ -9,7 +9,7 @@ import (
 	"ts_inspector/utils"
 )
 
-func findProjectRoots(root string) []string {
+func findProjectRoots(root string) ([]string, []string) {
 	rootFiles, err := os.ReadDir(root)
 	if err != nil {
 		log.Fatal(err)
@@ -24,7 +24,7 @@ func findProjectRoots(root string) []string {
 		Include: []string{},
 	}
 
-	readTsConfigs(root, rootFiles, &tsConfig)
+	tsconfigFiles := readTsConfigs(root, rootFiles, &tsConfig)
 
 	if len(tsConfig.CompilerOptions.BaseURL) != 0 {
 		for _, baseUrl := range tsConfig.CompilerOptions.BaseURL {
@@ -64,5 +64,5 @@ func findProjectRoots(root string) []string {
 		}
 	}
 
-	return append(files, tsConfig.Files...)
+	return append(files, tsConfig.Files...), tsconfigFiles
 }

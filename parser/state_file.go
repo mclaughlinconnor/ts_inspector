@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"maps"
+	"net/url"
 	"os"
 	"path"
 	"path/filepath"
@@ -12,6 +13,7 @@ import (
 	"sync"
 	"ts_inspector/ast"
 	"ts_inspector/ast/indexing"
+	"ts_inspector/interfaces"
 	"ts_inspector/utils"
 
 	sitter "github.com/smacker/go-tree-sitter"
@@ -153,6 +155,18 @@ func (f *File) GetOffsetForPosition(p utils.Position) uint32 {
 
 func (f *File) GetOffsetsForRange(r utils.Range) (uint32, uint32) {
 	return f.GetOffsetForPosition(r.Start), f.GetOffsetForPosition(r.End)
+}
+
+func (f *File) GetTcbUri() string {
+	file := f.Snapshot()
+	if file.Filetype != "pug" {
+		return ""
+	}
+
+	parsedUrl, _ := url.Parse(file.URI)
+	parsedUrl.Path = strings.TrimSuffix(parsedUrl.Path, path.Ext(parsedUrl.Path)) + interfaces.TCB_FILENAME_SUFFIX
+
+	return parsedUrl.String()
 }
 
 func (f *File) Postprocess(state *State) {

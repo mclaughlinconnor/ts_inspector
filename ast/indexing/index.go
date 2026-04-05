@@ -1,7 +1,7 @@
 package indexing
 
-func Index(rootUri string) []string {
-	roots := findProjectRoots(rootUri)
+func Index(rootUri string) ([]string, []string) {
+	roots, tsconfigFiles := findProjectRoots(rootUri)
 
 	imports := []string{}
 	for _, root := range roots {
@@ -11,5 +11,5 @@ func Index(rootUri string) []string {
 		}
 	}
 
-	return imports
+	return imports, tsconfigFiles
 }

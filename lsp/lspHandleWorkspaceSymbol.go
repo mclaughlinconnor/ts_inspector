@@ -19,7 +19,7 @@ func newWorkspaceSymbolResponse(id int, symbols []interfaces.WorkspaceSymbol) in
 	}
 }
 
-func HandleWorkspaceSymbol(writer io.Writer, logger *log.Logger, state *parser.State, request interfaces.WorkspaceSymbolRequest) {
+func lspHandleWorkspaceSymbol(writer io.Writer, logger *log.Logger, state *parser.State, request interfaces.WorkspaceSymbolRequest) {
 	params := request.Params
 
 	interestingPoints, err := search.FindInterestingPoints(params.Query)

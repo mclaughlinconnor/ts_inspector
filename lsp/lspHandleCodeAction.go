@@ -28,7 +28,7 @@ func WorkspaceEditFromEdits(file *parser.File, edits utils.TextEdits) interfaces
 	}
 }
 
-func HandleCodeAction(writer io.Writer, logger *log.Logger, state *parser.State, request interfaces.CodeActionRequest) {
+func lspHandleCodeAction(writer io.Writer, logger *log.Logger, state *parser.State, request interfaces.CodeActionRequest) {
 	file, _ := state.GetFile(parser.FilenameFromUri(request.Params.TextDocument.Uri))
 
 	codeActions := GenerateActions(writer, logger, state, file, request.Params.Range)

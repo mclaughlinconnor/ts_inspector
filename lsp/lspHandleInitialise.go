@@ -50,13 +50,14 @@ func newInitializeResponse(id int) interfaces.InitializeResponse {
 	}
 }
 
-func HandleInitialise(writer io.Writer, logger *log.Logger, state *parser.State, request interfaces.InitializeRequest) {
+func lspHandleInitialise(writer io.Writer, logger *log.Logger, state *parser.State, request interfaces.InitializeRequest) {
 	response := newInitializeResponse(request.ID)
 	utils.WriteResponse(writer, response)
 
 	state.SetRootUri(request.Params.RootUri)
 	utils.WriteResponse(writer, interfaces.BuildMessageNotification("Starting indexing...", interfaces.MessageType.Info))
-	filenames := traversetypescriptfiles.Index(state.GetRootPath())
+	filenames, tsconfigFiles := traversetypescriptfiles.Index(state.GetRootPath())
+	state.SetTsConfigFiles(tsconfigFiles)
 
 	var err error
 	for _, filename := range filenames {
@@ -69,6 +70,8 @@ func HandleInitialise(writer io.Writer, logger *log.Logger, state *parser.State,
 	utils.WriteResponse(writer, interfaces.BuildMessageNotification("Postprocessing...", interfaces.MessageType.Info))
 	state.Postprocess()
 
+	initTsGo(state)
+
 	if utils.SemanticSearch {
 		utils.WriteResponse(writer, interfaces.BuildMessageNotification("Building search indexes...", interfaces.MessageType.Info))
 		go (func() {
@@ -79,4 +82,19 @@ func HandleInitialise(writer io.Writer, logger *log.Logger, state *parser.State,
 	}
 
 	utils.WriteResponse(writer, interfaces.BuildMessageNotification("State ready", interfaces.MessageType.Info))
+}
+
+func initTsGo(state *parser.State) {
+	t, err := parser.StartTsGo(state)
+	if err != nil {
+		state.Logger.Print(err)
+	}
+
+	state.SetTsGo(t)
+
+	t.Initialize()
+	us := t.UpdateSnapshot(state.GetTsConfigFiles()[1], nil)
+	print(us)
+
+	state.SetTsGo(t)
 }
