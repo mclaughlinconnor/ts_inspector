@@ -96,6 +96,9 @@ func handleMessage(logger *log.Logger, writer io.Writer, state *parser.State, me
 	case "workspace/symbol":
 		request := utils.TryParseRequest[interfaces.WorkspaceSymbolRequest](logger, contents)
 		HandleWorkspaceSymbol(writer, logger, state, request)
+	case "ts_inspector/getTcb":
+		request := utils.TryParseRequest[interfaces.TcbRequest](logger, contents)
+		HandleTcb(writer, logger, state, request)
 	case "initialized":
 		{
 		}

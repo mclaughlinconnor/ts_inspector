@@ -31,6 +31,7 @@ func InitCommands() {
 	registerCommand(Command{Command: interfaces.Command{Command: "ts_inspector/goToDeclaringModule", Title: "Go to declaring module"}, Perform: GoToDeclaringModule})
 	registerCommand(Command{Command: interfaces.Command{Command: "ts_inspector/printProviders", Title: "Print providers"}, Perform: PrintProviders})
 	registerCommand(Command{Command: interfaces.Command{Command: "ts_inspector/saveDotCfg", Title: "Save dot graph for CFG"}, Perform: SaveDotForCfg})
+	registerCommand(Command{Command: interfaces.Command{Command: "ts_inspector/viewTcb", Title: "View the TCB for the template"}, Perform: ViewTcb})
 
 	for _, command := range Commands {
 		CommandNames = append(CommandNames, command.Command.Command)

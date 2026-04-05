@@ -23,6 +23,7 @@ func InitActions() {
 	registerAction(Action{CalculateAllProviders, "Calculate all providers"})
 	registerAction(Action{ConvertInjectToProperty, "Convert constructor injection to inject() property"})
 	registerAction(Action{GoToDeclaringModule, "Go to declaring module"})
+	registerAction(Action{ViewTcbFile, "View the TCB for the template"})
 	registerAction(Action{ImplementAngularAfterViewInit, "Add AfterViewInit"})
 	registerAction(Action{ImplementAngularOnChanges, "Add OnChanges"})
 	registerAction(Action{ImplementAngularOnDestroy, "Add OnDestroy"})
