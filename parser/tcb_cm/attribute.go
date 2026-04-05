@@ -65,7 +65,12 @@ THING:
 						assInput = assInput + def.GetOutputName()
 					}
 
-					tcb.AddAssignment(assInput, StatementParts{[]string{buildTcbExpression(a.Value)}})
+					attrValue := a.Value
+					if attrValue == "" {
+						attrValue = UNDEFINED
+					}
+
+					tcb.AddAssignment(assInput, StatementParts{[]string{buildTcbExpression(attrValue)}})
 
 					continue THING
 				}
