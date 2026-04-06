@@ -60,9 +60,9 @@ func (t *Tag) Render() {
 	tcb := t.Tcb()
 
 	value := StatementParts{}
-	value.AddPart("document.createElement(\"")
-	value.AddPart(t.Name)
-	value.AddPart("\")")
+	value.AddVirtPart("document.createElement(\"")
+	value.AddVirtPart(t.Name)
+	value.AddVirtPart("\")")
 
 	tcb.CreateVar(value)
 

@@ -41,14 +41,14 @@ func (t *Tcb) GetNextIdString() string {
 }
 
 func (t *Tcb) AddAssignment(identifer string, value StatementParts) {
-	t.AddPart(identifer)
-	t.AddPart(" = ")
+	t.AddVirtPart(identifer)
+	t.AddVirtPart(" = ")
 
 	for _, p := range value.Parts {
 		t.AddPart(p)
 	}
 
-	t.AddPart(";\n")
+	t.AddVirtPart(";\n")
 }
 
 func (t *Tcb) AddImport(class *parser.Class) string {
@@ -68,13 +68,21 @@ func (t *Tcb) AddImport(class *parser.Class) string {
 	return "i" + i.Identifier + "." + class.Snapshot().Name
 }
 
-func (t *Tcb) AddPart(part string) {
+func (t *Tcb) AddRealPart(part string, startOffset int, endOffset int) {
+	t.GetScope().AddRealPart(part, startOffset, endOffset)
+}
+
+func (t *Tcb) AddPart(part Part) {
 	t.GetScope().AddPart(part)
+}
+
+func (t *Tcb) AddVirtPart(part string) {
+	t.GetScope().AddVirtPart(part)
 }
 
 func (t *Tcb) BeginScope() {
 	t.NewScope()
-	t.AddPart("{\n")
+	t.AddVirtPart("{\n")
 }
 
 func (t *Tcb) BuildImports() string {
@@ -99,15 +107,15 @@ func (t *Tcb) CreateVar(value StatementParts) string {
 	}
 
 	name := "_t" + t.GetNextIdString()
-	t.AddPart("var ")
-	t.AddPart(name)
-	t.AddPart(" = ")
+	t.AddVirtPart("var ")
+	t.AddVirtPart(name)
+	t.AddVirtPart(" = ")
 
 	for _, p := range value.Parts {
 		t.AddPart(p)
 	}
 
-	t.AddPart(";\n")
+	t.AddVirtPart(";\n")
 
 	t.GetScope().AddVariable(&Variable{Identifier: name, Value: value.ToString()})
 
@@ -115,7 +123,7 @@ func (t *Tcb) CreateVar(value StatementParts) string {
 }
 
 func (t *Tcb) EndScope() {
-	t.AddPart("\n}")
+	t.AddVirtPart("\n}")
 	t.CurrentScope = t.CurrentScope.ParentScope
 }
 
@@ -177,12 +185,12 @@ func InitTcb() {
 }
 
 func buildTemplatePreamble(tcb *Tcb) {
-	tcb.GetScope().AddPart("function _tcb")
-	tcb.GetScope().AddPart(tcb.GetNextIdString())
-	tcb.GetScope().AddPart("(this: ")
+	tcb.GetScope().AddVirtPart("function _tcb")
+	tcb.GetScope().AddVirtPart(tcb.GetNextIdString())
+	tcb.GetScope().AddVirtPart("(this: ")
 
 	classIdent := tcb.AddImport(tcb.Class)
-	tcb.GetScope().AddPart(classIdent)
+	tcb.GetScope().AddVirtPart(classIdent)
 
-	tcb.GetScope().AddPart(") ")
+	tcb.GetScope().AddVirtPart(") ")
 }

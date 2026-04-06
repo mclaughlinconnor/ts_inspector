@@ -1,7 +1,6 @@
 package tcb_cm
 
 import (
-	"strings"
 	"ts_inspector/ast/walk"
 	"ts_inspector/utils"
 
@@ -9,7 +8,7 @@ import (
 )
 
 type exprState struct {
-	sb      *strings.Builder
+	parts   *StatementParts
 	content []byte
 }
 
@@ -39,11 +38,11 @@ func initTcbExpression() {
 	exprOptimisedMap = walk.GenerateSymbolMap(angularExprLang, exprVisitorFuncMap)
 }
 
-func buildTcbExpression(expression string) string {
-	s, err := utils.ParseText([]byte(expression), utils.AngularExpr, "", func(root *sitter.Node, content []byte, _ string) (string, error) {
-		state := exprState{content: content, sb: &strings.Builder{}}
+func buildTcbExpression(expression string) *StatementParts {
+	s, err := utils.ParseText([]byte(expression), utils.AngularExpr, nil, func(root *sitter.Node, content []byte, _ *StatementParts) (*StatementParts, error) {
+		state := exprState{content: content, parts: &StatementParts{}}
 		output := newWalk(root, &state)
-		return output.sb.String(), nil
+		return output.parts, nil
 	})
 
 	if err != nil {
@@ -54,7 +53,7 @@ func buildTcbExpression(expression string) string {
 }
 
 func newWalk(node *sitter.Node, state *exprState) *exprState {
-	newState := exprState{content: []byte(node.Content(state.content)), sb: &strings.Builder{}}
+	newState := exprState{content: []byte(node.Content(state.content)), parts: &StatementParts{}}
 
 	return walk.VisitNode(node, &newState, 0, exprOptimisedMap, false)
 }
@@ -66,8 +65,8 @@ func visitUnary(node *sitter.Node, state *exprState, indexInParent int, internal
 	exprNode := node.ChildByFieldName("value")
 	expr := newWalk(exprNode, state)
 
-	state.sb.WriteString(operator)
-	state.sb.WriteString(expr.sb.String())
+	state.parts.AddVirtPart(operator)
+	state.parts.AddStatementParts(expr.parts)
 
 	return state
 }
@@ -82,9 +81,9 @@ func visitBinary(node *sitter.Node, state *exprState, indexInParent int, interna
 	rhsNode := node.ChildByFieldName("right")
 	rhs := newWalk(rhsNode, state)
 
-	state.sb.WriteString(lhs.sb.String())
-	state.sb.WriteString(operator)
-	state.sb.WriteString(rhs.sb.String())
+	state.parts.AddStatementParts(lhs.parts)
+	state.parts.AddVirtPart(operator)
+	state.parts.AddStatementParts(rhs.parts)
 
 	return state
 }
@@ -114,11 +113,9 @@ func visitBracketExpression(node *sitter.Node, state *exprState, indexInParent i
 func visitConditional(node *sitter.Node, state *exprState, indexInParent int, internalFuncMap walk.VisitorFuncMap[*exprState]) *exprState {
 	condNode := node.ChildByFieldName("condition")
 	condState := newWalk(condNode, state)
-	condExpr := condState.sb.String()
 
 	trueNode := node.ChildByFieldName("consequence")
 	trueState := newWalk(trueNode, state)
-	trueExpr := trueState.sb.String()
 
 	// Wrap `falseExpr` in parens so that the trailing parse span info is not attributed to the
 	// whole conditional.
@@ -129,13 +126,13 @@ func visitConditional(node *sitter.Node, state *exprState, indexInParent int, in
 	// This should be instead be `conditional /*1,2*/ ? trueExpr /*3,4*/ : (falseExpr /*5,6*/)`
 
 	falseState := newWalk(node.ChildByFieldName("alternative"), state)
-	falseExpr := wrapForTypeChecker(falseState.sb.String())
+	wrapForTypeChecker(falseState.parts)
 
-	state.sb.WriteString(condExpr)
-	state.sb.WriteString(" ? ")
-	state.sb.WriteString(trueExpr)
-	state.sb.WriteString(" : ")
-	state.sb.WriteString(falseExpr)
+	state.parts.AddStatementParts(condState.parts)
+	state.parts.AddVirtPart(" ? ")
+	state.parts.AddStatementParts(trueState.parts)
+	state.parts.AddVirtPart(" : ")
+	state.parts.AddStatementParts(falseState.parts)
 
 	return state
 }
@@ -157,14 +154,14 @@ func visitInterpolation(node *sitter.Node, state *exprState, indexInParent int, 
 		part := node.NamedChild(int(i))
 
 		partState := newWalk(part, state)
-		partExpr := partState.sb.String()
+		partExpr := partState.parts
 
 		if i == 0 {
-			state.sb.WriteString("''")
+			state.parts.AddVirtPart("''")
 		}
 
-		state.sb.WriteString(" + ")
-		state.sb.WriteString(wrapForTypeChecker(partExpr))
+		state.parts.AddVirtPart(" + ")
+		state.parts.AddStatementParts(wrapForTypeChecker(partExpr))
 	}
 
 	return state
@@ -173,37 +170,32 @@ func visitInterpolation(node *sitter.Node, state *exprState, indexInParent int, 
 func visitKeyedRead(node *sitter.Node, state *exprState, indexInParent int, internalFuncMap walk.VisitorFuncMap[*exprState]) *exprState {
 	receiverNode := node.ChildByFieldName("object")
 	receiverState := newWalk(receiverNode, state)
-	receiver := wrapForDiagnostics(receiverState.sb.String())
 
 	keyNode := node.ChildByFieldName("property")
 	keyState := newWalk(keyNode, state)
-	key := wrapForDiagnostics(keyState.sb.String())
 
-	state.sb.WriteString(receiver)
-	state.sb.WriteString("[")
-	state.sb.WriteString(key)
-	state.sb.WriteString("]")
+	state.parts.AddStatementParts(wrapForDiagnostics(receiverState.parts))
+	state.parts.AddVirtPart("[")
+	state.parts.AddStatementParts(wrapForDiagnostics(keyState.parts))
+	state.parts.AddVirtPart("]")
 
 	return state
 }
 
 func visitLiteralArray(node *sitter.Node, state *exprState, indexInParent int, internalFuncMap walk.VisitorFuncMap[*exprState]) *exprState {
-	state.sb.WriteString("[")
+	state.parts.AddVirtPart("[")
 
 	for i := range node.NamedChildCount() {
-		element := node.NamedChild(int(i))
-
-		elementState := newWalk(element, state)
-		elementExpr := elementState.sb.String()
-
 		if i != 0 {
-			state.sb.WriteString(", ")
+			state.parts.AddVirtPart(", ")
 		}
 
-		state.sb.WriteString(wrapForTypeChecker(elementExpr))
+		element := node.NamedChild(int(i))
+		elementState := newWalk(element, state)
+		state.parts.AddStatementParts(wrapForTypeChecker(elementState.parts))
 	}
 
-	state.sb.WriteString("]")
+	state.parts.AddVirtPart("]")
 
 	// If strictLiteralTypes is disabled, array literals are cast to `any`.
 	// const node = this.config.strictLiteralTypes ? literal : tsCastToAny(literal);
@@ -212,7 +204,7 @@ func visitLiteralArray(node *sitter.Node, state *exprState, indexInParent int, i
 }
 
 func visitLiteralMap(node *sitter.Node, state *exprState, indexInParent int, internalFuncMap walk.VisitorFuncMap[*exprState]) *exprState {
-	state.sb.WriteString("{")
+	state.parts.AddVirtPart("{")
 
 	for i := range node.NamedChildCount() {
 		pair := node.NamedChild(int(i))
@@ -222,18 +214,17 @@ func visitLiteralMap(node *sitter.Node, state *exprState, indexInParent int, int
 
 		valueNode := pair.ChildByFieldName("value")
 		valueExpr := newWalk(valueNode, state)
-		value := valueExpr.sb.String()
 
 		if i != 0 {
-			state.sb.WriteString(", ")
+			state.parts.AddVirtPart(", ")
 		}
 
-		state.sb.WriteString(key)
-		state.sb.WriteString(": ")
-		state.sb.WriteString(value)
+		state.parts.AddVirtPart(key)
+		state.parts.AddVirtPart(": ")
+		state.parts.AddStatementParts(valueExpr.parts)
 	}
 
-	state.sb.WriteString("}")
+	state.parts.AddVirtPart("}")
 
 	// If strictLiteralTypes is disabled, object literals are cast to `any`.
 	// const node = this.config.strictLiteralTypes ? literal : tsCastToAny(literal);
@@ -244,7 +235,7 @@ func visitLiteralMap(node *sitter.Node, state *exprState, indexInParent int, int
 // visitLiteralPrimitive
 // Covered by visitIdentifier
 func visitUndefined(node *sitter.Node, state *exprState, indexInParent int, internalFuncMap walk.VisitorFuncMap[*exprState]) *exprState {
-	state.sb.WriteString("undefined")
+	state.parts.AddVirtPart("undefined")
 
 	return state
 }
@@ -252,21 +243,21 @@ func visitUndefined(node *sitter.Node, state *exprState, indexInParent int, inte
 // visitLiteralPrimitive
 // Covered by visitIdentifier
 func visitNull(node *sitter.Node, state *exprState, indexInParent int, internalFuncMap walk.VisitorFuncMap[*exprState]) *exprState {
-	state.sb.WriteString("null")
+	state.parts.AddVirtPart("null")
 
 	return state
 }
 
 // visitLiteralPrimitive
 func visitString(node *sitter.Node, state *exprState, indexInParent int, internalFuncMap walk.VisitorFuncMap[*exprState]) *exprState {
-	state.sb.WriteString(node.Content(state.content))
+	state.parts.AddVirtPart(node.Content(state.content))
 
 	return state
 }
 
 // visitLiteralPrimitive
 func visitNumber(node *sitter.Node, state *exprState, indexInParent int, internalFuncMap walk.VisitorFuncMap[*exprState]) *exprState {
-	state.sb.WriteString(node.Content(state.content))
+	state.parts.AddVirtPart(node.Content(state.content))
 
 	return state
 }
@@ -296,17 +287,15 @@ func visitMemberExpression(node *sitter.Node, state *exprState, indexInParent in
 func visitKeyedNonNullAssertRead(node *sitter.Node, state *exprState, indexInParent int, internalFuncMap walk.VisitorFuncMap[*exprState]) *exprState {
 	receiverNode := node.ChildByFieldName("object")
 	receiverState := newWalk(receiverNode, state)
-	receiver := wrapForDiagnostics(receiverState.sb.String())
 
 	keyNode := node.ChildByFieldName("property")
 	keyState := newWalk(keyNode, state)
-	key := wrapForDiagnostics(keyState.sb.String())
 
-	state.sb.WriteString(receiver)
-	state.sb.WriteString("!")
-	state.sb.WriteString("[")
-	state.sb.WriteString(key)
-	state.sb.WriteString("]")
+	state.parts.AddStatementParts(wrapForDiagnostics(receiverState.parts))
+	state.parts.AddVirtPart("!")
+	state.parts.AddVirtPart("[")
+	state.parts.AddStatementParts(wrapForDiagnostics(keyState.parts))
+	state.parts.AddVirtPart("]")
 
 	return state
 }
@@ -317,14 +306,13 @@ func visitNonNullAssertRead(node *sitter.Node, state *exprState, indexInParent i
 	// TypeScript expression to read the property.
 	receiverNode := node.ChildByFieldName("object")
 	receiverState := newWalk(receiverNode, state)
-	receiver := receiverState.sb.String()
 
 	nameNode := node.ChildByFieldName("property")
-	name := wrapForDiagnostics(nameNode.Content(state.content))
+	name := wrapForDiagnostics(&StatementParts{Parts: []Part{Part{Text: nameNode.Content(state.content)}}})
 
-	state.sb.WriteString(receiver)
-	state.sb.WriteString("!.")
-	state.sb.WriteString(name)
+	state.parts.AddStatementParts(receiverState.parts)
+	state.parts.AddVirtPart("!.")
+	state.parts.AddStatementParts(name)
 
 	return state
 }
@@ -349,14 +337,13 @@ func visitPropertyRead(node *sitter.Node, state *exprState, indexInParent int, i
 	// TypeScript expression to read the property.
 	receiverNode := node.ChildByFieldName("object")
 	receiverState := newWalk(receiverNode, state)
-	receiver := receiverState.sb.String()
 
 	nameNode := node.ChildByFieldName("property")
-	name := wrapForDiagnostics(nameNode.Content(state.content))
+	name := wrapForDiagnostics(&StatementParts{Parts: []Part{Part{Text: nameNode.Content(state.content)}}})
 
-	state.sb.WriteString(receiver)
-	state.sb.WriteString(".")
-	state.sb.WriteString(name)
+	state.parts.AddStatementParts(receiverState.parts)
+	state.parts.AddVirtPart(".")
+	state.parts.AddStatementParts(name)
 
 	return state
 }
@@ -364,20 +351,20 @@ func visitPropertyRead(node *sitter.Node, state *exprState, indexInParent int, i
 // visitPropertyWrite and visitKeyedWrite
 func visitWrite(node *sitter.Node, state *exprState, indexInParent int, internalFuncMap walk.VisitorFuncMap[*exprState]) *exprState {
 	leftNode := node.ChildByFieldName("name")
-	left := wrapForDiagnostics(newWalk(leftNode, state).sb.String())
+	left := wrapForDiagnostics(newWalk(leftNode, state).parts)
 
 	// The right needs to be wrapped in parens as well or we cannot accurately match its
 	// span to just the RHS. For example, the span in `e = $event /*0,10*/` is ambiguous.
 	// It could refer to either the whole binary expression or just the RHS.
 	// We should instead generate `e = ($event /*0,10*/)` so we know the span 0,10 matches RHS.
 	rightNode := node.ChildByFieldName("value")
-	right := wrapForTypeChecker(newWalk(rightNode, state).sb.String())
+	right := wrapForTypeChecker(newWalk(rightNode, state).parts)
 
-	state.sb.WriteString("(")
-	state.sb.WriteString(left)
-	state.sb.WriteString(" = ")
-	state.sb.WriteString(right)
-	state.sb.WriteString(")")
+	state.parts.AddVirtPart("(")
+	state.parts.AddStatementParts(left)
+	state.parts.AddVirtPart(" = ")
+	state.parts.AddStatementParts(right)
+	state.parts.AddVirtPart(")")
 
 	return state
 }
@@ -385,10 +372,10 @@ func visitWrite(node *sitter.Node, state *exprState, indexInParent int, internal
 func visitSafePropertyRead(node *sitter.Node, state *exprState, indexInParent int, internalFuncMap walk.VisitorFuncMap[*exprState]) *exprState {
 	receiverNode := node.ChildByFieldName("object")
 	receiverState := newWalk(receiverNode, state)
-	receiver := wrapForDiagnostics(receiverState.sb.String())
+	receiver := wrapForDiagnostics(receiverState.parts)
 
 	nameNode := node.ChildByFieldName("property")
-	name := wrapForDiagnostics(nameNode.Content(state.content))
+	name := wrapForDiagnostics(&StatementParts{Parts: []Part{Part{Text: nameNode.Content(state.content)}}})
 
 	// The form of safe property reads depends on whether strictness is in use.
 	// if (this.config.strictSafeNavigationTypes) {
@@ -397,10 +384,21 @@ func visitSafePropertyRead(node *sitter.Node, state *exprState, indexInParent in
 	// property read, or `undefined`. So a ternary is used to create an "or" type:
 	// "a?.b" becomes (null as any ? a!.b : undefined)
 	// The type of this expression is (typeof a!.b) | undefined, which is exactly as desired.
-	expr := receiver + "!." + name
-	output := "(" + NULL_AS_ANY + " ? " + expr + " : " + UNDEFINED + ")"
+	expr := &StatementParts{}
+	expr.AddStatementParts(receiver)
+	expr.AddVirtPart("!.")
+	expr.AddStatementParts(name)
 
-	state.sb.WriteString(output)
+	output := &StatementParts{}
+	output.AddVirtPart("(")
+	output.AddVirtPart(NULL_AS_ANY)
+	output.AddVirtPart(" ? ")
+	output.AddStatementParts(expr)
+	output.AddVirtPart(" : ")
+	output.AddVirtPart(UNDEFINED)
+	output.AddVirtPart(")")
+
+	state.parts.AddStatementParts(output)
 
 	// } else if (VeSafeLhsInferenceBugDetector.veWillInferAnyFor(ast)) {
 	//   // Emulate a View Engine bug where 'any' is inferred for the left-hand side of the safe
@@ -425,19 +423,31 @@ func visitSafePropertyRead(node *sitter.Node, state *exprState, indexInParent in
 func visitSafeKeyedRead(node *sitter.Node, state *exprState, indexInParent int, internalFuncMap walk.VisitorFuncMap[*exprState]) *exprState {
 	receiverNode := node.ChildByFieldName("object")
 	receiverState := newWalk(receiverNode, state)
-	receiver := wrapForDiagnostics(receiverState.sb.String())
+	receiver := wrapForDiagnostics(receiverState.parts)
 
 	keyNode := node.ChildByFieldName("property")
 	keyState := newWalk(keyNode, state)
-	key := wrapForDiagnostics(keyState.sb.String())
+	key := wrapForDiagnostics(keyState.parts)
 
 	// The form of safe property reads depends on whether strictness is in use.
 	// if (this.config.strictSafeNavigationTypes) {
 
 	// "a?.[...]" becomes (null as any ? a![...] : undefined)
 
-	expr := receiver + "![" + key + "]"
-	output := "(" + NULL_AS_ANY + " ? " + expr + " : " + UNDEFINED + ")"
+	expr := &StatementParts{}
+	expr.AddStatementParts(receiver)
+	expr.AddVirtPart("![")
+	expr.AddStatementParts(key)
+	expr.AddVirtPart("]")
+
+	output := &StatementParts{}
+	output.AddVirtPart("(")
+	output.AddVirtPart(NULL_AS_ANY)
+	output.AddVirtPart(" ? ")
+	output.AddStatementParts(expr)
+	output.AddVirtPart(" : ")
+	output.AddVirtPart(UNDEFINED)
+	output.AddVirtPart(")")
 
 	// } else if (VeSafeLhsInferenceBugDetector.veWillInferAnyFor(ast)) {
 	//   // "a?.[...]" becomes (a as any)[...]
@@ -450,7 +460,7 @@ func visitSafeKeyedRead(node *sitter.Node, state *exprState, indexInParent int, 
 	//   node = tsCastToAny(expr);
 	// }
 
-	state.sb.WriteString(output)
+	state.parts.AddStatementParts(output)
 
 	return state
 }
@@ -459,17 +469,18 @@ func visitCall(node *sitter.Node, state *exprState, indexInParent int, internalF
 	argsNode := node.ChildByFieldName("arguments")
 
 	argCount := argsNode.NamedChildCount()
-	args := make([]string, argCount)
+	args := make([]*StatementParts, argCount)
 
 	for i := range argsNode.NamedChildCount() {
 		expr := argsNode.NamedChild(int(i))
 		s := newWalk(expr, state)
-		args[i] = s.sb.String()
+		args[i] = s.parts
 	}
 
 	// let expr: ts.Expression;
 	receiverNode := node.ChildByFieldName("function")
 	receiver := receiverNode.Content(state.content)
+	receiverStatement := &StatementParts{Parts: []Part{Part{Text: receiver}}}
 
 	chain := receiverNode.NextSibling().Type()
 
@@ -494,24 +505,30 @@ func visitCall(node *sitter.Node, state *exprState, indexInParent int, internalF
 	// Safe property/keyed reads will produce a ternary whose value is nullable.
 	// We have to generate a similar ternary around the call.
 	if chain == "?." {
-		state.sb.WriteString(convertToSafeCall(receiver, args))
+		state.parts.AddStatementParts(convertToSafeCall(receiverStatement, args))
 	} else {
-		state.sb.WriteString(receiver)
+		state.parts.AddStatementParts(receiverStatement)
 
 		if chain == "!." {
-			state.sb.WriteString("!.")
+			state.parts.AddVirtPart("!.")
 		}
 
-		state.sb.WriteString("(")
-		state.sb.WriteString(strings.Join(args, ", "))
-		state.sb.WriteString(")")
+		state.parts.AddVirtPart("(")
+		for i, arg := range args {
+			if i != 0 {
+				state.parts.AddVirtPart(", ")
+			}
+
+			state.parts.AddStatementParts(arg)
+		}
+		state.parts.AddVirtPart(")")
 	}
 
 	return state
 }
 
 func visitIdentifier(node *sitter.Node, state *exprState, indexInParent int, internalFuncMap walk.VisitorFuncMap[*exprState]) *exprState {
-	state.sb.WriteString(node.Content(state.content))
+	state.parts.AddVirtPart(node.Content(state.content))
 
 	return state
 }
@@ -525,15 +542,41 @@ func visitIdentifier(node *sitter.Node, state *exprState, indexInParent int, int
 //   return node;
 // }
 
-func convertToSafeCall(expr string, args []string) string {
+func convertToSafeCall(expr *StatementParts, args []*StatementParts) *StatementParts {
 	// if (this.config.strictSafeNavigationTypes) {
 
 	// "a?.method(...)" becomes (null as any ? a!.method(...) : undefined)
-	nonNullExpr := expr + "!"
-	call := nonNullExpr + "(" + strings.Join(args, ", ") + ")"
-	condExpr := NULL_AS_ANY + " ? " + call + " : " + UNDEFINED
+	nonNullExpr := &StatementParts{}
+	nonNullExpr.AddStatementParts(expr)
+	nonNullExpr.AddVirtPart("!")
 
-	return "(" + condExpr + ")"
+	call := &StatementParts{}
+	call.AddStatementParts(nonNullExpr)
+	call.AddVirtPart("(")
+	for i, arg := range args {
+		if i != 0 {
+			call.AddVirtPart(", ")
+		}
+
+		call.AddStatementParts(arg)
+	}
+	call.AddVirtPart(")")
+
+	condExpr := &StatementParts{}
+	condExpr.AddVirtPart("(")
+	condExpr.AddVirtPart(NULL_AS_ANY)
+	condExpr.AddVirtPart(" ? ")
+	condExpr.AddStatementParts(call)
+	condExpr.AddVirtPart(" : ")
+	condExpr.AddVirtPart(UNDEFINED)
+	condExpr.AddVirtPart(")")
+
+	output := &StatementParts{}
+	output.AddVirtPart("(")
+	output.AddStatementParts(condExpr)
+	output.AddVirtPart(")")
+
+	return output
 
 	// }
 
@@ -547,10 +590,16 @@ func convertToSafeCall(expr string, args []string) string {
 	//     ts.factory.createCallExpression(ts.factory.createNonNullExpression(expr), undefined, args));
 }
 
-func wrapForDiagnostics(expr string) string {
-	return "(" + expr + ")"
+func wrapForDiagnostics(expr *StatementParts) *StatementParts {
+	expr.PrependPart(Part{Text: "("})
+	expr.AddVirtPart(")")
+
+	return expr
 }
 
-func wrapForTypeChecker(expr string) string {
-	return "(" + expr + ")"
+func wrapForTypeChecker(expr *StatementParts) *StatementParts {
+	expr.PrependPart(Part{Text: "("})
+	expr.AddVirtPart(")")
+
+	return expr
 }

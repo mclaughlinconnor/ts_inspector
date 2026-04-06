@@ -53,7 +53,7 @@ THING:
 					classIdent := tcb.AddImport(thing)
 
 					value := StatementParts{}
-					value.AddPart("null! as " + classIdent)
+					value.AddVirtPart("null! as " + classIdent)
 
 					compIdent := tcb.CreateVar(value)
 
@@ -64,7 +64,7 @@ THING:
 						attrValue = UNDEFINED
 					}
 
-					tcb.AddAssignment(assInput, StatementParts{[]string{buildTcbExpression(attrValue)}})
+					tcb.AddAssignment(assInput, *buildTcbExpression(attrValue))
 
 					continue THING
 				}

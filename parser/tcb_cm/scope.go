@@ -14,7 +14,15 @@ type Variable struct {
 	Value      string
 }
 
-func (s *Scope) AddPart(p string) {
+func (s *Scope) AddRealPart(p string, startOffset int, endOffset int) {
+	s.Parts.AddRealPart(p, &startOffset, &endOffset)
+}
+
+func (s *Scope) AddVirtPart(p string) {
+	s.Parts.AddVirtPart(p)
+}
+
+func (s *Scope) AddPart(p Part) {
 	s.Parts.AddPart(p)
 }
 
