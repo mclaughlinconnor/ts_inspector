@@ -67,6 +67,10 @@ func (s *StatementParts) OffsetByNodeStart(node *sitter.Node) {
 	offset := int(node.StartByte())
 
 	for _, p := range s.Parts {
+		if p.node == nil || p.PugStartOffset == nil || p.PugEndOffset == nil {
+			continue
+		}
+
 		(*p.PugStartOffset) += offset
 		(*p.PugEndOffset) += offset
 	}
