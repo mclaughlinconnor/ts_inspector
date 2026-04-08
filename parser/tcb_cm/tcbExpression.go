@@ -53,7 +53,7 @@ func buildTcbExpression(expression string) *StatementParts {
 }
 
 func newWalk(node *sitter.Node, state *exprState) *exprState {
-	newState := exprState{content: []byte(node.Content(state.content)), parts: &StatementParts{}}
+	newState := exprState{content: state.content, parts: &StatementParts{}}
 
 	return walk.VisitNode(node, &newState, 0, exprOptimisedMap, false)
 }
