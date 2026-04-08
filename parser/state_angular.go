@@ -247,7 +247,7 @@ func (m *Module) GetExportedThings(state *State) []*Class {
 		}
 
 		if angular.Module != nil {
-			selectors = append(selectors, angular.Module.GetImportedThings(state)...)
+			selectors = append(selectors, angular.Module.GetExportedThings(state)...)
 		}
 	}
 
