@@ -39,6 +39,10 @@ func lspHandleDidOpen(writer io.Writer, logger *log.Logger, state *parser.State,
 		utils.WriteResponse(writer, analysis.GenerateDiagnosticsForFile(state, file, true))
 
 		for _, depFile := range file.GetDependencies(state) {
+			if file.Filename() == depFile {
+				continue
+			}
+
 			file, _ := state.GetFile(depFile)
 
 			if !file.Snapshot().IsOpen {

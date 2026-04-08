@@ -32,6 +32,21 @@ type severity struct {
 
 var AnalysisSeverity = severity{1, 2, 3, 4}
 
+func AnalysisSeverityFromTsGoCategory(category *parser.Category) int {
+	switch *category {
+	case parser.CategoryWarning:
+		return AnalysisSeverity.Warning
+	case parser.CategoryError:
+		return AnalysisSeverity.Error
+	case parser.CategorySuggestion:
+		return AnalysisSeverity.Hint
+	case parser.CategoryMessage:
+		return AnalysisSeverity.Information
+	default:
+		return AnalysisSeverity.Error
+	}
+}
+
 func NewDiagnosticNotification(uri string, version int, diagnostics []interfaces.Diagnostic) interfaces.PublishDiagnosticsNotification {
 	return interfaces.PublishDiagnosticsNotification{
 		Notification: interfaces.Notification{

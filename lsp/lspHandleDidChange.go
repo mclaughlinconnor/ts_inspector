@@ -37,16 +37,16 @@ func lspHandleDidChange(writer io.Writer, logger *log.Logger, state *parser.Stat
 		utils.WriteResponse(writer, analysis.GenerateDiagnosticsForFile(state, file, true))
 
 		for _, depFile := range file.GetDependencies(state) {
-			file, _ := state.GetFile(depFile)
+			if file.Filename() == depFile {
+				continue
+			}
 
+			file, _ := state.GetFile(depFile)
 			if !file.Snapshot().IsOpen {
 				continue
 			}
 
 			utils.WriteResponse(writer, analysis.GenerateDiagnosticsForFile(state, file, false))
 		}
-
-		d := state.GetTsGo().GetSemanticDiagnostics(file.GetTcbUri())
-		print(d)
 	}
 }

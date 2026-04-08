@@ -83,6 +83,7 @@ func InitAnalysers() {
 	registerAnalyser(analyser{exec: illegalDeclaringModule, expensive: false})
 	registerAnalyser(analyser{exec: nonPublicAngular, expensive: false})
 	registerAnalyser(analyser{exec: recursiveTemplate, expensive: false})
+	registerAnalyser(analyser{exec: typescript, expensive: true})
 	registerAnalyser(analyser{exec: unnecessaryPublic, expensive: false})
 	registerAnalyser(analyser{exec: unusedAngular, expensive: false})
 
