@@ -145,6 +145,16 @@ func extractMetadata(class *Class, root *sitter.Node, content []byte) {
 			child := node.NamedChild(int(i))
 			t := child.Type()
 
+			if t == "type_parameters" {
+				for ti := range child.NamedChildCount() {
+					tp := child.NamedChild(int(ti))
+
+					state.Update(func(data *classState) {
+						data.TypeParameters = append(data.TypeParameters, tp.Content(content))
+					})
+				}
+			}
+
 			if t != "class_heritage" {
 				continue
 			}

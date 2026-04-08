@@ -197,5 +197,18 @@ func buildTemplatePreamble(tcb *Tcb) {
 	classIdent := tcb.AddImport(tcb.Class)
 	tcb.GetScope().AddVirtPart(classIdent)
 
+	typeParameters := tcb.Class.Snapshot().TypeParameters
+	if len(typeParameters) > 0 {
+		tcb.GetScope().AddVirtPart("<")
+		for i := range typeParameters {
+			if i > 0 {
+				tcb.GetScope().AddVirtPart(", ")
+			}
+
+			tcb.GetScope().AddVirtPart("any")
+		}
+		tcb.GetScope().AddVirtPart(">")
+	}
+
 	tcb.GetScope().AddVirtPart(") ")
 }
