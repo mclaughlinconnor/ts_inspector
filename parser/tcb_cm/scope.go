@@ -1,6 +1,10 @@
 package tcb_cm
 
-import "slices"
+import (
+	"slices"
+
+	sitter "github.com/smacker/go-tree-sitter"
+)
 
 type Scope struct {
 	ChildScope  *Scope
@@ -14,8 +18,8 @@ type Variable struct {
 	Value      string
 }
 
-func (s *Scope) AddRealPart(p string, startOffset int, endOffset int) {
-	s.Parts.AddRealPart(p, &startOffset, &endOffset)
+func (s *Scope) AddStatementParts(parts *StatementParts) {
+	s.Parts.AddStatementParts(parts)
 }
 
 func (s *Scope) AddVirtPart(p string) {
@@ -24,6 +28,10 @@ func (s *Scope) AddVirtPart(p string) {
 
 func (s *Scope) AddPart(p Part) {
 	s.Parts.AddPart(p)
+}
+
+func (s *Scope) AddRealPart(p string, node *sitter.Node) {
+	s.Parts.AddRealPart(p, node)
 }
 
 func (s *Scope) AddVariable(v *Variable) {

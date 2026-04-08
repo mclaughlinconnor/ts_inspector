@@ -12,13 +12,19 @@ import (
 	"ts_inspector/parser/tcb_cm"
 	"ts_inspector/rpc"
 	"ts_inspector/utils"
+
+	sitter "github.com/smacker/go-tree-sitter"
 )
 
 var Shutdown = make(chan int, 1)
 
 func Start() {
 	state := parser.CreateState()
-	state.SetTcbGenerator(tcb_cm.GenerateTcb)
+
+	state.SetTcbGenerator(func(s *parser.State, c *parser.Class, r *sitter.Node, co []byte) string {
+		return tcb_cm.GenerateTcb(s, c, r, co).ToString()
+	})
+
 	logger := state.Logger
 
 	scanner := bufio.NewScanner(os.Stdin)

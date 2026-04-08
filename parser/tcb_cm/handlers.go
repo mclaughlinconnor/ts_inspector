@@ -24,6 +24,7 @@ func handleAttribute(node *sitter.Node, state *Ast, indexInParent int, internalF
 
 func handleAttributeName(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) *Ast {
 	(*state.Current.Peek()).Attribute.Name = node.Content(state.Content)
+	(*state.Current.Peek()).Attribute.NameNode = node
 
 	return state
 }
@@ -32,6 +33,7 @@ func handleAttributeValue(node *sitter.Node, state *Ast, indexInParent int, inte
 	attributeValueNode := node.NamedChild(0)
 	if attributeValueNode != nil {
 		(*state.Current.Peek()).Attribute.Value = attributeValueNode.Content(state.Content)
+		(*state.Current.Peek()).Attribute.ValueNode = attributeValueNode
 	}
 
 	return state
@@ -99,6 +101,7 @@ func handleTagContent(node *sitter.Node, state *Ast, indexInParent int, internal
 func handleTagName(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) *Ast {
 	if p := state.Current.Peek(); p != nil {
 		(*p).Tag.Name = node.Content(state.Content)
+		(*p).Tag.NameNode = node
 	}
 
 	return state

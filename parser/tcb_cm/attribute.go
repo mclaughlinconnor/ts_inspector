@@ -11,10 +11,12 @@ type Attribute struct {
 	renderable
 	tcb *Tcb
 
-	Name  string // includes angular [] and ()
-	Node  *sitter.Node
-	Tag   *Tag
-	Value string
+	Name      string // includes angular [] and ()
+	NameNode  *sitter.Node
+	Node      *sitter.Node
+	Tag       *Tag
+	Value     string
+	ValueNode *sitter.Node
 }
 
 func (a *Attribute) GetSourceClass() *parser.Class {
@@ -55,7 +57,7 @@ THING:
 					value := StatementParts{}
 					value.AddVirtPart("null! as " + classIdent)
 
-					compIdent := tcb.CreateVar(value)
+					compIdent := tcb.CreateVar(value, a.NameNode)
 
 					assInput := compIdent + "." + def.Name
 
@@ -64,7 +66,12 @@ THING:
 						attrValue = UNDEFINED
 					}
 
-					tcb.AddAssignment(assInput, *buildTcbExpression(attrValue))
+					valueExpr := buildTcbExpression(attrValue)
+					if a.ValueNode != nil {
+						valueExpr.OffsetByNodeStart(a.ValueNode)
+					}
+
+					tcb.AddAssignment(assInput, a.NameNode, *valueExpr)
 
 					continue THING
 				}

@@ -35,7 +35,7 @@ func lspHandleTcb(writer io.Writer, logger *log.Logger, state *parser.State, req
 	tcbBlock, err := utils.ParseText(content, utils.Pug, "", func(root *sitter.Node, _ []byte, _ string) (string, error) {
 		tcb := tcb_cm.GenerateTcb(state, file.Snapshot().Classes[0], root, content)
 
-		return tcb, nil
+		return tcb.ToString(), nil
 	})
 
 	if err != nil {

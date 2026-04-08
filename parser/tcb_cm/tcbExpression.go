@@ -65,7 +65,7 @@ func visitUnary(node *sitter.Node, state *exprState, indexInParent int, internal
 	exprNode := node.ChildByFieldName("value")
 	expr := newWalk(exprNode, state)
 
-	state.parts.AddVirtPart(operator)
+	state.parts.AddRealPart(operator, operatorNode)
 	state.parts.AddStatementParts(expr.parts)
 
 	return state
@@ -82,7 +82,7 @@ func visitBinary(node *sitter.Node, state *exprState, indexInParent int, interna
 	rhs := newWalk(rhsNode, state)
 
 	state.parts.AddStatementParts(lhs.parts)
-	state.parts.AddVirtPart(operator)
+	state.parts.AddRealPart(operator, operatorNode)
 	state.parts.AddStatementParts(rhs.parts)
 
 	return state
@@ -219,7 +219,7 @@ func visitLiteralMap(node *sitter.Node, state *exprState, indexInParent int, int
 			state.parts.AddVirtPart(", ")
 		}
 
-		state.parts.AddVirtPart(key)
+		state.parts.AddRealPart(key, keyNode)
 		state.parts.AddVirtPart(": ")
 		state.parts.AddStatementParts(valueExpr.parts)
 	}
@@ -235,7 +235,7 @@ func visitLiteralMap(node *sitter.Node, state *exprState, indexInParent int, int
 // visitLiteralPrimitive
 // Covered by visitIdentifier
 func visitUndefined(node *sitter.Node, state *exprState, indexInParent int, internalFuncMap walk.VisitorFuncMap[*exprState]) *exprState {
-	state.parts.AddVirtPart("undefined")
+	state.parts.AddRealPart("undefined", node)
 
 	return state
 }
@@ -243,21 +243,21 @@ func visitUndefined(node *sitter.Node, state *exprState, indexInParent int, inte
 // visitLiteralPrimitive
 // Covered by visitIdentifier
 func visitNull(node *sitter.Node, state *exprState, indexInParent int, internalFuncMap walk.VisitorFuncMap[*exprState]) *exprState {
-	state.parts.AddVirtPart("null")
+	state.parts.AddRealPart("null", node)
 
 	return state
 }
 
 // visitLiteralPrimitive
 func visitString(node *sitter.Node, state *exprState, indexInParent int, internalFuncMap walk.VisitorFuncMap[*exprState]) *exprState {
-	state.parts.AddVirtPart(node.Content(state.content))
+	state.parts.AddRealPart(node.Content(state.content), node)
 
 	return state
 }
 
 // visitLiteralPrimitive
 func visitNumber(node *sitter.Node, state *exprState, indexInParent int, internalFuncMap walk.VisitorFuncMap[*exprState]) *exprState {
-	state.parts.AddVirtPart(node.Content(state.content))
+	state.parts.AddRealPart(node.Content(state.content), node)
 
 	return state
 }
@@ -308,7 +308,7 @@ func visitNonNullAssertRead(node *sitter.Node, state *exprState, indexInParent i
 	receiverState := newWalk(receiverNode, state)
 
 	nameNode := node.ChildByFieldName("property")
-	name := wrapForDiagnostics(&StatementParts{Parts: []Part{Part{Text: nameNode.Content(state.content)}}})
+	name := wrapForDiagnostics(StatementPartsFromNodeContent(nameNode, state.content))
 
 	state.parts.AddStatementParts(receiverState.parts)
 	state.parts.AddVirtPart("!.")
@@ -339,7 +339,7 @@ func visitPropertyRead(node *sitter.Node, state *exprState, indexInParent int, i
 	receiverState := newWalk(receiverNode, state)
 
 	nameNode := node.ChildByFieldName("property")
-	name := wrapForDiagnostics(&StatementParts{Parts: []Part{Part{Text: nameNode.Content(state.content)}}})
+	name := wrapForDiagnostics(StatementPartsFromNodeContent(nameNode, state.content))
 
 	state.parts.AddStatementParts(receiverState.parts)
 	state.parts.AddVirtPart(".")
@@ -375,7 +375,7 @@ func visitSafePropertyRead(node *sitter.Node, state *exprState, indexInParent in
 	receiver := wrapForDiagnostics(receiverState.parts)
 
 	nameNode := node.ChildByFieldName("property")
-	name := wrapForDiagnostics(&StatementParts{Parts: []Part{Part{Text: nameNode.Content(state.content)}}})
+	name := wrapForDiagnostics(StatementPartsFromNodeContent(nameNode, state.content))
 
 	// The form of safe property reads depends on whether strictness is in use.
 	// if (this.config.strictSafeNavigationTypes) {
@@ -479,10 +479,10 @@ func visitCall(node *sitter.Node, state *exprState, indexInParent int, internalF
 
 	// let expr: ts.Expression;
 	receiverNode := node.ChildByFieldName("function")
-	receiver := receiverNode.Content(state.content)
-	receiverStatement := &StatementParts{Parts: []Part{Part{Text: receiver}}}
+	receiverStatement := StatementPartsFromNodeContent(receiverNode, state.content)
 
-	chain := receiverNode.NextSibling().Type()
+	chainNode := receiverNode.NextSibling()
+	chain := chainNode.Type()
 
 	// // For calls that have a property read as receiver, we have to special-case their emit to avoid
 	// // inserting superfluous parenthesis as they prevent TypeScript from applying a narrowing effect
@@ -510,7 +510,7 @@ func visitCall(node *sitter.Node, state *exprState, indexInParent int, internalF
 		state.parts.AddStatementParts(receiverStatement)
 
 		if chain == "!." {
-			state.parts.AddVirtPart("!.")
+			state.parts.AddRealPart("!.", chainNode)
 		}
 
 		state.parts.AddVirtPart("(")
@@ -528,7 +528,7 @@ func visitCall(node *sitter.Node, state *exprState, indexInParent int, internalF
 }
 
 func visitIdentifier(node *sitter.Node, state *exprState, indexInParent int, internalFuncMap walk.VisitorFuncMap[*exprState]) *exprState {
-	state.parts.AddVirtPart(node.Content(state.content))
+	state.parts.AddRealPart(node.Content(state.content), node)
 
 	return state
 }
@@ -591,14 +591,14 @@ func convertToSafeCall(expr *StatementParts, args []*StatementParts) *StatementP
 }
 
 func wrapForDiagnostics(expr *StatementParts) *StatementParts {
-	expr.PrependPart(Part{Text: "("})
+	expr.PrependVirtPart("(")
 	expr.AddVirtPart(")")
 
 	return expr
 }
 
 func wrapForTypeChecker(expr *StatementParts) *StatementParts {
-	expr.PrependPart(Part{Text: "("})
+	expr.PrependVirtPart("(")
 	expr.AddVirtPart(")")
 
 	return expr

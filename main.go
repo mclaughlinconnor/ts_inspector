@@ -18,6 +18,8 @@ import (
 	"ts_inspector/parser/tcb_cm"
 	"ts_inspector/search"
 	"ts_inspector/utils"
+
+	sitter "github.com/smacker/go-tree-sitter"
 )
 
 func main() {
@@ -54,7 +56,10 @@ func main() {
 	logger := utils.GetLogger("indexer")
 
 	state := parser.CreateState()
-	state.SetTcbGenerator(tcb_cm.GenerateTcb)
+	state.SetTcbGenerator(func(s *parser.State, c *parser.Class, r *sitter.Node, co []byte) string {
+		return tcb_cm.GenerateTcb(s, c, r, co).ToString()
+	})
+
 	filenames, _ := traversetypescriptfiles.Index(args[0])
 	for _, filename := range filenames {
 		logger.Println(filename)

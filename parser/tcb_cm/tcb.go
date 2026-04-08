@@ -40,14 +40,15 @@ func (t *Tcb) GetNextIdString() string {
 	return strconv.Itoa(id)
 }
 
-func (t *Tcb) AddAssignment(identifer string, value StatementParts) {
-	t.AddVirtPart(identifer)
-	t.AddVirtPart(" = ")
-
-	for _, p := range value.Parts {
-		t.AddPart(p)
+func (t *Tcb) AddAssignment(identifer string, identNode *sitter.Node, value StatementParts) {
+	if identNode == nil {
+		t.AddVirtPart(identifer)
+	} else {
+		t.AddRealPart(identifer, identNode)
 	}
 
+	t.AddVirtPart(" = ")
+	t.AddStatementParts(&value)
 	t.AddVirtPart(";\n")
 }
 
@@ -68,16 +69,20 @@ func (t *Tcb) AddImport(class *parser.Class) string {
 	return "i" + i.Identifier + "." + class.Snapshot().Name
 }
 
-func (t *Tcb) AddRealPart(part string, startOffset int, endOffset int) {
-	t.GetScope().AddRealPart(part, startOffset, endOffset)
-}
-
 func (t *Tcb) AddPart(part Part) {
 	t.GetScope().AddPart(part)
 }
 
 func (t *Tcb) AddVirtPart(part string) {
 	t.GetScope().AddVirtPart(part)
+}
+
+func (t *Tcb) AddStatementParts(parts *StatementParts) {
+	t.GetScope().AddStatementParts(parts)
+}
+
+func (t *Tcb) AddRealPart(part string, node *sitter.Node) {
+	t.GetScope().AddRealPart(part, node)
 }
 
 func (t *Tcb) BeginScope() {
@@ -101,14 +106,14 @@ func (t *Tcb) BuildImports() string {
 	return sb.String()
 }
 
-func (t *Tcb) CreateVar(value StatementParts) string {
+func (t *Tcb) CreateVar(value StatementParts, identNode *sitter.Node) string {
 	if v := t.GetScope().GetVariable(value); v != nil {
 		return v.Identifier
 	}
 
 	name := "_t" + t.GetNextIdString()
 	t.AddVirtPart("var ")
-	t.AddVirtPart(name)
+	t.AddRealPart(name, identNode)
 	t.AddVirtPart(" = ")
 
 	for _, p := range value.Parts {
@@ -137,18 +142,18 @@ func (t *Tcb) NewScope() {
 	t.CurrentScope = &scope
 }
 
-func (t *Tcb) ToString() string {
-	tcb := strings.Builder{}
+func (t *Tcb) ToString() *StatementParts {
+	tcb := StatementParts{}
 
-	tcb.WriteString(t.BuildImports())
+	tcb.AddVirtPart(t.BuildImports())
 
 	scope := t.RootScope
 	for scope != nil {
-		tcb.WriteString(scope.Parts.ToString())
+		tcb.AddStatementParts(&scope.Parts)
 		scope = scope.ChildScope
 	}
 
-	return tcb.String()
+	return &tcb
 }
 
 func (t *Tcb) WithScope(builder func()) {
@@ -157,7 +162,7 @@ func (t *Tcb) WithScope(builder func()) {
 	t.EndScope()
 }
 
-func GenerateTcb(state *parser.State, template *parser.Class, root *sitter.Node, content []byte) string {
+func GenerateTcb(state *parser.State, template *parser.Class, root *sitter.Node, content []byte) *StatementParts {
 	scope := &Scope{}
 
 	tcb := Tcb{

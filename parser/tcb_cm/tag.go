@@ -14,6 +14,7 @@ type Tag struct {
 	Children    HelpfulArray[*Node]
 	Content     HelpfulArray[*TagContent]
 	Name        string
+	NameNode    *sitter.Node
 	Node        *sitter.Node
 	SourceClass *parser.Class
 }
@@ -64,7 +65,7 @@ func (t *Tag) Render() {
 	value.AddVirtPart(t.Name)
 	value.AddVirtPart("\")")
 
-	tcb.CreateVar(value)
+	tcb.CreateVar(value, t.NameNode)
 
 	for _, a := range t.Attributes.Elements {
 		a.Render()
