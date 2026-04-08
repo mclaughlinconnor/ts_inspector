@@ -83,12 +83,15 @@ func InitAnalysers() {
 	registerAnalyser(analyser{exec: illegalDeclaringModule, expensive: false})
 	registerAnalyser(analyser{exec: nonPublicAngular, expensive: false})
 	registerAnalyser(analyser{exec: recursiveTemplate, expensive: false})
-	registerAnalyser(analyser{exec: typescript, expensive: true})
 	registerAnalyser(analyser{exec: unnecessaryPublic, expensive: false})
 	registerAnalyser(analyser{exec: unusedAngular, expensive: false})
 
 	if utils.Debug {
 		registerAnalyser(analyser{exec: debug, expensive: true})
+	}
+
+	if utils.TsGo {
+		registerAnalyser(analyser{exec: typescript, expensive: true})
 	}
 
 	cfg.InitBuilder()

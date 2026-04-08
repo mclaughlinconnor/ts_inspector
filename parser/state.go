@@ -124,6 +124,10 @@ func (s *State) GetTsConfigFiles() []string {
 }
 
 func (s *State) GetTsGo() *TsGo {
+	if !utils.TsGo {
+		s.Logger.Fatalln("You may not call \"GetTsGo\" when the TsGo integration is disabled")
+	}
+
 	s.RLock()
 	tsgo := s.tsgo
 	s.RUnlock()

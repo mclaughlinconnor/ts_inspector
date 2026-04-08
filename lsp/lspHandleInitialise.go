@@ -85,6 +85,10 @@ func lspHandleInitialise(writer io.Writer, logger *log.Logger, state *parser.Sta
 }
 
 func initTsGo(state *parser.State) {
+	if !utils.TsGo {
+		return
+	}
+
 	t, err := parser.StartTsGo(state)
 	if err != nil {
 		state.Logger.Print(err)
