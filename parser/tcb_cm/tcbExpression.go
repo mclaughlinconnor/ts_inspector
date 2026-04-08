@@ -483,6 +483,14 @@ func visitCall(node *sitter.Node, state *exprState, indexInParent int, internalF
 	receiverNode := node.ChildByFieldName("function")
 	receiverStatement := StatementPartsFromNodeContent(receiverNode, state.content)
 
+	if receiverNode.Content(state.content) == "$any" && len(args) == 1 {
+		state.parts.AddVirtPart("(")
+		state.parts.AddStatementParts(args[0])
+		state.parts.AddVirtPart(" as any)")
+
+		return state
+	}
+
 	chainNode := receiverNode.NextSibling()
 	chain := chainNode.Type()
 
