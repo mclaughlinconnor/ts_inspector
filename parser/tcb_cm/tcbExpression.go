@@ -467,14 +467,16 @@ func visitSafeKeyedRead(node *sitter.Node, state *exprState, indexInParent int, 
 
 func visitCall(node *sitter.Node, state *exprState, indexInParent int, internalFuncMap walk.VisitorFuncMap[*exprState]) *exprState {
 	argsNode := node.ChildByFieldName("arguments")
+	args := make([]*StatementParts, 0)
+	if argsNode != nil {
+		argCount := argsNode.NamedChildCount()
+		args = make([]*StatementParts, argCount)
 
-	argCount := argsNode.NamedChildCount()
-	args := make([]*StatementParts, argCount)
-
-	for i := range argsNode.NamedChildCount() {
-		expr := argsNode.NamedChild(int(i))
-		s := newWalk(expr, state)
-		args[i] = s.parts
+		for i := range argsNode.NamedChildCount() {
+			expr := argsNode.NamedChild(int(i))
+			s := newWalk(expr, state)
+			args[i] = s.parts
+		}
 	}
 
 	// let expr: ts.Expression;
