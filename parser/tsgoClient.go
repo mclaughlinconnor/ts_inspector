@@ -147,12 +147,7 @@ func (t *TsGo) GetNextId() string {
 }
 
 func (t *TsGo) GetSemanticDiagnostics(uri string) *DiagnosticResponse {
-	e := t.UpdateSnapshot("", &APIFileChanges{
-		// InvalidateAll: true,
-		Created: []DocumentIdentifier{{URI: uri}},
-		Changed: []DocumentIdentifier{{URI: uri}},
-	})
-	print(e)
+	t.UpdateSnapshot("", &APIFileChanges{Changed: []DocumentIdentifier{{URI: uri}}})
 
 	id := t.GetNextId()
 	request := GetDiagnosticsRequest{
@@ -226,32 +221,17 @@ func (t *TsGo) handleRequest(method string, contents []byte) {
 	case "readFile":
 		{
 			r := utils.TryParseRequest[ReadFileRequest](t.logger, contents)
-			response := ReadFileResponse{
-				TsGoResponse: TsGoResponse{RPC: "2.0", ID: r.ID},
-				Result:       tsgoHandleReadFile(t.state, r),
-			}
-
-			utils.WriteResponse(*t.stdin, response)
+			go tsgoHandleReadFile(t, r)
 		}
 	case "fileExists":
 		{
 			r := utils.TryParseRequest[FileExistsRequest](t.logger, contents)
-			response := FileExistsResponse{
-				TsGoResponse: TsGoResponse{RPC: "2.0", ID: r.ID},
-				Result:       tsgoHandleFileExists(t.state, r),
-			}
-
-			utils.WriteResponse(*t.stdin, response)
+			go tsgoHandleFileExists(t, r)
 		}
 	case "getAccessibleEntries":
 		{
 			r := utils.TryParseRequest[GetAccessibleEntriesRequest](t.logger, contents)
-			response := GetAcceessibleEntriesResponse{
-				TsGoResponse: TsGoResponse{RPC: "2.0", ID: r.ID},
-				Result:       tsgoHandleGetAccessibleEntries(t.state, r),
-			}
-
-			utils.WriteResponse(*t.stdin, response)
+			go tsgoHandleGetAccessibleEntries(t, r)
 		}
 	}
 }

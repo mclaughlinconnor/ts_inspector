@@ -9,34 +9,47 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
-func tsgoHandleReadFile(state *State, request ReadFileRequest) *Content {
+func tsgoHandleReadFileResponse(tsgo *TsGo, request ReadFileRequest, content *Content) {
+	response := ReadFileResponse{
+		TsGoResponse: TsGoResponse{RPC: "2.0", ID: request.ID},
+		Result:       content,
+	}
+
+	utils.WriteResponse(*tsgo.stdin, response)
+}
+
+func tsgoHandleReadFile(tsgo *TsGo, request ReadFileRequest) {
 	path := request.Params
 
 	if !strings.HasSuffix(path, interfaces.TCB_FILENAME_SUFFIX) {
-		return nil
+		tsgoHandleReadFileResponse(tsgo, request, nil)
+		return
 	}
 
 	parsedUrl, err := url.Parse(path)
 	if err != nil {
-		return nil
+		tsgoHandleReadFileResponse(tsgo, request, nil)
+		return
 	}
 
 	parsedUrl.Path = strings.TrimSuffix(parsedUrl.Path, interfaces.TCB_FILENAME_SUFFIX) + ".pug"
 	fileUrl := parsedUrl.String()
 
-	file, _ := state.GetFile(FilenameFromUri(fileUrl))
+	file, _ := tsgo.state.GetFile(FilenameFromUri(fileUrl))
 	if file == nil || file.Snapshot().Filetype != "pug" {
-		return &Content{Content: file.Snapshot().Content}
+		tsgoHandleReadFileResponse(tsgo, request, &Content{Content: file.Snapshot().Content})
+		return
 	}
 
-	generateTcb := state.GetTcbGenerator()
+	generateTcb := tsgo.state.GetTcbGenerator()
 	if generateTcb == nil {
-		return nil
+		tsgoHandleReadFileResponse(tsgo, request, nil)
+		return
 	}
 
 	content := []byte(file.Snapshot().Content)
 	tcbBlock, err := utils.ParseText(content, utils.Pug, "", func(root *sitter.Node, _ []byte, _ string) (string, error) {
-		tcb := generateTcb(state, file.Snapshot().Classes[0], root, content)
+		tcb := generateTcb(tsgo.state, file.Snapshot().Classes[0], root, content)
 
 		return tcb, nil
 	})
@@ -45,5 +58,5 @@ func tsgoHandleReadFile(state *State, request ReadFileRequest) *Content {
 		tcbBlock = err.Error()
 	}
 
-	return &Content{Content: tcbBlock}
+	tsgoHandleReadFileResponse(tsgo, request, &Content{Content: tcbBlock})
 }

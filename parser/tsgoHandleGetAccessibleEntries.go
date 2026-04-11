@@ -5,15 +5,25 @@ import (
 	"path"
 	"strings"
 	"ts_inspector/interfaces"
+	"ts_inspector/utils"
 )
 
-func tsgoHandleGetAccessibleEntries(state *State, request GetAccessibleEntriesRequest) *Entries {
+func tsgoHandleGetAccessibleEntriesResponse(t *TsGo, request GetAccessibleEntriesRequest, entries *Entries) {
+	response := GetAcceessibleEntriesResponse{
+		TsGoResponse: TsGoResponse{RPC: "2.0", ID: request.ID},
+		Result:       entries,
+	}
+
+	utils.WriteResponse(*t.stdin, response)
+}
+
+func tsgoHandleGetAccessibleEntries(tsgo *TsGo, request GetAccessibleEntriesRequest) {
 	requestPath := request.Params
 
 	files := []string{}
 	directories := []string{}
 
-	stateFiles := state.GetFiles()
+	stateFiles := tsgo.state.GetFiles()
 	for filename := range *stateFiles {
 		stateDir := path.Dir(filename)
 		if stateDir != requestPath {
@@ -27,7 +37,8 @@ func tsgoHandleGetAccessibleEntries(state *State, request GetAccessibleEntriesRe
 	}
 
 	if len(files) == 0 {
-		return nil
+		tsgoHandleGetAccessibleEntriesResponse(tsgo, request, nil)
+		return
 	}
 
 	diskEntries, _ := os.ReadDir(requestPath)
@@ -39,5 +50,6 @@ func tsgoHandleGetAccessibleEntries(state *State, request GetAccessibleEntriesRe
 		}
 	}
 
-	return &Entries{Directories: directories, Files: files}
+	entries := &Entries{Directories: directories, Files: files}
+	tsgoHandleGetAccessibleEntriesResponse(tsgo, request, entries)
 }
