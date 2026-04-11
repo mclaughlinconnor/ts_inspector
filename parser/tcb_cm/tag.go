@@ -3,6 +3,7 @@ package tcb_cm
 import (
 	"ts_inspector/ast"
 	"ts_inspector/parser"
+	"ts_inspector/utils"
 
 	sitter "github.com/smacker/go-tree-sitter"
 )
@@ -49,7 +50,13 @@ func (t *Tag) matchesSelector(selector string) bool {
 
 	for _, attr := range t.Attributes.Elements {
 		attr := attr.Attribute.Name
-		if attr == attrName || attr[1:len(attr)-1] == attrName {
+
+		if attr == attrName {
+			return true
+		}
+
+		angularlessAttr, _ := utils.StripAngularFromAttribute(attr)
+		if angularlessAttr == attrName {
 			return true
 		}
 	}
