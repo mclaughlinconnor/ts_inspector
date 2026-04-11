@@ -344,11 +344,13 @@ func handleCompiledInputs(class *Class, inputMapNode *sitter.Node) {
 				}
 
 				def := class.GetDefinition(name)
-				if def != nil {
-					class.Update(func(data *classState) {
-						def.Decorators = append(def.Decorators, dec)
-					})
+				if def == nil {
+					break
 				}
+
+				class.Update(func(data *classState) {
+					def.Decorators = append(def.Decorators, dec)
+				})
 			}
 		}
 	}
@@ -384,12 +386,14 @@ func handleCompiledOutputs(class *Class, inputMapNode *sitter.Node) {
 				}
 
 				def := class.GetDefinition(name)
-				if def != nil {
-					class.Update(func(data *classState) {
-						s := str.Content([]byte(data.Content))
-						def.Decorators = append(def.Decorators, Decorator{Arguments: []string{s}, IsAngular: true, Name: "Output"})
-					})
+				if def == nil {
+					break
 				}
+
+				class.Update(func(data *classState) {
+					s := str.Content([]byte(data.Content))
+					def.Decorators = append(def.Decorators, Decorator{Arguments: []string{s}, IsAngular: true, Name: "Output"})
+				})
 			}
 		}
 	}
