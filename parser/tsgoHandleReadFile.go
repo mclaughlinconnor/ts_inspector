@@ -49,7 +49,12 @@ func tsgoHandleReadFile(tsgo *TsGo, request ReadFileRequest) {
 
 	content := []byte(file.Snapshot().Content)
 	tcbBlock, err := utils.ParseText(content, utils.Pug, "", func(root *sitter.Node, _ []byte, _ string) (string, error) {
-		tcb := generateTcb(tsgo.state, file.Snapshot().Classes[0], root, content)
+		classes := file.Snapshot().Classes
+		if len(classes) == 0 {
+			return "", nil
+		}
+
+		tcb := generateTcb(tsgo.state, classes[0], root, content)
 
 		return tcb, nil
 	})
