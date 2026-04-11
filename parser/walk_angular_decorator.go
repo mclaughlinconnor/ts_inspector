@@ -293,6 +293,10 @@ func handleCompiledInputs(class *Class, inputMapNode *sitter.Node) {
 				}
 
 				def := class.GetDefinition(name)
+				if def == nil {
+					break
+				}
+
 				class.Update(func(data *classState) {
 					s := str.Content([]byte(data.Content))
 					def.Decorators = append(def.Decorators, Decorator{Arguments: []string{s}, IsAngular: true, Name: "Input"})
