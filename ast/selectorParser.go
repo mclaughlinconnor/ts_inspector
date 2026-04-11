@@ -76,6 +76,10 @@ func ParseSelector(text string) (*Selector, error) {
 					{
 						state = LexStateNot
 					}
+				default:
+					{
+						i++
+					}
 				}
 
 			}
@@ -131,6 +135,7 @@ func ParseSelector(text string) (*Selector, error) {
 				}
 
 				badChar(c, "] or letter")
+				i++
 			}
 		}
 	}
@@ -175,9 +180,9 @@ func ParseSelectors(text string) (*[]*Selector, error) {
 }
 
 func expectAndTake(i *int, c rune, expected rune) error {
-	if c == expected {
-		(*i)++
-	} else {
+	(*i)++
+
+	if c != expected {
 		return badChar(c, string(expected))
 	}
 
