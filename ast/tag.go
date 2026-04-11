@@ -10,7 +10,7 @@ import (
 
 type Tag struct {
 	Name       string
-	Attributes []string
+	Attributes []string // Has [angular]
 }
 
 func (t *Tag) HasAttribute(attribute string) bool {
@@ -38,39 +38,43 @@ func (t *Tag) NotHasAttributes(attributes []string) bool {
 	return true
 }
 
+func (t *Tag) MatchesParsedSelector(selector *Selector) (bool, *Selector) {
+	if selector.Tag != "" {
+		if t.Name != selector.Tag {
+			return false, selector
+		}
+	}
+
+	if len(selector.Attributes) > 0 {
+		if !t.HasAttributes(selector.Attributes) {
+			return false, selector
+		}
+	}
+
+	if len(selector.NotTags) > 0 {
+		for _, tag := range selector.NotTags {
+			if t.Name == tag {
+				return false, selector
+			}
+		}
+	}
+
+	if len(selector.NotAttributes) > 0 {
+		if !t.NotHasAttributes(selector.NotAttributes) {
+			return false, selector
+		}
+	}
+
+	return true, selector
+}
+
 func (t *Tag) MatchesSelector(selector string) (bool, *Selector) {
 	s, err := ParseSelector(selector)
 	if err != nil {
 		return false, s
 	}
 
-	if s.Tag != "" {
-		if t.Name != s.Tag {
-			return false, s
-		}
-	}
-
-	if len(s.Attributes) > 0 {
-		if !t.HasAttributes(s.Attributes) {
-			return false, s
-		}
-	}
-
-	if len(s.NotTags) > 0 {
-		for _, tag := range s.NotTags {
-			if t.Name == tag {
-				return false, s
-			}
-		}
-	}
-
-	if len(s.NotAttributes) > 0 {
-		if !t.NotHasAttributes(s.NotAttributes) {
-			return false, s
-		}
-	}
-
-	return true, s
+	return t.MatchesParsedSelector(s)
 }
 
 func ExtractTagNameAndAttrFromSelector(selector string) (bool, string, string) {

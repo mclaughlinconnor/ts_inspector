@@ -20,6 +20,15 @@ func (s *Selector) MatchesAttribute(attribute string) bool {
 	return slices.ContainsFunc(s.Attributes, func(a string) bool { sa, _ := utils.StripAngularFromAttribute(a); return sa == strippedAttr })
 }
 
+func (s *Selector) WithoutAttributes() *Selector {
+	return &Selector{
+		Attributes:    []string{},
+		NotAttributes: s.NotAttributes,
+		NotTags:       s.NotTags,
+		Tag:           s.Tag,
+	}
+}
+
 const (
 	LexStateBase int = iota
 	LexStateTag

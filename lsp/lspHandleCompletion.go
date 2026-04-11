@@ -3,6 +3,9 @@ package lsp
 import (
 	"io"
 	"log"
+	"slices"
+	"strconv"
+	"strings"
 	"ts_inspector/ast"
 	"ts_inspector/interfaces"
 	"ts_inspector/parser"
@@ -72,7 +75,7 @@ func getAttrCompletions(state *parser.State, file *parser.File, class *parser.Cl
 		return items
 	}
 
-	tagName, found := ast.GetTagAtOffset(file.Snapshot().Content, cursorOffset)
+	tag, found := ast.GetTagAtOffset(file.Snapshot().Content, cursorOffset)
 	if !found {
 		return items
 	}
@@ -80,11 +83,11 @@ func getAttrCompletions(state *parser.State, file *parser.File, class *parser.Cl
 	things := class.Snapshot().Angular.Component.GetAvailableThings(state)
 	for _, thing := range things {
 		if thing.HasComponent() {
-			items = forComponentThing(thing, file, cursorOffset, &tagName, items)
+			items = forComponentThing(thing, file, cursorOffset, &tag, items)
 		}
 
 		if thing.HasDirective() {
-			items = forDirectiveThing(thing, file, cursorOffset, &tagName, items)
+			items = forDirectiveThing(thing, file, cursorOffset, &tag, items)
 		}
 	}
 
@@ -244,26 +247,60 @@ func forComponentThing(thing *parser.Class, file *parser.File, cursorOffset uint
 	return items
 }
 
-func forDirectiveThing(thing *parser.Class, file *parser.File, cursorOffset uint32, tagName *ast.Tag, items []interfaces.CompletionItem) []interfaces.CompletionItem {
+func forDirectiveThing(thing *parser.Class, file *parser.File, cursorOffset uint32, tag *ast.Tag, items []interfaces.CompletionItem) []interfaces.CompletionItem {
 	cursorPosition := utils.GetPositionForOffset(file.Snapshot().Content, cursorOffset)
 	cursorRange := utils.Range{Start: cursorPosition, End: cursorPosition}
 
 	for _, selector := range thing.Snapshot().Angular.Directive.Selectors {
-		valid, _, attr := ast.ExtractTagNameAndAttrFromSelector(selector)
-		if !valid || attr == "" {
+		parsedSelector, err := ast.ParseSelector(selector)
+		if err != nil {
+			continue
+		}
+
+		matchesSelector, _ := tag.MatchesParsedSelector(parsedSelector.WithoutAttributes())
+		if !matchesSelector {
+			continue
+		}
+
+		if len(parsedSelector.Attributes) == 0 {
 			continue
 		}
 
 		item := interfaces.CompletionItem{}
 
-		insertText := selector + "='$0'"
+		itBuilder := strings.Builder{}
+
+		pos := 1
+		for _, attr := range parsedSelector.Attributes {
+			matches := func(attribute string) bool {
+				a, _ := utils.StripAngularFromAttribute(attribute)
+				return a == attr
+			}
+
+			if slices.ContainsFunc(tag.Attributes, matches) {
+				continue
+			}
+
+			if pos > 1 {
+				itBuilder.WriteString(", ")
+			}
+
+			itBuilder.WriteString("[")
+			itBuilder.WriteString(attr)
+			itBuilder.WriteString("]='$" + strconv.Itoa(pos) + "'")
+
+			pos++
+		}
+
+		insertText := itBuilder.String()
+
 		item.InsertText = &insertText
 		item.InsertTextFormat = &interfaces.InsertTextFormat.Snippet
 
 		// Can't use insertText because clients can do post-processing on the text, which can lead to tag((output)) losing some brackets
 		textEdit := interfaces.TextEdit{}
 		textEdit.Range = cursorRange
-		textEdit.NewText = selector + "='$0'"
+		textEdit.NewText = insertText
 		item.TextEdit = &textEdit
 
 		item.Kind = &interfaces.CompletionItemKind.Property
