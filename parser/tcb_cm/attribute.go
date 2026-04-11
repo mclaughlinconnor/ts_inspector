@@ -43,6 +43,7 @@ func (a *Attribute) Render() {
 
 	things := component.GetAvailableThings(state)
 
+THING:
 	for _, thing := range things {
 		for _, selector := range thing.GetSelectors() {
 			if !a.Tag.matchesSelector(selector) {
@@ -52,12 +53,12 @@ func (a *Attribute) Render() {
 			for _, def := range thing.GetAllDefinitions() {
 				classIdent := tcb.AddImport(thing)
 
-				value := StatementParts{}
-				value.AddVirtPart("null! as " + classIdent)
-
-				compIdent := tcb.CreateVar(value)
-
 				if def.NameMatchesString(a.Name) {
+					value := StatementParts{}
+					value.AddVirtPart("null! as " + classIdent)
+
+					compIdent := tcb.CreateVar(value)
+
 					assInput := compIdent + "." + def.Name
 
 					attrValue := a.Value
@@ -73,6 +74,8 @@ func (a *Attribute) Render() {
 					tcb.AddAssignment(assInput, a.NameNode, *valueExpr)
 				}
 			}
+
+			continue THING
 		}
 	}
 }
