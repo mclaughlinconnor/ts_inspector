@@ -106,14 +106,14 @@ func (t *Tcb) BuildImports() string {
 	return sb.String()
 }
 
-func (t *Tcb) CreateVar(value StatementParts, identNode *sitter.Node) string {
+func (t *Tcb) CreateVar(value StatementParts) string {
 	if v := t.GetScope().GetVariable(value); v != nil {
 		return v.Identifier
 	}
 
 	name := "_t" + t.GetNextIdString()
 	t.AddVirtPart("var ")
-	t.AddRealPart(name, identNode)
+	t.AddVirtPart(name)
 	t.AddVirtPart(" = ")
 
 	for _, p := range value.Parts {

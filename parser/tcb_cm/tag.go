@@ -72,7 +72,7 @@ func (t *Tag) Render() {
 	value.AddVirtPart(t.Name)
 	value.AddVirtPart("\")")
 
-	tcb.CreateVar(value, t.NameNode)
+	tcb.CreateVar(value)
 
 	for _, a := range t.Attributes.Elements {
 		a.Render()

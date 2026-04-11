@@ -55,7 +55,7 @@ func (a *Attribute) Render() {
 				value := StatementParts{}
 				value.AddVirtPart("null! as " + classIdent)
 
-				compIdent := tcb.CreateVar(value, a.NameNode)
+				compIdent := tcb.CreateVar(value)
 
 				if def.NameMatchesString(a.Name) {
 					assInput := compIdent + "." + def.Name
