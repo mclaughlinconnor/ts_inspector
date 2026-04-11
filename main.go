@@ -8,7 +8,6 @@ import (
 	"os/signal"
 	"runtime/pprof"
 	"syscall"
-	"time"
 	"ts_inspector/actions"
 	"ts_inspector/analysis"
 	traversetypescriptfiles "ts_inspector/ast/indexing"
@@ -40,8 +39,6 @@ func main() {
 	commands.InitCommands()
 	analysis.InitAnalysers()
 	tcb_cm.InitTcb()
-
-	time.Sleep(5 * time.Second)
 
 	args := flag.Args()
 	if utils.LSP && len(args) == 0 {
