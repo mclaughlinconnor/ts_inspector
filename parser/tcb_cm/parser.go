@@ -52,11 +52,13 @@ var astOptimisedMap walk.VisitorFuncMap[*Ast]
 func initAstParser() {
 	astVisitorFuncMap := walk.NewVisitorFuncsMap[*Ast]()
 
-	astVisitorFuncMap["content"] = handleTagContent
 	astVisitorFuncMap["attribute"] = handleAttribute
 	astVisitorFuncMap["attribute_name"] = handleAttributeName
 	astVisitorFuncMap["attributes"] = handleChildNodes
 	astVisitorFuncMap["children"] = handleChildNodes
+	astVisitorFuncMap["class"] = handleTagClass
+	astVisitorFuncMap["content"] = handleTagContent
+	astVisitorFuncMap["id"] = handleTagId
 	astVisitorFuncMap["quoted_attribute_value"] = handleAttributeValue
 	astVisitorFuncMap["source_file"] = handleChildNodes
 	astVisitorFuncMap["tag"] = handleTag

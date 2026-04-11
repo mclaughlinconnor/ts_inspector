@@ -67,6 +67,15 @@ func handleTag(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap
 	return state
 }
 
+func handleTagClass(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) *Ast {
+	if p := state.Current.Peek(); p != nil && (*p).Tag.Name == "" {
+		(*p).Tag.Name = "div"
+		(*p).Tag.NameNode = node
+	}
+
+	return state
+}
+
 func handleTagContent(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) *Ast {
 	utils.ParseText([]byte(node.Content(state.Content)), utils.AngularContent, nil, func(root *sitter.Node, content []byte, _ *sitter.Node) (*sitter.Node, error) {
 		for i := range root.ChildCount() {
@@ -94,6 +103,15 @@ func handleTagContent(node *sitter.Node, state *Ast, indexInParent int, internal
 
 		return nil, nil
 	})
+
+	return state
+}
+
+func handleTagId(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) *Ast {
+	if p := state.Current.Peek(); p != nil && (*p).Tag.Name == "" {
+		(*p).Tag.Name = "div"
+		(*p).Tag.NameNode = node
+	}
 
 	return state
 }
