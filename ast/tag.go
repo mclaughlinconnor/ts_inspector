@@ -125,6 +125,10 @@ func GetTagAtOffset(content string, offset uint32) (Tag, bool) {
 				foundTag.Name = tagName
 			}
 
+			if (child.Type() == "class" || child.Type() == "id") && foundTag.Name == "" {
+				foundTag.Name = "div"
+			}
+
 			if child.Type() == "attributes" {
 				for j := range child.NamedChildCount() {
 					attribute := child.NamedChild(int(j))
