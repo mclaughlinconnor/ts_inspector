@@ -70,6 +70,10 @@ func (t *Tag) Render() {
 	for _, a := range t.Attributes.Elements {
 		a.Render()
 	}
+
+	for _, c := range t.Children.Elements {
+		c.Render()
+	}
 }
 
 func (t *Tag) Tcb() *Tcb {
