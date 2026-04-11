@@ -482,7 +482,8 @@ func visitCall(node *sitter.Node, state *exprState, indexInParent int, internalF
 
 	// let expr: ts.Expression;
 	receiverNode := node.ChildByFieldName("function")
-	receiverStatement := StatementPartsFromNodeContent(receiverNode, state.content)
+	receiverStatement := newWalk(receiverNode, state)
+	receiverStatementExpr := receiverStatement.parts
 
 	if receiverNode.Content(state.content) == "$any" && len(args) == 1 {
 		state.parts.AddVirtPart("(")
@@ -516,9 +517,9 @@ func visitCall(node *sitter.Node, state *exprState, indexInParent int, internalF
 	// Safe property/keyed reads will produce a ternary whose value is nullable.
 	// We have to generate a similar ternary around the call.
 	if chain == "?." {
-		state.parts.AddStatementParts(convertToSafeCall(receiverStatement, args))
+		state.parts.AddStatementParts(convertToSafeCall(receiverStatementExpr, args))
 	} else {
-		state.parts.AddStatementParts(receiverStatement)
+		state.parts.AddStatementParts(receiverStatementExpr)
 
 		if chain == "!." {
 			state.parts.AddRealPart("!.", chainNode)
