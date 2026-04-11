@@ -89,6 +89,14 @@ func (s *StatementParts) PrependVirtPart(text string) {
 	}
 }
 
+func (s *StatementParts) TsToPugLocation(start int, _end int, do func(part Part)) {
+	for _, part := range s.Parts {
+		if *part.TsStartOffset <= start && *part.TsEndOffset > start {
+			do(part)
+		}
+	}
+}
+
 func (s *StatementParts) AddPart(part Part) {
 	if part.node != nil && (part.PugStartOffset == nil || part.PugEndOffset == nil) {
 		start := int(part.node.StartByte())
