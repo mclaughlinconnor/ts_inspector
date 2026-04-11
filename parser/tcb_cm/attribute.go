@@ -65,7 +65,7 @@ func (a *Attribute) Render() {
 						attrValue = UNDEFINED
 					}
 
-					valueExpr := buildTcbExpression(attrValue)
+					valueExpr := buildTcbExpression(tcb, attrValue)
 					if a.ValueNode != nil {
 						valueExpr.OffsetByNodeStart(a.ValueNode)
 					}

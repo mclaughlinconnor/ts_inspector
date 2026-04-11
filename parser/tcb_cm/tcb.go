@@ -107,7 +107,7 @@ func (t *Tcb) BuildImports() string {
 }
 
 func (t *Tcb) CreateVar(value StatementParts) string {
-	if v := t.GetScope().GetVariable(value); v != nil {
+	if v := t.GetScope().GetVariableByValue(value); v != nil {
 		return v.Identifier
 	}
 

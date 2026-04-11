@@ -38,7 +38,7 @@ func (s *Scope) AddVariable(v *Variable) {
 	s.Variables = append(s.Variables, v)
 }
 
-func (s *Scope) GetVariable(value StatementParts) *Variable {
+func (s *Scope) GetVariableByValue(value StatementParts) *Variable {
 	v := value.ToString()
 
 	index := slices.IndexFunc(s.Variables, func(variable *Variable) bool { return variable.Value == v })
@@ -47,4 +47,19 @@ func (s *Scope) GetVariable(value StatementParts) *Variable {
 	}
 
 	return s.Variables[index]
+}
+
+func (s *Scope) GetVariableByName(name string) *Variable {
+	scope := s
+
+	for scope != nil {
+		index := slices.IndexFunc(s.Variables, func(variable *Variable) bool { return variable.Identifier == name })
+		if index != -1 {
+			return scope.Variables[index]
+		}
+
+		scope = scope.ParentScope
+	}
+
+	return nil
 }

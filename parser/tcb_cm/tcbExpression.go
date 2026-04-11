@@ -8,8 +8,9 @@ import (
 )
 
 type exprState struct {
-	parts   *StatementParts
 	content []byte
+	parts   *StatementParts
+	tcb     *Tcb
 }
 
 const NULL_AS_ANY string = "0 as any"
@@ -38,9 +39,9 @@ func initTcbExpression() {
 	exprOptimisedMap = walk.GenerateSymbolMap(angularExprLang, exprVisitorFuncMap)
 }
 
-func buildTcbExpression(expression string) *StatementParts {
+func buildTcbExpression(tcb *Tcb, expression string) *StatementParts {
 	s, err := utils.ParseText([]byte(expression), utils.AngularExpr, nil, func(root *sitter.Node, content []byte, _ *StatementParts) (*StatementParts, error) {
-		state := exprState{content: content, parts: &StatementParts{}}
+		state := exprState{content: content, parts: &StatementParts{}, tcb: tcb}
 		output := newWalk(root, &state)
 		return output.parts, nil
 	})
@@ -53,7 +54,7 @@ func buildTcbExpression(expression string) *StatementParts {
 }
 
 func newWalk(node *sitter.Node, state *exprState) *exprState {
-	newState := exprState{content: state.content, parts: &StatementParts{}}
+	newState := exprState{content: state.content, parts: &StatementParts{}, tcb: state.tcb}
 
 	return walk.VisitNode(node, &newState, 0, exprOptimisedMap, false)
 }
@@ -274,11 +275,11 @@ func visitMemberExpression(node *sitter.Node, state *exprState, indexInParent in
 	operator := node.ChildByFieldName("object").NextSibling()
 	switch operator.Type() {
 	case ".":
-		return visitPropertyRead(node, state, indexInParent, internalFuncMap)
+		visitPropertyRead(node, state, indexInParent, internalFuncMap)
 	case "?.":
-		return visitSafePropertyRead(node, state, indexInParent, internalFuncMap)
+		visitSafePropertyRead(node, state, indexInParent, internalFuncMap)
 	case "!.":
-		return visitNonNullAssertRead(node, state, indexInParent, internalFuncMap)
+		visitNonNullAssertRead(node, state, indexInParent, internalFuncMap)
 	}
 
 	return state
@@ -339,7 +340,7 @@ func visitPropertyRead(node *sitter.Node, state *exprState, indexInParent int, i
 	receiverState := newWalk(receiverNode, state)
 
 	nameNode := node.ChildByFieldName("property")
-	name := wrapForDiagnostics(StatementPartsFromNodeContent(nameNode, state.content))
+	name := StatementPartsFromNodeContent(nameNode, state.content)
 
 	state.parts.AddStatementParts(receiverState.parts)
 	state.parts.AddVirtPart(".")
@@ -375,7 +376,7 @@ func visitSafePropertyRead(node *sitter.Node, state *exprState, indexInParent in
 	receiver := wrapForDiagnostics(receiverState.parts)
 
 	nameNode := node.ChildByFieldName("property")
-	name := wrapForDiagnostics(StatementPartsFromNodeContent(nameNode, state.content))
+	name := StatementPartsFromNodeContent(nameNode, state.content)
 
 	// The form of safe property reads depends on whether strictness is in use.
 	// if (this.config.strictSafeNavigationTypes) {
@@ -427,7 +428,7 @@ func visitSafeKeyedRead(node *sitter.Node, state *exprState, indexInParent int, 
 
 	keyNode := node.ChildByFieldName("property")
 	keyState := newWalk(keyNode, state)
-	key := wrapForDiagnostics(keyState.parts)
+	key := keyState.parts
 
 	// The form of safe property reads depends on whether strictness is in use.
 	// if (this.config.strictSafeNavigationTypes) {
@@ -538,7 +539,12 @@ func visitCall(node *sitter.Node, state *exprState, indexInParent int, internalF
 }
 
 func visitIdentifier(node *sitter.Node, state *exprState, indexInParent int, internalFuncMap walk.VisitorFuncMap[*exprState]) *exprState {
-	state.parts.AddRealPart(node.Content(state.content), node)
+	variable := state.tcb.CurrentScope.GetVariableByName(node.Content(state.content))
+	if variable != nil {
+		state.parts.AddRealPart(variable.Identifier, node)
+	} else {
+		state.parts.AddRealPart("this."+node.Content(state.content), node)
+	}
 
 	return state
 }
