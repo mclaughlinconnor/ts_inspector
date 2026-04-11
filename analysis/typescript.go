@@ -38,6 +38,11 @@ func typescript(state *parser.State, file *parser.File) []Analysis {
 			code := "typescript-" + strconv.Itoa(int(diagnostic.Code))
 
 			analyses = append(analyses, newAnalysis(code, r, AnalysisSeverityFromTsGoCategory(&diagnostic.Category), diagnostic.Text))
+
+			for _, ri := range diagnostic.RelatedInformation {
+				code := "typescript-" + strconv.Itoa(int(ri.Code))
+				analyses = append(analyses, newAnalysis(code, r, AnalysisSeverityFromTsGoCategory(&ri.Category), ri.Text))
+			}
 		})
 	}
 
