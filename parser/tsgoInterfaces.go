@@ -150,30 +150,32 @@ type GetDiagnosticsRequest struct {
 	Params GetDiagnosticsParams `json:"params"`
 }
 
+type Diagnostic struct {
+	// FileName is the path of the file this diagnostic belongs to, if any.
+	FileName string `json:"fileName,omitempty"`
+	// Pos is the start position of the diagnostic in the source file.
+	Pos int `json:"pos"`
+	// End is the end position of the diagnostic in the source file.
+	End int `json:"end"`
+	// Code is the diagnostic error code.
+	Code int32 `json:"code"`
+	// Category is the diagnostic category (error, warning, suggestion, message).
+	Category Category `json:"category"`
+	// Text is the localized diagnostic message text.
+	Text string `json:"text"`
+	// ReportsUnnecessary indicates this diagnostic highlights unnecessary code.
+	ReportsUnnecessary bool `json:"reportsUnnecessary,omitzero"`
+	// ReportsDeprecated indicates this diagnostic highlights deprecated code.
+	ReportsDeprecated bool `json:"reportsDeprecated,omitzero"`
+	// MessageChain contains chained diagnostic messages, if any.
+	MessageChain []*Diagnostic `json:"messageChain,omitempty"`
+	// RelatedInformation contains related diagnostic information, if any.
+	RelatedInformation []*Diagnostic `json:"relatedInformation,omitempty"`
+}
+
 // DiagnosticResponse is the API response for a single diagnostic.
 type DiagnosticResponse struct {
-	Result [](struct {
-		// FileName is the path of the file this diagnostic belongs to, if any.
-		FileName string `json:"fileName,omitempty"`
-		// Pos is the start position of the diagnostic in the source file.
-		Pos int `json:"pos"`
-		// End is the end position of the diagnostic in the source file.
-		End int `json:"end"`
-		// Code is the diagnostic error code.
-		Code int32 `json:"code"`
-		// Category is the diagnostic category (error, warning, suggestion, message).
-		Category Category `json:"category"`
-		// Text is the localized diagnostic message text.
-		Text string `json:"text"`
-		// ReportsUnnecessary indicates this diagnostic highlights unnecessary code.
-		ReportsUnnecessary bool `json:"reportsUnnecessary,omitzero"`
-		// ReportsDeprecated indicates this diagnostic highlights deprecated code.
-		ReportsDeprecated bool `json:"reportsDeprecated,omitzero"`
-		// MessageChain contains chained diagnostic messages, if any.
-		MessageChain []*DiagnosticResponse `json:"messageChain,omitempty"`
-		// RelatedInformation contains related diagnostic information, if any.
-		RelatedInformation []*DiagnosticResponse `json:"relatedInformation,omitempty"`
-	})
+	Result []Diagnostic
 }
 
 type Category int32
@@ -197,4 +199,115 @@ func (category Category) Name() string {
 		return "message"
 	}
 	panic("Unhandled diagnostic category")
+}
+
+type GetSymbolAtPositionParams struct {
+	Snapshot Handle             `json:"snapshot"`
+	Project  Handle             `json:"project"`
+	File     DocumentIdentifier `json:"file"`
+	Position uint32             `json:"position"`
+}
+
+type GetSymbolAtPositionRequest struct {
+	TsGoRequest
+	Params GetSymbolAtPositionParams `json:"params"`
+}
+
+type SymbolResponse struct {
+	TsGoResponse
+	Result struct {
+		Id               Handle   `json:"id"`
+		Name             string   `json:"name"`
+		Flags            uint32   `json:"flags"`
+		CheckFlags       uint32   `json:"checkFlags"`
+		Declarations     []Handle `json:"declarations,omitempty"`
+		ValueDeclaration Handle   `json:"valueDeclaration,omitempty"`
+	}
+}
+
+type GetTypeOfSymbolRequest struct {
+	TsGoRequest
+	Params GetTypeOfSymbolParams `json:"params"`
+}
+
+type GetTypeOfSymbolParams struct {
+	Snapshot Handle `json:"snapshot"`
+	Project  Handle `json:"project"`
+	Symbol   Handle `json:"symbol"`
+}
+
+type TypeResponse struct {
+	TsGoResponse
+	Result struct {
+		Id          Handle `json:"id"`
+		Flags       uint32 `json:"flags"`
+		ObjectFlags uint32 `json:"objectFlags,omitempty"`
+
+		// LiteralType data
+		Value any `json:"value,omitempty"`
+
+		// ObjectType / TypeReference / StringMappingType / IndexType target
+		Target Handle `json:"target,omitempty"`
+
+		// InterfaceType type parameters
+		TypeParameters      []Handle `json:"typeParameters,omitempty"`
+		OuterTypeParameters []Handle `json:"outerTypeParameters,omitempty"`
+		LocalTypeParameters []Handle `json:"localTypeParameters,omitempty"`
+
+		// TupleType data
+		ElementFlags  []ElementFlags `json:"elementFlags,omitempty"`
+		FixedLength   *int           `json:"fixedLength,omitempty"`
+		TupleReadonly *bool          `json:"readonly,omitempty"`
+
+		// IndexedAccessType data
+		ObjectType Handle `json:"objectType,omitempty"`
+		IndexType  Handle `json:"indexType,omitempty"`
+
+		// ConditionalType data
+		CheckType   Handle `json:"checkType,omitempty"`
+		ExtendsType Handle `json:"extendsType,omitempty"`
+
+		// SubstitutionType data
+		BaseType        Handle `json:"baseType,omitempty"`
+		SubstConstraint Handle `json:"substConstraint,omitempty"`
+
+		// TemplateLiteralType text segments
+		Texts []string `json:"texts,omitempty"`
+
+		// Symbol associated with structured types
+		Symbol Handle `json:"symbol,omitempty"`
+	}
+}
+
+type ElementFlags uint32
+
+const (
+	ElementFlagsNone        ElementFlags = 0
+	ElementFlagsRequired    ElementFlags = 1 << 0 // T
+	ElementFlagsOptional    ElementFlags = 1 << 1 // T?
+	ElementFlagsRest        ElementFlags = 1 << 2 // ...T[]
+	ElementFlagsVariadic    ElementFlags = 1 << 3 // ...T
+	ElementFlagsFixed                    = ElementFlagsRequired | ElementFlagsOptional
+	ElementFlagsVariable                 = ElementFlagsRest | ElementFlagsVariadic
+	ElementFlagsNonRequired              = ElementFlagsOptional | ElementFlagsRest | ElementFlagsVariadic
+	ElementFlagsNonRest                  = ElementFlagsRequired | ElementFlagsOptional | ElementFlagsVariadic
+)
+
+// TypeToTypeNodeParams are the parameters for the typeToTypeNode method.
+type TypeToTypeNodeParams struct {
+	Snapshot Handle `json:"snapshot"`
+	Project  Handle `json:"project"`
+	Type     Handle `json:"type"`
+	Location Handle `json:"location,omitempty"`
+	Flags    int32  `json:"flags,omitempty"`
+}
+
+type TypeToTypeNodeRequest struct {
+	TsGoRequest
+	Params TypeToTypeNodeParams `json:"params"`
+}
+
+type TypeToStringResponse struct {
+	TsGoResponse
+	Result string `json:"result"`
 }

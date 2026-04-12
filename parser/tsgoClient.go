@@ -173,6 +173,59 @@ func (t *TsGo) GetSemanticDiagnostics(uri string) *DiagnosticResponse {
 	}
 }
 
+func (t *TsGo) GetSymbolAtPosition(uri string, offset uint32) *SymbolResponse {
+	t.UpdateSnapshot("", &APIFileChanges{Changed: []DocumentIdentifier{{URI: uri}}})
+
+	id := t.GetNextId()
+	request := GetSymbolAtPositionRequest{
+		TsGoRequest: TsGoRequest{RPC: "2.0", ID: id, Method: "getSymbolAtPosition"},
+		Params: GetSymbolAtPositionParams{
+			File:     DocumentIdentifier{URI: uri},
+			Position: offset,
+			Project:  t.project,
+			Snapshot: t.snapshot,
+		},
+	}
+
+	utils.WriteResponse(*t.stdin, request)
+
+	c := make(chan []byte, 1)
+	t.responses.AddHandler(id, c)
+
+	select {
+	case <-t.ctx.Done():
+		return nil
+	case result := <-c:
+		r := utils.TryParseRequest[SymbolResponse](t.logger, result)
+		return &r
+	}
+}
+
+func (t *TsGo) GetTypeOfSymbol(symbol Handle) *TypeResponse {
+	id := t.GetNextId()
+	request := GetTypeOfSymbolRequest{
+		TsGoRequest: TsGoRequest{RPC: "2.0", ID: id, Method: "getTypeOfSymbol"},
+		Params: GetTypeOfSymbolParams{
+			Project:  t.project,
+			Snapshot: t.snapshot,
+			Symbol:   symbol,
+		},
+	}
+
+	utils.WriteResponse(*t.stdin, request)
+
+	c := make(chan []byte, 1)
+	t.responses.AddHandler(id, c)
+
+	select {
+	case <-t.ctx.Done():
+		return nil
+	case result := <-c:
+		r := utils.TryParseRequest[TypeResponse](t.logger, result)
+		return &r
+	}
+}
+
 func (t *TsGo) Initialize() *InitializeResponse {
 	id := t.GetNextId()
 	request := TsGoRequest{RPC: "2.0", ID: id, Method: "initialize"}
@@ -187,6 +240,31 @@ func (t *TsGo) Initialize() *InitializeResponse {
 		return nil
 	case result := <-c:
 		r := utils.TryParseRequest[InitializeResponse](t.logger, result)
+		return &r
+	}
+}
+
+func (t *TsGo) TypeToString(ttype Handle) *TypeToStringResponse {
+	id := t.GetNextId()
+	request := TypeToTypeNodeRequest{
+		TsGoRequest: TsGoRequest{RPC: "2.0", ID: id, Method: "typeToString"},
+		Params: TypeToTypeNodeParams{
+			Project:  t.project,
+			Snapshot: t.snapshot,
+			Type:     ttype,
+		},
+	}
+
+	utils.WriteResponse(*t.stdin, request)
+
+	c := make(chan []byte, 1)
+	t.responses.AddHandler(id, c)
+
+	select {
+	case <-t.ctx.Done():
+		return nil
+	case result := <-c:
+		r := utils.TryParseRequest[TypeToStringResponse](t.logger, result)
 		return &r
 	}
 }

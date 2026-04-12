@@ -89,12 +89,28 @@ func (s *StatementParts) PrependVirtPart(text string) {
 	}
 }
 
-func (s *StatementParts) TsToPugLocation(start int, _end int, do func(part Part)) {
+func (s *StatementParts) PugToTsLocation(start int, _end int) *Part {
 	for _, part := range s.Parts {
-		if *part.TsStartOffset <= start && *part.TsEndOffset > start {
-			do(part)
+		if part.PugStartOffset == nil || part.PugEndOffset == nil {
+			continue
+		}
+
+		if *part.PugStartOffset <= start && *part.PugEndOffset > start {
+			return &part
 		}
 	}
+
+	return nil
+}
+
+func (s *StatementParts) TsToPugLocation(start int, _end int) *Part {
+	for _, part := range s.Parts {
+		if *part.TsStartOffset <= start && *part.TsEndOffset > start {
+			return &part
+		}
+	}
+
+	return nil
 }
 
 func (s *StatementParts) AddPart(part Part) {

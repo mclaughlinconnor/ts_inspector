@@ -23,3 +23,21 @@ func BuildTcbBlock(state *parser.State, file *parser.File) (*StatementParts, err
 		return tcb, nil
 	})
 }
+
+func PugToTsLocation(state *parser.State, file *parser.File, start int, end int) *Part {
+	tcb, err := BuildTcbBlock(state, file)
+	if err != nil {
+		return nil
+	}
+
+	return tcb.PugToTsLocation(start, end)
+}
+
+func TsToPugLocation(state *parser.State, file *parser.File, start int, end int) *Part {
+	tcb, err := BuildTcbBlock(state, file)
+	if err != nil {
+		return nil
+	}
+
+	return tcb.TsToPugLocation(start, end)
+}

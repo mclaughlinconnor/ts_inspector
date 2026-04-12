@@ -20,31 +20,34 @@ func typescript(state *parser.State, file *parser.File) []Analysis {
 	tcbBlock, _ := tcb_cm.BuildTcbBlock(state, file)
 
 	for _, diagnostic := range typescriptDiagnostics {
-		tcbBlock.TsToPugLocation(diagnostic.Pos, diagnostic.End, func(part tcb_cm.Part) {
-			var start utils.Position
-			var end utils.Position
+		part := tcbBlock.TsToPugLocation(diagnostic.Pos, diagnostic.End)
+		if part == nil {
+			continue
+		}
 
-			if part.IsReal() {
-				start = utils.GetPositionForOffset(file.Snapshot().Content, uint32(*part.PugStartOffset))
-				end = utils.GetPositionForOffset(file.Snapshot().Content, uint32(*part.PugEndOffset))
-			} else if utils.Debug {
-				start = utils.ZeroPosition()
-				end = utils.ZeroPosition()
-			} else {
-				return
-			}
+		var start utils.Position
+		var end utils.Position
 
-			r := utils.Range{Start: start, End: end}
-			code := "typescript-" + strconv.Itoa(int(diagnostic.Code))
+		if part.IsReal() {
+			start = utils.GetPositionForOffset(file.Snapshot().Content, uint32(*part.PugStartOffset))
+			end = utils.GetPositionForOffset(file.Snapshot().Content, uint32(*part.PugEndOffset))
+		} else if utils.Debug {
+			start = utils.ZeroPosition()
+			end = utils.ZeroPosition()
+		} else {
+			continue
+		}
 
-			relatedInformation := []RelatedInformation{}
-			for _, ri := range diagnostic.RelatedInformation {
-				ri := RelatedInformation{ri.Text, ri.FileName, utils.ZeroRange()}
-				relatedInformation = append(relatedInformation, ri)
-			}
+		r := utils.Range{Start: start, End: end}
+		code := "typescript-" + strconv.Itoa(int(diagnostic.Code))
 
-			analyses = append(analyses, newAnalysis(code, r, AnalysisSeverityFromTsGoCategory(&diagnostic.Category), diagnostic.Text, &relatedInformation))
-		})
+		relatedInformation := []RelatedInformation{}
+		for _, ri := range diagnostic.RelatedInformation {
+			ri := RelatedInformation{ri.Text, ri.FileName, utils.ZeroRange()}
+			relatedInformation = append(relatedInformation, ri)
+		}
+
+		analyses = append(analyses, newAnalysis(code, r, AnalysisSeverityFromTsGoCategory(&diagnostic.Category), diagnostic.Text, &relatedInformation))
 	}
 
 	return analyses

@@ -7,6 +7,7 @@ import (
 	"ts_inspector/ast"
 	"ts_inspector/interfaces"
 	"ts_inspector/parser"
+	"ts_inspector/parser/tcb_cm"
 	"ts_inspector/utils"
 )
 
@@ -69,6 +70,8 @@ func lspHandleHover(writer io.Writer, logger *log.Logger, state *parser.State, r
 		}
 	}
 
+	sb = handleTsGoHover(sb, state, file, int(cursorOffset))
+
 	if len(sb) == 0 {
 		utils.WriteResponse(writer, interfaces.EmptyResponse{Result: nil, Response: interfaces.Response{ID: &request.ID, RPC: "2.0"}})
 		return
@@ -95,4 +98,25 @@ func handleAttributeHover(sb []string, class *parser.Class, attributeName string
 
 func handleTagHover(sb []string, class *parser.Class) []string {
 	return append(sb, (class.GetDocumentation(true)))
+}
+
+func handleTsGoHover(sb []string, state *parser.State, file *parser.File, cursorOffset int) []string {
+	tcb, err := tcb_cm.BuildTcbBlock(state, file)
+	if tcb == nil || err != nil {
+		return sb
+	}
+
+	part := tcb.PugToTsLocation(int(cursorOffset), int(cursorOffset))
+	if part == nil {
+		return sb
+	}
+
+	cursorOffsetFromStartOfPart := int(cursorOffset) - *part.PugStartOffset
+	offset := *part.TsStartOffset + cursorOffsetFromStartOfPart
+
+	v := state.GetTsGo().GetSymbolAtPosition(file.GetTcbUri(), uint32(offset))
+	w := state.GetTsGo().GetTypeOfSymbol(v.Result.Id)
+	x := state.GetTsGo().TypeToString(w.Result.Id)
+
+	return append(sb, x.Result)
 }
