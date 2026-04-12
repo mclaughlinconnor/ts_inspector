@@ -544,7 +544,8 @@ func visitIdentifier(node *sitter.Node, state *exprState, indexInParent int, int
 	if variable != nil {
 		state.parts.AddRealPart(variable.Identifier, node)
 	} else {
-		state.parts.AddRealPart("this."+node.Content(state.content), node)
+		state.parts.AddVirtPart("this.")
+		state.parts.AddRealPart(node.Content(state.content), node)
 	}
 
 	return state
