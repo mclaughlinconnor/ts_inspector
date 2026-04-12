@@ -25,7 +25,7 @@ func illegalDeclaringModule(state *parser.State, file *parser.File) []Analysis {
 				r := utils.Range{Start: startPosition, End: endPosition}
 
 				message := "Angular NgModule may not declare another NgModule"
-				analyses = append(analyses, newAnalysis("illegal-declaring-module", r, AnalysisSeverity.Error, message))
+				analyses = append(analyses, newAnalysis("illegal-declaring-module", r, AnalysisSeverity.Error, message, nil))
 			}
 		}
 

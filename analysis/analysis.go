@@ -66,11 +66,18 @@ func newAnalysisHighlightName(problemNode *sitter.Node, class *parser.Class, sev
 	startPosition := utils.GetPositionForOffset(content, startByte)
 	endPosition := utils.GetPositionForOffset(content, endByte)
 
-	return newAnalysis(code, utils.Range{Start: startPosition, End: endPosition}, severity, message)
+	return newAnalysis(code, utils.Range{Start: startPosition, End: endPosition}, severity, message, nil)
 }
 
-func newAnalysis(code string, highlightRange utils.Range, severity int, message string) Analysis {
-	return Analysis{code, message, highlightRange, severity, "ts_inspector"}
+func newAnalysis(code string, highlightRange utils.Range, severity int, message string, relatedInformation *[]RelatedInformation) Analysis {
+	var ri []RelatedInformation
+	if relatedInformation == nil {
+		ri = []RelatedInformation{}
+	} else {
+		ri = *relatedInformation
+	}
+
+	return Analysis{code, message, highlightRange, ri, severity, "ts_inspector"}
 }
 
 func InitAnalysers() {

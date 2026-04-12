@@ -28,7 +28,7 @@ func recursiveTemplate(_ *parser.State, file *parser.File) []Analysis {
 				endPosition := utils.PositionFromPoint(u.Node.EndPoint())
 
 				r := utils.Range{Start: startPosition, End: endPosition}
-				analyses = append(analyses, newAnalysis("angular-recursive-component", r, AnalysisSeverity.Information, message))
+				analyses = append(analyses, newAnalysis("angular-recursive-component", r, AnalysisSeverity.Information, message, nil))
 			}
 		}
 	}

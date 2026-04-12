@@ -72,3 +72,7 @@ func GetLineOffsets(text string) []uint32 {
 
 	return offsets
 }
+
+func ZeroPosition() Position {
+	return Position{0, 0}
+}

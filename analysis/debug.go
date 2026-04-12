@@ -47,7 +47,7 @@ func debug(_ *parser.State, file *parser.File) []Analysis {
 
 		message := "Found " + variable.Kind + " `" + variable.Name + "` with value `" + str + "`"
 
-		analyses = append(analyses, newAnalysis("variable", utils.Range{Start: startPosition, End: endPosition}, AnalysisSeverity.Warning, message))
+		analyses = append(analyses, newAnalysis("variable", utils.Range{Start: startPosition, End: endPosition}, AnalysisSeverity.Warning, message, nil))
 	}
 
 	if file.Snapshot().Filetype != "pug" {
@@ -60,7 +60,7 @@ func debug(_ *parser.State, file *parser.File) []Analysis {
 	classes := file.Snapshot().Classes
 
 	if len(classes) == 0 {
-		analyses = append(analyses, newAnalysis("code", utils.Range{Start: zero, End: zero}, 2, "Has no classes"))
+		analyses = append(analyses, newAnalysis("code", utils.Range{Start: zero, End: zero}, 2, "Has no classes", nil))
 	} else {
 		hasDeclaredIn := false
 		for _, c := range classes {
@@ -70,7 +70,7 @@ func debug(_ *parser.State, file *parser.File) []Analysis {
 		}
 
 		if !hasDeclaredIn {
-			analyses = append(analyses, newAnalysis("code", utils.Range{Start: one, End: one}, 2, "Is not declared anywheere"))
+			analyses = append(analyses, newAnalysis("code", utils.Range{Start: one, End: one}, 2, "Is not declared anywhere", nil))
 		}
 	}
 

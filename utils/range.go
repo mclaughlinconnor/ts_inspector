@@ -5,3 +5,7 @@ type Range struct {
 
 	End Position `json:"end"`
 }
+
+func ZeroRange() Range {
+	return Range{ZeroPosition(), ZeroPosition()}
+}

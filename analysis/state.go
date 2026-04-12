@@ -15,9 +15,17 @@ type Analysis struct {
 
 	Range utils.Range
 
+	RelatedInformation []RelatedInformation
+
 	Severity int
 
 	Source string
+}
+
+type RelatedInformation struct {
+	Message string
+	Uri     string
+	Range   utils.Range
 }
 
 type severity struct {
@@ -77,13 +85,26 @@ func NewDiagnostic(node *sitter.Node, severity int, source string, message strin
 func DiagnosticFromAnalysis(analysis Analysis) interfaces.Diagnostic {
 	code := any(analysis.Code)
 
-	return interfaces.Diagnostic{
+	diagnostic := interfaces.Diagnostic{
 		Code:     &code,
 		Range:    analysis.Range,
 		Severity: &analysis.Severity,
 		Source:   &analysis.Source,
 		Message:  analysis.Message,
 	}
+
+	relatedInformation := []interfaces.DiagnosticRelatedInformation{}
+	for _, ri := range analysis.RelatedInformation {
+		dri := interfaces.DiagnosticRelatedInformation{
+			Location: interfaces.Location{Uri: ri.Uri, Range: ri.Range},
+			Message:  ri.Message,
+		}
+		relatedInformation = append(relatedInformation, dri)
+	}
+
+	diagnostic.RelatedInformation = &relatedInformation
+
+	return diagnostic
 }
 
 func DiagnosticsFromAnalyses(analyses []Analysis) []interfaces.Diagnostic {

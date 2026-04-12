@@ -28,8 +28,8 @@ func typescript(state *parser.State, file *parser.File) []Analysis {
 				start = utils.GetPositionForOffset(file.Snapshot().Content, uint32(*part.PugStartOffset))
 				end = utils.GetPositionForOffset(file.Snapshot().Content, uint32(*part.PugEndOffset))
 			} else if utils.Debug {
-				start = utils.Position{Line: 0, Character: 0}
-				end = utils.Position{Line: 0, Character: 0}
+				start = utils.ZeroPosition()
+				end = utils.ZeroPosition()
 			} else {
 				return
 			}
@@ -37,12 +37,13 @@ func typescript(state *parser.State, file *parser.File) []Analysis {
 			r := utils.Range{Start: start, End: end}
 			code := "typescript-" + strconv.Itoa(int(diagnostic.Code))
 
-			analyses = append(analyses, newAnalysis(code, r, AnalysisSeverityFromTsGoCategory(&diagnostic.Category), diagnostic.Text))
-
+			relatedInformation := []RelatedInformation{}
 			for _, ri := range diagnostic.RelatedInformation {
-				code := "typescript-" + strconv.Itoa(int(ri.Code))
-				analyses = append(analyses, newAnalysis(code, r, AnalysisSeverityFromTsGoCategory(&ri.Category), ri.Text))
+				ri := RelatedInformation{ri.Text, ri.FileName, utils.ZeroRange()}
+				relatedInformation = append(relatedInformation, ri)
 			}
+
+			analyses = append(analyses, newAnalysis(code, r, AnalysisSeverityFromTsGoCategory(&diagnostic.Category), diagnostic.Text, &relatedInformation))
 		})
 	}
 

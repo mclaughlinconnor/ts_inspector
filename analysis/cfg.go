@@ -39,7 +39,7 @@ func cfgUnreachableBlock(_ *parser.State, file *parser.File) []Analysis {
 			startPosition := utils.GetPositionForOffset(content, node.StartByte())
 			endPosition := utils.GetPositionForOffset(content, node.EndByte())
 
-			analyses = append(analyses, newAnalysis("unreachable", utils.Range{Start: startPosition, End: endPosition}, AnalysisSeverity.Error, message))
+			analyses = append(analyses, newAnalysis("unreachable", utils.Range{Start: startPosition, End: endPosition}, AnalysisSeverity.Error, message, nil))
 		}
 	}
 
