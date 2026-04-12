@@ -20,7 +20,7 @@ type HoverParams struct {
 }
 
 type HoverRequest struct {
-	Request
+	Request[int]
 	Params HoverParams `json:"params"`
 }
 

@@ -22,7 +22,7 @@ type CompletionParams struct {
 }
 
 type CompletionRequest struct {
-	Request
+	Request[int]
 	Params CompletionParams `json:"params"`
 }
 
@@ -36,7 +36,7 @@ type CompletionOptions struct {
 }
 
 type CompletionItemRequest struct {
-	Request
+	Request[int]
 	Params CompletionItem `json:"params"`
 }
 

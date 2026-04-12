@@ -8,16 +8,16 @@ import (
 	"ts_inspector/utils"
 )
 
-func tsgoHandleGetAccessibleEntriesResponse(t *TsGo, request GetAccessibleEntriesRequest, entries *Entries) {
+func tsgoHandleGetAccessibleEntriesResponse(t *TsGoApi, request GetAccessibleEntriesRequest, entries *Entries) {
 	response := GetAcceessibleEntriesResponse{
 		TsGoResponse: TsGoResponse{RPC: "2.0", ID: request.ID},
 		Result:       entries,
 	}
 
-	utils.WriteResponse(*t.stdin, response)
+	utils.WriteResponse(*t.connection, response)
 }
 
-func tsgoHandleGetAccessibleEntries(tsgo *TsGo, request GetAccessibleEntriesRequest) {
+func tsgoHandleGetAccessibleEntries(tsgo *TsGoApi, request GetAccessibleEntriesRequest) {
 	requestPath := request.Params
 
 	files := []string{}

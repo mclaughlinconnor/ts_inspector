@@ -7,16 +7,16 @@ import (
 	"ts_inspector/utils"
 )
 
-func tsgoHandleFileExistsResponse(tsgo *TsGo, request FileExistsRequest, found *bool) {
+func tsgoHandleFileExistsResponse(tsgo *TsGoApi, request FileExistsRequest, found *bool) {
 	response := FileExistsResponse{
 		TsGoResponse: TsGoResponse{RPC: "2.0", ID: request.ID},
 		Result:       found,
 	}
 
-	utils.WriteResponse(*tsgo.stdin, response)
+	utils.WriteResponse(*tsgo.connection, response)
 }
 
-func tsgoHandleFileExists(tsgo *TsGo, request FileExistsRequest) {
+func tsgoHandleFileExists(tsgo *TsGoApi, request FileExistsRequest) {
 	path := request.Params
 
 	if !strings.HasSuffix(path, interfaces.TCB_FILENAME_SUFFIX) {

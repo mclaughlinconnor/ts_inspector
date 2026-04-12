@@ -1,8 +1,8 @@
 package interfaces
 
-type Request struct {
+type Request[T any] struct {
 	RPC    string `json:"jsonrpc"`
-	ID     int    `json:"id"`
+	ID     T      `json:"id"`
 	Method string `json:"method"`
 }
 

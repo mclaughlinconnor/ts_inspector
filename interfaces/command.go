@@ -7,7 +7,7 @@ type Command struct {
 }
 
 type ExecuteCommandRequest struct {
-	Request
+	Request[int]
 	Params ExecuteCommandParams `json:"params"`
 }
 

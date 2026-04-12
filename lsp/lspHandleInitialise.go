@@ -50,7 +50,7 @@ func newInitializeResponse(id int) interfaces.InitializeResponse {
 	}
 }
 
-func lspHandleInitialise(writer io.Writer, logger *log.Logger, state *parser.State, request interfaces.InitializeRequest) {
+func lspHandleInitialise(writer io.Writer, logger *log.Logger, state *parser.State, request interfaces.InitializeRequest[int]) {
 	response := newInitializeResponse(request.ID)
 	utils.WriteResponse(writer, response)
 
@@ -89,16 +89,16 @@ func initTsGo(state *parser.State) {
 		return
 	}
 
-	t, err := parser.StartTsGo(state)
+	l, err := parser.StartTsGoLsp(state)
 	if err != nil {
 		state.Logger.Print(err)
 	}
 
-	state.SetTsGo(t)
+	state.SetTsGo(l)
 
-	t.Initialize()
-	us := t.UpdateSnapshot(state.GetTsConfigFiles()[1], nil)
-	print(us)
+	// t.Initialize()
+	// us := t.UpdateSnapshot(state.GetTsConfigFiles()[1], nil)
+	// print(us)
 
-	state.SetTsGo(t)
+	// state.SetTsGo(t)
 }

@@ -9,16 +9,16 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
-func tsgoHandleReadFileResponse(tsgo *TsGo, request ReadFileRequest, content *Content) {
+func tsgoHandleReadFileResponse(tsgo *TsGoApi, request ReadFileRequest, content *Content) {
 	response := ReadFileResponse{
 		TsGoResponse: TsGoResponse{RPC: "2.0", ID: request.ID},
 		Result:       content,
 	}
 
-	utils.WriteResponse(*tsgo.stdin, response)
+	utils.WriteResponse(*tsgo.connection, response)
 }
 
-func tsgoHandleReadFile(tsgo *TsGo, request ReadFileRequest) {
+func tsgoHandleReadFile(tsgo *TsGoApi, request ReadFileRequest) {
 	path := request.Params
 
 	if !strings.HasSuffix(path, interfaces.TCB_FILENAME_SUFFIX) {

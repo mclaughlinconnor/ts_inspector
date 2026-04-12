@@ -114,9 +114,9 @@ func handleTsGoHover(sb []string, state *parser.State, file *parser.File, cursor
 	cursorOffsetFromStartOfPart := int(cursorOffset) - *part.PugStartOffset
 	offset := *part.TsStartOffset + cursorOffsetFromStartOfPart
 
-	v := state.GetTsGo().GetSymbolAtPosition(file.GetTcbUri(), uint32(offset))
-	w := state.GetTsGo().GetTypeOfSymbol(v.Result.Id)
-	x := state.GetTsGo().TypeToString(w.Result.Id)
+	v := state.GetTsGo().GetApi().GetSymbolAtPosition(file.GetTcbUri(), uint32(offset))
+	w := state.GetTsGo().GetApi().GetTypeOfSymbol(v.Result.Id)
+	x := state.GetTsGo().GetApi().TypeToString(w.Result.Id)
 
 	return append(sb, x.Result)
 }

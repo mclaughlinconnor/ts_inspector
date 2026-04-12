@@ -7,7 +7,7 @@ type TcbParams struct {
 }
 
 type TcbRequest struct {
-	Request
+	Request[int]
 
 	Params TcbParams `json:"params"`
 }

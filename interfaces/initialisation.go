@@ -1,12 +1,14 @@
 package interfaces
 
-type InitializeRequest struct {
-	Request
+type InitializeRequest[T any] struct {
+	Request[T]
 	Params InitializeParams `json:"params"`
 }
 
 type InitializeParams struct {
-	RootUri string `json:"rootUri"`
+	RootUri      string             `json:"rootUri"`
+	Capabilities ClientCapabilities `json:"capabilities"`
+	ProcessId    any                `json:"processId"`
 }
 
 type InitializeResponse struct {
@@ -21,6 +23,8 @@ type InitializeResult struct {
 		Version string `json:"version"`
 	} `json:"serverInfo"`
 }
+
+type ClientCapabilities struct{}
 
 type ServerCapabilities struct {
 	CodeActionProvider      bool                  `json:"codeActionProvider"` // angular uses CodeActionOptions, but I don't support that yet

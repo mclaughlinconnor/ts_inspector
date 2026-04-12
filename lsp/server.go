@@ -64,14 +64,14 @@ func handleMessage(logger *log.Logger, writer io.Writer, state *parser.State, me
 		}
 	}()
 
-	r := utils.TryParseRequest[interfaces.Request](logger, contents)
+	r := utils.TryParseRequest[interfaces.Request[int]](logger, contents)
 	utils.MostRecentId = r.ID
 
 	logger.Printf("Received msg with method: %s", method)
 
 	switch method {
 	case "initialize":
-		request := utils.TryParseRequest[interfaces.InitializeRequest](logger, contents)
+		request := utils.TryParseRequest[interfaces.InitializeRequest[int]](logger, contents)
 		lspHandleInitialise(writer, logger, state, request)
 	case "shutdown":
 		Shutdown <- 1

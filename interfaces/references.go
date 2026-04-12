@@ -13,7 +13,7 @@ type ReferenceParams struct {
 }
 
 type ReferenceRequest struct {
-	Request
+	Request[int]
 	Params ReferenceParams `json:"params"`
 }
 

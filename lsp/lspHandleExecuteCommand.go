@@ -33,7 +33,7 @@ func lspHandleExecuteCommand(writer io.Writer, logger *log.Logger, state *parser
 	utils.WriteResponse(
 		writer,
 		interfaces.ApplyWorkspaceEditRequest{
-			Request: interfaces.Request{
+			Request: interfaces.Request[int]{
 				RPC:    "2.0",
 				ID:     rand.Intn(10_000),
 				Method: "workspace/applyEdit",

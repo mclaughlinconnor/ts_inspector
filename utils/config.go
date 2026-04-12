@@ -4,4 +4,4 @@ var Concurrency = false
 var Debug = false
 var LSP = true
 var SemanticSearch = true
-var TsGo = false
+var TsGo = true

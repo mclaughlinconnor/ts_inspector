@@ -9,7 +9,7 @@ type DefinitionParams struct {
 }
 
 type DefinitionRequest struct {
-	Request
+	Request[int]
 	Params DefinitionParams `json:"params"`
 }
 

@@ -14,7 +14,7 @@ func typescript(state *parser.State, file *parser.File) []Analysis {
 		return analyses
 	}
 
-	d := state.GetTsGo().GetSemanticDiagnostics(file.GetTcbUri())
+	d := state.GetTsGo().GetApi().GetSemanticDiagnostics(file.GetTcbUri())
 	typescriptDiagnostics := d.Result
 
 	tcbBlock, _ := tcb_cm.BuildTcbBlock(state, file)

@@ -13,7 +13,7 @@ type CodeActionParams struct {
 }
 
 type CodeActionRequest struct {
-	Request
+	Request[int]
 
 	Params CodeActionParams `json:"params"`
 }

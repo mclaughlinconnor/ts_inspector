@@ -311,3 +311,23 @@ type TypeToStringResponse struct {
 	TsGoResponse
 	Result string `json:"result"`
 }
+
+// Result for the initializeAPISession request.
+type InitializeAPISessionResponse struct {
+	TsGoResponse
+	Result struct {
+		// The unique identifier for this API session.
+		SessionId string `json:"sessionId"`
+
+		// The path to the named pipe or Unix domain socket for API communication.
+		Pipe string `json:"pipe"`
+	}
+}
+
+type InitializeAPISessionParams struct {
+}
+
+type InitializeAPISessionRequest struct {
+	TsGoRequest
+	Params InitializeAPISessionParams `json:"params"`
+}

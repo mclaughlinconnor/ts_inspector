@@ -21,7 +21,7 @@ type State struct {
 	rootURI       string
 	tcbGenerator  TcbGeneratorFunc
 	tsConfigFiles []string
-	tsgo          *TsGo
+	tsgo          *TsGoLsp
 }
 
 func CreateState() State {
@@ -123,7 +123,7 @@ func (s *State) GetTsConfigFiles() []string {
 	return files
 }
 
-func (s *State) GetTsGo() *TsGo {
+func (s *State) GetTsGo() *TsGoLsp {
 	if !utils.TsGo {
 		s.Logger.Fatalln("You may not call \"GetTsGo\" when the TsGo integration is disabled")
 	}
@@ -179,7 +179,7 @@ func (s *State) SetTsConfigFiles(tsconfigFiles []string) {
 	s.Unlock()
 }
 
-func (s *State) SetTsGo(tsgo *TsGo) {
+func (s *State) SetTsGo(tsgo *TsGoLsp) {
 	s.Lock()
 	s.tsgo = tsgo
 	s.Unlock()

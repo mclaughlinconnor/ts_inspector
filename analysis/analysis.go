@@ -97,9 +97,9 @@ func InitAnalysers() {
 		registerAnalyser(analyser{exec: debug, expensive: true})
 	}
 
-	if utils.TsGo {
-		registerAnalyser(analyser{exec: typescript, expensive: true})
-	}
+	// if utils.TsGo {
+	// 	registerAnalyser(analyser{exec: typescript, expensive: true})
+	// }
 
 	cfg.InitBuilder()
 }
