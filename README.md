@@ -16,6 +16,7 @@ TS Inspector analyses your code to find potential problems
 - Unused Angular Properties: Detects when an `@Input`, `@Output`, etc. is unused.
 - Recursive Templates: Highlights when a component recursively uses itself in its template.
 - Getters Used In Templates: Highlights possible performance problems when a getter is used in a component's template.
+- Type-checked Pug templates: detects when the wrong types are used for bindings, e.g., trying to pass a `string` to a `number` binding.
 
 #### TypeScript
 - Constructor Only Property: Highlights when constructor arguments have needlessly been made into class properties.
@@ -37,7 +38,7 @@ Code actions are available to make refactorings and perform tasks
 
 ### Go To Definition
 
-Supports go to definition from tags in templates to their component class definitions.
+Supports go to definition from tags in templates to their component class definitions, as well as properties in Angular bindings in template files.
 
 ### Find References
 
@@ -49,4 +50,4 @@ Supports context-aware completions for component selectors, `[input]`s, `(output
 
 ### Hover
 
-Shows relevant and useful information, like `[input]`s, `(output)`s, and declaring class when hovering tag names in templates.
+Shows relevant and useful information, like `[input]`s, `(output)`s, and declaring class when hovering tag names in templates, as well as type information for properties in Angular bindings.
