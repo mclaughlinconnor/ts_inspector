@@ -142,6 +142,16 @@ func (d *Definition) GetInputName() string {
 	return d.getDefinitionNameByDecoratorArg("Input")
 }
 
+func (d *Definition) GetNameNode() *sitter.Node {
+	nameNode := d.Node.ChildByFieldName("name")
+
+	if nameNode != nil {
+		return nameNode
+	}
+
+	return d.Node
+}
+
 func (d *Definition) GetOutputName() string {
 	return d.getDefinitionNameByDecoratorArg("Output")
 }

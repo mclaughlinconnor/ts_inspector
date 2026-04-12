@@ -157,6 +157,22 @@ func (f *File) GetOffsetsForRange(r utils.Range) (uint32, uint32) {
 	return f.GetOffsetForPosition(r.Start), f.GetOffsetForPosition(r.End)
 }
 
+func (f *File) GetLocationForOffset(startOffset uint32, endOffset uint32) interfaces.Location {
+	location := interfaces.Location{}
+
+	content := f.Snapshot().Content
+
+	start := utils.GetPositionForOffset(content, startOffset)
+	end := utils.GetPositionForOffset(content, endOffset)
+
+	r := utils.Range{Start: start, End: end}
+
+	location.Range = r
+	location.Uri = f.Snapshot().URI
+
+	return location
+}
+
 func (f *File) GetTcbUri() string {
 	file := f.Snapshot()
 	if file.Filetype != "pug" {

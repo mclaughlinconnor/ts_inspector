@@ -1,6 +1,54 @@
 package parser
 
+import (
+	"fmt"
+	"strconv"
+	"strings"
+)
+
 type Handle string
+
+type Node struct {
+	Pos  int
+	End  int
+	Kind int // no idea what this is yet
+	Path string
+}
+
+func (h Handle) ExtractNode() (*Node, error) {
+	e := func() (*Node, error) {
+		return nil, fmt.Errorf("invalid node handle %q", h)
+	}
+
+	parts := strings.SplitN(string(h), ".", 4)
+	if len(parts) != 4 {
+		return e()
+	}
+
+	n := Node{}
+
+	pos, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return e()
+	}
+	n.Pos = pos
+
+	end, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return e()
+	}
+	n.End = end
+
+	kind, err := strconv.Atoi(parts[2])
+	if err != nil {
+		return e()
+	}
+	n.Kind = kind
+
+	n.Path = parts[3]
+
+	return &n, nil
+}
 
 type TsGoResponse struct {
 	RPC string `json:"jsonrpc"`

@@ -3,8 +3,10 @@ package lsp
 import (
 	"io"
 	"log"
+	"strings"
 	"ts_inspector/interfaces"
 	"ts_inspector/parser"
+	"ts_inspector/parser/tcb_cm"
 	"ts_inspector/utils"
 )
 
@@ -21,5 +23,48 @@ func lspHandleDefinition(writer io.Writer, logger *log.Logger, state *parser.Sta
 	offset := file.GetOffsetForPosition(request.Params.Position)
 	locations = append(locations, parser.FindDefinition(state, file, offset)...)
 
+	if utils.TsGo {
+		part := tcb_cm.PugToTsLocation(state, file, int(offset), int(offset))
+		v := state.GetTsGo().GetSymbolAtPosition(file.GetTcbUri(), uint32(*part.TsStartOffset))
+	DECLARATION:
+		for _, declaration := range v.Result.Declarations {
+			node, err := declaration.ExtractNode()
+			if err != nil {
+				continue
+			}
+
+			if strings.HasPrefix(node.Path, "bundled") {
+				continue
+			}
+
+			declarationFile, found := state.GetFile(node.Path)
+			if !found {
+				continue
+			}
+
+			for _, class := range declarationFile.Snapshot().Classes {
+				definitions := class.FilterOwnDefinitions(nodeFilter(node.Pos, node.End))
+				for _, definition := range definitions {
+					locations = append(locations, definition.GetLocation())
+				}
+
+				if len(definitions) > 0 {
+					continue DECLARATION
+				}
+			}
+
+			locations = append(locations, declarationFile.GetLocationForOffset(uint32(node.Pos+1), uint32(node.End+1)))
+		}
+	}
+
 	utils.WriteResponse(writer, interfaces.DefinitionResponse{Result: locations, Response: interfaces.Response{ID: &request.ID, RPC: "2.0"}})
+}
+
+func nodeFilter(offsetStart int, offsetEnd int) func(parser.ClassedDefinition) bool {
+	return func(d parser.ClassedDefinition) bool {
+		nodeStart := d.Node.StartByte() + d.Class.Snapshot().Node.StartByte()
+		nodeEnd := d.Node.StartByte() + d.Class.Snapshot().Node.StartByte()
+
+		return offsetStart <= int(nodeStart) && offsetEnd >= int(nodeEnd)
+	}
 }

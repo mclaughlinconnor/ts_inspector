@@ -190,6 +190,16 @@ func (c *ClassedDefinition) GetDocumentation(includeDefinitionName bool) string 
 	return documentation + c.Definition.GetDocumentation(false)
 }
 
+func (c *ClassedDefinition) GetLocation() interfaces.Location {
+	classStart := c.Class.Snapshot().Node.StartByte()
+	node := c.GetNameNode()
+
+	start := node.StartByte() + classStart
+	end := node.EndByte() + classStart
+
+	return c.Class.Snapshot().File.GetLocationForOffset(start, end)
+}
+
 func (c *Class) GetInterestingPoints() []InterestingPoint {
 	interestingPoints := make([]InterestingPoint, 0)
 
