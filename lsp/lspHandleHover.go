@@ -70,7 +70,9 @@ func lspHandleHover(writer io.Writer, logger *log.Logger, state *parser.State, r
 		}
 	}
 
-	sb = handleTsGoHover(sb, state, file, int(cursorOffset))
+	if utils.TsGo {
+		sb = handleTsGoHover(sb, state, file, int(cursorOffset))
+	}
 
 	if len(sb) == 0 {
 		utils.WriteResponse(writer, interfaces.EmptyResponse{Result: nil, Response: interfaces.Response{ID: &request.ID, RPC: "2.0"}})
