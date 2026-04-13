@@ -189,7 +189,7 @@ func (d *Definition) IsUsed() bool             { return len(d.Usages) != 0 }
 
 func (d *Definition) NameMatchesString(name string) bool {
 	stripped, mode := utils.StripAngularFromAttribute(name)
-	if mode == utils.NeitherAngularStripped {
+	if mode == utils.NeitherAngularStripped || mode == utils.StructuralStripped {
 		return d.Name == stripped
 	}
 

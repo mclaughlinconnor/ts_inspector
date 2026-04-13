@@ -10,6 +10,7 @@ const (
 	InputAngularStripped   = 1
 	OutputAngularStripped  = 2
 	BothAngularStripped    = 3
+	StructuralStripped     = 4
 )
 
 func IsAngularAttribute(attribute []byte) (bool, error) {
@@ -18,6 +19,13 @@ func IsAngularAttribute(attribute []byte) (bool, error) {
 
 func StripAngularFromAttribute(attribute string) (string, int) {
 	mode := NeitherAngularStripped
+
+	if strings.HasPrefix(attribute, "*") {
+		attribute = attribute[1:]
+		mode |= StructuralStripped
+
+		return attribute, mode
+	}
 
 	if strings.HasPrefix(attribute, "[") && strings.HasSuffix(attribute, "]") {
 		attribute = attribute[1 : len(attribute)-1]

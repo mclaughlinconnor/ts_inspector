@@ -155,3 +155,10 @@ func StatementPartsFromNodeContent(node *sitter.Node, content []byte) *Statement
 
 	return &statementParts
 }
+
+func StatementPartsFromString(text string) *StatementParts {
+	statementParts := StatementParts{}
+	statementParts.AddVirtPart(text)
+
+	return &statementParts
+}

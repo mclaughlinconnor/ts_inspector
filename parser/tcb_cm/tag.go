@@ -9,7 +9,8 @@ import (
 )
 
 type Tag struct {
-	tcb *Tcb
+	tcb       *Tcb
+	postParts *StatementParts
 
 	Attributes  HelpfulArray[*Node]
 	Children    HelpfulArray[*Node]
@@ -80,6 +81,10 @@ func (t *Tag) Render() {
 
 	for _, c := range t.Children.Elements {
 		c.Render()
+	}
+
+	if t.postParts != nil {
+		tcb.AddStatementParts(t.postParts)
 	}
 }
 

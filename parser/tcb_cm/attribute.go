@@ -1,6 +1,7 @@
 package tcb_cm
 
 import (
+	"fmt"
 	"strings"
 	"ts_inspector/parser"
 
@@ -72,6 +73,14 @@ THING:
 					}
 
 					tcb.AddAssignment(assInput, a.NameNode, *valueExpr)
+
+					if strings.HasPrefix(a.Name, "*") && thing.HasDirective() && len(thing.FilterAllDefinitions(func(d parser.ClassedDefinition) bool { return d.Name == parser.NG_TEMPLATE_CONTEXT_GUARD })) > 0 {
+						ctxIdent := tcb.CreateVar(*StatementPartsFromString(NULL_AS_ANY))
+
+						tcb.AddVirtPart(fmt.Sprintf("if (%s.%s(%s, %s)) {\n", classIdent, parser.NG_TEMPLATE_CONTEXT_GUARD, compIdent, ctxIdent))
+
+						a.Tag.postParts = StatementPartsFromString("\n}\n")
+					}
 				}
 			}
 
