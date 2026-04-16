@@ -149,8 +149,13 @@ func extractMetadata(class *Class, root *sitter.Node, content []byte) {
 				for ti := range child.NamedChildCount() {
 					tp := child.NamedChild(int(ti))
 
+					tpName := tp.ChildByFieldName("name")
+					if tpName == nil {
+						continue
+					}
+
 					state.Update(func(data *classState) {
-						data.TypeParameters = append(data.TypeParameters, tp.Content(content))
+						data.TypeParameters = append(data.TypeParameters, tpName.Content(content))
 					})
 				}
 			}
