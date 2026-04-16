@@ -7,10 +7,6 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
-type Expression struct {
-	Parts []StatementParts
-}
-
 type Part struct {
 	PugEndOffset   *int
 	PugStartOffset *int

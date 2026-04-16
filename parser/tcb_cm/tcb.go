@@ -11,6 +11,12 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
+type GenericDirectiveConstructor struct {
+	class          *parser.Class
+	identifier     string
+	statementParts *StatementParts
+}
+
 type Import struct {
 	Class      *parser.Class
 	File       *parser.File
@@ -18,12 +24,13 @@ type Import struct {
 }
 
 type Tcb struct {
-	CurrentScope *Scope
-	Imports      []*Import
-	NextId       int
-	RootScope    *Scope
-	State        *parser.State
-	Class        *parser.Class
+	CurrentScope                 *Scope
+	Imports                      []*Import
+	GenericDirectiveConstructors []*GenericDirectiveConstructor
+	NextId                       int
+	RootScope                    *Scope
+	State                        *parser.State
+	Class                        *parser.Class
 }
 
 func (t *Tcb) GetNextId() int {
@@ -50,6 +57,18 @@ func (t *Tcb) AddAssignment(identifer string, identNode *sitter.Node, value Stat
 	t.AddVirtPart(" = ")
 	t.AddStatementParts(&value)
 	t.AddVirtPart(";\n")
+}
+
+func (t *Tcb) AddGenericDirectiveConstructor(directive *parser.Class, parts *StatementParts) string {
+	index := slices.IndexFunc(t.GenericDirectiveConstructors, func(c *GenericDirectiveConstructor) bool { return c.class.Id() == directive.Id() })
+	if index != -1 {
+		return t.GenericDirectiveConstructors[index].identifier
+	}
+
+	g := GenericDirectiveConstructor{class: directive, statementParts: parts, identifier: "_t" + t.GetNextIdString()}
+	t.GenericDirectiveConstructors = append(t.GenericDirectiveConstructors, &g)
+
+	return g.identifier
 }
 
 func (t *Tcb) AddImport(class *parser.Class) string {
@@ -106,6 +125,16 @@ func (t *Tcb) BuildImports() string {
 	return sb.String()
 }
 
+func (t *Tcb) BuildGenericConstructors() string {
+	sb := strings.Builder{}
+
+	for _, constructor := range t.GenericDirectiveConstructors {
+		sb.WriteString(constructor.statementParts.ToString())
+	}
+
+	return sb.String()
+}
+
 func (t *Tcb) CreateVar(value StatementParts) string {
 	if v := t.GetScope().GetVariableByValue(value); v != nil {
 		return v.Identifier
@@ -116,9 +145,7 @@ func (t *Tcb) CreateVar(value StatementParts) string {
 	t.AddVirtPart(name)
 	t.AddVirtPart(" = ")
 
-	for _, p := range value.Parts {
-		t.AddPart(p)
-	}
+	t.AddStatementParts(&value)
 
 	t.AddVirtPart(";\n")
 
