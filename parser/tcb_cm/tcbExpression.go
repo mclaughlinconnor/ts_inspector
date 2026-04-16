@@ -544,7 +544,11 @@ func visitIdentifier(node *sitter.Node, state *exprState, indexInParent int, int
 	if variable != nil {
 		state.parts.AddRealPart(variable.Identifier, node)
 	} else {
-		state.parts.AddVirtPart("this.")
+		value := node.Content(state.content)
+		if !isIntrinsicValue(value) {
+			state.parts.AddVirtPart("this.")
+		}
+
 		state.parts.AddRealPart(node.Content(state.content), node)
 	}
 
@@ -620,4 +624,21 @@ func wrapForTypeChecker(expr *StatementParts) *StatementParts {
 	expr.AddVirtPart(")")
 
 	return expr
+}
+
+func isIntrinsicValue(text string) bool {
+	switch text {
+	case "true":
+		fallthrough
+	case "false":
+		fallthrough
+	case "null":
+		fallthrough
+	case "undefined":
+		fallthrough
+	case "NaN":
+		return true
+	default:
+		return false
+	}
 }
