@@ -25,35 +25,38 @@ func lspHandleDefinition(writer io.Writer, logger *log.Logger, state *parser.Sta
 
 	if utils.TsGo {
 		part := tcb_cm.PugToTsLocation(state, file, int(offset), int(offset))
-		v := state.GetTsGo().GetSymbolAtPosition(file.GetTcbUri(), uint32(*part.TsStartOffset))
-	DECLARATION:
-		for _, declaration := range v.Result.Declarations {
-			node, err := declaration.ExtractNode()
-			if err != nil {
-				continue
-			}
 
-			if strings.HasPrefix(node.Path, "bundled") {
-				continue
-			}
-
-			declarationFile, found := state.GetFile(node.Path)
-			if !found {
-				continue
-			}
-
-			for _, class := range declarationFile.Snapshot().Classes {
-				definitions := class.FilterOwnDefinitions(nodeFilter(node.Pos, node.End))
-				for _, definition := range definitions {
-					locations = append(locations, definition.GetLocation())
+		if part != nil {
+			v := state.GetTsGo().GetSymbolAtPosition(file.GetTcbUri(), uint32(*part.TsStartOffset))
+		DECLARATION:
+			for _, declaration := range v.Result.Declarations {
+				node, err := declaration.ExtractNode()
+				if err != nil {
+					continue
 				}
 
-				if len(definitions) > 0 {
-					continue DECLARATION
+				if strings.HasPrefix(node.Path, "bundled") {
+					continue
 				}
-			}
 
-			locations = append(locations, declarationFile.GetLocationForOffset(uint32(node.Pos+1), uint32(node.End+1)))
+				declarationFile, found := state.GetFile(node.Path)
+				if !found {
+					continue
+				}
+
+				for _, class := range declarationFile.Snapshot().Classes {
+					definitions := class.FilterOwnDefinitions(nodeFilter(node.Pos, node.End))
+					for _, definition := range definitions {
+						locations = append(locations, definition.GetLocation())
+					}
+
+					if len(definitions) > 0 {
+						continue DECLARATION
+					}
+				}
+
+				locations = append(locations, declarationFile.GetLocationForOffset(uint32(node.Pos+1), uint32(node.End+1)))
+			}
 		}
 	}
 
