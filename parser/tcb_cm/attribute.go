@@ -25,7 +25,7 @@ func (a *Attribute) GetSourceClass() *parser.Class {
 }
 
 func (a *Attribute) IsInput() bool {
-	return strings.HasPrefix(a.Name, "[") && strings.HasSuffix(a.Name, "]")
+	return (strings.HasPrefix(a.Name, "*")) || (strings.HasPrefix(a.Name, "[") && strings.HasSuffix(a.Name, "]"))
 }
 
 func (a *Attribute) IsOutput() bool {
@@ -33,6 +33,10 @@ func (a *Attribute) IsOutput() bool {
 }
 
 func (a *Attribute) Render() {
+	if !a.IsInput() {
+		return
+	}
+
 	sourceClass := a.Tcb().Class
 	if !sourceClass.HasComponent() {
 		return
