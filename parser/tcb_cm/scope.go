@@ -53,7 +53,7 @@ func (s *Scope) GetVariableByName(name string) *Variable {
 	scope := s
 
 	for scope != nil {
-		index := slices.IndexFunc(s.Variables, func(variable *Variable) bool { return variable.Identifier == name })
+		index := slices.IndexFunc(scope.Variables, func(variable *Variable) bool { return variable.Identifier == name })
 		if index != -1 {
 			return scope.Variables[index]
 		}
