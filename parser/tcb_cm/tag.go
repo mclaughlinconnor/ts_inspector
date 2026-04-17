@@ -9,8 +9,8 @@ import (
 )
 
 type Tag struct {
-	tcb       *Tcb
-	postParts *StatementParts
+	tcb        *Tcb
+	closeScope bool
 
 	Attributes  HelpfulArray[*Node]
 	Children    HelpfulArray[*Node]
@@ -68,7 +68,7 @@ func (t *Tag) matchesSelector(selector string) bool {
 func (t *Tag) Render() {
 	tcb := t.Tcb()
 
-	value := StatementParts{}
+	value := Statement{}
 	value.AddVirtPart("document.createElement(\"")
 	value.AddVirtPart(t.Name)
 	value.AddVirtPart("\")")
@@ -83,8 +83,8 @@ func (t *Tag) Render() {
 		c.Render()
 	}
 
-	if t.postParts != nil {
-		tcb.AddStatementParts(t.postParts)
+	if t.closeScope {
+		tcb.EndScope()
 	}
 }
 

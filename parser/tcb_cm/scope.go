@@ -7,10 +7,10 @@ import (
 )
 
 type Scope struct {
-	ChildScope  *Scope
-	ParentScope *Scope
-	Parts       StatementParts
-	Variables   []*Variable
+	ChildrenScopes []*Scope
+	ParentScope    *Scope
+	Parts          Statement
+	Variables      []*Variable
 }
 
 type Variable struct {
@@ -18,8 +18,8 @@ type Variable struct {
 	Value      string
 }
 
-func (s *Scope) AddStatementParts(parts *StatementParts) {
-	s.Parts.AddStatementParts(parts)
+func (s *Scope) AddStatement(parts *Statement) {
+	s.Parts.AddStatement(parts)
 }
 
 func (s *Scope) AddVirtPart(p string) {
@@ -34,11 +34,15 @@ func (s *Scope) AddRealPart(p string, node *sitter.Node) {
 	s.Parts.AddRealPart(p, node)
 }
 
+func (s *Scope) AddScopePart(scope *Scope) {
+	s.Parts.AddScopePart(scope)
+}
+
 func (s *Scope) AddVariable(v *Variable) {
 	s.Variables = append(s.Variables, v)
 }
 
-func (s *Scope) GetVariableByValue(value StatementParts) *Variable {
+func (s *Scope) GetVariableByValue(value Statement) *Variable {
 	v := value.ToString()
 
 	index := slices.IndexFunc(s.Variables, func(variable *Variable) bool { return variable.Value == v })
@@ -62,4 +66,20 @@ func (s *Scope) GetVariableByName(name string) *Variable {
 	}
 
 	return nil
+}
+
+func (s *Scope) ToStatement() Statement {
+	statement := Statement{}
+
+	for _, part := range s.Parts.Parts {
+		if part.scope != nil {
+			s := part.scope.ToStatement()
+			statement.AddStatement(&s)
+			continue
+		}
+
+		statement.AddPart(part)
+	}
+
+	return statement
 }

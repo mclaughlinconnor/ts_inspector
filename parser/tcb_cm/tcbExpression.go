@@ -9,7 +9,7 @@ import (
 
 type exprState struct {
 	content []byte
-	parts   *StatementParts
+	parts   *Statement
 	tcb     *Tcb
 }
 
@@ -39,9 +39,9 @@ func initTcbExpression() {
 	exprOptimisedMap = walk.GenerateSymbolMap(angularExprLang, exprVisitorFuncMap)
 }
 
-func buildTcbExpression(tcb *Tcb, expression string) *StatementParts {
-	s, err := utils.ParseText([]byte(expression), utils.AngularExpr, nil, func(root *sitter.Node, content []byte, _ *StatementParts) (*StatementParts, error) {
-		state := exprState{content: content, parts: &StatementParts{}, tcb: tcb}
+func buildTcbExpression(tcb *Tcb, expression string) *Statement {
+	s, err := utils.ParseText([]byte(expression), utils.AngularExpr, nil, func(root *sitter.Node, content []byte, _ *Statement) (*Statement, error) {
+		state := exprState{content: content, parts: &Statement{}, tcb: tcb}
 		output := newWalk(root, &state)
 		return output.parts, nil
 	})
@@ -54,7 +54,7 @@ func buildTcbExpression(tcb *Tcb, expression string) *StatementParts {
 }
 
 func newWalk(node *sitter.Node, state *exprState) *exprState {
-	newState := exprState{content: state.content, parts: &StatementParts{}, tcb: state.tcb}
+	newState := exprState{content: state.content, parts: &Statement{}, tcb: state.tcb}
 
 	return walk.VisitNode(node, &newState, 0, exprOptimisedMap, false)
 }
@@ -67,7 +67,7 @@ func visitUnary(node *sitter.Node, state *exprState, indexInParent int, internal
 	expr := newWalk(exprNode, state)
 
 	state.parts.AddRealPart(operator, operatorNode)
-	state.parts.AddStatementParts(expr.parts)
+	state.parts.AddStatement(expr.parts)
 
 	return state
 }
@@ -82,9 +82,9 @@ func visitBinary(node *sitter.Node, state *exprState, indexInParent int, interna
 	rhsNode := node.ChildByFieldName("right")
 	rhs := newWalk(rhsNode, state)
 
-	state.parts.AddStatementParts(lhs.parts)
+	state.parts.AddStatement(lhs.parts)
 	state.parts.AddRealPart(operator, operatorNode)
-	state.parts.AddStatementParts(rhs.parts)
+	state.parts.AddStatement(rhs.parts)
 
 	return state
 }
@@ -129,11 +129,11 @@ func visitConditional(node *sitter.Node, state *exprState, indexInParent int, in
 	falseState := newWalk(node.ChildByFieldName("alternative"), state)
 	wrapForTypeChecker(falseState.parts)
 
-	state.parts.AddStatementParts(condState.parts)
+	state.parts.AddStatement(condState.parts)
 	state.parts.AddVirtPart(" ? ")
-	state.parts.AddStatementParts(trueState.parts)
+	state.parts.AddStatement(trueState.parts)
 	state.parts.AddVirtPart(" : ")
-	state.parts.AddStatementParts(falseState.parts)
+	state.parts.AddStatement(falseState.parts)
 
 	return state
 }
@@ -162,7 +162,7 @@ func visitInterpolation(node *sitter.Node, state *exprState, indexInParent int, 
 		}
 
 		state.parts.AddVirtPart(" + ")
-		state.parts.AddStatementParts(wrapForTypeChecker(partExpr))
+		state.parts.AddStatement(wrapForTypeChecker(partExpr))
 	}
 
 	return state
@@ -175,9 +175,9 @@ func visitKeyedRead(node *sitter.Node, state *exprState, indexInParent int, inte
 	keyNode := node.ChildByFieldName("property")
 	keyState := newWalk(keyNode, state)
 
-	state.parts.AddStatementParts(wrapForDiagnostics(receiverState.parts))
+	state.parts.AddStatement(wrapForDiagnostics(receiverState.parts))
 	state.parts.AddVirtPart("[")
-	state.parts.AddStatementParts(wrapForDiagnostics(keyState.parts))
+	state.parts.AddStatement(wrapForDiagnostics(keyState.parts))
 	state.parts.AddVirtPart("]")
 
 	return state
@@ -193,7 +193,7 @@ func visitLiteralArray(node *sitter.Node, state *exprState, indexInParent int, i
 
 		element := node.NamedChild(int(i))
 		elementState := newWalk(element, state)
-		state.parts.AddStatementParts(wrapForTypeChecker(elementState.parts))
+		state.parts.AddStatement(wrapForTypeChecker(elementState.parts))
 	}
 
 	state.parts.AddVirtPart("]")
@@ -222,7 +222,7 @@ func visitLiteralMap(node *sitter.Node, state *exprState, indexInParent int, int
 
 		state.parts.AddRealPart(key, keyNode)
 		state.parts.AddVirtPart(": ")
-		state.parts.AddStatementParts(valueExpr.parts)
+		state.parts.AddStatement(valueExpr.parts)
 	}
 
 	state.parts.AddVirtPart("}")
@@ -292,10 +292,10 @@ func visitKeyedNonNullAssertRead(node *sitter.Node, state *exprState, indexInPar
 	keyNode := node.ChildByFieldName("property")
 	keyState := newWalk(keyNode, state)
 
-	state.parts.AddStatementParts(wrapForDiagnostics(receiverState.parts))
+	state.parts.AddStatement(wrapForDiagnostics(receiverState.parts))
 	state.parts.AddVirtPart("!")
 	state.parts.AddVirtPart("[")
-	state.parts.AddStatementParts(wrapForDiagnostics(keyState.parts))
+	state.parts.AddStatement(wrapForDiagnostics(keyState.parts))
 	state.parts.AddVirtPart("]")
 
 	return state
@@ -309,11 +309,11 @@ func visitNonNullAssertRead(node *sitter.Node, state *exprState, indexInParent i
 	receiverState := newWalk(receiverNode, state)
 
 	nameNode := node.ChildByFieldName("property")
-	name := wrapForDiagnostics(StatementPartsFromNodeContent(nameNode, state.content))
+	name := wrapForDiagnostics(StatementFromNodeContent(nameNode, state.content))
 
-	state.parts.AddStatementParts(receiverState.parts)
+	state.parts.AddStatement(receiverState.parts)
 	state.parts.AddVirtPart("!.")
-	state.parts.AddStatementParts(name)
+	state.parts.AddStatement(name)
 
 	return state
 }
@@ -340,11 +340,11 @@ func visitPropertyRead(node *sitter.Node, state *exprState, indexInParent int, i
 	receiverState := newWalk(receiverNode, state)
 
 	nameNode := node.ChildByFieldName("property")
-	name := StatementPartsFromNodeContent(nameNode, state.content)
+	name := StatementFromNodeContent(nameNode, state.content)
 
-	state.parts.AddStatementParts(receiverState.parts)
+	state.parts.AddStatement(receiverState.parts)
 	state.parts.AddVirtPart(".")
-	state.parts.AddStatementParts(name)
+	state.parts.AddStatement(name)
 
 	return state
 }
@@ -362,9 +362,9 @@ func visitWrite(node *sitter.Node, state *exprState, indexInParent int, internal
 	right := wrapForTypeChecker(newWalk(rightNode, state).parts)
 
 	state.parts.AddVirtPart("(")
-	state.parts.AddStatementParts(left)
+	state.parts.AddStatement(left)
 	state.parts.AddVirtPart(" = ")
-	state.parts.AddStatementParts(right)
+	state.parts.AddStatement(right)
 	state.parts.AddVirtPart(")")
 
 	return state
@@ -376,7 +376,7 @@ func visitSafePropertyRead(node *sitter.Node, state *exprState, indexInParent in
 	receiver := wrapForDiagnostics(receiverState.parts)
 
 	nameNode := node.ChildByFieldName("property")
-	name := StatementPartsFromNodeContent(nameNode, state.content)
+	name := StatementFromNodeContent(nameNode, state.content)
 
 	// The form of safe property reads depends on whether strictness is in use.
 	// if (this.config.strictSafeNavigationTypes) {
@@ -385,21 +385,21 @@ func visitSafePropertyRead(node *sitter.Node, state *exprState, indexInParent in
 	// property read, or `undefined`. So a ternary is used to create an "or" type:
 	// "a?.b" becomes (null as any ? a!.b : undefined)
 	// The type of this expression is (typeof a!.b) | undefined, which is exactly as desired.
-	expr := &StatementParts{}
-	expr.AddStatementParts(receiver)
+	expr := &Statement{}
+	expr.AddStatement(receiver)
 	expr.AddVirtPart("!.")
-	expr.AddStatementParts(name)
+	expr.AddStatement(name)
 
-	output := &StatementParts{}
+	output := &Statement{}
 	output.AddVirtPart("(")
 	output.AddVirtPart(NULL_AS_ANY)
 	output.AddVirtPart(" ? ")
-	output.AddStatementParts(expr)
+	output.AddStatement(expr)
 	output.AddVirtPart(" : ")
 	output.AddVirtPart(UNDEFINED)
 	output.AddVirtPart(")")
 
-	state.parts.AddStatementParts(output)
+	state.parts.AddStatement(output)
 
 	// } else if (VeSafeLhsInferenceBugDetector.veWillInferAnyFor(ast)) {
 	//   // Emulate a View Engine bug where 'any' is inferred for the left-hand side of the safe
@@ -435,17 +435,17 @@ func visitSafeKeyedRead(node *sitter.Node, state *exprState, indexInParent int, 
 
 	// "a?.[...]" becomes (null as any ? a![...] : undefined)
 
-	expr := &StatementParts{}
-	expr.AddStatementParts(receiver)
+	expr := &Statement{}
+	expr.AddStatement(receiver)
 	expr.AddVirtPart("![")
-	expr.AddStatementParts(key)
+	expr.AddStatement(key)
 	expr.AddVirtPart("]")
 
-	output := &StatementParts{}
+	output := &Statement{}
 	output.AddVirtPart("(")
 	output.AddVirtPart(NULL_AS_ANY)
 	output.AddVirtPart(" ? ")
-	output.AddStatementParts(expr)
+	output.AddStatement(expr)
 	output.AddVirtPart(" : ")
 	output.AddVirtPart(UNDEFINED)
 	output.AddVirtPart(")")
@@ -461,17 +461,17 @@ func visitSafeKeyedRead(node *sitter.Node, state *exprState, indexInParent int, 
 	//   node = tsCastToAny(expr);
 	// }
 
-	state.parts.AddStatementParts(output)
+	state.parts.AddStatement(output)
 
 	return state
 }
 
 func visitCall(node *sitter.Node, state *exprState, indexInParent int, internalFuncMap walk.VisitorFuncMap[*exprState]) *exprState {
 	argsNode := node.ChildByFieldName("arguments")
-	args := make([]*StatementParts, 0)
+	args := make([]*Statement, 0)
 	if argsNode != nil {
 		argCount := argsNode.NamedChildCount()
-		args = make([]*StatementParts, argCount)
+		args = make([]*Statement, argCount)
 
 		for i := range argsNode.NamedChildCount() {
 			expr := argsNode.NamedChild(int(i))
@@ -487,7 +487,7 @@ func visitCall(node *sitter.Node, state *exprState, indexInParent int, internalF
 
 	if receiverNode.Content(state.content) == "$any" && len(args) == 1 {
 		state.parts.AddVirtPart("(")
-		state.parts.AddStatementParts(args[0])
+		state.parts.AddStatement(args[0])
 		state.parts.AddVirtPart(" as any)")
 
 		return state
@@ -517,9 +517,9 @@ func visitCall(node *sitter.Node, state *exprState, indexInParent int, internalF
 	// Safe property/keyed reads will produce a ternary whose value is nullable.
 	// We have to generate a similar ternary around the call.
 	if chain == "?." {
-		state.parts.AddStatementParts(convertToSafeCall(receiverStatementExpr, args))
+		state.parts.AddStatement(convertToSafeCall(receiverStatementExpr, args))
 	} else {
-		state.parts.AddStatementParts(receiverStatementExpr)
+		state.parts.AddStatement(receiverStatementExpr)
 
 		if chain == "!." {
 			state.parts.AddRealPart("!.", chainNode)
@@ -531,7 +531,7 @@ func visitCall(node *sitter.Node, state *exprState, indexInParent int, internalF
 				state.parts.AddVirtPart(", ")
 			}
 
-			state.parts.AddStatementParts(arg)
+			state.parts.AddStatement(arg)
 		}
 		state.parts.AddVirtPart(")")
 	}
@@ -564,38 +564,38 @@ func visitIdentifier(node *sitter.Node, state *exprState, indexInParent int, int
 //   return node;
 // }
 
-func convertToSafeCall(expr *StatementParts, args []*StatementParts) *StatementParts {
+func convertToSafeCall(expr *Statement, args []*Statement) *Statement {
 	// if (this.config.strictSafeNavigationTypes) {
 
 	// "a?.method(...)" becomes (null as any ? a!.method(...) : undefined)
-	nonNullExpr := &StatementParts{}
-	nonNullExpr.AddStatementParts(expr)
+	nonNullExpr := &Statement{}
+	nonNullExpr.AddStatement(expr)
 	nonNullExpr.AddVirtPart("!")
 
-	call := &StatementParts{}
-	call.AddStatementParts(nonNullExpr)
+	call := &Statement{}
+	call.AddStatement(nonNullExpr)
 	call.AddVirtPart("(")
 	for i, arg := range args {
 		if i != 0 {
 			call.AddVirtPart(", ")
 		}
 
-		call.AddStatementParts(arg)
+		call.AddStatement(arg)
 	}
 	call.AddVirtPart(")")
 
-	condExpr := &StatementParts{}
+	condExpr := &Statement{}
 	condExpr.AddVirtPart("(")
 	condExpr.AddVirtPart(NULL_AS_ANY)
 	condExpr.AddVirtPart(" ? ")
-	condExpr.AddStatementParts(call)
+	condExpr.AddStatement(call)
 	condExpr.AddVirtPart(" : ")
 	condExpr.AddVirtPart(UNDEFINED)
 	condExpr.AddVirtPart(")")
 
-	output := &StatementParts{}
+	output := &Statement{}
 	output.AddVirtPart("(")
-	output.AddStatementParts(condExpr)
+	output.AddStatement(condExpr)
 	output.AddVirtPart(")")
 
 	return output
@@ -612,14 +612,14 @@ func convertToSafeCall(expr *StatementParts, args []*StatementParts) *StatementP
 	//     ts.factory.createCallExpression(ts.factory.createNonNullExpression(expr), undefined, args));
 }
 
-func wrapForDiagnostics(expr *StatementParts) *StatementParts {
+func wrapForDiagnostics(expr *Statement) *Statement {
 	expr.PrependVirtPart("(")
 	expr.AddVirtPart(")")
 
 	return expr
 }
 
-func wrapForTypeChecker(expr *StatementParts) *StatementParts {
+func wrapForTypeChecker(expr *Statement) *Statement {
 	expr.PrependVirtPart("(")
 	expr.AddVirtPart(")")
 

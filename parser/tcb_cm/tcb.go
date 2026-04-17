@@ -12,9 +12,9 @@ import (
 )
 
 type GenericDirectiveConstructor struct {
-	class          *parser.Class
-	identifier     string
-	statementParts *StatementParts
+	class      *parser.Class
+	identifier string
+	statement  *Statement
 }
 
 type Import struct {
@@ -47,7 +47,7 @@ func (t *Tcb) GetNextIdString() string {
 	return strconv.Itoa(id)
 }
 
-func (t *Tcb) AddAssignment(identifer string, identNode *sitter.Node, value StatementParts) {
+func (t *Tcb) AddAssignment(identifer string, identNode *sitter.Node, value Statement) {
 	if identNode == nil {
 		t.AddVirtPart(identifer)
 	} else {
@@ -55,17 +55,17 @@ func (t *Tcb) AddAssignment(identifer string, identNode *sitter.Node, value Stat
 	}
 
 	t.AddVirtPart(" = ")
-	t.AddStatementParts(&value)
+	t.AddStatement(&value)
 	t.AddVirtPart(";\n")
 }
 
-func (t *Tcb) AddGenericDirectiveConstructor(directive *parser.Class, parts *StatementParts) string {
+func (t *Tcb) AddGenericDirectiveConstructor(directive *parser.Class, parts *Statement) string {
 	index := slices.IndexFunc(t.GenericDirectiveConstructors, func(c *GenericDirectiveConstructor) bool { return c.class.Id() == directive.Id() })
 	if index != -1 {
 		return t.GenericDirectiveConstructors[index].identifier
 	}
 
-	g := GenericDirectiveConstructor{class: directive, statementParts: parts, identifier: "_t" + t.GetNextIdString()}
+	g := GenericDirectiveConstructor{class: directive, statement: parts, identifier: "_t" + t.GetNextIdString()}
 	t.GenericDirectiveConstructors = append(t.GenericDirectiveConstructors, &g)
 
 	return g.identifier
@@ -96,8 +96,8 @@ func (t *Tcb) AddVirtPart(part string) {
 	t.GetScope().AddVirtPart(part)
 }
 
-func (t *Tcb) AddStatementParts(parts *StatementParts) {
-	t.GetScope().AddStatementParts(parts)
+func (t *Tcb) AddStatement(parts *Statement) {
+	t.GetScope().AddStatement(parts)
 }
 
 func (t *Tcb) AddRealPart(part string, node *sitter.Node) {
@@ -129,13 +129,13 @@ func (t *Tcb) BuildGenericConstructors() string {
 	sb := strings.Builder{}
 
 	for _, constructor := range t.GenericDirectiveConstructors {
-		sb.WriteString(constructor.statementParts.ToString())
+		sb.WriteString(constructor.statement.ToString())
 	}
 
 	return sb.String()
 }
 
-func (t *Tcb) CreateVar(value StatementParts) string {
+func (t *Tcb) CreateVar(value Statement) string {
 	if v := t.GetScope().GetVariableByValue(value); v != nil {
 		return v.Identifier
 	}
@@ -145,7 +145,7 @@ func (t *Tcb) CreateVar(value StatementParts) string {
 	t.AddVirtPart(name)
 	t.AddVirtPart(" = ")
 
-	t.AddStatementParts(&value)
+	t.AddStatement(&value)
 
 	t.AddVirtPart(";\n")
 
@@ -155,30 +155,31 @@ func (t *Tcb) CreateVar(value StatementParts) string {
 }
 
 func (t *Tcb) EndScope() {
-	t.AddVirtPart("\n}")
+	t.AddVirtPart("}\n")
 	t.CurrentScope = t.CurrentScope.ParentScope
+	t.CurrentScope.Parts.CloseScopePart()
 }
 
 func (t *Tcb) GetScope() *Scope {
 	return t.CurrentScope
 }
 
-func (t *Tcb) NewScope() {
-	scope := Scope{ParentScope: t.CurrentScope, Parts: StatementParts{}, Variables: []*Variable{}}
-	t.CurrentScope.ChildScope = &scope
+func (t *Tcb) NewScope() *Scope {
+	scope := Scope{ParentScope: t.CurrentScope, Parts: Statement{}, Variables: []*Variable{}}
+	// t.CurrentScope.ChildrenScopes = append(t.CurrentScope.ChildrenScopes, &scope)
+	t.CurrentScope.AddScopePart(&scope)
 	t.CurrentScope = &scope
+
+	return &scope
 }
 
-func (t *Tcb) ToString() *StatementParts {
-	tcb := StatementParts{}
+func (t *Tcb) ToString() *Statement {
+	tcb := Statement{}
 
 	tcb.AddVirtPart(t.BuildImports())
 
-	scope := t.RootScope
-	for scope != nil {
-		tcb.AddStatementParts(&scope.Parts)
-		scope = scope.ChildScope
-	}
+	scopes := t.RootScope.ToStatement()
+	tcb.AddStatement(&scopes)
 
 	return &tcb
 }
@@ -189,7 +190,7 @@ func (t *Tcb) WithScope(builder func()) {
 	t.EndScope()
 }
 
-func GenerateTcb(state *parser.State, template *parser.Class, root *sitter.Node, content []byte) *StatementParts {
+func GenerateTcb(state *parser.State, template *parser.Class, root *sitter.Node, content []byte) *Statement {
 	scope := &Scope{}
 
 	tcb := Tcb{

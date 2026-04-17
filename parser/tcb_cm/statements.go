@@ -13,8 +13,9 @@ type Part struct {
 	TsEndOffset    *int
 	TsStartOffset  *int
 
-	node *sitter.Node
-	text string
+	node  *sitter.Node
+	text  string
+	scope *Scope
 }
 
 func (p *Part) IsReal() bool {
@@ -25,24 +26,23 @@ func (p *Part) IsVirtual() bool {
 	return p.node == nil
 }
 
-type StatementParts struct {
-	Parts  []Part
-	sb     strings.Builder
-	length int
+type Statement struct {
+	Parts []Part
+	sb    strings.Builder
 }
 
-func (s *StatementParts) AddCodeBlock(builder func()) {
+func (s *Statement) AddCodeBlock(builder func()) {
 	s.AddVirtPart("{\n")
 	builder()
 	s.AddVirtPart("\n}")
 }
 
-func (s *StatementParts) AddVirtPart(text string) {
+func (s *Statement) AddVirtPart(text string) {
 	s.AddRealPart(text, nil)
 }
 
-func (s *StatementParts) AddStatementParts(statementParts *StatementParts) {
-	for _, p := range statementParts.Parts {
+func (s *Statement) AddStatement(statement *Statement) {
+	for _, p := range statement.Parts {
 		tsStartOffset := s.sb.Len()
 		tsEndOffset := tsStartOffset + (*p.TsEndOffset - *p.TsStartOffset)
 
@@ -59,7 +59,7 @@ func (s *StatementParts) AddStatementParts(statementParts *StatementParts) {
 	}
 }
 
-func (s *StatementParts) OffsetByNodeStart(node *sitter.Node) {
+func (s *Statement) OffsetByNodeStart(node *sitter.Node) {
 	offset := int(node.StartByte())
 
 	for _, p := range s.Parts {
@@ -72,7 +72,7 @@ func (s *StatementParts) OffsetByNodeStart(node *sitter.Node) {
 	}
 }
 
-func (s *StatementParts) PrependVirtPart(text string) {
+func (s *Statement) PrependVirtPart(text string) {
 	tsStartOffset := 0
 	tsEndOffset := len(text)
 
@@ -85,7 +85,7 @@ func (s *StatementParts) PrependVirtPart(text string) {
 	}
 }
 
-func (s *StatementParts) PugToTsLocation(start int, _end int) *Part {
+func (s *Statement) PugToTsLocation(start int, _end int) *Part {
 	for _, part := range s.Parts {
 		if part.PugStartOffset == nil || part.PugEndOffset == nil {
 			continue
@@ -99,7 +99,7 @@ func (s *StatementParts) PugToTsLocation(start int, _end int) *Part {
 	return nil
 }
 
-func (s *StatementParts) TsToPugLocation(start int, _end int) *Part {
+func (s *Statement) TsToPugLocation(start int, _end int) *Part {
 	for _, part := range s.Parts {
 		if *part.TsStartOffset <= start && *part.TsEndOffset > start {
 			return &part
@@ -109,7 +109,7 @@ func (s *StatementParts) TsToPugLocation(start int, _end int) *Part {
 	return nil
 }
 
-func (s *StatementParts) AddPart(part Part) {
+func (s *Statement) AddPart(part Part) {
 	if part.node != nil && (part.PugStartOffset == nil || part.PugEndOffset == nil) {
 		start := int(part.node.StartByte())
 		end := int(part.node.EndByte())
@@ -122,19 +122,34 @@ func (s *StatementParts) AddPart(part Part) {
 	s.sb.WriteString(part.text)
 }
 
-func (s *StatementParts) AddRealPart(text string, node *sitter.Node) {
+func (s *Statement) AddRealPart(text string, node *sitter.Node) {
 	tsStartOffset := s.sb.Len()
 	tsEndOffset := tsStartOffset + len(text)
 
 	s.AddPart(Part{node: node, text: text, TsEndOffset: &tsEndOffset, TsStartOffset: &tsStartOffset})
 }
 
-func (s *StatementParts) AppendStatement(statement StatementParts) {
-	s.AddStatementParts(&statement)
+func (s *Statement) AddScopePart(scope *Scope) {
+	startOffset := 0
+	if len(s.Parts) > 0 {
+		startOffset = *s.Parts[len(s.Parts)-1].TsEndOffset
+	}
+
+	s.AddPart(Part{scope: scope, TsStartOffset: &startOffset})
+}
+
+func (s *Statement) AppendStatement(statement Statement) {
+	s.AddStatement(&statement)
 	s.AddVirtPart("\n")
 }
 
-func (s *StatementParts) ToString() string {
+func (s *Statement) CloseScopePart() {
+	l := s.sb.Len()
+	endOffset := *s.Parts[len(s.Parts)-1].TsStartOffset + l
+	s.Parts[len(s.Parts)-1].TsEndOffset = &endOffset
+}
+
+func (s *Statement) ToString() string {
 	sb := strings.Builder{}
 	for _, p := range s.Parts {
 		sb.WriteString(p.text)
@@ -143,18 +158,18 @@ func (s *StatementParts) ToString() string {
 	return sb.String()
 }
 
-func StatementPartsFromNodeContent(node *sitter.Node, content []byte) *StatementParts {
+func StatementFromNodeContent(node *sitter.Node, content []byte) *Statement {
 	nodeContent := node.Content(content)
 
-	statementParts := StatementParts{}
-	statementParts.AddRealPart(nodeContent, node)
+	statement := Statement{}
+	statement.AddRealPart(nodeContent, node)
 
-	return &statementParts
+	return &statement
 }
 
-func StatementPartsFromString(text string) *StatementParts {
-	statementParts := StatementParts{}
-	statementParts.AddVirtPart(text)
+func StatementFromString(text string) *Statement {
+	statement := Statement{}
+	statement.AddVirtPart(text)
 
-	return &statementParts
+	return &statement
 }

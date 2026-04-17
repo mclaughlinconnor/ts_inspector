@@ -55,7 +55,7 @@ THING:
 				classIdent := tcb.AddImport(thing)
 
 				if def.NameMatchesString(a.Name) {
-					value := StatementParts{}
+					value := Statement{}
 					value.AddVirtPart("null! as " + classIdent)
 
 					compIdent := buildDirectiveDeclaration(tcb, thing)
@@ -75,11 +75,12 @@ THING:
 					dirIdent := buildDirectiveAssignment(tcb, thing, a, compIdent, assInput, &def, valueExpr)
 
 					if strings.HasPrefix(a.Name, "*") && thing.HasDirective() && len(thing.FilterAllDefinitions(func(d parser.ClassedDefinition) bool { return d.Name == parser.NG_TEMPLATE_CONTEXT_GUARD })) > 0 {
-						ctxIdent := tcb.CreateVar(*StatementPartsFromString(NULL_AS_ANY))
+						ctxIdent := tcb.CreateVar(*StatementFromString(NULL_AS_ANY))
 
-						tcb.AddVirtPart(fmt.Sprintf("if (%s.%s(%s, %s)) {\n", classIdent, parser.NG_TEMPLATE_CONTEXT_GUARD, dirIdent, ctxIdent))
+						tcb.AddVirtPart(fmt.Sprintf("if (%s.%s(%s, %s))", classIdent, parser.NG_TEMPLATE_CONTEXT_GUARD, dirIdent, ctxIdent))
+						tcb.BeginScope()
 
-						a.Tag.postParts = StatementPartsFromString("\n}\n")
+						a.Tag.closeScope = true
 					}
 				}
 			}
@@ -89,7 +90,7 @@ THING:
 	}
 }
 
-func buildDirectiveAssignment(tcb *Tcb, thing *parser.Class, attribute *Attribute, compIdent string, assInput string, def *parser.ClassedDefinition, value *StatementParts) string {
+func buildDirectiveAssignment(tcb *Tcb, thing *parser.Class, attribute *Attribute, compIdent string, assInput string, def *parser.ClassedDefinition, value *Statement) string {
 	if len(thing.Snapshot().TypeParameters) > 0 {
 		return buildGenericDirectiveAssignment(tcb, thing, compIdent, def, value)
 	}
@@ -97,12 +98,12 @@ func buildDirectiveAssignment(tcb *Tcb, thing *parser.Class, attribute *Attribut
 	return buildNonGenericDirectiveAssignment(tcb, attribute, assInput, value)
 }
 
-func buildGenericDirectiveAssignment(tcb *Tcb, thing *parser.Class, compIdent string, def *parser.ClassedDefinition, value *StatementParts) string {
-	ctorExpr := StatementParts{}
+func buildGenericDirectiveAssignment(tcb *Tcb, thing *parser.Class, compIdent string, def *parser.ClassedDefinition, value *Statement) string {
+	ctorExpr := Statement{}
 	ctorExpr.AddVirtPart(compIdent)
 	ctorExpr.AddVirtPart("({")
 
-	values := map[string]*StatementParts{}
+	values := map[string]*Statement{}
 
 	for _, input := range thing.GetInputs() {
 		values[input.GetInputName()] = nil
@@ -118,7 +119,7 @@ func buildGenericDirectiveAssignment(tcb *Tcb, thing *parser.Class, compIdent st
 
 		ctorExpr.AddVirtPart("\"" + k + "\": ")
 		if v != nil {
-			ctorExpr.AddStatementParts(v)
+			ctorExpr.AddStatement(v)
 		} else {
 			ctorExpr.AddVirtPart(NULL_AS_ANY)
 		}
@@ -131,7 +132,7 @@ func buildGenericDirectiveAssignment(tcb *Tcb, thing *parser.Class, compIdent st
 	return tcb.CreateVar(ctorExpr)
 }
 
-func buildNonGenericDirectiveAssignment(tcb *Tcb, attribute *Attribute, assInput string, value *StatementParts) string {
+func buildNonGenericDirectiveAssignment(tcb *Tcb, attribute *Attribute, assInput string, value *Statement) string {
 	tcb.AddAssignment(assInput, attribute.NameNode, *value)
 
 	return assInput
@@ -148,11 +149,11 @@ func buildDirectiveDeclaration(tcb *Tcb, thing *parser.Class) string {
 func buildGenericDirectiveDeclaration(tcb *Tcb, thing *parser.Class) string {
 	ctorIdent := "_ctor" + tcb.GetNextIdString()
 
-	statement := StatementParts{}
+	statement := Statement{}
 	statement.AddVirtPart("const " + ctorIdent + ": ")
 
-	tpValues := StatementParts{}
-	tpDefs := StatementParts{}
+	tpValues := Statement{}
+	tpDefs := Statement{}
 
 	typeParameters := thing.Snapshot().TypeParameters
 	if len(typeParameters) > 0 {
@@ -171,15 +172,15 @@ func buildGenericDirectiveDeclaration(tcb *Tcb, thing *parser.Class) string {
 		tpValues.AddVirtPart(">")
 	}
 
-	statement.AddStatementParts(&tpValues)
+	statement.AddStatement(&tpValues)
 
 	thingIdent := tcb.AddImport(thing)
-	thingDef := StatementParts{}
+	thingDef := Statement{}
 	thingDef.AddVirtPart(thingIdent)
-	thingDef.AddStatementParts(&tpDefs)
+	thingDef.AddStatement(&tpDefs)
 
 	statement.AddVirtPart("(init: Pick<")
-	statement.AddStatementParts(&thingDef)
+	statement.AddStatement(&thingDef)
 	statement.AddVirtPart(", ")
 	for i, input := range thing.GetInputs() {
 		if i > 0 {
@@ -192,10 +193,10 @@ func buildGenericDirectiveDeclaration(tcb *Tcb, thing *parser.Class) string {
 	}
 
 	statement.AddVirtPart(">) => ")
-	statement.AddStatementParts(&thingDef)
+	statement.AddStatement(&thingDef)
 	statement.AddVirtPart(" = null!;\n")
 
-	tcb.AddStatementParts(&statement)
+	tcb.AddStatement(&statement)
 
 	return ctorIdent
 }
@@ -203,7 +204,7 @@ func buildGenericDirectiveDeclaration(tcb *Tcb, thing *parser.Class) string {
 // var _t1 = null! as _i1.MacyDirectiveAgain;
 func buildNonGenericDirectiveDeclaration(tcb *Tcb, thing *parser.Class) string {
 	classIdent := tcb.AddImport(thing)
-	value := StatementParts{}
+	value := Statement{}
 	value.AddVirtPart("null! as " + classIdent)
 
 	return tcb.CreateVar(value)
