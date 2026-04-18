@@ -44,13 +44,18 @@ func (s *Scope) AddVariable(v *Variable) {
 
 func (s *Scope) GetVariableByValue(value Statement) *Variable {
 	v := value.ToString()
+	scope := s
 
-	index := slices.IndexFunc(s.Variables, func(variable *Variable) bool { return variable.Value == v })
-	if index == -1 {
-		return nil
+	for scope != nil {
+		index := slices.IndexFunc(scope.Variables, func(variable *Variable) bool { return variable.Value == v })
+		if index != -1 {
+			return scope.Variables[index]
+		}
+
+		scope = scope.ParentScope
 	}
 
-	return s.Variables[index]
+	return nil
 }
 
 func (s *Scope) GetVariableByName(name string) *Variable {
