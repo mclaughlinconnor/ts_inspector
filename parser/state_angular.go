@@ -66,11 +66,11 @@ type Template struct {
 }
 
 func (a *Angular) DoesImport(class *Class) bool {
-	if a.Component != nil {
+	if a.Component != nil && a.Component.Imports != nil {
 		return a.Component.Imports.IsOrHas(class)
 	}
 
-	if a.Module != nil {
+	if a.Module != nil && a.Module.Imports != nil {
 		return a.Module.Imports.IsOrHas(class)
 	}
 
