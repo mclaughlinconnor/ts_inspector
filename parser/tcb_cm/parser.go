@@ -1,6 +1,8 @@
 package tcb_cm
 
 import (
+	"slices"
+	"strings"
 	"ts_inspector/ast/walk"
 	"ts_inspector/utils"
 
@@ -43,6 +45,42 @@ type Root struct {
 	Children HelpfulArray[*Node]
 }
 
+func (a *Ast) FindTagByTemplateRef(name string) *TemplateRef {
+	stack := utils.NewStack[*Node]()
+	visited := map[*Node]bool{}
+
+	for _, c := range a.Root.GetChildren().Elements {
+		stack.Push(c)
+	}
+
+	for !stack.IsEmpty() {
+		node := *stack.Pop()
+
+		if visited[node] {
+			continue
+		}
+
+		visited[node] = true
+
+		if node.Tag != nil {
+			index := slices.IndexFunc(node.Tag.TemplateRefs.Elements, func(tr TemplateRef) bool { return strings.TrimPrefix(tr.Name, "#") == name })
+			if index != -1 {
+				return &node.Tag.TemplateRefs.Elements[index]
+			}
+		}
+
+		for _, c := range node.GetChildren().Elements {
+			if visited[node] {
+				continue
+			}
+
+			stack.Push(c)
+		}
+	}
+
+	return nil
+}
+
 func (r *Root) Tcb() *Tcb {
 	return r.tcb
 }
@@ -71,6 +109,7 @@ func initAstParser() {
 func Parse(root *sitter.Node, content []byte, tcb *Tcb) *Ast {
 	rootAstNode := &Node{Kind: KindRoot, Root: &Root{}}
 	state := &Ast{Content: content, Root: rootAstNode, Tcb: tcb}
+	tcb.Ast = state
 	state.Current.Push(rootAstNode)
 
 	walk.VisitNode(root, state, 0, astOptimisedMap, true)

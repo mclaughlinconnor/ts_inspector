@@ -12,13 +12,15 @@ type Tag struct {
 	tcb        *Tcb
 	closeScope bool
 
-	Attributes  HelpfulArray[*Node]
-	Children    HelpfulArray[*Node]
-	Content     HelpfulArray[*TagContent]
-	Name        string
-	NameNode    *sitter.Node
-	Node        *sitter.Node
-	SourceClass *parser.Class
+	Attributes   HelpfulArray[*Node]
+	Children     HelpfulArray[*Node]
+	Content      HelpfulArray[*TagContent]
+	Identifier   string
+	Name         string
+	NameNode     *sitter.Node
+	Node         *sitter.Node
+	SourceClass  *parser.Class
+	TemplateRefs HelpfulArray[TemplateRef]
 }
 
 type TagContent struct {
@@ -29,6 +31,14 @@ type TagContent struct {
 
 type TagContentArray struct {
 	elems []*TagContent
+}
+
+type TemplateRef struct {
+	Attribute  *Node
+	Identifier string
+	Name       string
+	Tag        *Tag
+	Value      string
 }
 
 func (t *Tag) addAttribute(attribute *Attribute) *Node {
@@ -65,7 +75,7 @@ func (t *Tag) matchesSelector(selector string) bool {
 	return false
 }
 
-func (t *Tag) Render() {
+func (t *Tag) AddDeclaration(insertBeforeCurrentTag bool, shouldAddReferenceVar bool) {
 	tcb := t.Tcb()
 
 	value := Statement{}
@@ -73,7 +83,29 @@ func (t *Tag) Render() {
 	value.AddVirtPart(t.Name)
 	value.AddVirtPart("\")")
 
-	tcb.CreateVar(value)
+	if insertBeforeCurrentTag {
+		ident, newAfter := tcb.CreateVarAfterPart(&value, *tcb.TagBoundaryPartStack.Peek())
+		t.Identifier = ident
+		value := StatementFromString(t.Identifier)
+		refIdent, _ := tcb.CreateVarAfterPart(value, newAfter)
+		for i := range t.TemplateRefs.Elements {
+			t.TemplateRefs.Elements[i].Identifier = refIdent
+		}
+	} else {
+		t.Identifier = tcb.CreateVar(&value)
+	}
+}
+
+func (t *Tag) Render() {
+	tcb := t.Tcb()
+
+	if len(tcb.CurrentScope.Parts.Parts) > 0 {
+		tcb.TagBoundaryPartStack.Push(&tcb.CurrentScope.Parts.Parts[len(tcb.CurrentScope.Parts.Parts)-1])
+	}
+
+	if t.Identifier == "" {
+		t.AddDeclaration(false, false)
+	}
 
 	for _, a := range t.Attributes.Elements {
 		a.Render()
@@ -86,6 +118,8 @@ func (t *Tag) Render() {
 	if t.closeScope {
 		tcb.EndScope()
 	}
+
+	tcb.TagBoundaryPartStack.Pop()
 }
 
 func (t *Tag) Tcb() *Tcb {

@@ -7,11 +7,22 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
+var nextPartId = 0
+
+func getNextId() int {
+	id := nextPartId
+	nextPartId++
+
+	return id
+}
+
 type Part struct {
 	PugEndOffset   *int
 	PugStartOffset *int
 	TsEndOffset    *int
 	TsStartOffset  *int
+
+	Id int
 
 	node  *sitter.Node
 	text  string
@@ -53,10 +64,43 @@ func (s *Statement) AddStatement(statement *Statement) {
 			TsEndOffset:    &tsEndOffset,
 			PugStartOffset: p.PugStartOffset,
 			PugEndOffset:   p.PugEndOffset,
+
+			Id: getNextId(),
 		}
 
 		s.AddPart(newPart)
 	}
+}
+
+func (s *Statement) AddStatementAfterPart(statement *Statement, after *Part) *Part {
+	index := slices.IndexFunc(s.Parts, func(p Part) bool { return p.Id == after.Id })
+	if index == -1 {
+		return nil
+	}
+
+	if index+1 >= len(s.Parts) {
+		s.AddStatement(statement)
+		return nil
+	}
+
+	index++
+	s.Parts = slices.Insert(s.Parts, index, statement.Parts...)
+
+	increasedLength := 0
+	for _, p := range statement.Parts {
+		increasedLength += *p.TsEndOffset - *p.TsStartOffset
+		index++
+	}
+
+	newAfter := s.Parts[index-1]
+
+	for index < len(s.Parts) {
+		*s.Parts[index].TsStartOffset += increasedLength
+		*s.Parts[index].TsEndOffset += increasedLength
+		index++
+	}
+
+	return &newAfter
 }
 
 func (s *Statement) OffsetByNodeStart(node *sitter.Node) {
@@ -76,7 +120,7 @@ func (s *Statement) PrependVirtPart(text string) {
 	tsStartOffset := 0
 	tsEndOffset := len(text)
 
-	p := Part{text: text, TsStartOffset: &tsStartOffset, TsEndOffset: &tsEndOffset}
+	p := Part{text: text, TsStartOffset: &tsStartOffset, TsEndOffset: &tsEndOffset, Id: getNextId()}
 	s.Parts = slices.Insert(s.Parts, 0, p)
 
 	for _, p := range s.Parts {
@@ -126,7 +170,7 @@ func (s *Statement) AddRealPart(text string, node *sitter.Node) {
 	tsStartOffset := s.sb.Len()
 	tsEndOffset := tsStartOffset + len(text)
 
-	s.AddPart(Part{node: node, text: text, TsEndOffset: &tsEndOffset, TsStartOffset: &tsStartOffset})
+	s.AddPart(Part{node: node, text: text, TsEndOffset: &tsEndOffset, TsStartOffset: &tsStartOffset, Id: getNextId()})
 }
 
 func (s *Statement) AddScopePart(scope *Scope) {
@@ -135,7 +179,7 @@ func (s *Statement) AddScopePart(scope *Scope) {
 		startOffset = *s.Parts[len(s.Parts)-1].TsEndOffset
 	}
 
-	s.AddPart(Part{scope: scope, TsStartOffset: &startOffset})
+	s.AddPart(Part{scope: scope, TsStartOffset: &startOffset, Id: getNextId()})
 }
 
 func (s *Statement) AppendStatement(statement Statement) {

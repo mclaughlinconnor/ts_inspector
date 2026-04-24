@@ -39,6 +39,7 @@ func lspHandleDefinition(writer io.Writer, logger *log.Logger, state *parser.Sta
 					continue
 				}
 
+				// Variables can be declared in template files
 				declarationFile, found := state.GetFile(node.Path)
 				if !found {
 					continue

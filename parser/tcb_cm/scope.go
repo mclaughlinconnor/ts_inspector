@@ -15,11 +15,16 @@ type Scope struct {
 
 type Variable struct {
 	Identifier string
+	RefName    string
 	Value      string
 }
 
 func (s *Scope) AddStatement(parts *Statement) {
 	s.Parts.AddStatement(parts)
+}
+
+func (s *Scope) AddStatementAfterPart(parts *Statement, after *Part) *Part {
+	return s.Parts.AddStatementAfterPart(parts, after)
 }
 
 func (s *Scope) AddVirtPart(p string) {
@@ -42,7 +47,7 @@ func (s *Scope) AddVariable(v *Variable) {
 	s.Variables = append(s.Variables, v)
 }
 
-func (s *Scope) GetVariableByValue(value Statement) *Variable {
+func (s *Scope) GetVariableByValue(value *Statement) *Variable {
 	v := value.ToString()
 	scope := s
 
@@ -62,7 +67,7 @@ func (s *Scope) GetVariableByName(name string) *Variable {
 	scope := s
 
 	for scope != nil {
-		index := slices.IndexFunc(scope.Variables, func(variable *Variable) bool { return variable.Identifier == name })
+		index := slices.IndexFunc(scope.Variables, func(variable *Variable) bool { return variable.Identifier == name || variable.RefName == name })
 		if index != -1 {
 			return scope.Variables[index]
 		}

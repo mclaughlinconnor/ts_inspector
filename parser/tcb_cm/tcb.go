@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"ts_inspector/parser"
+	"ts_inspector/utils"
 
 	sitter "github.com/smacker/go-tree-sitter"
 )
@@ -24,13 +25,15 @@ type Import struct {
 }
 
 type Tcb struct {
+	Ast                          *Ast
+	Class                        *parser.Class
 	CurrentScope                 *Scope
-	Imports                      []*Import
 	GenericDirectiveConstructors []*GenericDirectiveConstructor
+	Imports                      []*Import
 	NextId                       int
 	RootScope                    *Scope
 	State                        *parser.State
-	Class                        *parser.Class
+	TagBoundaryPartStack         utils.Stack[*Part]
 }
 
 func (t *Tcb) GetNextId() int {
@@ -100,6 +103,10 @@ func (t *Tcb) AddStatement(parts *Statement) {
 	t.GetScope().AddStatement(parts)
 }
 
+func (t *Tcb) AddStatementAfterPart(parts *Statement, after *Part) *Part {
+	return t.GetScope().AddStatementAfterPart(parts, after)
+}
+
 func (t *Tcb) AddRealPart(part string, node *sitter.Node) {
 	t.GetScope().AddRealPart(part, node)
 }
@@ -135,7 +142,7 @@ func (t *Tcb) BuildGenericConstructors() string {
 	return sb.String()
 }
 
-func (t *Tcb) CreateVar(value Statement) string {
+func (t *Tcb) CreateVar(value *Statement) string {
 	if v := t.GetScope().GetVariableByValue(value); v != nil {
 		return v.Identifier
 	}
@@ -145,13 +152,35 @@ func (t *Tcb) CreateVar(value Statement) string {
 	t.AddVirtPart(name)
 	t.AddVirtPart(" = ")
 
-	t.AddStatement(&value)
+	t.AddStatement(value)
 
 	t.AddVirtPart(";\n")
 
 	t.GetScope().AddVariable(&Variable{Identifier: name, Value: value.ToString()})
 
 	return name
+}
+
+func (t *Tcb) CreateVarAfterPart(value *Statement, after *Part) (string, *Part) {
+	if v := t.GetScope().GetVariableByValue(value); v != nil {
+		return v.Identifier, nil
+	}
+
+	name := "_t" + t.GetNextIdString()
+	statement := Statement{}
+	statement.AddVirtPart("var ")
+	statement.AddVirtPart(name)
+	statement.AddVirtPart(" = ")
+
+	statement.AddStatement(value)
+
+	statement.AddVirtPart(";\n")
+
+	newAfter := t.AddStatementAfterPart(&statement, after)
+
+	t.GetScope().AddVariable(&Variable{Identifier: name, Value: value.ToString()})
+
+	return name, newAfter
 }
 
 func (t *Tcb) EndScope() {

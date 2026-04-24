@@ -8,9 +8,9 @@ import (
 )
 
 type exprState struct {
+	ast     *Ast
 	content []byte
 	parts   *Statement
-	tcb     *Tcb
 }
 
 const NULL_AS_ANY string = "0 as any"
@@ -39,9 +39,9 @@ func initTcbExpression() {
 	exprOptimisedMap = walk.GenerateSymbolMap(angularExprLang, exprVisitorFuncMap)
 }
 
-func buildTcbExpression(tcb *Tcb, expression string) *Statement {
+func buildTcbExpression(ast *Ast, expression string) *Statement {
 	s, err := utils.ParseText([]byte(expression), utils.AngularExpr, nil, func(root *sitter.Node, content []byte, _ *Statement) (*Statement, error) {
-		state := exprState{content: content, parts: &Statement{}, tcb: tcb}
+		state := exprState{ast: ast, content: content, parts: &Statement{}}
 		output := newWalk(root, &state)
 		return output.parts, nil
 	})
@@ -54,7 +54,7 @@ func buildTcbExpression(tcb *Tcb, expression string) *Statement {
 }
 
 func newWalk(node *sitter.Node, state *exprState) *exprState {
-	newState := exprState{content: state.content, parts: &Statement{}, tcb: state.tcb}
+	newState := exprState{ast: state.ast, content: state.content, parts: &Statement{}}
 
 	return walk.VisitNode(node, &newState, 0, exprOptimisedMap, false)
 }
@@ -540,17 +540,27 @@ func visitCall(node *sitter.Node, state *exprState, indexInParent int, internalF
 }
 
 func visitIdentifier(node *sitter.Node, state *exprState, indexInParent int, internalFuncMap walk.VisitorFuncMap[*exprState]) *exprState {
-	variable := state.tcb.CurrentScope.GetVariableByName(node.Content(state.content))
+	name := node.Content(state.content)
+	if isIntrinsicValue(name) {
+		state.parts.AddRealPart(node.Content(state.content), node)
+		return state
+	}
+
+	variable := state.ast.Tcb.CurrentScope.GetVariableByName(name)
 	if variable != nil {
 		state.parts.AddRealPart(variable.Identifier, node)
-	} else {
-		value := node.Content(state.content)
-		if !isIntrinsicValue(value) {
-			state.parts.AddVirtPart("this.")
-		}
-
-		state.parts.AddRealPart(node.Content(state.content), node)
+		return state
 	}
+
+	tr := state.ast.FindTagByTemplateRef(name)
+	if tr != nil {
+		tr.Tag.AddDeclaration(true, true)
+		state.parts.AddRealPart(tr.Identifier, node)
+		return state
+	}
+
+	state.parts.AddVirtPart("this.")
+	state.parts.AddRealPart(name, node)
 
 	return state
 }

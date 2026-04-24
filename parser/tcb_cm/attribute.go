@@ -71,7 +71,7 @@ THING:
 						attrValue = UNDEFINED
 					}
 
-					valueExpr := buildTcbExpression(tcb, attrValue)
+					valueExpr := buildTcbExpression(tcb.Ast, attrValue)
 					if a.ValueNode != nil {
 						valueExpr.OffsetByNodeStart(a.ValueNode)
 					}
@@ -79,7 +79,7 @@ THING:
 					dirIdent := buildDirectiveAssignment(tcb, thing, a, compIdent, assInput, &def, valueExpr)
 
 					if strings.HasPrefix(a.Name, "*") && thing.HasDirective() && len(thing.FilterAllDefinitions(func(d parser.ClassedDefinition) bool { return d.Name == parser.NG_TEMPLATE_CONTEXT_GUARD })) > 0 {
-						ctxIdent := tcb.CreateVar(*StatementFromString(NULL_AS_ANY))
+						ctxIdent := tcb.CreateVar(StatementFromString(NULL_AS_ANY))
 
 						tcb.AddVirtPart(fmt.Sprintf("if (%s.%s(%s, %s))", classIdent, parser.NG_TEMPLATE_CONTEXT_GUARD, dirIdent, ctxIdent))
 						tcb.BeginScope()
@@ -133,7 +133,7 @@ func buildGenericDirectiveAssignment(tcb *Tcb, thing *parser.Class, compIdent st
 
 	ctorExpr.AddVirtPart("})")
 
-	return tcb.CreateVar(ctorExpr)
+	return tcb.CreateVar(&ctorExpr)
 }
 
 func buildNonGenericDirectiveAssignment(tcb *Tcb, attribute *Attribute, assInput string, value *Statement) string {
@@ -211,7 +211,7 @@ func buildNonGenericDirectiveDeclaration(tcb *Tcb, thing *parser.Class) string {
 	value := Statement{}
 	value.AddVirtPart("null! as " + classIdent)
 
-	return tcb.CreateVar(value)
+	return tcb.CreateVar(&value)
 }
 
 func (a *Attribute) SetSourceClass(class *parser.Class) {

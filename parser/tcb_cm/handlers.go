@@ -1,6 +1,7 @@
 package tcb_cm
 
 import (
+	"strings"
 	"ts_inspector/ast/walk"
 	"ts_inspector/utils"
 
@@ -60,6 +61,13 @@ func handleTag(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap
 
 	for i := range node.NamedChildCount() {
 		parse(state, node.NamedChild(int(i)))
+	}
+
+	for _, attr := range tag.Attributes.Elements {
+		if strings.HasPrefix(attr.Attribute.Name, "#") {
+			ref := TemplateRef{Attribute: attr, Name: attr.Attribute.Name, Tag: &tag, Value: attr.Attribute.Value}
+			tag.TemplateRefs.add(ref)
+		}
 	}
 
 	state.Current.Pop()
