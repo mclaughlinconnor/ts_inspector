@@ -597,9 +597,11 @@ func (c *Class) Postprocess(state *State) {
 	c.removeOwnUagesUpwards()
 	c.propagateOwnUagesUpwards()
 
-	if c.Snapshot().Angular != nil {
-		c.Snapshot().Angular.Postprocess(state, c)
-	}
+	c.Update(func(class *classState) {
+		if class.Angular != nil {
+			class.Angular.Postprocess(state, c)
+		}
+	})
 }
 
 // Clears everything except the reference to the parent file

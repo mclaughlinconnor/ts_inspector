@@ -186,29 +186,29 @@ func (f *File) GetTcbUri() string {
 }
 
 func (f *File) Postprocess(state *State) {
-	file := f.Snapshot()
+	f.Update(func(file *fileState) {
+		for _, class := range file.Classes {
+			state.SetClass(class.Id(), class)
+			class.Postprocess(state)
+		}
 
-	for _, class := range file.Classes {
-		state.SetClass(class.Id(), class)
-		class.Postprocess(state)
-	}
+		f.ResolveDynamicallyImportedFiles(state)
 
-	f.ResolveDynamicallyImportedFiles(state)
+		if file.Filetype == "pug" {
+			for _, class := range *state.GetClasses() {
+				snapshot := class.Snapshot()
+				isValid := snapshot.Angular != nil &&
+					snapshot.Angular.Component != nil &&
+					snapshot.Angular.Component.TemplateUrlFile != nil &&
+					snapshot.Angular.Component.TemplateUrlFile.Snapshot().URI == file.URI
 
-	if file.Filetype == "pug" {
-		for _, class := range *state.GetClasses() {
-			snapshot := class.Snapshot()
-			if snapshot.Angular != nil &&
-				snapshot.Angular.Component != nil &&
-				snapshot.Angular.Component.TemplateUrlFile != nil &&
-				snapshot.Angular.Component.TemplateUrlFile.Snapshot().URI == file.URI {
-
-				f.Update(func(data *fileState) {
-					data.Classes = append(data.Classes, class)
-				})
+				if isValid {
+					file.Classes = append(file.Classes, class)
+				}
 			}
 		}
-	}
+
+	})
 }
 
 func (f *File) ResolveDynamicallyImportedFiles(state *State) {
