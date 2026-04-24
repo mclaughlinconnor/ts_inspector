@@ -299,17 +299,17 @@ func (t *TsGo) handleRequest(method string, contents []byte) {
 	case "readFile":
 		{
 			r := utils.TryParseRequest[ReadFileRequest](t.logger, contents)
-			go tsgoHandleReadFile(t, r)
+			tsgoHandleReadFile(t, r)
 		}
 	case "fileExists":
 		{
 			r := utils.TryParseRequest[FileExistsRequest](t.logger, contents)
-			go tsgoHandleFileExists(t, r)
+			tsgoHandleFileExists(t, r)
 		}
 	case "getAccessibleEntries":
 		{
 			r := utils.TryParseRequest[GetAccessibleEntriesRequest](t.logger, contents)
-			go tsgoHandleGetAccessibleEntries(t, r)
+			tsgoHandleGetAccessibleEntries(t, r)
 		}
 	}
 }
