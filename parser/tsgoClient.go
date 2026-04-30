@@ -126,9 +126,9 @@ func stderrLogger(tsgo *TsGo) {
 }
 
 func (r *Responses) AddHandler(id string, channel chan []byte) {
-	r.RLock()
+	r.Lock()
 	r.response[id] = channel
-	r.RUnlock()
+	r.Unlock()
 }
 
 func (r *Responses) GetHandler(id string) chan []byte {
