@@ -3,7 +3,7 @@ package analysis
 import (
 	"strconv"
 	"ts_inspector/parser"
-	"ts_inspector/parser/tcb_cm"
+	"ts_inspector/parser/tcb"
 	"ts_inspector/utils"
 )
 
@@ -17,7 +17,7 @@ func typescript(state *parser.State, file *parser.File) []Analysis {
 	d := state.GetTsGo().GetSemanticDiagnostics(file.GetTcbUri())
 	typescriptDiagnostics := d.Result
 
-	tcbBlock, _ := tcb_cm.BuildTcbBlock(state, file)
+	tcbBlock, _ := tcb.BuildTcbBlock(state, file)
 
 	for _, diagnostic := range typescriptDiagnostics {
 		part := tcbBlock.TsToPugLocation(diagnostic.Pos, diagnostic.End)

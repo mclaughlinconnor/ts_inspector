@@ -7,7 +7,7 @@ import (
 	"ts_inspector/ast"
 	"ts_inspector/interfaces"
 	"ts_inspector/parser"
-	"ts_inspector/parser/tcb_cm"
+	"ts_inspector/parser/tcb"
 	"ts_inspector/utils"
 )
 
@@ -103,7 +103,7 @@ func handleTagHover(sb []string, class *parser.Class) []string {
 }
 
 func handleTsGoHover(sb []string, state *parser.State, file *parser.File, cursorOffset int) []string {
-	tcb, err := tcb_cm.BuildTcbBlock(state, file)
+	tcb, err := tcb.BuildTcbBlock(state, file)
 	if tcb == nil || err != nil {
 		return sb
 	}

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"ts_inspector/interfaces"
 	"ts_inspector/parser"
-	"ts_inspector/parser/tcb_cm"
+	"ts_inspector/parser/tcb"
 	"ts_inspector/utils"
 
 	sitter "github.com/smacker/go-tree-sitter"
@@ -33,7 +33,7 @@ func lspHandleTcb(writer io.Writer, logger *log.Logger, state *parser.State, req
 
 	content := []byte(file.Snapshot().Content)
 	tcbBlock, err := utils.ParseText(content, utils.Pug, "", func(root *sitter.Node, _ []byte, _ string) (string, error) {
-		tcb := tcb_cm.GenerateTcb(state, file.Snapshot().Classes[0], root, content)
+		tcb := tcb.GenerateTcb(state, file.Snapshot().Classes[0], root, content)
 
 		return tcb.ToString(), nil
 	})

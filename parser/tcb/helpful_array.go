@@ -1,4 +1,4 @@
-package tcb_cm
+package tcb
 
 type HelpfulArray[T any] struct {
 	Elements []T

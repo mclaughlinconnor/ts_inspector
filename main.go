@@ -14,7 +14,7 @@ import (
 	"ts_inspector/commands"
 	"ts_inspector/lsp"
 	"ts_inspector/parser"
-	"ts_inspector/parser/tcb_cm"
+	"ts_inspector/parser/tcb"
 	"ts_inspector/search"
 	"ts_inspector/utils"
 
@@ -38,7 +38,7 @@ func main() {
 	actions.InitActions()
 	commands.InitCommands()
 	analysis.InitAnalysers()
-	tcb_cm.InitTcb()
+	tcb.InitTcb()
 
 	args := flag.Args()
 	if utils.LSP && len(args) == 0 {
@@ -54,7 +54,7 @@ func main() {
 
 	state := parser.CreateState()
 	state.SetTcbGenerator(func(s *parser.State, c *parser.Class, r *sitter.Node, co []byte) string {
-		return tcb_cm.GenerateTcb(s, c, r, co).ToString()
+		return tcb.GenerateTcb(s, c, r, co).ToString()
 	})
 
 	filenames, _ := traversetypescriptfiles.Index(args[0])

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"ts_inspector/interfaces"
 	"ts_inspector/parser"
-	"ts_inspector/parser/tcb_cm"
+	"ts_inspector/parser/tcb"
 	"ts_inspector/utils"
 )
 
@@ -24,7 +24,7 @@ func lspHandleDefinition(writer io.Writer, logger *log.Logger, state *parser.Sta
 	locations = append(locations, parser.FindDefinition(state, file, offset)...)
 
 	if utils.TsGo {
-		part := tcb_cm.PugToTsLocation(state, file, int(offset), int(offset))
+		part := tcb.PugToTsLocation(state, file, int(offset), int(offset))
 
 		if part != nil {
 			v := state.GetTsGo().GetSymbolAtPosition(file.GetTcbUri(), uint32(*part.TsStartOffset))

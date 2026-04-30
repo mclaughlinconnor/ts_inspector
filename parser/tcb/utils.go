@@ -1,4 +1,4 @@
-package tcb_cm
+package tcb
 
 import (
 	"fmt"
