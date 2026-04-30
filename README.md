@@ -16,7 +16,7 @@ TS Inspector analyses your code to find potential problems
 - Unused Angular Properties: Detects when an `@Input`, `@Output`, etc. is unused.
 - Recursive Templates: Highlights when a component recursively uses itself in its template.
 - Getters Used In Templates: Highlights possible performance problems when a getter is used in a component's template.
-- Type-checked Pug templates: detects when the wrong types are used for bindings, e.g., trying to pass a `string` to a `number` binding.
+- (WIP) Type-checked Pug templates: detects when the wrong types are used for bindings, e.g., trying to pass a `string` to a `number` binding.
 
 #### TypeScript
 - Constructor Only Property: Highlights when constructor arguments have needlessly been made into class properties.
