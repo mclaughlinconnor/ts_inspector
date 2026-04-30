@@ -48,6 +48,18 @@ func (a *Attribute) Render() {
 
 	things := component.GetAvailableThings(state)
 
+	hasMatched := false
+
+	attrValue := a.Value
+	if attrValue == "" {
+		attrValue = UNDEFINED
+	}
+
+	valueExpr := buildTcbExpression(tcb.Ast, attrValue)
+	if a.ValueNode != nil {
+		valueExpr.OffsetByNodeStart(a.ValueNode)
+	}
+
 THING:
 	for _, thing := range things {
 		for _, selector := range thing.GetSelectors() {
@@ -58,39 +70,39 @@ THING:
 			for _, def := range thing.GetAllDefinitions() {
 				classIdent := tcb.AddImport(thing)
 
-				if def.NameMatchesString(a.Name) {
-					value := Statement{}
-					value.AddVirtPart("null! as " + classIdent)
+				if !def.NameMatchesString(a.Name) {
+					continue
+				}
 
-					compIdent := buildDirectiveDeclaration(tcb, thing)
+				hasMatched = true
 
-					assInput := compIdent + "." + def.Name
+				value := Statement{}
+				value.AddVirtPart("null! as " + classIdent)
 
-					attrValue := a.Value
-					if attrValue == "" {
-						attrValue = UNDEFINED
-					}
+				compIdent := buildDirectiveDeclaration(tcb, thing)
 
-					valueExpr := buildTcbExpression(tcb.Ast, attrValue)
-					if a.ValueNode != nil {
-						valueExpr.OffsetByNodeStart(a.ValueNode)
-					}
+				assInput := compIdent + "." + def.Name
 
-					dirIdent := buildDirectiveAssignment(tcb, thing, a, compIdent, assInput, &def, valueExpr)
+				dirIdent := buildDirectiveAssignment(tcb, thing, a, compIdent, assInput, &def, valueExpr)
 
-					if strings.HasPrefix(a.Name, "*") && thing.HasDirective() && len(thing.FilterAllDefinitions(func(d parser.ClassedDefinition) bool { return d.Name == parser.NG_TEMPLATE_CONTEXT_GUARD })) > 0 {
-						ctxIdent := tcb.CreateVar(StatementFromString(NULL_AS_ANY))
+				if strings.HasPrefix(a.Name, "*") && thing.HasDirective() && len(thing.FilterAllDefinitions(func(d parser.ClassedDefinition) bool { return d.Name == parser.NG_TEMPLATE_CONTEXT_GUARD })) > 0 {
+					ctxIdent := tcb.CreateVar(StatementFromString(NULL_AS_ANY))
 
-						tcb.AddVirtPart(fmt.Sprintf("if (%s.%s(%s, %s))", classIdent, parser.NG_TEMPLATE_CONTEXT_GUARD, dirIdent, ctxIdent))
-						tcb.BeginScope()
+					tcb.AddVirtPart(fmt.Sprintf("if (%s.%s(%s, %s))", classIdent, parser.NG_TEMPLATE_CONTEXT_GUARD, dirIdent, ctxIdent))
+					tcb.BeginScope()
 
-						a.Tag.closeScope = true
-					}
+					a.Tag.closeScope = true
 				}
 			}
 
 			continue THING
 		}
+	}
+
+	if !hasMatched {
+		tcb.AddVirtPart("(")
+		tcb.AddStatement(valueExpr)
+		tcb.AddVirtPart(");\n")
 	}
 }
 
