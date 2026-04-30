@@ -14,6 +14,7 @@ type Scope struct {
 }
 
 type Variable struct {
+	LastPart   *Part
 	Identifier string
 	RefName    string
 	Value      string

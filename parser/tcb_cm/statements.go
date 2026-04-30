@@ -73,6 +73,10 @@ func (s *Statement) AddStatement(statement *Statement) {
 }
 
 func (s *Statement) AddStatementAfterPart(statement *Statement, after *Part) *Part {
+	if statement == nil || after == nil {
+		return nil
+	}
+
 	index := slices.IndexFunc(s.Parts, func(p Part) bool { return p.Id == after.Id })
 	if index == -1 {
 		return nil
@@ -191,6 +195,14 @@ func (s *Statement) CloseScopePart() {
 	l := s.sb.Len()
 	endOffset := *s.Parts[len(s.Parts)-1].TsStartOffset + l
 	s.Parts[len(s.Parts)-1].TsEndOffset = &endOffset
+}
+
+func (s *Statement) GetLastPart() *Part {
+	if len(s.Parts) == 0 {
+		return nil
+	}
+
+	return &s.Parts[len(s.Parts)-1]
 }
 
 func (s *Statement) ToString() string {

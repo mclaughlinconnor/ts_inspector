@@ -156,14 +156,15 @@ func (t *Tcb) CreateVar(value *Statement) string {
 
 	t.AddVirtPart(";\n")
 
-	t.GetScope().AddVariable(&Variable{Identifier: name, Value: value.ToString()})
+	lastPart := t.CurrentScope.Parts.GetLastPart()
+	t.GetScope().AddVariable(&Variable{Identifier: name, LastPart: lastPart, Value: value.ToString()})
 
 	return name
 }
 
 func (t *Tcb) CreateVarAfterPart(value *Statement, after *Part) (string, *Part) {
 	if v := t.GetScope().GetVariableByValue(value); v != nil {
-		return v.Identifier, nil
+		return v.Identifier, v.LastPart
 	}
 
 	name := "_t" + t.GetNextIdString()
@@ -178,7 +179,8 @@ func (t *Tcb) CreateVarAfterPart(value *Statement, after *Part) (string, *Part) 
 
 	newAfter := t.AddStatementAfterPart(&statement, after)
 
-	t.GetScope().AddVariable(&Variable{Identifier: name, Value: value.ToString()})
+	lastPart := t.CurrentScope.Parts.GetLastPart()
+	t.GetScope().AddVariable(&Variable{Identifier: name, LastPart: lastPart, Value: value.ToString()})
 
 	return name, newAfter
 }
