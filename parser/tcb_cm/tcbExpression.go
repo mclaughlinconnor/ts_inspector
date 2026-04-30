@@ -92,6 +92,8 @@ func visitBinary(node *sitter.Node, state *exprState, indexInParent int, interna
 func visitBracketExpression(node *sitter.Node, state *exprState, indexInParent int, internalFuncMap walk.VisitorFuncMap[*exprState]) *exprState {
 	operator := node.ChildByFieldName("object").NextSibling()
 	switch operator.Type() {
+	default:
+		fallthrough
 	case ".":
 		return visitKeyedRead(node, state, indexInParent, internalFuncMap)
 	case "?.":
@@ -99,8 +101,6 @@ func visitBracketExpression(node *sitter.Node, state *exprState, indexInParent i
 	case "!.":
 		return visitKeyedNonNullAssertRead(node, state, indexInParent, internalFuncMap)
 	}
-
-	return state
 }
 
 // Chains unsupported in parser
