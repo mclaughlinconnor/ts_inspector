@@ -25,7 +25,7 @@ func lspHandleTcb(writer io.Writer, logger *log.Logger, state *parser.State, req
 	fileUrl := parsedUrl.String()
 
 	file, _ := state.GetFile(parser.FilenameFromUri(fileUrl))
-	if file == nil || file.Snapshot().Filetype != "pug" {
+	if file == nil || file.Snapshot().Filetype != "pug" || len(file.Snapshot().Classes) < 1 {
 		response := interfaces.TcbRequestResponse{Response: interfaces.Response{RPC: "2.0", ID: &request.ID}, Result: ""}
 		utils.WriteResponse(writer, response)
 		return
