@@ -78,22 +78,28 @@ func (t *Tag) matchesSelector(selector string) bool {
 func (t *Tag) AddDeclaration(insertBeforeCurrentTag bool, shouldAddReferenceVar bool) {
 	tcb := t.Tcb()
 
-	value := Statement{}
-	value.AddVirtPart("document.createElement(\"")
-	value.AddVirtPart(t.Name)
-	value.AddVirtPart("\")")
-
-	if insertBeforeCurrentTag {
-		ident, newAfter := tcb.CreateVarAfterPart(&value, *tcb.TagBoundaryPartStack.Peek())
-		t.Identifier = ident
-		value := StatementFromString(t.Identifier)
-		refIdent, _ := tcb.CreateVarAfterPart(value, newAfter)
-		for i := range t.TemplateRefs.Elements {
-			t.TemplateRefs.Elements[i].Identifier = refIdent
-		}
-	} else {
-		t.Identifier = tcb.CreateVar(&value)
+	if t.Name == "ng-template" {
+		t.insertValue(StatementFromString("null! as any"), insertBeforeCurrentTag)
+		return
 	}
+
+	things := tcb.Class.Snapshot().Angular.Component.GetAvailableThings(t.tcb.State)
+	for _, thing := range things {
+		if !thing.HasComponent() {
+			continue
+		}
+
+		for _, selector := range thing.Snapshot().Angular.Component.Selectors {
+			if !t.matchesSelector(selector) {
+				continue
+			}
+
+			t.insertValue(StatementFromString("null! as "+thing.Snapshot().Name), insertBeforeCurrentTag)
+			return
+		}
+	}
+
+	t.insertValue(StatementFromString("document.createElement(\""+t.Name+"\")"), insertBeforeCurrentTag)
 }
 
 func (t *Tag) Render() {
@@ -124,4 +130,43 @@ func (t *Tag) Render() {
 
 func (t *Tag) Tcb() *Tcb {
 	return t.tcb
+}
+
+func (t *Tag) insertValue(value *Statement, insertBeforeCurrentTag bool) {
+	tcb := t.Tcb()
+	if insertBeforeCurrentTag {
+		ident, newAfter := tcb.CreateVarAfterPart(value, *tcb.TagBoundaryPartStack.Peek())
+		t.Identifier = ident
+
+		var value *Statement
+		if t.Name == "ng-template" {
+			trClass := findTemplateRefClass(tcb)
+			if trClass != nil {
+				trIdent := t.tcb.AddImport(findTemplateRefClass(tcb))
+				value = StatementFromString("(" + t.Identifier + " as any as " + trIdent + "<any>)")
+			} else { // shouldn't happen
+				value = StatementFromString("(" + t.Identifier + " as any)")
+			}
+		} else {
+			value = StatementFromString(t.Identifier)
+		}
+		refIdent, _ := tcb.CreateVarAfterPart(value, newAfter)
+		for i := range t.TemplateRefs.Elements {
+			t.TemplateRefs.Elements[i].Identifier = refIdent
+		}
+	} else {
+		t.Identifier = tcb.CreateVar(value)
+	}
+}
+
+func findTemplateRefClass(tcb *Tcb) *parser.Class {
+	for _, class := range *tcb.State.GetClasses() {
+		if class.Snapshot().Name != "TemplateRef" {
+			continue
+		}
+
+		return class
+	}
+
+	return nil
 }
