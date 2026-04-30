@@ -108,13 +108,13 @@ THING:
 
 func buildDirectiveAssignment(tcb *Tcb, thing *parser.Class, attribute *Attribute, compIdent string, assInput string, def *parser.ClassedDefinition, value *Statement) string {
 	if len(thing.Snapshot().TypeParameters) > 0 {
-		return buildGenericDirectiveAssignment(tcb, thing, compIdent, def, value)
+		return buildGenericDirectiveAssignment(tcb, attribute, thing, compIdent, def, value)
 	}
 
 	return buildNonGenericDirectiveAssignment(tcb, attribute, assInput, value)
 }
 
-func buildGenericDirectiveAssignment(tcb *Tcb, thing *parser.Class, compIdent string, def *parser.ClassedDefinition, value *Statement) string {
+func buildGenericDirectiveAssignment(tcb *Tcb, attribute *Attribute, thing *parser.Class, compIdent string, def *parser.ClassedDefinition, value *Statement) string {
 	ctorExpr := Statement{}
 	ctorExpr.AddVirtPart(compIdent)
 	ctorExpr.AddVirtPart("({")
@@ -133,7 +133,9 @@ func buildGenericDirectiveAssignment(tcb *Tcb, thing *parser.Class, compIdent st
 			ctorExpr.AddVirtPart(", ")
 		}
 
-		ctorExpr.AddVirtPart("\"" + k + "\": ")
+		ctorExpr.AddVirtPart("\"")
+		ctorExpr.AddRealPart(k, attribute.ValueNode)
+		ctorExpr.AddVirtPart("\": ")
 		if v != nil {
 			ctorExpr.AddStatement(v)
 		} else {
