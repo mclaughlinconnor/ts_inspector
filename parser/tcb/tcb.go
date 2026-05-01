@@ -12,6 +12,13 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
+type Directive struct {
+	Class         *parser.Class
+	Identifier    string
+	IsConstructor bool
+	Statement     *Statement
+}
+
 type GenericDirectiveConstructor struct {
 	class      *parser.Class
 	identifier string
@@ -28,6 +35,7 @@ type Tcb struct {
 	Ast                          *Ast
 	Class                        *parser.Class
 	CurrentScope                 *Scope
+	Directives                   []*Directive
 	GenericDirectiveConstructors []*GenericDirectiveConstructor
 	Imports                      []*Import
 	NextId                       int
@@ -60,6 +68,11 @@ func (t *Tcb) AddAssignment(identifer string, identNode *sitter.Node, value Stat
 	t.AddVirtPart(" = ")
 	t.AddStatement(&value)
 	t.AddVirtPart(";\n")
+}
+
+func (t *Tcb) AddDirectiveConstructor(identifer string, directive *parser.Class, statement *Statement, isConstructor bool) {
+	constructor := Directive{Class: directive, Identifier: identifer, IsConstructor: isConstructor, Statement: statement}
+	t.Directives = append(t.Directives, &constructor)
 }
 
 func (t *Tcb) AddGenericDirectiveConstructor(directive *parser.Class, parts *Statement) string {
@@ -114,6 +127,20 @@ func (t *Tcb) AddRealPart(part string, node *sitter.Node) {
 func (t *Tcb) BeginScope() {
 	t.NewScope()
 	t.AddVirtPart("{\n")
+}
+
+func (t *Tcb) BuildDirectiveConstructorsStatement() *Statement {
+	statement := Statement{}
+
+	for _, directive := range t.Directives {
+		if !directive.IsConstructor {
+			continue
+		}
+
+		statement.AddStatement(directive.Statement)
+	}
+
+	return &statement
 }
 
 func (t *Tcb) BuildImports() string {
@@ -195,6 +222,16 @@ func (t *Tcb) GetScope() *Scope {
 	return t.CurrentScope
 }
 
+func (t *Tcb) GetDirectiveIdent(directive *parser.Class) string {
+	for _, d := range t.Directives {
+		if d.Class.Id() == directive.Id() {
+			return d.Identifier
+		}
+	}
+
+	return ""
+}
+
 func (t *Tcb) NewScope() *Scope {
 	scope := Scope{ParentScope: t.CurrentScope, Parts: Statement{}, Variables: []*Variable{}}
 	// t.CurrentScope.ChildrenScopes = append(t.CurrentScope.ChildrenScopes, &scope)
@@ -208,6 +245,7 @@ func (t *Tcb) ToString() *Statement {
 	tcb := Statement{}
 
 	tcb.AddVirtPart(t.BuildImports())
+	tcb.AddStatement(t.BuildDirectiveConstructorsStatement())
 
 	scopes := t.RootScope.ToStatement()
 	tcb.AddStatement(&scopes)

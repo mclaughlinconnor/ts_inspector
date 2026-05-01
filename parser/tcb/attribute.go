@@ -157,6 +157,11 @@ func buildNonGenericDirectiveAssignment(tcb *Tcb, attribute *Attribute, assInput
 }
 
 func buildDirectiveDeclaration(tcb *Tcb, thing *parser.Class) string {
+	resolvedIdent := tcb.GetDirectiveIdent(thing)
+	if resolvedIdent != "" {
+		return resolvedIdent
+	}
+
 	if len(thing.Snapshot().TypeParameters) > 0 {
 		return buildGenericDirectiveDeclaration(tcb, thing)
 	}
@@ -214,7 +219,7 @@ func buildGenericDirectiveDeclaration(tcb *Tcb, thing *parser.Class) string {
 	statement.AddStatement(&thingDef)
 	statement.AddVirtPart(" = null!;\n")
 
-	tcb.AddStatement(&statement)
+	tcb.AddDirectiveConstructor(ctorIdent, thing, &statement, true)
 
 	return ctorIdent
 }
@@ -225,7 +230,11 @@ func buildNonGenericDirectiveDeclaration(tcb *Tcb, thing *parser.Class) string {
 	value := Statement{}
 	value.AddVirtPart("null! as " + classIdent)
 
-	return tcb.CreateVar(&value)
+	ident := tcb.CreateVar(&value)
+
+	tcb.AddDirectiveConstructor(ident, thing, nil, false)
+
+	return ident
 }
 
 func (a *Attribute) SetSourceClass(class *parser.Class) {
