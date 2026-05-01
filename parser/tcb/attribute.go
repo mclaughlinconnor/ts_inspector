@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"ts_inspector/parser"
+	"ts_inspector/utils"
 
 	sitter "github.com/smacker/go-tree-sitter"
 )
@@ -32,17 +33,39 @@ func (a *Attribute) IsOutput() bool {
 	return strings.HasPrefix(a.Name, "[") && strings.HasSuffix(a.Name, "]")
 }
 
-func (a *Attribute) Render() {
-	if !a.IsInput() {
-		return
+func (a *Attribute) SetSourceClass(class *parser.Class) {
+	a.Tcb().Class = class
+}
+
+func (a *Attribute) Tcb() *Tcb {
+	return a.tcb
+}
+
+func (t *Tag) renderAttributes() {
+	allAttributes := map[string]*Attribute{}
+	for _, a := range t.Attributes.Elements {
+		attributeName, _ := utils.StripAngularFromAttribute(a.Attribute.Name)
+		allAttributes[attributeName] = a.Attribute
 	}
 
-	sourceClass := a.Tcb().Class
+	renderedDirectives := map[string]bool{}
+
+	for _, a := range t.Attributes.Elements {
+		renderedDirectives = renderAttribute(&allAttributes, a.Attribute, renderedDirectives)
+	}
+}
+
+func renderAttribute(allAttributes *map[string]*Attribute, attribute *Attribute, renderedDirectives map[string]bool) map[string]bool {
+	if !attribute.IsInput() {
+		return renderedDirectives
+	}
+
+	sourceClass := attribute.Tcb().Class
 	if !sourceClass.HasComponent() {
-		return
+		return renderedDirectives
 	}
 
-	tcb := a.Tcb()
+	tcb := attribute.Tcb()
 	state := tcb.State
 	component := sourceClass.Snapshot().Angular.Component
 
@@ -50,49 +73,52 @@ func (a *Attribute) Render() {
 
 	hasMatched := false
 
-	attrValue := a.Value
-	if attrValue == "" {
-		attrValue = UNDEFINED
-	}
-
-	valueExpr := buildTcbExpression(tcb.Ast, attrValue)
-	if a.ValueNode != nil {
-		valueExpr.OffsetByNodeStart(a.ValueNode)
-	}
-
 THING:
 	for _, thing := range things {
 		for _, selector := range thing.GetSelectors() {
-			if !a.Tag.matchesSelector(selector) {
+			if !attribute.Tag.matchesSelector(selector) {
 				continue
 			}
 
-			for _, def := range thing.GetAllDefinitions() {
-				classIdent := tcb.AddImport(thing)
+			if renderedDirectives[thing.Id()] {
+				hasMatched = true
+				continue THING
+			}
 
-				if !def.NameMatchesString(a.Name) {
+			attachedInputs := map[string]*Attribute{}
+			for _, def := range thing.GetAllDefinitions() {
+				inputName := def.GetInputName()
+				a, isAttached := (*allAttributes)[inputName]
+				if !isAttached {
 					continue
 				}
 
-				hasMatched = true
+				attachedInputs[inputName] = a
+			}
 
-				value := Statement{}
-				value.AddVirtPart("null! as " + classIdent)
+			if len(attachedInputs) == 0 {
+				continue THING
+			}
 
-				compIdent := buildDirectiveDeclaration(tcb, thing)
+			hasMatched = true
+			renderedDirectives[thing.Id()] = true
 
-				assInput := compIdent + "." + def.Name
+			classIdent := tcb.AddImport(thing)
+			declIdent := buildDirectiveDeclaration(tcb, thing)
 
-				dirIdent := buildDirectiveAssignment(tcb, thing, a, compIdent, assInput, &def, valueExpr)
+			assIdent := buildDirectiveAssignment(tcb, thing, attribute, declIdent, &attachedInputs)
 
-				if strings.HasPrefix(a.Name, "*") && thing.HasDirective() && len(thing.FilterAllDefinitions(func(d parser.ClassedDefinition) bool { return d.Name == parser.NG_TEMPLATE_CONTEXT_GUARD })) > 0 {
-					ctxIdent := tcb.CreateVar(StatementFromString(NULL_AS_ANY))
+			if strings.HasPrefix(attribute.Name, "*") && thing.HasDirective() && len(thing.FilterAllDefinitions(func(d parser.ClassedDefinition) bool { return d.Name == parser.NG_TEMPLATE_CONTEXT_GUARD })) > 0 {
+				ctxIdent := tcb.CreateVar(StatementFromString(NULL_AS_ANY))
 
-					tcb.AddVirtPart(fmt.Sprintf("if (%s.%s(%s, %s))", classIdent, parser.NG_TEMPLATE_CONTEXT_GUARD, dirIdent, ctxIdent))
-					tcb.BeginScope()
-
-					a.Tag.closeScope = true
+				tcb.AddVirtPart(fmt.Sprintf("if (%s.%s(%s, %s))", classIdent, parser.NG_TEMPLATE_CONTEXT_GUARD, assIdent, ctxIdent))
+				tcb.BeginScope()
+				tcb.AddVirtPart("(" + ctxIdent + ");\n")
+				if attribute.Tag.Identifier == "" {
+					attribute.Tag.AddDeclaration(false, false)
 				}
+
+				attribute.Tag.closeScope = true
 			}
 
 			continue THING
@@ -101,20 +127,25 @@ THING:
 
 	if !hasMatched {
 		tcb.AddVirtPart("(")
-		tcb.AddStatement(valueExpr)
+		tcb.AddStatement(buildTcbExpression(tcb.Ast, attribute.Value))
 		tcb.AddVirtPart(");\n")
 	}
+
+	return renderedDirectives
 }
 
-func buildDirectiveAssignment(tcb *Tcb, thing *parser.Class, attribute *Attribute, compIdent string, assInput string, def *parser.ClassedDefinition, value *Statement) string {
+func buildDirectiveAssignment(tcb *Tcb, thing *parser.Class, attribute *Attribute, declIdent string, attachedInputs *map[string]*Attribute) string {
+	assIdent := declIdent
 	if len(thing.Snapshot().TypeParameters) > 0 {
-		return buildGenericDirectiveAssignment(tcb, attribute, thing, compIdent, def, value)
+		assIdent = buildGenericDirectiveAssignment(tcb, attribute, thing, declIdent, attachedInputs)
 	}
 
-	return buildNonGenericDirectiveAssignment(tcb, attribute, assInput, value)
+	buildNonGenericDirectiveAssignment(tcb, attribute, thing, assIdent, attachedInputs)
+
+	return assIdent
 }
 
-func buildGenericDirectiveAssignment(tcb *Tcb, attribute *Attribute, thing *parser.Class, compIdent string, def *parser.ClassedDefinition, value *Statement) string {
+func buildGenericDirectiveAssignment(tcb *Tcb, attribute *Attribute, thing *parser.Class, compIdent string, attachedInputs *map[string]*Attribute) string {
 	ctorExpr := Statement{}
 	ctorExpr.AddVirtPart(compIdent)
 	ctorExpr.AddVirtPart("({")
@@ -122,10 +153,14 @@ func buildGenericDirectiveAssignment(tcb *Tcb, attribute *Attribute, thing *pars
 	values := map[string]*Statement{}
 
 	for _, input := range thing.GetInputs() {
-		values[input.GetInputName()] = nil
+		inputName := input.GetInputName()
+		attached, isAttached := (*attachedInputs)[inputName]
+		if isAttached {
+			values[inputName] = buildTcbExpression(tcb.Ast, attached.Value)
+		} else {
+			values[inputName] = nil
+		}
 	}
-
-	values[def.GetInputName()] = value
 
 	i := 0
 	for k, v := range values {
@@ -147,13 +182,21 @@ func buildGenericDirectiveAssignment(tcb *Tcb, attribute *Attribute, thing *pars
 
 	ctorExpr.AddVirtPart("})")
 
-	return tcb.CreateVar(&ctorExpr)
+	assIdent := tcb.CreateVar(&ctorExpr)
+
+	return assIdent
 }
 
-func buildNonGenericDirectiveAssignment(tcb *Tcb, attribute *Attribute, assInput string, value *Statement) string {
-	tcb.AddAssignment(assInput, attribute.NameNode, *value)
+func buildNonGenericDirectiveAssignment(tcb *Tcb, attribute *Attribute, thing *parser.Class, dirIdent string, attachedInputs *map[string]*Attribute) {
+	for _, def := range thing.GetInputs() {
+		inputName := def.GetInputName()
+		attached, isAttached := (*attachedInputs)[inputName]
+		if !isAttached {
+			continue
+		}
 
-	return assInput
+		tcb.AddAssignment(dirIdent+"."+def.Name, attached.NameNode, *buildTcbExpression(tcb.Ast, attached.Value))
+	}
 }
 
 func buildDirectiveDeclaration(tcb *Tcb, thing *parser.Class) string {
@@ -235,12 +278,4 @@ func buildNonGenericDirectiveDeclaration(tcb *Tcb, thing *parser.Class) string {
 	tcb.AddDirectiveConstructor(ident, thing, nil, false)
 
 	return ident
-}
-
-func (a *Attribute) SetSourceClass(class *parser.Class) {
-	a.Tcb().Class = class
-}
-
-func (a *Attribute) Tcb() *Tcb {
-	return a.tcb
 }

@@ -79,7 +79,7 @@ func (t *Tag) AddDeclaration(insertBeforeCurrentTag bool, shouldAddReferenceVar 
 	tcb := t.Tcb()
 
 	if t.Name == "ng-template" {
-		t.insertValue(StatementFromString("null! as any"), insertBeforeCurrentTag)
+		t.insertValue(StatementFromString("null! as any"), insertBeforeCurrentTag, true)
 		return
 	}
 
@@ -94,12 +94,12 @@ func (t *Tag) AddDeclaration(insertBeforeCurrentTag bool, shouldAddReferenceVar 
 				continue
 			}
 
-			t.insertValue(StatementFromString("null! as "+thing.Snapshot().Name), insertBeforeCurrentTag)
+			t.insertValue(StatementFromString("null! as "+thing.Snapshot().Name), insertBeforeCurrentTag, shouldAddReferenceVar)
 			return
 		}
 	}
 
-	t.insertValue(StatementFromString("document.createElement(\""+t.Name+"\")"), insertBeforeCurrentTag)
+	t.insertValue(StatementFromString("document.createElement(\""+t.Name+"\")"), insertBeforeCurrentTag, shouldAddReferenceVar)
 }
 
 func (t *Tag) Render() {
@@ -109,12 +109,10 @@ func (t *Tag) Render() {
 		tcb.TagBoundaryPartStack.Push(&tcb.CurrentScope.Parts.Parts[len(tcb.CurrentScope.Parts.Parts)-1])
 	}
 
-	if t.Identifier == "" {
-		t.AddDeclaration(false, false)
-	}
+	t.renderAttributes()
 
-	for _, a := range t.Attributes.Elements {
-		a.Render()
+	if t.Identifier == "" {
+		t.AddDeclaration(true, false)
 	}
 
 	for _, c := range t.Children.Elements {
@@ -132,20 +130,30 @@ func (t *Tag) Tcb() *Tcb {
 	return t.tcb
 }
 
-func (t *Tag) insertValue(value *Statement, insertBeforeCurrentTag bool) {
+// Spaghetti
+func (t *Tag) insertValue(value *Statement, insertBeforeCurrentTag bool, shouldAddReferenceVar bool) {
 	tcb := t.Tcb()
 	if insertBeforeCurrentTag {
 		ident, newAfter := tcb.CreateVarAfterPart(value, *tcb.TagBoundaryPartStack.Peek())
 		t.Identifier = ident
 
+		if !shouldAddReferenceVar {
+			return
+		}
+
 		var value *Statement
 		if t.Name == "ng-template" {
-			trClass := findTemplateRefClass(tcb)
-			if trClass != nil {
-				trIdent := t.tcb.AddImport(findTemplateRefClass(tcb))
-				value = StatementFromString("(" + t.Identifier + " as any as " + trIdent + "<any>)")
-			} else { // shouldn't happen
-				value = StatementFromString("(" + t.Identifier + " as any)")
+			if len(t.TemplateRefs.Elements) == 0 {
+				// This one ends up in the wrong place. Compare the output of `ng-template([ngIf]='true', [ngIfElse]='id')`
+				value = StatementFromString(t.Identifier)
+			} else {
+				trClass := findTemplateRefClass(tcb)
+				if trClass != nil {
+					trIdent := t.tcb.AddImport(trClass)
+					value = StatementFromString("(" + t.Identifier + " as any as " + trIdent + "<any>)")
+				} else { // shouldn't happen
+					value = StatementFromString("(" + t.Identifier + " as any)")
+				}
 			}
 		} else {
 			value = StatementFromString(t.Identifier)
@@ -156,6 +164,10 @@ func (t *Tag) insertValue(value *Statement, insertBeforeCurrentTag bool) {
 		}
 	} else {
 		t.Identifier = tcb.CreateVar(value)
+		if shouldAddReferenceVar {
+			value = StatementFromString(t.Identifier)
+			tcb.CreateVar(StatementFromString(t.Identifier))
+		}
 	}
 }
 
