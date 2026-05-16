@@ -571,6 +571,10 @@ func (c *Class) HasDirective() bool {
 	return c.HasAngular() && c.Snapshot().Angular.Directive != nil
 }
 
+func (c *Class) HasPipe() bool {
+	return c.HasAngular() && c.Snapshot().Angular.Pipe != nil
+}
+
 func (c *Class) GetDefinition(name string) *Definition {
 	for _, d := range c.Snapshot().Definitions {
 		if d.Name == name {

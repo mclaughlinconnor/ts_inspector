@@ -31,6 +31,12 @@ type Import struct {
 	Identifier string
 }
 
+type Pipe struct {
+	Class      *parser.Class
+	Identifier string
+	Statement  *Statement
+}
+
 type Tcb struct {
 	Ast                          *Ast
 	Class                        *parser.Class
@@ -39,6 +45,7 @@ type Tcb struct {
 	GenericDirectiveConstructors []*GenericDirectiveConstructor
 	Imports                      []*Import
 	NextId                       int
+	Pipes                        []*Pipe
 	RootScope                    *Scope
 	State                        *parser.State
 	TagBoundaryPartStack         utils.Stack[*Part]
@@ -75,18 +82,6 @@ func (t *Tcb) AddDirectiveConstructor(identifer string, directive *parser.Class,
 	t.Directives = append(t.Directives, &constructor)
 }
 
-func (t *Tcb) AddGenericDirectiveConstructor(directive *parser.Class, parts *Statement) string {
-	index := slices.IndexFunc(t.GenericDirectiveConstructors, func(c *GenericDirectiveConstructor) bool { return c.class.Id() == directive.Id() })
-	if index != -1 {
-		return t.GenericDirectiveConstructors[index].identifier
-	}
-
-	g := GenericDirectiveConstructor{class: directive, statement: parts, identifier: "_t" + t.GetNextIdString()}
-	t.GenericDirectiveConstructors = append(t.GenericDirectiveConstructors, &g)
-
-	return g.identifier
-}
-
 func (t *Tcb) AddImport(class *parser.Class) string {
 	f := class.Snapshot().File
 	uri := f.Snapshot().URI
@@ -102,6 +97,11 @@ func (t *Tcb) AddImport(class *parser.Class) string {
 	}
 
 	return "i" + i.Identifier + "." + class.Snapshot().Name
+}
+
+func (t *Tcb) AddPipeDeclaration(identifer string, pipe *parser.Class, statement *Statement) {
+	constructor := Pipe{Class: pipe, Identifier: identifer, Statement: statement}
+	t.Pipes = append(t.Pipes, &constructor)
 }
 
 func (t *Tcb) AddPart(part Part) {
@@ -159,14 +159,14 @@ func (t *Tcb) BuildImports() string {
 	return sb.String()
 }
 
-func (t *Tcb) BuildGenericConstructors() string {
-	sb := strings.Builder{}
+func (t *Tcb) BuildPipeConstructorsStatement() *Statement {
+	statement := Statement{}
 
-	for _, constructor := range t.GenericDirectiveConstructors {
-		sb.WriteString(constructor.statement.ToString())
+	for _, pipe := range t.Pipes {
+		statement.AddStatement(pipe.Statement)
 	}
 
-	return sb.String()
+	return &statement
 }
 
 func (t *Tcb) CreateVarInCurrentScope(value *Statement) string {
@@ -241,6 +241,16 @@ func (t *Tcb) GetDirectiveIdent(directive *parser.Class) string {
 	return ""
 }
 
+func (t *Tcb) GetPipeIdent(pipe *parser.Class) string {
+	for _, p := range t.Pipes {
+		if p.Class.Id() == pipe.Id() {
+			return p.Identifier
+		}
+	}
+
+	return ""
+}
+
 func (t *Tcb) NewScope() *Scope {
 	scope := Scope{ParentScope: t.CurrentScope, Parts: Statement{}, Variables: []*Variable{}}
 	// t.CurrentScope.ChildrenScopes = append(t.CurrentScope.ChildrenScopes, &scope)
@@ -255,6 +265,7 @@ func (t *Tcb) ToString() *Statement {
 
 	tcb.AddVirtPart(t.BuildImports())
 	tcb.AddStatement(t.BuildDirectiveConstructorsStatement())
+	tcb.AddStatement(t.BuildPipeConstructorsStatement())
 
 	scopes := t.RootScope.ToStatement()
 	tcb.AddStatement(&scopes)

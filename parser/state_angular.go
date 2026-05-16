@@ -12,6 +12,7 @@ type Angular struct {
 	Component *Component
 	Directive *Directive
 	Module    *Module
+	Pipe      *Pipe
 }
 
 type Component struct {
@@ -38,6 +39,10 @@ type Module struct {
 	Exports      *Value
 	Imports      *Value
 	Providers    []*Provider
+}
+
+type Pipe struct {
+	Name string
 }
 
 type Provider struct {
@@ -95,6 +100,12 @@ func (a *Angular) EnsureModule() {
 	}
 }
 
+func (a *Angular) EnsurePipe() {
+	if a.Pipe == nil {
+		a.Pipe = &Pipe{}
+	}
+}
+
 func (a *Angular) Postprocess(state *State, class *Class) {
 	if a.Module != nil {
 		a.Module.Postprocess(state, class)
@@ -142,7 +153,7 @@ func (c *Component) GetAvailableThings(state *State) []*Class {
 			continue
 		}
 
-		if imp.Class.HasComponent() || imp.Class.HasDirective() {
+		if imp.Class.HasComponent() || imp.Class.HasDirective() || imp.Class.HasPipe() {
 			things[imp.Class.Id()] = imp.Class
 		}
 
@@ -215,7 +226,7 @@ func (m *Module) GetDeclaredThings(state *State) []*Class {
 			continue
 		}
 
-		if angular.Component != nil || angular.Directive != nil {
+		if angular.Component != nil || angular.Directive != nil || angular.Pipe != nil {
 			things = append(things, declaration)
 		}
 
@@ -242,7 +253,7 @@ func (m *Module) GetExportedThings(state *State) []*Class {
 			continue
 		}
 
-		if angular.Component != nil || angular.Directive != nil {
+		if angular.Component != nil || angular.Directive != nil || angular.Pipe != nil {
 			selectors = append(selectors, exp.Class)
 		}
 
@@ -268,7 +279,7 @@ func (m *Module) GetImportedThings(state *State) []*Class {
 			continue
 		}
 
-		if angular.Component != nil || angular.Directive != nil {
+		if angular.Component != nil || angular.Directive != nil || angular.Pipe != nil {
 			selectors = append(selectors, imp.Class)
 		}
 

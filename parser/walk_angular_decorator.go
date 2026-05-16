@@ -41,6 +41,10 @@ func ExtractComponentData(class *Class, node *sitter.Node, content []byte) {
 			class.EnsureAngular()
 			class.Snapshot().Angular.EnsureModule()
 			walkModuleDecoratorParams(class, node, content)
+		case "Pipe":
+			class.EnsureAngular()
+			class.Snapshot().Angular.EnsurePipe()
+			walkPipeDecoratorParams(class, node, content)
 		}
 
 		return nil
@@ -56,6 +60,11 @@ func ExtractComponentData(class *Class, node *sitter.Node, content []byte) {
 	modDef := class.GetDefinition(MOD_PROP)
 	if modDef != nil {
 		handleCompiledModuleProp(class, modDef)
+	}
+
+	pipeDef := class.GetDefinition(PIPE_PROP)
+	if pipeDef != nil {
+		handleCompiledPipeProp(class, pipeDef)
 	}
 }
 
@@ -226,6 +235,46 @@ func handleCompiledModuleProp(class *Class, def *Definition) {
 		data.Angular.Module.Declarations = &Value{ArrayValues: declarations, Type: "array"}
 		data.Angular.Module.Imports = &Value{ArrayValues: imports, Type: "array"}
 		data.Angular.Module.Exports = &Value{ArrayValues: exports, Type: "array"}
+	})
+}
+
+func handleCompiledPipeProp(class *Class, def *Definition) {
+	node := def.Node
+	tNode := node.ChildByFieldName("type")
+	if tNode == nil || tNode.Type() != "type_annotation" {
+		return
+	}
+
+	gTypeNode := tNode.NamedChild(0)
+	if gTypeNode == nil || gTypeNode.Type() != "generic_type" {
+		return
+	}
+
+	args := gTypeNode.ChildByFieldName("type_arguments")
+	if args == nil || args.Type() != "type_arguments" {
+		return
+	}
+
+	nameLiteralNode := args.NamedChild(1)
+	if nameLiteralNode == nil || nameLiteralNode.Type() != "literal_type" {
+		return
+	}
+
+	nameNode := nameLiteralNode.NamedChild(0)
+	if nameNode == nil || nameNode.Type() != "string" {
+		return
+	}
+
+	nameFragNode := nameNode.NamedChild(0)
+	if nameFragNode == nil {
+		return
+	}
+
+	class.EnsureAngular()
+	class.Snapshot().Angular.EnsurePipe()
+
+	class.Update(func(data *classState) {
+		data.Angular.Pipe.Name = nameFragNode.Content([]byte(data.Content))
 	})
 }
 
@@ -420,6 +469,21 @@ func handleModuleKv(class *Class, vNode *sitter.Node, content []byte, keyName st
 		handleDeclarationsKv(class, vNode, content)
 	case "providers":
 		handleProvidersModuleKv(class, vNode, content)
+	}
+}
+
+func handlePipeKv(class *Class, vNode *sitter.Node, content []byte, keyName string) {
+	switch kn := keyName; kn {
+	case "name":
+		stringNode := vNode
+		fragNode := stringNode.NamedChild(0)
+		if fragNode == nil {
+			return
+		}
+
+		class.Update(func(data *classState) {
+			data.Angular.Pipe.Name = fragNode.Content(content)
+		})
 	}
 }
 
@@ -674,6 +738,29 @@ func walkModuleDecoratorParams(class *Class, node *sitter.Node, content []byte) 
 		}
 
 		handleModuleKv(class, valueNode, content, keyName)
+
+		return nil
+	}
+
+	walk.WalkTypeScript(node, nil, funcMap)
+}
+
+func walkPipeDecoratorParams(class *Class, node *sitter.Node, content []byte) {
+	funcMap := walk.NewVisitorFuncsMap[any]()
+
+	funcMap["pair"] = func(node *sitter.Node, _ any, indexInParent int, funcMap walk.VisitorFuncMap[any]) any {
+		keyNode := node.ChildByFieldName("key")
+		if keyNode == nil {
+			return nil
+		}
+
+		keyName := keyNode.Content(content)
+		valueNode := node.ChildByFieldName("value")
+		if valueNode == nil {
+			return nil
+		}
+
+		handlePipeKv(class, valueNode, content, keyName)
 
 		return nil
 	}

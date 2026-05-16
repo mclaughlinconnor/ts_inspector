@@ -1,6 +1,7 @@
 package tcb
 
 import (
+	"slices"
 	"ts_inspector/ast/walk"
 	"ts_inspector/utils"
 
@@ -8,9 +9,10 @@ import (
 )
 
 type exprState struct {
-	ast     *Ast
-	content []byte
-	parts   *Statement
+	ast          *Ast
+	content      []byte
+	parts        *Statement
+	pipesToClose int
 }
 
 const NULL_AS_ANY string = "0 as any"
@@ -35,6 +37,8 @@ func initTcbExpression() {
 	exprVisitorFuncMap["assignment_expression"] = visitWrite        // visitPropertyWrite and visitKeyedWrite
 	exprVisitorFuncMap["call_expression"] = visitCall
 	exprVisitorFuncMap["identifier"] = visitIdentifier
+	exprVisitorFuncMap["expression"] = visitExpression
+	exprVisitorFuncMap["pipe_sequence"] = visitPipeSequence
 
 	exprOptimisedMap = walk.GenerateSymbolMap(angularExprLang, exprVisitorFuncMap)
 }
@@ -54,7 +58,7 @@ func buildTcbExpression(ast *Ast, expression string) *Statement {
 }
 
 func newWalk(node *sitter.Node, state *exprState) *exprState {
-	newState := exprState{ast: state.ast, content: state.content, parts: &Statement{}}
+	newState := exprState{ast: state.ast, content: state.content, parts: &Statement{}, pipesToClose: 0}
 
 	return walk.VisitNode(node, &newState, 0, exprOptimisedMap, false)
 }
@@ -561,6 +565,55 @@ func visitIdentifier(node *sitter.Node, state *exprState, indexInParent int, int
 
 	state.parts.AddVirtPart("this.")
 	state.parts.AddRealPart(name, node)
+
+	return state
+}
+
+func visitExpression(node *sitter.Node, state *exprState, indexInParent int, internalFuncMap walk.VisitorFuncMap[*exprState]) *exprState {
+	pipesNode := node.ChildByFieldName("pipes")
+	if pipesNode != nil {
+		walk.VisitNode(pipesNode, state, 0, exprOptimisedMap, false)
+	}
+
+	exprNode := node.NamedChild(0)
+	if exprNode != nil {
+		walk.VisitNode(exprNode, state, 0, exprOptimisedMap, false)
+	}
+
+	if pipesNode != nil {
+		for _ = range state.pipesToClose {
+			state.parts.AddVirtPart(")")
+		}
+	}
+
+	return state
+}
+
+func visitPipeSequence(node *sitter.Node, state *exprState, indexInParent int, internalFuncMap walk.VisitorFuncMap[*exprState]) *exprState {
+	pipeNodes := []*sitter.Node{}
+
+	for i := range node.NamedChildCount() {
+		childNode := node.NamedChild(int(i))
+		if childNode.Type() != "pipe_call" {
+			continue
+		}
+
+		pipeNodes = append(pipeNodes, childNode)
+	}
+
+	slices.Reverse(pipeNodes)
+
+	tcb := state.ast.Tcb
+
+	for _, pipeNode := range pipeNodes {
+		statement := renderPipeNode(pipeNode, state.content, tcb)
+		if statement.sb.Len() == 0 {
+			continue
+		}
+
+		state.parts.AddStatement(statement)
+		state.pipesToClose++
+	}
 
 	return state
 }
