@@ -163,10 +163,10 @@ func (t *Tag) insertValue(value *Statement, insertBeforeCurrentTag bool, shouldA
 			t.TemplateRefs.Elements[i].Identifier = refIdent
 		}
 	} else {
-		t.Identifier = tcb.CreateVar(value)
+		t.Identifier = tcb.CreateVarInCurrentScope(value)
 		if shouldAddReferenceVar {
 			value = StatementFromString(t.Identifier)
-			tcb.CreateVar(StatementFromString(t.Identifier))
+			tcb.CreateVarInCurrentScope(StatementFromString(t.Identifier))
 		}
 	}
 }

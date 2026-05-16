@@ -109,7 +109,7 @@ THING:
 			assIdent := buildDirectiveAssignment(tcb, thing, attribute, declIdent, &attachedInputs)
 
 			if strings.HasPrefix(attribute.Name, "*") && thing.HasDirective() && len(thing.FilterAllDefinitions(func(d parser.ClassedDefinition) bool { return d.Name == parser.NG_TEMPLATE_CONTEXT_GUARD })) > 0 {
-				ctxIdent := tcb.CreateVar(StatementFromString(NULL_AS_ANY))
+				ctxIdent := tcb.CreateVarInCurrentScope(StatementFromString(NULL_AS_ANY))
 
 				tcb.AddVirtPart(fmt.Sprintf("if (%s.%s(%s, %s))", classIdent, parser.NG_TEMPLATE_CONTEXT_GUARD, assIdent, ctxIdent))
 				tcb.BeginScope()
@@ -182,7 +182,7 @@ func buildGenericDirectiveAssignment(tcb *Tcb, attribute *Attribute, thing *pars
 
 	ctorExpr.AddVirtPart("})")
 
-	assIdent := tcb.CreateVar(&ctorExpr)
+	assIdent := tcb.CreateVarInCurrentScope(&ctorExpr)
 
 	return assIdent
 }
@@ -273,7 +273,7 @@ func buildNonGenericDirectiveDeclaration(tcb *Tcb, thing *parser.Class) string {
 	value := Statement{}
 	value.AddVirtPart("null! as " + classIdent)
 
-	ident := tcb.CreateVar(&value)
+	ident := tcb.CreateVarInRootScope(&value)
 
 	tcb.AddDirectiveConstructor(ident, thing, nil, false)
 

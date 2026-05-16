@@ -169,22 +169,31 @@ func (t *Tcb) BuildGenericConstructors() string {
 	return sb.String()
 }
 
-func (t *Tcb) CreateVar(value *Statement) string {
-	if v := t.GetScope().GetVariableByValue(value); v != nil {
+func (t *Tcb) CreateVarInCurrentScope(value *Statement) string {
+	return t.CreateVarInScope(value, t.GetScope())
+}
+
+func (t *Tcb) CreateVarInRootScope(value *Statement) string {
+	// TODO: should probably put the var at the top of the scope, not at the end
+	return t.CreateVarInScope(value, t.RootScope)
+}
+
+func (t *Tcb) CreateVarInScope(value *Statement, scope *Scope) string {
+	if v := scope.GetVariableByValue(value); v != nil {
 		return v.Identifier
 	}
 
 	name := "_t" + t.GetNextIdString()
-	t.AddVirtPart("var ")
-	t.AddVirtPart(name)
-	t.AddVirtPart(" = ")
+	scope.AddVirtPart("var ")
+	scope.AddVirtPart(name)
+	scope.AddVirtPart(" = ")
 
-	t.AddStatement(value)
+	scope.AddStatement(value)
 
-	t.AddVirtPart(";\n")
+	scope.AddVirtPart(";\n")
 
 	lastPart := t.CurrentScope.Parts.GetLastPart()
-	t.GetScope().AddVariable(&Variable{Identifier: name, LastPart: lastPart, Value: value.ToString()})
+	scope.AddVariable(&Variable{Identifier: name, LastPart: lastPart, Value: value.ToString()})
 
 	return name
 }
