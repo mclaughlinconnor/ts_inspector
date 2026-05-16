@@ -84,7 +84,7 @@ func (s *Statement) AddStatementAfterPart(statement *Statement, after *Part) *Pa
 
 	if index+1 >= len(s.Parts) {
 		s.AddStatement(statement)
-		return nil
+		return after
 	}
 
 	index++
