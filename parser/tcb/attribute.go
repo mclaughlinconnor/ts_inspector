@@ -128,8 +128,13 @@ THING:
 	}
 
 	if !hasMatched {
+		expr := buildTcbExpression(tcb.Ast, attribute.Value)
+		if attribute.ValueNode != nil {
+			expr.OffsetByNodeStart(attribute.ValueNode)
+		}
+
 		tcb.AddVirtPart("(")
-		tcb.AddStatement(buildTcbExpression(tcb.Ast, attribute.Value))
+		tcb.AddStatement(expr)
 		tcb.AddVirtPart(");\n")
 	}
 
@@ -158,7 +163,11 @@ func buildGenericDirectiveAssignment(tcb *Tcb, attribute *Attribute, thing *pars
 		inputName := input.GetInputName()
 		attached, isAttached := (*attachedInputs)[inputName]
 		if isAttached {
-			values[inputName] = buildTcbExpression(tcb.Ast, attached.Value)
+			v := buildTcbExpression(tcb.Ast, attached.Value)
+			if attached.ValueNode != nil {
+				v.OffsetByNodeStart(attached.ValueNode)
+			}
+			values[inputName] = v
 		} else {
 			values[inputName] = nil
 		}
@@ -199,7 +208,12 @@ func buildNonGenericDirectiveAssignment(tcb *Tcb, attribute *Attribute, thing *p
 			continue
 		}
 
-		tcb.AddAssignment(dirIdent+"."+def.Name, attached.NameNode, *buildTcbExpression(tcb.Ast, attached.Value))
+		expr := buildTcbExpression(tcb.Ast, attached.Value)
+		if attached.ValueNode != nil {
+			expr.OffsetByNodeStart(attached.ValueNode)
+		}
+
+		tcb.AddAssignment(dirIdent+"."+def.Name, attached.NameNode, *expr)
 	}
 }
 
