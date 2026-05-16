@@ -2,6 +2,7 @@ package analysis
 
 import (
 	"strconv"
+	"strings"
 	"ts_inspector/parser"
 	"ts_inspector/parser/tcb"
 	"ts_inspector/utils"
@@ -47,8 +48,26 @@ func typescript(state *parser.State, file *parser.File) []Analysis {
 			relatedInformation = append(relatedInformation, ri)
 		}
 
-		analyses = append(analyses, newAnalysis(code, r, AnalysisSeverityFromTsGoCategory(&diagnostic.Category), diagnostic.Text, &relatedInformation))
+		text := strings.TrimRight(flattenText(&diagnostic, 0), "\n")
+		analyses = append(analyses, newAnalysis(code, r, AnalysisSeverityFromTsGoCategory(&diagnostic.Category), text, &relatedInformation))
 	}
 
 	return analyses
+}
+
+func flattenText(diagnostic *parser.Diagnostic, depth int) string {
+	sb := strings.Builder{}
+
+	for range depth * 2 {
+		sb.WriteRune(' ')
+	}
+
+	sb.WriteString(diagnostic.Text)
+	sb.WriteRune('\n')
+
+	for _, d := range diagnostic.MessageChain {
+		sb.WriteString(flattenText(d, depth+1))
+	}
+
+	return sb.String()
 }
