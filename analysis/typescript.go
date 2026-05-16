@@ -43,7 +43,7 @@ func typescript(state *parser.State, file *parser.File) []Analysis {
 
 		relatedInformation := []RelatedInformation{}
 		for _, ri := range diagnostic.RelatedInformation {
-			ri := RelatedInformation{ri.Text, ri.FileName, utils.ZeroRange()}
+			ri := RelatedInformation{ri.Text, parser.UriFromFilename(ri.FileName), utils.ZeroRange()}
 			relatedInformation = append(relatedInformation, ri)
 		}
 
