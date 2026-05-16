@@ -183,11 +183,11 @@ func buildGenericDirectiveAssignment(tcb *Tcb, attribute *Attribute, thing *pars
 
 		v := values[k]
 
-		ctorExpr.AddVirtPart("\"")
-		ctorExpr.AddRealPart(k, attribute.ValueNode)
-		ctorExpr.AddVirtPart("\": ")
+		ctorExpr.AddVirtPart("\"" + k + "\": ")
 		if v != nil {
-			ctorExpr.AddStatement(v)
+			for _, p := range v.Parts {
+				ctorExpr.AddVirtPart(p.text)
+			}
 		} else {
 			ctorExpr.AddVirtPart(NULL_AS_ANY)
 		}
