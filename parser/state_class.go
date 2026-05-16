@@ -491,7 +491,7 @@ func (c *Class) GetDocumentation(includeClassName bool) string {
 		documentation = append(documentation, "**Declared in:** "+strings.Join(modules, ", "))
 	}
 
-	documentation = append(documentation, buildDefinitionSection("Inputs", c.GetInputs(), true, false))
+	documentation = append(documentation, buildDefinitionSection("Inputs", c.GetInputs(true), true, false))
 	documentation = append(documentation, buildDefinitionSection("Outputs", c.GetOutputs(), false, true))
 
 	text := strings.Join(documentation, "\n\n")
@@ -521,8 +521,15 @@ func (c *Class) GetGetters() []ClassedDefinition {
 	return c.FilterOwnDefinitions(func(d ClassedDefinition) bool { return d.Getter })
 }
 
-func (c *Class) GetInputs() []ClassedDefinition {
-	return c.FilterAllDefinitionsByDecorator("Input")
+func (c *Class) GetInputs(sort bool) []ClassedDefinition {
+	inputs := c.FilterAllDefinitionsByDecorator("Input")
+	if sort {
+		slices.SortFunc(inputs, func(a ClassedDefinition, b ClassedDefinition) int {
+			return cmp.Compare(a.GetInputName(), b.GetInputName())
+		})
+	}
+
+	return inputs
 }
 
 func (c *Class) GetImplementsHierarchy() []*Class {

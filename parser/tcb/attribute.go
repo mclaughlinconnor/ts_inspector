@@ -2,6 +2,8 @@ package tcb
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
 	"ts_inspector/parser"
 	"ts_inspector/utils"
@@ -152,7 +154,7 @@ func buildGenericDirectiveAssignment(tcb *Tcb, attribute *Attribute, thing *pars
 
 	values := map[string]*Statement{}
 
-	for _, input := range thing.GetInputs() {
+	for _, input := range thing.GetInputs(true) {
 		inputName := input.GetInputName()
 		attached, isAttached := (*attachedInputs)[inputName]
 		if isAttached {
@@ -162,11 +164,15 @@ func buildGenericDirectiveAssignment(tcb *Tcb, attribute *Attribute, thing *pars
 		}
 	}
 
-	i := 0
-	for k, v := range values {
+	keys := slices.Collect(maps.Keys(values))
+	slices.Sort(keys)
+
+	for i, k := range keys {
 		if i > 0 {
 			ctorExpr.AddVirtPart(", ")
 		}
+
+		v := values[k]
 
 		ctorExpr.AddVirtPart("\"")
 		ctorExpr.AddRealPart(k, attribute.ValueNode)
@@ -176,8 +182,6 @@ func buildGenericDirectiveAssignment(tcb *Tcb, attribute *Attribute, thing *pars
 		} else {
 			ctorExpr.AddVirtPart(NULL_AS_ANY)
 		}
-
-		i++
 	}
 
 	ctorExpr.AddVirtPart("})")
@@ -188,7 +192,7 @@ func buildGenericDirectiveAssignment(tcb *Tcb, attribute *Attribute, thing *pars
 }
 
 func buildNonGenericDirectiveAssignment(tcb *Tcb, attribute *Attribute, thing *parser.Class, dirIdent string, attachedInputs *map[string]*Attribute) {
-	for _, def := range thing.GetInputs() {
+	for _, def := range thing.GetInputs(true) {
 		inputName := def.GetInputName()
 		attached, isAttached := (*attachedInputs)[inputName]
 		if !isAttached {
@@ -248,7 +252,7 @@ func buildGenericDirectiveDeclaration(tcb *Tcb, thing *parser.Class) string {
 	statement.AddVirtPart("(init: Pick<")
 	statement.AddStatement(&thingDef)
 	statement.AddVirtPart(", ")
-	for i, input := range thing.GetInputs() {
+	for i, input := range thing.GetInputs(true) {
 		if i > 0 {
 			statement.AddVirtPart(" | ")
 		}

@@ -236,7 +236,7 @@ func forComponentThing(thing *parser.Class, file *parser.File, cursorOffset uint
 	cursorPosition := utils.GetPositionForOffset(file.Snapshot().Content, cursorOffset)
 	cursorRange := utils.Range{Start: cursorPosition, End: cursorPosition}
 
-	for _, i := range thing.GetInputs() {
+	for _, i := range thing.GetInputs(true) {
 		items = append(items, build(i, cursorRange, "[", "]", true, false))
 	}
 
