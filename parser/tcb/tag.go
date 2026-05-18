@@ -94,7 +94,8 @@ func (t *Tag) AddDeclaration(insertBeforeCurrentTag bool, shouldAddReferenceVar 
 				continue
 			}
 
-			t.insertValue(StatementFromString("null! as "+thing.Snapshot().Name), insertBeforeCurrentTag, shouldAddReferenceVar)
+			classIdent := tcb.AddImport(thing)
+			t.insertValue(StatementFromString("null! as "+classIdent), insertBeforeCurrentTag, shouldAddReferenceVar)
 			return
 		}
 	}

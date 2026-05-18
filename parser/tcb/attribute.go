@@ -208,12 +208,13 @@ func buildNonGenericDirectiveAssignment(tcb *Tcb, attribute *Attribute, thing *p
 			continue
 		}
 
-		expr := buildTcbExpression(tcb.Ast, attached.Value)
 		if attached.ValueNode != nil {
-			expr.OffsetByNodeStart(attached.ValueNode)
+			value := buildTcbExpression(tcb.Ast, attached.Value)
+			value.OffsetByNodeStart(attached.ValueNode)
+			tcb.AddAssignment(dirIdent+"."+def.Name, attached.NameNode, *value)
+		} else {
+			tcb.AddAssignment(dirIdent+"."+def.Name, nil, *StatementFromString(NULL_AS_ANY))
 		}
-
-		tcb.AddAssignment(dirIdent+"."+def.Name, attached.NameNode, *expr)
 	}
 }
 
