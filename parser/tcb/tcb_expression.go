@@ -26,11 +26,14 @@ var exprOptimisedMap walk.VisitorFuncMap[*exprState]
 func initTcbExpression() {
 	exprVisitorFuncMap["unary_expression"] = visitUnary
 	exprVisitorFuncMap["binary_expression"] = visitBinary
+	exprVisitorFuncMap["conditional_expression"] = visitBinary
 	exprVisitorFuncMap["ternary_expression"] = visitConditional
 	exprVisitorFuncMap["template_string"] = visitInterpolation
 	exprVisitorFuncMap["bracket_expression"] = visitBracketExpression
+	exprVisitorFuncMap["group"] = visitGroup
 	exprVisitorFuncMap["array"] = visitLiteralArray
 	exprVisitorFuncMap["array"] = visitLiteralArray
+	exprVisitorFuncMap["object"] = visitLiteralMap
 	exprVisitorFuncMap["string"] = visitString
 	exprVisitorFuncMap["number"] = visitNumber
 	exprVisitorFuncMap["member_expression"] = visitMemberExpression // visitPropertyRead and visitSafePropertyRead
@@ -105,6 +108,18 @@ func visitBracketExpression(node *sitter.Node, state *exprState, indexInParent i
 	case "!.":
 		return visitKeyedNonNullAssertRead(node, state, indexInParent, internalFuncMap)
 	}
+}
+
+func visitGroup(node *sitter.Node, state *exprState, indexInParent int, internalFuncMap walk.VisitorFuncMap[*exprState]) *exprState {
+	// "(", stuff, ")"
+	stuffNode := node.NamedChild(0)
+	stuff := newWalk(stuffNode, state)
+
+	state.parts.AddVirtPart("(")
+	state.parts.AddStatement(stuff.parts)
+	state.parts.AddVirtPart(")")
+
+	return state
 }
 
 // Chains unsupported in parser
@@ -215,10 +230,11 @@ func visitLiteralMap(node *sitter.Node, state *exprState, indexInParent int, int
 		pair := node.NamedChild(int(i))
 
 		keyNode := pair.ChildByFieldName("key")
-		key := "\"" + keyNode.Content(state.content) + "\""
+		if keyNode == nil {
+			continue
+		}
 
-		valueNode := pair.ChildByFieldName("value")
-		valueExpr := newWalk(valueNode, state)
+		key := "\"" + keyNode.Content(state.content) + "\""
 
 		if i != 0 {
 			state.parts.AddVirtPart(", ")
@@ -226,7 +242,17 @@ func visitLiteralMap(node *sitter.Node, state *exprState, indexInParent int, int
 
 		state.parts.AddRealPart(key, keyNode)
 		state.parts.AddVirtPart(": ")
-		state.parts.AddStatement(valueExpr.parts)
+
+		valueNode := pair.ChildByFieldName("value")
+		var valueExpr *Statement
+		if valueNode != nil {
+			expr := newWalk(valueNode, state)
+			valueExpr = expr.parts
+		} else {
+			valueExpr = StatementFromString(NULL_AS_ANY)
+		}
+
+		state.parts.AddStatement(valueExpr)
 	}
 
 	state.parts.AddVirtPart("}")
