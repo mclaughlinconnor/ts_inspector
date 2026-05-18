@@ -19,9 +19,13 @@ import (
 	"ts_inspector/utils"
 
 	sitter "github.com/smacker/go-tree-sitter"
+
+	"net/http"
+	_ "net/http/pprof"
 )
 
 func main() {
+
 	var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
 
 	flag.Parse()
@@ -39,6 +43,12 @@ func main() {
 	commands.InitCommands()
 	analysis.InitAnalysers()
 	tcb.InitTcb()
+
+	if utils.Debug {
+		go func() {
+			http.ListenAndServe("localhost:6060", nil)
+		}()
+	}
 
 	args := flag.Args()
 	if utils.LSP && len(args) == 0 {
