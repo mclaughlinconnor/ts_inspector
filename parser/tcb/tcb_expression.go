@@ -339,7 +339,7 @@ func visitNonNullAssertRead(node *sitter.Node, state *exprState, indexInParent i
 	receiverState := newWalk(receiverNode, state)
 
 	nameNode := node.ChildByFieldName("property")
-	name := wrapForDiagnostics(StatementFromNodeContent(nameNode, state.content))
+	name := StatementFromNodeContent(nameNode, state.content)
 
 	state.parts.AddStatement(receiverState.parts)
 	state.parts.AddVirtPart("!.")
