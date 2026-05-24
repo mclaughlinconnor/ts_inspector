@@ -42,6 +42,7 @@ func initTcbExpression() {
 	exprVisitorFuncMap["identifier"] = visitIdentifier
 	exprVisitorFuncMap["expression"] = visitExpression
 	exprVisitorFuncMap["pipe_sequence"] = visitPipeSequence
+	exprVisitorFuncMap["non_null_assertion"] = visitNonNullAssertion
 
 	exprOptimisedMap = walk.GenerateSymbolMap(angularExprLang, exprVisitorFuncMap)
 }
@@ -640,6 +641,12 @@ func visitPipeSequence(node *sitter.Node, state *exprState, indexInParent int, i
 		state.parts.AddStatement(statement)
 		state.pipesToClose++
 	}
+
+	return state
+}
+
+func visitNonNullAssertion(node *sitter.Node, state *exprState, indexInParent int, internalFuncMap walk.VisitorFuncMap[*exprState]) *exprState {
+	state.parts.AddVirtPart("!")
 
 	return state
 }
