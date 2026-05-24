@@ -94,8 +94,22 @@ func (t *Tag) AddDeclaration(insertBeforeCurrentTag bool, shouldAddReferenceVar 
 				continue
 			}
 
-			classIdent := tcb.AddImport(thing)
-			t.insertValue(StatementFromString("null! as "+classIdent), insertBeforeCurrentTag, shouldAddReferenceVar)
+			classIdent := StatementFromString("null! as " + tcb.AddImport(thing))
+			typeParameters := thing.Snapshot().TypeParameters
+			if len(typeParameters) > 0 {
+				classIdent.AddVirtPart("<")
+				for i := range typeParameters {
+					if i > 0 {
+						classIdent.AddVirtPart(", ")
+					}
+
+					classIdent.AddVirtPart("any")
+				}
+				classIdent.AddVirtPart(">")
+			}
+
+			t.insertValue(classIdent, insertBeforeCurrentTag, shouldAddReferenceVar)
+
 			return
 		}
 	}
