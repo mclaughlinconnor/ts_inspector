@@ -70,7 +70,7 @@ func (a *Ast) FindTagByTemplateRef(name string) *TemplateRef {
 		}
 
 		for _, c := range node.GetChildren().Elements {
-			if visited[node] {
+			if visited[c] {
 				continue
 			}
 
