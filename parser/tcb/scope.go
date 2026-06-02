@@ -32,7 +32,7 @@ func (s *Scope) AddVirtPart(p string) {
 	s.Parts.AddVirtPart(p)
 }
 
-func (s *Scope) AddPart(p Part) {
+func (s *Scope) AddPart(p *Part) {
 	s.Parts.AddPart(p)
 }
 

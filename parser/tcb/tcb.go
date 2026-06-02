@@ -104,7 +104,7 @@ func (t *Tcb) AddPipeDeclaration(identifer string, pipe *parser.Class, statement
 	t.Pipes = append(t.Pipes, &constructor)
 }
 
-func (t *Tcb) AddPart(part Part) {
+func (t *Tcb) AddPart(part *Part) {
 	t.GetScope().AddPart(part)
 }
 

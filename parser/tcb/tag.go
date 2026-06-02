@@ -121,7 +121,7 @@ func (t *Tag) Render() {
 	tcb := t.Tcb()
 
 	if len(tcb.CurrentScope.Parts.Parts) > 0 {
-		tcb.TagBoundaryPartStack.Push(&tcb.CurrentScope.Parts.Parts[len(tcb.CurrentScope.Parts.Parts)-1])
+		tcb.TagBoundaryPartStack.Push(tcb.CurrentScope.Parts.Parts[len(tcb.CurrentScope.Parts.Parts)-1])
 	}
 
 	t.renderAttributes()

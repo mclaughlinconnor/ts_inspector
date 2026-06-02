@@ -38,7 +38,7 @@ func (p *Part) IsVirtual() bool {
 }
 
 type Statement struct {
-	Parts []Part
+	Parts []*Part
 	sb    strings.Builder
 }
 
@@ -57,7 +57,7 @@ func (s *Statement) AddStatement(statement *Statement) {
 		tsStartOffset := s.sb.Len()
 		tsEndOffset := tsStartOffset + (*p.TsEndOffset - *p.TsStartOffset)
 
-		newPart := Part{
+		newPart := &Part{
 			node:           p.node,
 			text:           p.text,
 			TsStartOffset:  &tsStartOffset,
@@ -77,7 +77,7 @@ func (s *Statement) AddStatementAfterPart(statement *Statement, after *Part) *Pa
 		return nil
 	}
 
-	index := slices.IndexFunc(s.Parts, func(p Part) bool { return p.Id == after.Id })
+	index := slices.IndexFunc(s.Parts, func(p *Part) bool { return p.Id == after.Id })
 	if index == -1 {
 		return nil
 	}
@@ -104,7 +104,7 @@ func (s *Statement) AddStatementAfterPart(statement *Statement, after *Part) *Pa
 		index++
 	}
 
-	return &newAfter
+	return newAfter
 }
 
 func (s *Statement) OffsetByNodeStart(node *sitter.Node) {
@@ -124,7 +124,7 @@ func (s *Statement) PrependVirtPart(text string) {
 	tsStartOffset := 0
 	tsEndOffset := len(text)
 
-	p := Part{text: text, TsStartOffset: &tsStartOffset, TsEndOffset: &tsEndOffset, Id: getNextId()}
+	p := &Part{text: text, TsStartOffset: &tsStartOffset, TsEndOffset: &tsEndOffset, Id: getNextId()}
 	s.Parts = slices.Insert(s.Parts, 0, p)
 
 	for _, p := range s.Parts {
@@ -140,7 +140,7 @@ func (s *Statement) PugToTsLocation(start int, _end int) *Part {
 		}
 
 		if *part.PugStartOffset <= start && *part.PugEndOffset > start {
-			return &part
+			return part
 		}
 	}
 
@@ -150,14 +150,14 @@ func (s *Statement) PugToTsLocation(start int, _end int) *Part {
 func (s *Statement) TsToPugLocation(start int, _end int) *Part {
 	for _, part := range s.Parts {
 		if *part.TsStartOffset <= start && *part.TsEndOffset > start {
-			return &part
+			return part
 		}
 	}
 
 	return nil
 }
 
-func (s *Statement) AddPart(part Part) {
+func (s *Statement) AddPart(part *Part) {
 	if part.node != nil && (part.PugStartOffset == nil || part.PugEndOffset == nil) {
 		start := int(part.node.StartByte())
 		end := int(part.node.EndByte())
@@ -174,7 +174,7 @@ func (s *Statement) AddRealPart(text string, node *sitter.Node) {
 	tsStartOffset := s.sb.Len()
 	tsEndOffset := tsStartOffset + len(text)
 
-	s.AddPart(Part{node: node, text: text, TsEndOffset: &tsEndOffset, TsStartOffset: &tsStartOffset, Id: getNextId()})
+	s.AddPart(&Part{node: node, text: text, TsEndOffset: &tsEndOffset, TsStartOffset: &tsStartOffset, Id: getNextId()})
 }
 
 func (s *Statement) AddScopePart(scope *Scope) {
@@ -183,7 +183,7 @@ func (s *Statement) AddScopePart(scope *Scope) {
 		startOffset = *s.Parts[len(s.Parts)-1].TsEndOffset
 	}
 
-	s.AddPart(Part{scope: scope, TsStartOffset: &startOffset, Id: getNextId()})
+	s.AddPart(&Part{scope: scope, TsStartOffset: &startOffset, Id: getNextId()})
 }
 
 func (s *Statement) AppendStatement(statement Statement) {
@@ -202,7 +202,7 @@ func (s *Statement) GetLastPart() *Part {
 		return nil
 	}
 
-	return &s.Parts[len(s.Parts)-1]
+	return s.Parts[len(s.Parts)-1]
 }
 
 func (s *Statement) ToString() string {
