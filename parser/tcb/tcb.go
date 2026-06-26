@@ -117,7 +117,41 @@ func (t *Tcb) AddStatement(parts *Statement) {
 }
 
 func (t *Tcb) AddStatementAfterPart(parts *Statement, after *Part) *Part {
-	return t.GetScope().AddStatementAfterPart(parts, after)
+	stack := utils.NewStack[*Scope]()
+	visited := map[*Scope]bool{}
+
+	for _, part := range t.RootScope.Parts.Parts {
+		if part.scope == nil {
+			continue
+		}
+
+		stack.Push(part.scope)
+	}
+
+	for !stack.IsEmpty() {
+		scope := *stack.Pop()
+
+		if visited[scope] {
+			continue
+		}
+
+		visited[scope] = true
+
+		newAfter := scope.AddStatementAfterPart(parts, after)
+		if newAfter != nil {
+			return newAfter
+		}
+
+		for _, part := range scope.Parts.Parts {
+			if part.scope == nil {
+				continue
+			}
+
+			stack.Push(part.scope)
+		}
+	}
+
+	return nil
 }
 
 func (t *Tcb) AddRealPart(part string, node *sitter.Node) {

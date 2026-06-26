@@ -99,8 +99,14 @@ func (s *Statement) AddStatementAfterPart(statement *Statement, after *Part) *Pa
 	newAfter := s.Parts[index-1]
 
 	for index < len(s.Parts) {
-		*s.Parts[index].TsStartOffset += increasedLength
-		*s.Parts[index].TsEndOffset += increasedLength
+		if s.Parts[index].TsStartOffset != nil {
+			*s.Parts[index].TsStartOffset += increasedLength
+		}
+
+		if s.Parts[index].TsEndOffset != nil {
+			*s.Parts[index].TsEndOffset += increasedLength
+		}
+
 		index++
 	}
 
