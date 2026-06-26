@@ -29,6 +29,10 @@ func lspHandleDidOpen(writer io.Writer, logger *log.Logger, state *parser.State,
 
 		file.SetOpen()
 
+		if utils.TsGo {
+			state.GetTsGo().UpdateSnapshot("", []parser.DocumentIdentifier{{URI: file.Snapshot().URI}})
+		}
+
 		dependencies := file.GetDependencies(state)
 		for _, dependency := range dependencies {
 			file, _ := state.GetFile(dependency)

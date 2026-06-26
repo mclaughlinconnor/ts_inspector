@@ -28,7 +28,7 @@ func lspHandleDidChange(writer io.Writer, logger *log.Logger, state *parser.Stat
 		}
 
 		if utils.TsGo {
-			state.GetTsGo().UpdateSnapshot("", &parser.APIFileChanges{Changed: []parser.DocumentIdentifier{{URI: file.Snapshot().URI}}})
+			state.GetTsGo().UpdateSnapshot("", []parser.DocumentIdentifier{{URI: file.Snapshot().URI}})
 		}
 
 		dependencies := file.GetDependencies(state)
@@ -46,6 +46,7 @@ func lspHandleDidChange(writer io.Writer, logger *log.Logger, state *parser.Stat
 			}
 
 			file, _ := state.GetFile(depFile)
+
 			if !file.Snapshot().IsOpen {
 				continue
 			}

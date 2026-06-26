@@ -21,12 +21,12 @@ type Responses struct {
 type TsGo struct {
 	logger          *log.Logger
 	nextId          int
-	project         Handle
+	projectHandle   Handle
 	requestHandlers map[string]func(request TsGoRequest) any
 	responses       *Responses
-	snapshot        Handle
+	rootFiles       map[string]bool
+	snapshotHandle  Handle
 	state           *State
-	virtualFiles    map[string]string
 
 	stderr *io.ReadCloser
 	stdin  *io.WriteCloser
@@ -70,8 +70,9 @@ func StartTsGo(state *State) (*TsGo, error) {
 	tsgo := &TsGo{
 		logger:    state.Logger,
 		nextId:    0,
-		state:     state,
 		responses: &Responses{response: make(map[string]chan []byte)},
+		rootFiles: make(map[string]bool),
+		state:     state,
 
 		stderr: &stderr,
 		stdin:  &stdin,
@@ -147,14 +148,14 @@ func (t *TsGo) GetNextId() string {
 }
 
 func (t *TsGo) GetSemanticDiagnostics(uri string) *DiagnosticResponse {
-	t.UpdateSnapshot("", &APIFileChanges{Changed: []DocumentIdentifier{{URI: uri}}})
+	t.UpdateSnapshot("", []DocumentIdentifier{{URI: uri}})
 
 	id := t.GetNextId()
 	request := GetDiagnosticsRequest{
 		TsGoRequest: TsGoRequest{RPC: "2.0", ID: id, Method: "getSemanticDiagnostics"},
 		Params: GetDiagnosticsParams{
-			Snapshot: t.snapshot,
-			Project:  t.project,
+			Snapshot: t.snapshotHandle,
+			Project:  t.projectHandle,
 			File:     &DocumentIdentifier{URI: uri},
 		},
 	}
@@ -174,7 +175,7 @@ func (t *TsGo) GetSemanticDiagnostics(uri string) *DiagnosticResponse {
 }
 
 func (t *TsGo) GetSymbolAtPosition(uri string, offset uint32) *SymbolResponse {
-	t.UpdateSnapshot("", &APIFileChanges{Changed: []DocumentIdentifier{{URI: uri}}})
+	t.UpdateSnapshot("", []DocumentIdentifier{{URI: uri}})
 
 	id := t.GetNextId()
 	request := GetSymbolAtPositionRequest{
@@ -182,8 +183,8 @@ func (t *TsGo) GetSymbolAtPosition(uri string, offset uint32) *SymbolResponse {
 		Params: GetSymbolAtPositionParams{
 			File:     DocumentIdentifier{URI: uri},
 			Position: offset,
-			Project:  t.project,
-			Snapshot: t.snapshot,
+			Project:  t.projectHandle,
+			Snapshot: t.snapshotHandle,
 		},
 	}
 
@@ -206,8 +207,8 @@ func (t *TsGo) GetTypeOfSymbol(symbol Handle) *TypeResponse {
 	request := GetTypeOfSymbolRequest{
 		TsGoRequest: TsGoRequest{RPC: "2.0", ID: id, Method: "getTypeOfSymbol"},
 		Params: GetTypeOfSymbolParams{
-			Project:  t.project,
-			Snapshot: t.snapshot,
+			Project:  t.projectHandle,
+			Snapshot: t.snapshotHandle,
 			Symbol:   symbol,
 		},
 	}
@@ -249,8 +250,8 @@ func (t *TsGo) TypeToString(ttype Handle) *TypeToStringResponse {
 	request := TypeToTypeNodeRequest{
 		TsGoRequest: TsGoRequest{RPC: "2.0", ID: id, Method: "typeToString"},
 		Params: TypeToTypeNodeParams{
-			Project:  t.project,
-			Snapshot: t.snapshot,
+			Project:  t.projectHandle,
+			Snapshot: t.snapshotHandle,
 			Type:     ttype,
 		},
 	}
@@ -269,12 +270,35 @@ func (t *TsGo) TypeToString(ttype Handle) *TypeToStringResponse {
 	}
 }
 
-func (t *TsGo) UpdateSnapshot(tsconfig string, changes *APIFileChanges) *UpdateSnapshotResponse {
+func (t *TsGo) UpdateSnapshot(tsconfig string, changes []DocumentIdentifier) *UpdateSnapshotResponse {
 	id := t.GetNextId()
+
+	tsGoChanges := []DocumentIdentifier{}
+	tsGoCreated := []DocumentIdentifier{}
+
+	for _, change := range changes {
+		var uri string
+		if change.FileName != "" {
+			uri = change.FileName
+		} else {
+			uri = FilenameFromUri(change.URI)
+		}
+
+		if t.rootFiles[uri] {
+			tsGoChanges = append(tsGoChanges, change)
+		} else {
+			tsGoCreated = append(tsGoCreated, change)
+		}
+	}
+
 	request := UpdateSnapshotRequest{
 		TsGoRequest: TsGoRequest{RPC: "2.0", ID: id, Method: "updateSnapshot"},
-		Params:      UpdateSnapshotParams{OpenProject: tsconfig, FileChanges: changes},
+		Params: UpdateSnapshotParams{
+			OpenProject: tsconfig,
+			FileChanges: &APIFileChanges{Changed: tsGoChanges, Created: tsGoCreated},
+		},
 	}
+
 	utils.WriteResponse(*t.stdin, request)
 
 	c := make(chan []byte, 1)
@@ -287,8 +311,12 @@ func (t *TsGo) UpdateSnapshot(tsconfig string, changes *APIFileChanges) *UpdateS
 		r := utils.TryParseRequest[UpdateSnapshotResponse](t.logger, result)
 		t.logger.Println(string(result))
 		if r.Result.Snapshot != "" && len(r.Result.Projects) > 0 && r.Result.Projects[0].Id != "" {
-			t.snapshot = r.Result.Snapshot
-			t.project = r.Result.Projects[0].Id
+			t.snapshotHandle = r.Result.Snapshot
+			t.projectHandle = r.Result.Projects[0].Id
+
+			for _, file := range r.Result.Projects[0].RootFiles {
+				t.rootFiles[file] = true
+			}
 		}
 		return &r
 	}
