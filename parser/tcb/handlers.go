@@ -52,6 +52,57 @@ func handleChildNodes(node *sitter.Node, state *Ast, indexInParent int, internal
 	return state
 }
 
+func handleMixin(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) *Ast {
+	mixin := Mixin{Children: HelpfulArray[*Node]{}, Name: "", tcb: state.Tcb}
+	mixinNode := newMixinNode(&mixin)
+
+	state.AddChildToCurrent(mixinNode)
+	state.Current.Push(mixinNode)
+
+	for i := range node.NamedChildCount() {
+		parse(state, node.NamedChild(int(i)))
+	}
+
+	state.Current.Pop()
+
+	return state
+}
+
+func handleMixinAttributes(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) *Ast {
+	prev := state.Current
+
+	for i := range node.NamedChildCount() {
+		handleMixinAttributeName(node, state, int(i), internalFuncMap)
+	}
+
+	state.Current = prev
+
+	return state
+}
+
+func handleMixinAttributeName(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) *Ast {
+	attribute := Attribute{Name: "", Mixin: (*state.Current.Peek()).Mixin, Value: "", tcb: state.Tcb}
+
+	a := &attribute
+	state.Current.Push((*state.Current.Peek()).Mixin.addAttribute(a))
+
+	(*state.Current.Peek()).Attribute.Name = node.Content(state.Content)
+	(*state.Current.Peek()).Attribute.NameNode = node
+
+	state.Current.Pop()
+
+	return state
+}
+
+func handleMixinName(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) *Ast {
+	if p := state.Current.Peek(); p != nil {
+		(*p).Mixin.Name = node.Content(state.Content)
+		(*p).Mixin.NameNode = node
+	}
+
+	return state
+}
+
 func handleTag(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) *Ast {
 	tag := Tag{Children: HelpfulArray[*Node]{}, Name: "", tcb: state.Tcb}
 	tagNode := newTagNode(&tag)
@@ -135,6 +186,10 @@ func handleTagName(node *sitter.Node, state *Ast, indexInParent int, internalFun
 
 func newAttributeNode(attribute *Attribute) *Node {
 	return &Node{Kind: KindAttribute, Attribute: attribute}
+}
+
+func newMixinNode(mixin *Mixin) *Node {
+	return &Node{Kind: KindMixin, Mixin: mixin}
 }
 
 func newTagNode(tag *Tag) *Node {
