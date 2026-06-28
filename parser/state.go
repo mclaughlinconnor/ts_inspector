@@ -2,6 +2,7 @@ package parser
 
 import (
 	"log"
+	"strings"
 	"sync"
 	"ts_inspector/utils"
 
@@ -34,7 +35,7 @@ func CreateState() State {
 
 func (s *State) GetFile(filename string) (*File, bool) {
 	s.RLock()
-	file, found := s.files[filename]
+	file, found := s.files[strings.ToLower(filename)]
 	s.RUnlock()
 
 	return file, found
@@ -157,7 +158,7 @@ func (s *State) SetClass(id string, class *Class) {
 
 func (s *State) SetFile(filename string, file *File) {
 	s.Lock()
-	s.files[filename] = file
+	s.files[strings.ToLower(filename)] = file
 	s.Unlock()
 }
 
