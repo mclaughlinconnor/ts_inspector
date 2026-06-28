@@ -18,6 +18,7 @@ type Attribute struct {
 	Name      string // includes angular [] and ()
 	NameNode  *sitter.Node
 	Node      *sitter.Node
+	Mixin     *Mixin
 	Tag       *Tag
 	Value     string
 	ValueNode *sitter.Node

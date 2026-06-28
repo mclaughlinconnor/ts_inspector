@@ -18,6 +18,7 @@ type Ast struct {
 
 const (
 	KindAttribute int = iota
+	KindMixin
 	KindRoot
 	KindTag
 )
@@ -34,6 +35,7 @@ type Node struct {
 	Node *sitter.Node
 
 	Attribute *Attribute
+	Mixin     *Mixin
 	Tag       *Tag
 	Root      *Root
 }
@@ -97,6 +99,9 @@ func initAstParser() {
 	astVisitorFuncMap["class"] = handleTagClass
 	astVisitorFuncMap["content"] = handleTagContent
 	astVisitorFuncMap["id"] = handleTagId
+	astVisitorFuncMap["mixin_attributes"] = handleMixinAttributes
+	astVisitorFuncMap["mixin_definition"] = handleMixin
+	astVisitorFuncMap["mixin_name"] = handleMixinName
 	astVisitorFuncMap["quoted_attribute_value"] = handleAttributeValue
 	astVisitorFuncMap["source_file"] = handleChildNodes
 	astVisitorFuncMap["tag"] = handleTag
@@ -130,6 +135,8 @@ func (a *Ast) AddChildToCurrent(n *Node) {
 	switch peek.Kind {
 	case KindRoot:
 		c = &peek.Root.Children
+	case KindMixin:
+		c = &peek.Mixin.Children
 	case KindTag:
 		c = &peek.Tag.Children
 	default:
@@ -145,6 +152,8 @@ func (n *Ast) Render() {
 
 func (n *Node) GetChildren() HelpfulArray[*Node] {
 	switch n.Kind {
+	case KindMixin:
+		return n.Mixin.Children
 	case KindRoot:
 		return n.Root.Children
 	case KindTag:
@@ -156,6 +165,8 @@ func (n *Node) GetChildren() HelpfulArray[*Node] {
 
 func (n *Node) Render() {
 	switch n.Kind {
+	case KindMixin:
+		n.Mixin.Render()
 	case KindRoot:
 		for _, c := range n.Root.Children.Elements {
 			c.Render()
