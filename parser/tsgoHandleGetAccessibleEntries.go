@@ -26,7 +26,7 @@ func tsgoHandleGetAccessibleEntries(tsgo *TsGo, request GetAccessibleEntriesRequ
 	stateFiles := tsgo.state.GetFiles()
 	for filename := range *stateFiles {
 		stateDir := path.Dir(filename)
-		if stateDir != requestPath {
+		if stateDir != strings.ToLower(requestPath) {
 			continue
 		}
 

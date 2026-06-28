@@ -5,9 +5,13 @@ import (
 	"context"
 	"io"
 	"log"
+	"net/url"
 	"os/exec"
+	"path"
 	"strconv"
+	"strings"
 	"sync"
+	"ts_inspector/interfaces"
 	"ts_inspector/rpc"
 	"ts_inspector/utils"
 )
@@ -156,7 +160,7 @@ func (t *TsGo) GetSemanticDiagnostics(uri string) *DiagnosticResponse {
 		Params: GetDiagnosticsParams{
 			Snapshot: t.snapshotHandle,
 			Project:  t.projectHandle,
-			File:     &DocumentIdentifier{URI: uri},
+			File:     &DocumentIdentifier{URI: strings.ToLower(uri)},
 		},
 	}
 
@@ -278,16 +282,21 @@ func (t *TsGo) UpdateSnapshot(tsconfig string, changes []DocumentIdentifier) *Up
 
 	for _, change := range changes {
 		var uri string
-		if change.FileName != "" {
-			uri = change.FileName
+		if change.URI != "" {
+			uri = change.URI
 		} else {
-			uri = FilenameFromUri(change.URI)
+			uri = UriFromFilename(change.FileName)
 		}
 
-		if t.rootFiles[uri] {
-			tsGoChanges = append(tsGoChanges, change)
+		parsedUri, _ := url.Parse(uri)
+		parsedUri.Path = strings.TrimSuffix(parsedUri.Path, path.Ext(parsedUri.Path)) + interfaces.TCB_FILENAME_SUFFIX
+
+		tcbUri := parsedUri.String()
+
+		if t.rootFiles[tcbUri] {
+			tsGoChanges = append(tsGoChanges, DocumentIdentifier{URI: tcbUri})
 		} else {
-			tsGoCreated = append(tsGoCreated, change)
+			tsGoCreated = append(tsGoCreated, DocumentIdentifier{URI: tcbUri})
 		}
 	}
 
