@@ -2,6 +2,7 @@ package tcb
 
 import (
 	"ts_inspector/parser"
+	"ts_inspector/utils"
 
 	sitter "github.com/smacker/go-tree-sitter"
 )
@@ -10,8 +11,8 @@ type Mixin struct {
 	renderable
 	tcb *Tcb
 
-	Attributes  HelpfulArray[*Node]
-	Children    HelpfulArray[*Node]
+	Attributes  utils.HelpfulArray[*Node]
+	Children    utils.HelpfulArray[*Node]
 	Name        string
 	NameNode    *sitter.Node
 	Node        *sitter.Node
@@ -21,7 +22,7 @@ type Mixin struct {
 func (m *Mixin) addAttribute(attribute *Attribute) *Node {
 	node := newAttributeNode(attribute)
 
-	m.Attributes.add(node)
+	m.Attributes.Add(node)
 
 	return node
 }

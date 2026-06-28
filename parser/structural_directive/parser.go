@@ -1,0 +1,415 @@
+package structuraldirective
+
+import (
+	"fmt"
+	"ts_inspector/utils"
+	"unicode"
+)
+
+type ShorthandValue struct {
+	Prefix     string
+	Statements utils.HelpfulArray[*Statement]
+}
+
+type Statement struct {
+	As         *As
+	Expression *Expression
+	KeyExp     *KeyExp
+	Let        *Let
+}
+
+type As struct {
+	Export string
+	Local  string
+}
+
+type Expression struct {
+	Expression string
+}
+
+type KeyExp struct {
+	Key        string
+	Expression string
+	Local      *string
+}
+
+type Let struct {
+	Export *string
+	Local  string
+}
+
+func (s *Statement) HasAs() bool {
+	return s.As != nil
+}
+
+func (s *Statement) HasKeyExp() bool {
+	return s.KeyExp != nil
+}
+
+func (s *Statement) HasLet() bool {
+	return s.Let != nil
+}
+
+func (l *Let) HasExport() bool {
+	return l.Export != nil
+}
+
+const (
+	LexStateBase int = iota
+	LexStateLet
+	LexStateExpression
+	LexStateAs
+	LexStateKeyExp
+)
+
+// https://angular.dev/guide/directives/structural-directives#structural-directive-syntax-reference
+
+func ParseShorthand(prefix string, text string) (*ShorthandValue, error) {
+	shorthand := ShorthandValue{Prefix: prefix, Statements: utils.HelpfulArray[*Statement]{}}
+
+	state := LexStateBase
+
+	i := 0
+	runeText := []rune(text)
+	for i < len(runeText) {
+		c := runeText[i]
+
+		switch state {
+		case LexStateBase:
+			{
+				switch c {
+				case ' ':
+					{
+						i++
+					}
+				case 'l':
+					{
+						state = LexStateLet
+					}
+				default:
+					{
+						if len(shorthand.Statements.Elements) == 0 {
+							state = LexStateExpression
+							continue
+						}
+
+						for j := i; j <= len(runeText); j++ {
+							d := runeText[j]
+
+							isHtml := isHtmlIdentifierChar(d)
+							isJs := isJsIdentifierChar(d)
+
+							if isHtml && isJs {
+								continue
+							}
+
+							// As must start with js identifier
+							if isHtml && !isJs {
+								state = LexStateAs
+								break
+							}
+
+							// Reached the end of identifier, so should be at the space preceding keyExp's ":" or as's "as"
+							for d == ' ' {
+								j++
+								d = runeText[j]
+							}
+
+							if d == 'a' {
+								state = LexStateAs
+								break
+							} else if d == ':' {
+								state = LexStateKeyExp
+								break
+							}
+
+							return nil, fmt.Errorf("bad character: %q, expected 'as' or ':'", c)
+						}
+
+						continue
+					}
+				}
+			}
+		case LexStateLet:
+			{
+				if e := expectAndTakeLet(&i, runeText); e != nil {
+					return nil, e
+				}
+
+				if e := expectAndTake(&i, runeText[i], ' '); e != nil {
+					return nil, e
+				}
+
+				local, e := expectAndTakeIdentifier(&i, runeText, true)
+				if e != nil {
+					return nil, e
+				}
+
+				let := Let{Local: local}
+				statement := Statement{Let: &let}
+				shorthand.Statements.Add(&statement)
+
+				if i == len(runeText) {
+					state = LexStateBase
+					continue
+				}
+
+				allowComma := len(shorthand.Statements.Elements) == 1 // just this one
+
+				e = consumeSpaces(&i, runeText, false)
+				if e != nil {
+					return nil, e
+				}
+
+				if runeText[i] != '=' {
+					state = LexStateBase
+					consumeOptionalDelimiter(&i, runeText, allowComma)
+					continue
+				}
+
+				if e := expectAndTake(&i, runeText[i], '='); e != nil {
+					return nil, e
+				}
+
+				e = consumeSpaces(&i, runeText, false)
+				if e != nil {
+					return nil, e
+				}
+
+				export, e := expectAndTakeIdentifier(&i, runeText, true)
+				if e != nil {
+					return nil, e
+				}
+
+				let.Export = &export
+
+				if i == len(runeText) {
+					state = LexStateBase
+					continue
+				}
+
+				consumeOptionalDelimiter(&i, runeText, allowComma)
+				state = LexStateBase
+			}
+		case LexStateExpression:
+			{
+				endIndex, e := ParseExpression(i, runeText)
+				if e != nil {
+					return nil, e
+				}
+
+				expressionText := runeText[i:endIndex]
+				expression := Expression{Expression: string(expressionText)}
+				statement := Statement{Expression: &expression}
+				shorthand.Statements.Add(&statement)
+
+				i = endIndex + 1
+				state = LexStateBase
+			}
+		case LexStateAs:
+			{
+				export, e := expectAndTakeIdentifier(&i, runeText, true)
+				if e != nil {
+					return nil, e
+				}
+
+				e = consumeSpaces(&i, runeText, true)
+				if e != nil {
+					return nil, e
+				}
+
+				if e := expectAndTakeAs(&i, runeText); e != nil {
+					return nil, e
+				}
+
+				e = consumeSpaces(&i, runeText, true)
+				if e != nil {
+					return nil, e
+				}
+
+				local, e := expectAndTakeIdentifier(&i, runeText, true)
+				if e != nil {
+					return nil, e
+				}
+
+				as := As{Export: export, Local: local}
+				statement := Statement{As: &as}
+				shorthand.Statements.Add(&statement)
+
+				consumeOptionalDelimiter(&i, runeText, false)
+				state = LexStateBase
+			}
+		case LexStateKeyExp:
+			{
+				key, e := expectAndTakeIdentifier(&i, runeText, false)
+				if e != nil {
+					return nil, e
+				}
+
+				e = consumeSpaces(&i, runeText, false)
+				if e != nil {
+					return nil, e
+				}
+
+				e = expectAndTake(&i, runeText[i], ':')
+				if e != nil {
+					return nil, e
+				}
+
+				e = consumeSpaces(&i, runeText, false)
+				if e != nil {
+					return nil, e
+				}
+
+				endIndex, e := ParseExpression(i, runeText)
+				if e != nil {
+					return nil, e
+				}
+
+				expression := string(runeText[i:endIndex])
+				i = endIndex + 1
+
+				keyExp := KeyExp{Key: key, Expression: expression}
+				statement := Statement{KeyExp: &keyExp}
+				shorthand.Statements.Add(&statement)
+
+				if i >= len(runeText) {
+					state = LexStateBase
+					consumeOptionalDelimiter(&i, runeText, false)
+					continue
+				}
+
+				e = consumeSpaces(&i, runeText, false)
+				if e != nil {
+					return nil, e
+				}
+
+				if i+2 >= len(runeText) || runeText[i] != 'a' || runeText[i+1] != 's' || runeText[i+2] != ' ' {
+					state = LexStateBase
+					consumeOptionalDelimiter(&i, runeText, false)
+					continue
+				}
+
+				if e := expectAndTakeAs(&i, runeText); e != nil {
+					return nil, e
+				}
+
+				e = consumeSpaces(&i, runeText, true)
+				if e != nil {
+					return nil, e
+				}
+
+				local, e := expectAndTakeIdentifier(&i, runeText, true)
+				if e != nil {
+					return nil, e
+				}
+
+				keyExp.Local = &local
+
+				consumeOptionalDelimiter(&i, runeText, false)
+				state = LexStateBase
+			}
+		}
+	}
+
+	return &shorthand, nil
+}
+
+func consumeOptionalDelimiter(i *int, runeText []rune, allowComma bool) {
+	if (*i) >= len(runeText) {
+		return
+	}
+
+	if runeText[*i] == ';' || (allowComma && runeText[*i] == ',') {
+		(*i)++
+	}
+}
+
+func consumeSpaces(i *int, runeText []rune, requireOne bool) error {
+	if requireOne {
+		if e := expectAndTake(i, runeText[*i], ' '); e != nil {
+			return e
+		}
+	}
+
+	for runeText[*i] == ' ' {
+		(*i)++
+	}
+
+	return nil
+}
+
+func expectAndTake(i *int, c rune, expected rune) error {
+	(*i)++
+
+	if c != expected {
+		return fmt.Errorf("bad character: %q, expected %q", c, expected)
+	}
+
+	return nil
+}
+
+func expectAndTakeAs(i *int, runeText []rune) error {
+	if e := expectAndTake(i, runeText[*i], 'a'); e != nil {
+		return e
+	}
+	if e := expectAndTake(i, runeText[*i], 's'); e != nil {
+		return e
+	}
+
+	return nil
+}
+
+func expectAndTakeIdentifier(i *int, runeText []rune, jsIdentifier bool) (string, error) {
+	index := *i
+
+	c := runeText[index]
+
+	if !unicode.IsLetter(c) && c != '_' { // The first char of an identifier can't be a number
+		return "", fmt.Errorf("bad character: %q, expected identifier", c)
+	}
+
+	start := index
+	index++
+
+	var isIdentifier func(c rune) bool
+	if jsIdentifier {
+		isIdentifier = isJsIdentifierChar
+	} else {
+		isIdentifier = isHtmlIdentifierChar
+	}
+
+	for index < len(runeText) {
+		if !isIdentifier(runeText[index]) {
+			break
+		}
+
+		index++
+	}
+
+	*i = index
+
+	return string(runeText[start:index]), nil
+}
+
+func expectAndTakeLet(i *int, runeText []rune) error {
+	if e := expectAndTake(i, runeText[*i], 'l'); e != nil {
+		return e
+	}
+	if e := expectAndTake(i, runeText[*i], 'e'); e != nil {
+		return e
+	}
+	if e := expectAndTake(i, runeText[*i], 't'); e != nil {
+		return e
+	}
+
+	return nil
+}
+
+func isHtmlIdentifierChar(c rune) bool {
+	return unicode.IsLetter(c) || unicode.IsNumber(c) || c == '_' || c == '-'
+}
+
+func isJsIdentifierChar(c rune) bool {
+	return unicode.IsLetter(c) || unicode.IsNumber(c) || c == '_'
+}

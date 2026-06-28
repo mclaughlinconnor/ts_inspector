@@ -44,7 +44,7 @@ type Root struct {
 	renderable
 	tcb *Tcb
 
-	Children HelpfulArray[*Node]
+	Children utils.HelpfulArray[*Node]
 }
 
 func (a *Ast) FindTagByTemplateRef(name string) *TemplateRef {
@@ -128,7 +128,7 @@ func (a *Ast) AddChildToCurrent(n *Node) {
 		return
 	}
 
-	var c *HelpfulArray[*Node]
+	var c *utils.HelpfulArray[*Node]
 
 	peek := (*p)
 
@@ -143,14 +143,14 @@ func (a *Ast) AddChildToCurrent(n *Node) {
 		return
 	}
 
-	c.add(n)
+	c.Add(n)
 }
 
 func (n *Ast) Render() {
 	n.Root.Render()
 }
 
-func (n *Node) GetChildren() HelpfulArray[*Node] {
+func (n *Node) GetChildren() utils.HelpfulArray[*Node] {
 	switch n.Kind {
 	case KindMixin:
 		return n.Mixin.Children
@@ -160,7 +160,7 @@ func (n *Node) GetChildren() HelpfulArray[*Node] {
 		return n.Tag.Children
 	}
 
-	return HelpfulArray[*Node]{}
+	return utils.HelpfulArray[*Node]{}
 }
 
 func (n *Node) Render() {
@@ -223,7 +223,7 @@ func handleChildNodes(node *sitter.Node, state *Ast, indexInParent int, internal
 }
 
 func handleMixin(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) *Ast {
-	mixin := Mixin{Children: HelpfulArray[*Node]{}, Name: "", tcb: state.Tcb}
+	mixin := Mixin{Children: utils.HelpfulArray[*Node]{}, Name: "", tcb: state.Tcb}
 	mixinNode := newMixinNode(&mixin)
 
 	state.AddChildToCurrent(mixinNode)
@@ -274,7 +274,7 @@ func handleMixinName(node *sitter.Node, state *Ast, indexInParent int, internalF
 }
 
 func handleTag(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) *Ast {
-	tag := Tag{Children: HelpfulArray[*Node]{}, Name: "", tcb: state.Tcb}
+	tag := Tag{Children: utils.HelpfulArray[*Node]{}, Name: "", tcb: state.Tcb}
 	tagNode := newTagNode(&tag)
 
 	state.AddChildToCurrent(tagNode)
@@ -287,7 +287,7 @@ func handleTag(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap
 	for _, attr := range tag.Attributes.Elements {
 		if strings.HasPrefix(attr.Attribute.Name, "#") {
 			ref := TemplateRef{Attribute: attr, Name: attr.Attribute.Name, Tag: &tag, Value: attr.Attribute.Value}
-			tag.TemplateRefs.add(ref)
+			tag.TemplateRefs.Add(ref)
 		}
 	}
 
@@ -327,7 +327,7 @@ func handleTagContent(node *sitter.Node, state *Ast, indexInParent int, internal
 				})
 			}
 
-			(*state.Current.Peek()).Tag.Content.add(&tagContent)
+			(*state.Current.Peek()).Tag.Content.Add(&tagContent)
 		}
 
 		return nil, nil

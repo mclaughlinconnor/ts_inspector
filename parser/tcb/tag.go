@@ -12,15 +12,15 @@ type Tag struct {
 	tcb        *Tcb
 	closeScope bool
 
-	Attributes   HelpfulArray[*Node]
-	Children     HelpfulArray[*Node]
-	Content      HelpfulArray[*TagContent]
+	Attributes   utils.HelpfulArray[*Node]
+	Children     utils.HelpfulArray[*Node]
+	Content      utils.HelpfulArray[*TagContent]
 	Identifier   string
 	Name         string
 	NameNode     *sitter.Node
 	Node         *sitter.Node
 	SourceClass  *parser.Class
-	TemplateRefs HelpfulArray[TemplateRef]
+	TemplateRefs utils.HelpfulArray[TemplateRef]
 }
 
 type TagContent struct {
@@ -44,7 +44,7 @@ type TemplateRef struct {
 func (t *Tag) addAttribute(attribute *Attribute) *Node {
 	node := newAttributeNode(attribute)
 
-	t.Attributes.add(node)
+	t.Attributes.Add(node)
 
 	return node
 }
