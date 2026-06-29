@@ -39,3 +39,9 @@ func StripAngularFromAttribute(attribute string) (string, int) {
 
 	return attribute, mode
 }
+
+func StripAngularFromAttributeNoType(attribute string) string {
+	name, _ := StripAngularFromAttribute(attribute)
+
+	return name
+}

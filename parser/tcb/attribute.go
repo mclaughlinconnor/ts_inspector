@@ -111,18 +111,7 @@ THING:
 
 			assIdent := buildDirectiveAssignment(tcb, thing, attribute, declIdent, &attachedInputs)
 
-			if strings.HasPrefix(attribute.Name, "*") && thing.HasDirective() && len(thing.FilterAllDefinitions(func(d parser.ClassedDefinition) bool { return d.Name == parser.NG_TEMPLATE_CONTEXT_GUARD })) > 0 {
-				ctxIdent := tcb.CreateVarInCurrentScope(StatementFromString(NULL_AS_ANY))
-
-				tcb.AddVirtPart(fmt.Sprintf("if (%s.%s(%s, %s))", classIdent, parser.NG_TEMPLATE_CONTEXT_GUARD, assIdent, ctxIdent))
-				tcb.BeginScope()
-				tcb.AddVirtPart("(" + ctxIdent + ");\n")
-				if attribute.Tag.Identifier == "" {
-					attribute.Tag.AddDeclaration(false, false)
-				}
-
-				attribute.Tag.closeScope = true
-			}
+			buildGuards(tcb, attribute, thing, assIdent, classIdent)
 
 			continue THING
 		}
@@ -151,6 +140,94 @@ func buildDirectiveAssignment(tcb *Tcb, thing *parser.Class, attribute *Attribut
 	buildNonGenericDirectiveAssignment(tcb, attribute, thing, assIdent, attachedInputs)
 
 	return assIdent
+}
+
+func buildGuards(tcb *Tcb, attribute *Attribute, thing *parser.Class, assIdent string, classIdent string) {
+	if !thing.HasDirective() && !strings.HasPrefix(attribute.Name, "*") && attribute.Tag.Name != "ng-template" {
+		return
+	}
+
+	hasContextGuard := false
+	var inputGuard *parser.ClassedDefinition = nil
+
+	strippedAttributeName := utils.StripAngularFromAttributeNoType(attribute.Name)
+	inputGuardDefName := parser.NG_TEMPLATE_GUARD_PREFIX + strippedAttributeName
+
+	for _, definition := range thing.GetAllDefinitions() {
+		if definition.Name == parser.NG_TEMPLATE_CONTEXT_GUARD {
+			hasContextGuard = true
+		}
+
+		if inputGuard != nil {
+			if hasContextGuard {
+				break
+			} else {
+				continue
+			}
+		}
+
+		// For `@Input('alias') public prop`, `ngTemplateGuard_alias` and `ngTemplateGuard_prop` are both valid
+		if strings.HasPrefix(definition.Name, parser.NG_TEMPLATE_GUARD_PREFIX) {
+			if definition.Name == parser.NG_TEMPLATE_GUARD_PREFIX+strippedAttributeName {
+				inputGuard = &definition
+			}
+		} else {
+			inputName := definition.GetInputName()
+			if inputName == strippedAttributeName {
+				thing.GetDefinition(parser.NG_TEMPLATE_GUARD_PREFIX + inputName)
+			}
+		}
+	}
+
+	if !hasContextGuard && inputGuard == nil {
+		return
+	}
+
+	value := buildTcbExpression(tcb.Ast, attribute.Value)
+	if attribute.ValueNode != nil {
+		value.OffsetByNodeStart(attribute.ValueNode)
+	}
+
+	statement := Statement{}
+	statement.AddVirtPart("if (")
+
+	ctxIdent := tcb.CreateVarInCurrentScope(StatementFromString(NULL_AS_ANY))
+	if hasContextGuard {
+		statement.AddVirtPart(fmt.Sprintf("%s.%s(%s, %s)", classIdent, parser.NG_TEMPLATE_CONTEXT_GUARD, assIdent, ctxIdent))
+	}
+
+	if hasContextGuard && inputGuard != nil {
+		statement.AddVirtPart(" && ")
+	}
+
+	if inputGuard != nil {
+		ttype := utils.StripQuotes(inputGuard.Type)
+		if ttype == "binding" {
+			statement.AddVirtPart("(")
+			statement.AddStatement(value)
+			statement.AddVirtPart(")")
+		} else {
+			statement.AddVirtPart(fmt.Sprintf("%s.%s(%s, ", classIdent, inputGuardDefName, assIdent))
+			if !strings.HasPrefix(attribute.Name, "*") { // non-structural don't have an expression, it's just a binding
+				statement.AddVirtPart(UNDEFINED)
+			} else {
+				statement.AddStatement(value)
+			}
+			statement.AddVirtPart(")")
+		}
+	}
+
+	statement.AddVirtPart(")") // close the if
+
+	tcb.AddStatement(&statement)
+
+	tcb.BeginScope()
+	tcb.AddVirtPart("(" + ctxIdent + ");\n")
+	if attribute.Tag.Identifier == "" {
+		attribute.Tag.AddDeclaration(false, false)
+	}
+
+	attribute.Tag.closeScope = true
 }
 
 func buildGenericDirectiveAssignment(tcb *Tcb, attribute *Attribute, thing *parser.Class, compIdent string, attachedInputs *map[string]*Attribute) string {

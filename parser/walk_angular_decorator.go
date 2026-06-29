@@ -52,17 +52,17 @@ func ExtractComponentData(class *Class, node *sitter.Node, content []byte) {
 
 	walk.WalkTypeScript(node, nil, funcMap)
 
-	dirDef := class.GetDefinition(DIR_PROP)
+	dirDef := class.GetOwnDefinition(DIR_PROP)
 	if dirDef != nil {
 		handleCompiledDirectiveProp(class, dirDef)
 	}
 
-	modDef := class.GetDefinition(MOD_PROP)
+	modDef := class.GetOwnDefinition(MOD_PROP)
 	if modDef != nil {
 		handleCompiledModuleProp(class, modDef)
 	}
 
-	pipeDef := class.GetDefinition(PIPE_PROP)
+	pipeDef := class.GetOwnDefinition(PIPE_PROP)
 	if pipeDef != nil {
 		handleCompiledPipeProp(class, pipeDef)
 	}

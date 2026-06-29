@@ -278,6 +278,15 @@ func (c *Class) FilterOwnDefinitions(cond func(d ClassedDefinition) bool) []Clas
 	return arr
 }
 
+func (c *Class) FilterOwnDefinitionsOne(cond func(d ClassedDefinition) bool) *ClassedDefinition {
+	for _, definition := range c.GetClassedDefinitions() {
+		if cond(definition) {
+			return &definition
+		}
+	}
+	return nil
+}
+
 func (c *Class) FilterAllDefinitions(cond func(d ClassedDefinition) bool) []ClassedDefinition {
 	definitions := c.FilterOwnDefinitions(cond)
 	definitionsMap := make(map[string]bool)
@@ -309,6 +318,26 @@ func (c *Class) FilterAllDefinitionsByDecorator(decoratorName string) []ClassedD
 	return c.FilterAllDefinitions(func(def ClassedDefinition) bool {
 		return slices.ContainsFunc(def.Decorators, func(dec Decorator) bool { return dec.Name == decoratorName })
 	})
+}
+
+func (c *Class) FilterAllDefinitionsOne(cond func(d ClassedDefinition) bool) *ClassedDefinition {
+	definition := c.FilterOwnDefinitionsOne(cond)
+	if definition != nil {
+		return definition
+	}
+
+	for _, e := range c.Snapshot().Extends {
+		if e == nil || e.Class == nil {
+			continue
+		}
+
+		ds := e.Class.FilterAllDefinitionsOne(cond)
+		if ds != nil {
+			return definition
+		}
+	}
+
+	return nil
 }
 
 func (s *State) FindPlacesThatUseThisClassComponent(class *Class) []*Class {
@@ -457,6 +486,10 @@ func (c *Class) GetAllPublicDefinitions() []ClassedDefinition {
 	return definitions
 }
 
+func (c *Class) GetAllDefinitions() []ClassedDefinition {
+	return c.FilterAllDefinitions(func(d ClassedDefinition) bool { return true })
+}
+
 func (c *Class) GetClassedDefinitions() []ClassedDefinition {
 	definitions := c.Snapshot().Definitions
 	classedDefinitions := make([]ClassedDefinition, len(definitions))
@@ -470,8 +503,8 @@ func (c *Class) GetClassedDefinitions() []ClassedDefinition {
 	return classedDefinitions
 }
 
-func (c *Class) GetAllDefinitions() []ClassedDefinition {
-	return c.FilterAllDefinitions(func(d ClassedDefinition) bool { return true })
+func (c *Class) GetDefinition(name string) *ClassedDefinition {
+	return c.FilterAllDefinitionsOne(func(d ClassedDefinition) bool { return d.Name == name })
 }
 
 func (c *Class) GetDocumentation(includeClassName bool) string {
@@ -547,6 +580,16 @@ func (c *Class) GetOutputs() []ClassedDefinition {
 	return c.FilterAllDefinitionsByDecorator("Output")
 }
 
+func (c *Class) GetOwnDefinition(name string) *Definition {
+	for _, d := range c.Snapshot().Definitions {
+		if d.Name == name {
+			return d
+		}
+	}
+
+	return nil
+}
+
 func (c *Class) GetOwnPublicDefinitions() []ClassedDefinition {
 	return c.FilterOwnDefinitions(func(d ClassedDefinition) bool { return d.IsPublic() })
 }
@@ -573,16 +616,6 @@ func (c *Class) HasDirective() bool {
 
 func (c *Class) HasPipe() bool {
 	return c.HasAngular() && c.Snapshot().Angular.Pipe != nil
-}
-
-func (c *Class) GetDefinition(name string) *Definition {
-	for _, d := range c.Snapshot().Definitions {
-		if d.Name == name {
-			return d
-		}
-	}
-
-	return nil
 }
 
 func (c *Class) HasModule() bool {
