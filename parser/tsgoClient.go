@@ -227,6 +227,35 @@ func (t *TsGo) GetTypeOfSymbol(symbol SymbolID) *TypeResponse {
 	}
 }
 
+func (t *TsGo) GetTypeAtPosition(uri string, offset uint32) *TypeResponse {
+	documentIdentifier := DocumentIdentifier{URI: uri}
+	t.UpdateSnapshot("", []DocumentIdentifier{documentIdentifier})
+
+	id := t.GetNextId()
+	request := GetTypeAtPositionParamsRequest{
+		TsGoRequest: TsGoRequest{RPC: "2.0", ID: id, Method: "getTypeAtPosition"},
+		Params: GetTypeAtPositionParams{
+			Project:  t.projectHandle,
+			Snapshot: t.snapshotHandle,
+			File:     documentIdentifier,
+			Position: offset,
+		},
+	}
+
+	utils.WriteResponse(*t.stdin, request)
+
+	c := make(chan []byte, 1)
+	t.responses.AddHandler(id, c)
+
+	select {
+	case <-t.ctx.Done():
+		return nil
+	case result := <-c:
+		r := utils.TryParseRequest[TypeResponse](t.logger, result)
+		return &r
+	}
+}
+
 func (t *TsGo) Initialize() *InitializeResponse {
 	id := t.GetNextId()
 	request := TsGoRequest{RPC: "2.0", ID: id, Method: "initialize"}
@@ -250,6 +279,7 @@ func (t *TsGo) TypeToString(ttype TypeID) *TypeToStringResponse {
 	request := TypeToTypeNodeRequest{
 		TsGoRequest: TsGoRequest{RPC: "2.0", ID: id, Method: "typeToString"},
 		Params: TypeToTypeNodeParams{
+			Flags:    TypeFormatFlagsUseAliasDefinedOutsideCurrentScope | TypeFormatFlagsUseInstantiationExpressions,
 			Project:  t.projectHandle,
 			Snapshot: t.snapshotHandle,
 			Type:     ttype,
