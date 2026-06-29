@@ -46,7 +46,7 @@ func StartTsGo(state *State) (*TsGo, error) {
 		state.GetRootPath(),
 	}
 
-	cmd := exec.Command("/home/connor/Development/typescript-go/cmd/tsgo/tsgo", args...)
+	cmd := exec.Command("/home/connor/.local/share/nvim/mason/bin/tsgo", args...)
 
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
