@@ -21,11 +21,11 @@ type Responses struct {
 type TsGo struct {
 	logger          *log.Logger
 	nextId          int
-	projectHandle   Handle
+	projectHandle   ProjectID
 	requestHandlers map[string]func(request TsGoRequest) any
 	responses       *Responses
 	rootFiles       map[string]bool
-	snapshotHandle  Handle
+	snapshotHandle  SnapshotID
 	state           *State
 
 	stderr *io.ReadCloser
@@ -202,7 +202,7 @@ func (t *TsGo) GetSymbolAtPosition(uri string, offset uint32) *SymbolResponse {
 	}
 }
 
-func (t *TsGo) GetTypeOfSymbol(symbol Handle) *TypeResponse {
+func (t *TsGo) GetTypeOfSymbol(symbol SymbolID) *TypeResponse {
 	id := t.GetNextId()
 	request := GetTypeOfSymbolRequest{
 		TsGoRequest: TsGoRequest{RPC: "2.0", ID: id, Method: "getTypeOfSymbol"},
@@ -245,7 +245,7 @@ func (t *TsGo) Initialize() *InitializeResponse {
 	}
 }
 
-func (t *TsGo) TypeToString(ttype Handle) *TypeToStringResponse {
+func (t *TsGo) TypeToString(ttype TypeID) *TypeToStringResponse {
 	id := t.GetNextId()
 	request := TypeToTypeNodeRequest{
 		TsGoRequest: TsGoRequest{RPC: "2.0", ID: id, Method: "typeToString"},
@@ -291,11 +291,16 @@ func (t *TsGo) UpdateSnapshot(tsconfig string, changes []DocumentIdentifier) *Up
 		}
 	}
 
+	var openProjects *[]string = nil
+	if tsconfig != "" {
+		openProjects = &[]string{tsconfig}
+	}
+
 	request := UpdateSnapshotRequest{
 		TsGoRequest: TsGoRequest{RPC: "2.0", ID: id, Method: "updateSnapshot"},
 		Params: UpdateSnapshotParams{
-			OpenProject: tsconfig,
-			FileChanges: &APIFileChanges{Changed: tsGoChanges, Created: tsGoCreated},
+			OpenProjects: openProjects,
+			FileChanges:  &APIFileChanges{Changed: tsGoChanges, Created: tsGoCreated, Deleted: []DocumentIdentifier{}},
 		},
 	}
 
@@ -310,7 +315,7 @@ func (t *TsGo) UpdateSnapshot(tsconfig string, changes []DocumentIdentifier) *Up
 	case result := <-c:
 		r := utils.TryParseRequest[UpdateSnapshotResponse](t.logger, result)
 		t.logger.Println(string(result))
-		if r.Result.Snapshot != "" && len(r.Result.Projects) > 0 && r.Result.Projects[0].Id != "" {
+		if r.Result.Snapshot != 0 && len(r.Result.Projects) > 0 && r.Result.Projects[0].Id != "" {
 			t.snapshotHandle = r.Result.Snapshot
 			t.projectHandle = r.Result.Projects[0].Id
 

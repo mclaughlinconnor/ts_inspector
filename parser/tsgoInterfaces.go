@@ -6,7 +6,14 @@ import (
 	"strings"
 )
 
-type Handle string
+type (
+	SnapshotID  uint64
+	ProjectID   string
+	SymbolID    uint64
+	TypeID      uint32
+	SignatureID uint64
+	NodeHandle  string
+)
 
 type Node struct {
 	Pos  int
@@ -15,7 +22,7 @@ type Node struct {
 	Path string
 }
 
-func (h Handle) ExtractNode() (*Node, error) {
+func (h NodeHandle) ExtractNode() (*Node, error) {
 	e := func() (*Node, error) {
 		return nil, fmt.Errorf("invalid node handle %q", h)
 	}
@@ -76,7 +83,7 @@ type InitializeResponse struct {
 // All fields are optional. With no fields set, the server adopts the latest LSP state.
 type UpdateSnapshotParams struct {
 	// OpenProject is the path to a tsconfig.json file to open/load in the new snapshot.
-	OpenProject string `json:"openProject,omitempty"`
+	OpenProjects *[]string `json:"openProjects,omitempty"`
 	// FileChanges describes file system changes since the last snapshot.
 	FileChanges *APIFileChanges `json:"fileChanges,omitempty"`
 }
@@ -89,7 +96,7 @@ type UpdateSnapshotRequest struct {
 type CompilerOptions = any
 
 type ProjectResponse struct {
-	Id              Handle           `json:"id"`
+	Id              ProjectID        `json:"id"`
 	ConfigFileName  string           `json:"configFileName"`
 	RootFiles       []string         `json:"rootFiles"`
 	CompilerOptions *CompilerOptions `json:"compilerOptions"`
@@ -100,7 +107,7 @@ type UpdateSnapshotResponse struct {
 	TsGoResponse
 	Result struct {
 		// Snapshot is the handle for the newly created snapshot.
-		Snapshot Handle `json:"snapshot"`
+		Snapshot SnapshotID `json:"snapshot"`
 		// Projects is the list of projects in the snapshot.
 		Projects []*ProjectResponse `json:"projects"`
 		// Changes describes source file differences from the previous snapshot.
@@ -125,10 +132,10 @@ type ProjectFileChanges struct {
 type SnapshotChanges struct {
 	// ChangedProjects maps project handles to the file changes within that project.
 	// Projects not listed here (and not in RemovedProjects) are unchanged.
-	ChangedProjects map[Handle]*ProjectFileChanges `json:"changedProjects,omitempty"`
+	ChangedProjects map[ProjectID]*ProjectFileChanges `json:"changedProjects,omitempty"`
 	// RemovedProjects lists project handles that were present in the previous
 	// snapshot but absent from the new one.
-	RemovedProjects []Handle `json:"removedProjects,omitempty"`
+	RemovedProjects []ProjectID `json:"removedProjects,omitempty"`
 }
 
 // APIFileChanges describes file changes to apply when updating a snapshot.
@@ -188,8 +195,8 @@ type GetAcceessibleEntriesResponse struct {
 }
 
 type GetDiagnosticsParams struct {
-	Snapshot Handle              `json:"snapshot"`
-	Project  Handle              `json:"project"`
+	Snapshot SnapshotID          `json:"snapshot"`
+	Project  ProjectID           `json:"project"`
 	File     *DocumentIdentifier `json:"file,omitempty"`
 }
 
@@ -250,8 +257,8 @@ func (category Category) Name() string {
 }
 
 type GetSymbolAtPositionParams struct {
-	Snapshot Handle             `json:"snapshot"`
-	Project  Handle             `json:"project"`
+	Snapshot SnapshotID         `json:"snapshot"`
+	Project  ProjectID          `json:"project"`
 	File     DocumentIdentifier `json:"file"`
 	Position uint32             `json:"position"`
 }
@@ -264,12 +271,12 @@ type GetSymbolAtPositionRequest struct {
 type SymbolResponse struct {
 	TsGoResponse
 	Result struct {
-		Id               Handle   `json:"id"`
-		Name             string   `json:"name"`
-		Flags            uint32   `json:"flags"`
-		CheckFlags       uint32   `json:"checkFlags"`
-		Declarations     []Handle `json:"declarations,omitempty"`
-		ValueDeclaration Handle   `json:"valueDeclaration,omitempty"`
+		Id               SymbolID     `json:"id"`
+		Name             string       `json:"name"`
+		Flags            uint32       `json:"flags"`
+		CheckFlags       uint32       `json:"checkFlags"`
+		Declarations     []NodeHandle `json:"declarations,omitempty"`
+		ValueDeclaration NodeHandle   `json:"valueDeclaration,omitempty"`
 	}
 }
 
@@ -279,28 +286,28 @@ type GetTypeOfSymbolRequest struct {
 }
 
 type GetTypeOfSymbolParams struct {
-	Snapshot Handle `json:"snapshot"`
-	Project  Handle `json:"project"`
-	Symbol   Handle `json:"symbol"`
+	Snapshot SnapshotID `json:"snapshot"`
+	Project  ProjectID  `json:"project"`
+	Symbol   SymbolID   `json:"symbol"`
 }
 
 type TypeResponse struct {
 	TsGoResponse
 	Result struct {
-		Id          Handle `json:"id"`
-		Flags       uint32 `json:"flags"`
-		ObjectFlags uint32 `json:"objectFlags,omitempty"`
+		Id          TypeID `json:"id"`
+		Flags       uint32     `json:"flags"`
+		ObjectFlags uint32     `json:"objectFlags,omitempty"`
 
 		// LiteralType data
 		Value any `json:"value,omitempty"`
 
 		// ObjectType / TypeReference / StringMappingType / IndexType target
-		Target Handle `json:"target,omitempty"`
+		Target NodeHandle `json:"target,omitempty"`
 
 		// InterfaceType type parameters
-		TypeParameters      []Handle `json:"typeParameters,omitempty"`
-		OuterTypeParameters []Handle `json:"outerTypeParameters,omitempty"`
-		LocalTypeParameters []Handle `json:"localTypeParameters,omitempty"`
+		TypeParameters      []TypeID `json:"typeParameters,omitempty"`
+		OuterTypeParameters []TypeID `json:"outerTypeParameters,omitempty"`
+		LocalTypeParameters []TypeID `json:"localTypeParameters,omitempty"`
 
 		// TupleType data
 		ElementFlags  []ElementFlags `json:"elementFlags,omitempty"`
@@ -308,22 +315,22 @@ type TypeResponse struct {
 		TupleReadonly *bool          `json:"readonly,omitempty"`
 
 		// IndexedAccessType data
-		ObjectType Handle `json:"objectType,omitempty"`
-		IndexType  Handle `json:"indexType,omitempty"`
+		ObjectType TypeID `json:"objectType,omitempty"`
+		IndexType  TypeID `json:"indexType,omitempty"`
 
 		// ConditionalType data
-		CheckType   Handle `json:"checkType,omitempty"`
-		ExtendsType Handle `json:"extendsType,omitempty"`
+		CheckType   TypeID `json:"checkType,omitempty"`
+		ExtendsType TypeID `json:"extendsType,omitempty"`
 
 		// SubstitutionType data
-		BaseType        Handle `json:"baseType,omitempty"`
-		SubstConstraint Handle `json:"substConstraint,omitempty"`
+		BaseType        TypeID `json:"baseType,omitempty"`
+		SubstConstraint TypeID `json:"substConstraint,omitempty"`
 
 		// TemplateLiteralType text segments
 		Texts []string `json:"texts,omitempty"`
 
 		// Symbol associated with structured types
-		Symbol Handle `json:"symbol,omitempty"`
+		Symbol SymbolID `json:"symbol,omitempty"`
 	}
 }
 
@@ -343,11 +350,11 @@ const (
 
 // TypeToTypeNodeParams are the parameters for the typeToTypeNode method.
 type TypeToTypeNodeParams struct {
-	Snapshot Handle `json:"snapshot"`
-	Project  Handle `json:"project"`
-	Type     Handle `json:"type"`
-	Location Handle `json:"location,omitempty"`
-	Flags    int32  `json:"flags,omitempty"`
+	Snapshot SnapshotID `json:"snapshot"`
+	Project  ProjectID  `json:"project"`
+	Type     TypeID     `json:"type"`
+	Location NodeHandle `json:"location,omitempty"`
+	Flags    int32      `json:"flags,omitempty"`
 }
 
 type TypeToTypeNodeRequest struct {
