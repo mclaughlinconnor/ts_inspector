@@ -8,12 +8,15 @@ import (
 	"ts_inspector/utils"
 )
 
-func makeAs(export string, local string) *structuraldirective.Statement {
-	return &structuraldirective.Statement{As: &structuraldirective.As{Local: local, Export: export}}
-}
+func makeExpression(expression string, local string) *structuraldirective.Statement {
+	var l *string
+	if local == "" {
+		l = nil
+	} else {
+		l = &local
+	}
 
-func makeExpression(expression string) *structuraldirective.Statement {
-	return &structuraldirective.Statement{Expression: &structuraldirective.Expression{Expression: expression}}
+	return &structuraldirective.Statement{Expression: &structuraldirective.Expression{Expression: expression, Local: l}}
 }
 
 func makeKeyExpr(key string, expression string, local string) *structuraldirective.Statement {
@@ -54,6 +57,7 @@ func TestParseShorthand(t *testing.T) {
 		want    *structuraldirective.ShorthandValue
 		wantErr bool
 	}{
+
 		{
 			name: "simple let no trailing",
 			text: "let odd",
@@ -85,34 +89,34 @@ func TestParseShorthand(t *testing.T) {
 			want: makeShorthand("prefix", makeStatements(makeLet("odd", ""), makeLet("even", ""))),
 		},
 		{
-			name:    "chained let with bad trailing comma delimiter",
-			text:    "let odd, let even,",
-			wantErr: true,
+			name: "chained let with previously bad trailing comma delimiter", // the spec says the comma is wrong, but the compiler parses it fine
+			text: "let odd, let even,",
+			want: makeShorthand("prefix", makeStatements(makeLet("odd", ""), makeLet("even", ""))),
 		},
 		{
-			name:    "expression followed by lets with bad comma delimiter",
-			text:    "true let odd, let even",
-			wantErr: true,
+			name: "expression followed by lets with previously bad comma delimiter", // the spec says the comma is wrong, but the compiler parses it fine
+			text: "true let odd, let even",
+			want: makeShorthand("prefix", makeStatements(makeExpression("true", ""), makeLet("odd", ""), makeLet("even", ""))),
 		},
 		{
 			name: "expression followed by lets",
 			text: "true let odd; let even",
-			want: makeShorthand("prefix", makeStatements(makeExpression("true"), makeLet("odd", ""), makeLet("even", ""))),
+			want: makeShorthand("prefix", makeStatements(makeExpression("true", ""), makeLet("odd", ""), makeLet("even", ""))),
 		},
 		{
 			name: "basic as",
 			text: "true, a as b",
-			want: makeShorthand("prefix", makeStatements(makeExpression("true"), makeAs("a", "b"))),
+			want: makeShorthand("prefix", makeStatements(makeExpression("true", ""), makeExpression("a", "b"))),
 		},
 		{
 			name: "as in the middle",
 			text: "true, a as b; let c = d",
-			want: makeShorthand("prefix", makeStatements(makeExpression("true"), makeAs("a", "b"), makeLet("c", "d"))),
+			want: makeShorthand("prefix", makeStatements(makeExpression("true", ""), makeExpression("a", "b"), makeLet("c", "d"))),
 		},
 		{
 			name: "as with lots of spaces",
 			text: "true,    a    as      b; let c = d",
-			want: makeShorthand("prefix", makeStatements(makeExpression("true"), makeAs("a", "b"), makeLet("c", "d"))),
+			want: makeShorthand("prefix", makeStatements(makeExpression("true", ""), makeExpression("a", "b"), makeLet("c", "d"))),
 		},
 		{
 			name: "key expr",
@@ -127,8 +131,24 @@ func TestParseShorthand(t *testing.T) {
 		{
 			name: "key expr with as",
 			text: "let odd, trackBy: trackByFn as fn; a as b",
-			want: makeShorthand("prefix", makeStatements(makeLet("odd", ""), makeKeyExpr("trackBy", "trackByFn", "fn"), makeAs("a", "b"))),
+			want: makeShorthand("prefix", makeStatements(makeLet("odd", ""), makeKeyExpr("trackBy", "trackByFn", "fn"), makeExpression("a", "b"))),
 		},
+		{
+			name: "expression as at start",
+			text: "odd as even",
+			want: makeShorthand("prefix", makeStatements(makeExpression("odd", "even"))),
+		},
+		{
+			name: "double expression as with semicolon delimiter",
+			text: "odd as even; even as odd;",
+			want: makeShorthand("prefix", makeStatements(makeExpression("odd", "even"), makeExpression("even", "odd"))),
+		},
+		{
+			name: "double expression as without delimiter",
+			text: "odd as even even as odd;",
+			want: makeShorthand("prefix", makeStatements(makeExpression("odd", "even"), makeExpression("even", "odd"))),
+		},
+
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

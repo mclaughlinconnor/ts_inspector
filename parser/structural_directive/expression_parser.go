@@ -16,7 +16,7 @@ func ParseExpression(startIndex int, runeText []rune) (int, error) {
 				continue
 			}
 
-			if c == ',' || c == ';' {
+			if !isOperator(c, paren == 0) && !isJsIdentifierChar(c) && c != ' ' {
 				break
 			}
 
@@ -34,20 +34,28 @@ func ParseExpression(startIndex int, runeText []rune) (int, error) {
 
 			// Now, c can only be ' '
 
+			// Exclude any trailing strings from the expression
 			next := runeText[i+1]
+			j := i
 			for next == ' ' {
-				i++
-				next = runeText[i+1]
+				j++
+				next = runeText[j+1]
 			}
 
 			// !isOperator because "four+ five" won't have entered into the other isOperator behaviour below
-			if !isOperator(prev) && isJsIdentifierChar(next) || next == ';' || next == ',' {
+			if !isOperator(prev, paren == 0) && isJsIdentifierChar(next) {
 				break
+			}
+
+			if j == len(runeText)-1 {
+				break
+			} else {
+				i = j
 			}
 
 			i++
 
-			if isOperator(runeText[i]) {
+			if isOperator(runeText[i], paren == 0) {
 				i++ // current is now the one after next
 
 				// Skip all of the trailing spaces. "x +___y"
@@ -61,6 +69,7 @@ func ParseExpression(startIndex int, runeText []rune) (int, error) {
 
 		if paren == c {
 			paren = 0
+			i++
 			continue
 		}
 
@@ -104,8 +113,14 @@ func switchBracket(c rune) rune {
 	return ' '
 }
 
-func isOperator(c rune) bool {
+func isOperator(c rune, isRoot bool) bool {
 	switch c {
+	case ':':
+		fallthrough
+	case ';':
+		fallthrough
+	case ',':
+		return !isRoot
 	case '$':
 		fallthrough
 	case '&':
@@ -119,10 +134,6 @@ func isOperator(c rune) bool {
 	case '.':
 		fallthrough
 	case '/':
-		fallthrough
-	case ':':
-		fallthrough
-	case ';':
 		fallthrough
 	case '<':
 		fallthrough

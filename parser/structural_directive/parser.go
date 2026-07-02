@@ -12,19 +12,14 @@ type ShorthandValue struct {
 }
 
 type Statement struct {
-	As         *As
 	Expression *Expression
 	KeyExp     *KeyExp
 	Let        *Let
 }
 
-type As struct {
-	Export string
-	Local  string
-}
-
 type Expression struct {
 	Expression string
+	Local      *string // as
 }
 
 type KeyExp struct {
@@ -71,8 +66,13 @@ func ParseShorthand(prefix string, text string) (*ShorthandValue, error) {
 
 	i := 0
 	runeText := []rune(text)
+LOOP:
 	for i < len(runeText) {
 		c := runeText[i]
+
+		if i+1 == len(runeText) && (c == ',' || c == ';') {
+			break
+		}
 
 		switch state {
 		case LexStateBase:
@@ -88,45 +88,34 @@ func ParseShorthand(prefix string, text string) (*ShorthandValue, error) {
 					}
 				default:
 					{
-						if len(shorthand.Statements.Elements) == 0 {
+						endIndex, err := ParseExpression(i, runeText)
+						if err != nil {
+							return nil, err
+						}
+
+						expressionText := runeText[i:endIndex]
+						print(expressionText)
+
+						j := endIndex
+						for {
+							if j >= len(runeText)-1 {
+								continue LOOP
+							}
+
+							if runeText[j] != ' ' {
+								break
+							}
+
+							j++
+						}
+
+						if runeText[j] == ':' {
+							state = LexStateKeyExp
+						} else {
 							state = LexStateExpression
-							continue
 						}
 
-						for j := i; j <= len(runeText); j++ {
-							d := runeText[j]
-
-							isHtml := isHtmlIdentifierChar(d)
-							isJs := isJsIdentifierChar(d)
-
-							if isHtml && isJs {
-								continue
-							}
-
-							// As must start with js identifier
-							if isHtml && !isJs {
-								state = LexStateAs
-								break
-							}
-
-							// Reached the end of identifier, so should be at the space preceding keyExp's ":" or as's "as"
-							for d == ' ' {
-								j++
-								d = runeText[j]
-							}
-
-							if d == 'a' {
-								state = LexStateAs
-								break
-							} else if d == ':' {
-								state = LexStateKeyExp
-								break
-							}
-
-							return nil, fmt.Errorf("bad character: %q, expected 'as' or ':'", c)
-						}
-
-						continue
+						continue LOOP
 					}
 				}
 			}
@@ -151,10 +140,8 @@ func ParseShorthand(prefix string, text string) (*ShorthandValue, error) {
 
 				if i == len(runeText) {
 					state = LexStateBase
-					continue
+					continue LOOP
 				}
-
-				allowComma := len(shorthand.Statements.Elements) == 1 // just this one
 
 				e = consumeSpaces(&i, runeText, false)
 				if e != nil {
@@ -163,8 +150,8 @@ func ParseShorthand(prefix string, text string) (*ShorthandValue, error) {
 
 				if runeText[i] != '=' {
 					state = LexStateBase
-					consumeOptionalDelimiter(&i, runeText, allowComma)
-					continue
+					consumeOptionalDelimiter(&i, runeText)
+					continue LOOP
 				}
 
 				if e := expectAndTake(&i, runeText[i], '='); e != nil {
@@ -185,17 +172,17 @@ func ParseShorthand(prefix string, text string) (*ShorthandValue, error) {
 
 				if i == len(runeText) {
 					state = LexStateBase
-					continue
+					continue LOOP
 				}
 
-				consumeOptionalDelimiter(&i, runeText, allowComma)
+				consumeOptionalDelimiter(&i, runeText)
 				state = LexStateBase
 			}
 		case LexStateExpression:
 			{
-				endIndex, e := ParseExpression(i, runeText)
-				if e != nil {
-					return nil, e
+				endIndex, err := ParseExpression(i, runeText)
+				if err != nil {
+					return nil, err
 				}
 
 				expressionText := runeText[i:endIndex]
@@ -203,28 +190,30 @@ func ParseShorthand(prefix string, text string) (*ShorthandValue, error) {
 				statement := Statement{Expression: &expression}
 				shorthand.Statements.Add(&statement)
 
-				i = endIndex + 1
-				state = LexStateBase
-			}
-		case LexStateAs:
-			{
-				export, e := expectAndTakeIdentifier(&i, runeText, true)
-				if e != nil {
-					return nil, e
+				i = endIndex
+
+				saveI := i
+
+				err = consumeSpaces(&i, runeText, false)
+				if err != nil {
+					i = saveI
+					return nil, err
 				}
 
-				e = consumeSpaces(&i, runeText, true)
-				if e != nil {
-					return nil, e
+				if i >= len(runeText)-2 || runeText[i] != 'a' && runeText[i+1] != 's' {
+					consumeOptionalDelimiter(&i, runeText)
+					state = LexStateBase
+					continue LOOP
 				}
 
 				if e := expectAndTakeAs(&i, runeText); e != nil {
+					i = saveI
 					return nil, e
 				}
 
-				e = consumeSpaces(&i, runeText, true)
-				if e != nil {
-					return nil, e
+				err = consumeSpaces(&i, runeText, false)
+				if err != nil {
+					return nil, err
 				}
 
 				local, e := expectAndTakeIdentifier(&i, runeText, true)
@@ -232,11 +221,10 @@ func ParseShorthand(prefix string, text string) (*ShorthandValue, error) {
 					return nil, e
 				}
 
-				as := As{Export: export, Local: local}
-				statement := Statement{As: &as}
-				shorthand.Statements.Add(&statement)
+				consumeOptionalDelimiter(&i, runeText)
 
-				consumeOptionalDelimiter(&i, runeText, false)
+				expression.Local = &local
+
 				state = LexStateBase
 			}
 		case LexStateKeyExp:
@@ -275,7 +263,7 @@ func ParseShorthand(prefix string, text string) (*ShorthandValue, error) {
 
 				if i >= len(runeText) {
 					state = LexStateBase
-					consumeOptionalDelimiter(&i, runeText, false)
+					consumeOptionalDelimiter(&i, runeText)
 					continue
 				}
 
@@ -286,7 +274,7 @@ func ParseShorthand(prefix string, text string) (*ShorthandValue, error) {
 
 				if i+2 >= len(runeText) || runeText[i] != 'a' || runeText[i+1] != 's' || runeText[i+2] != ' ' {
 					state = LexStateBase
-					consumeOptionalDelimiter(&i, runeText, false)
+					consumeOptionalDelimiter(&i, runeText)
 					continue
 				}
 
@@ -306,7 +294,7 @@ func ParseShorthand(prefix string, text string) (*ShorthandValue, error) {
 
 				keyExp.Local = &local
 
-				consumeOptionalDelimiter(&i, runeText, false)
+				consumeOptionalDelimiter(&i, runeText)
 				state = LexStateBase
 			}
 		}
@@ -315,12 +303,12 @@ func ParseShorthand(prefix string, text string) (*ShorthandValue, error) {
 	return &shorthand, nil
 }
 
-func consumeOptionalDelimiter(i *int, runeText []rune, allowComma bool) {
+func consumeOptionalDelimiter(i *int, runeText []rune) {
 	if (*i) >= len(runeText) {
 		return
 	}
 
-	if runeText[*i] == ';' || (allowComma && runeText[*i] == ',') {
+	if runeText[*i] == ';' || runeText[*i] == ',' {
 		(*i)++
 	}
 }
