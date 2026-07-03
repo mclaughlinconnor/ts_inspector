@@ -148,7 +148,36 @@ func TestParseShorthand(t *testing.T) {
 			text: "odd as even even as odd;",
 			want: makeShorthand("prefix", makeStatements(makeExpression("odd", "even"), makeExpression("even", "odd"))),
 		},
-
+		{
+			name: "keyExpr with no delimiters",
+			text: "x of y trackBy trackByFunc",
+			want: makeShorthand("prefix", makeStatements(makeExpression("x", ""), makeKeyExpr("of", "y", ""), makeKeyExpr("trackBy", "trackByFunc", ""))),
+		},
+		{
+			name: "big expr",
+			text: "true; false as by; true: j; true",
+			want: makeShorthand("prefix", makeStatements(makeExpression("true", ""), makeExpression("false", "by"), makeKeyExpr("true", "j", ""), makeExpression("true", ""))),
+		},
+		{
+			name: "ngFor one",
+			text: "let item of items; index as i; trackBy: trackByFn",
+			want: makeShorthand("prefix", makeStatements(makeLet("item", ""), makeKeyExpr("of", "items", ""), makeExpression("index", "i"), makeKeyExpr("trackBy", "trackByFn", ""))),
+		},
+		{
+			name: "ngFor two",
+			text: "let user of users; index as i; first as isFirst",
+			want: makeShorthand("prefix", makeStatements(makeLet("user", ""), makeKeyExpr("of", "users", ""), makeExpression("index", "i"), makeExpression("first", "isFirst"))),
+		},
+		{
+			name: "ngFor three",
+			text: "let user of [1, 2, 3] index as i; first as isFirst",
+			want: makeShorthand("prefix", makeStatements(makeLet("user", ""), makeKeyExpr("of", "[1, 2, 3]", ""), makeExpression("index", "i"), makeExpression("first", "isFirst"))),
+		},
+		{
+			name: "ngFor four",
+			text: "let user, of {1, 2, 3}; index as i; first as isFirst",
+			want: makeShorthand("prefix", makeStatements(makeLet("user", ""), makeKeyExpr("of", "{1, 2, 3}", ""), makeExpression("index", "i"), makeExpression("first", "isFirst"))),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

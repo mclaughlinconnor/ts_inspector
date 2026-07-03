@@ -62,6 +62,13 @@ func ParseExpression(startIndex int, runeText []rune) (int, error) {
 				for runeText[i] == ' ' {
 					i++
 				}
+			} else if runeText[j] /* current */ == ' ' && isOpenParen(runeText[i] /* next */) {
+				i--
+				for runeText[i] == ' ' {
+					i--
+				}
+
+				break
 			}
 
 			continue

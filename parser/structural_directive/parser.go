@@ -77,47 +77,63 @@ LOOP:
 		switch state {
 		case LexStateBase:
 			{
-				switch c {
-				case ' ':
-					{
-						i++
-					}
-				case 'l':
-					{
-						state = LexStateLet
-					}
-				default:
-					{
-						endIndex, err := ParseExpression(i, runeText)
-						if err != nil {
-							return nil, err
-						}
+				if c == ' ' {
+					i++
+					continue LOOP
+				}
 
-						expressionText := runeText[i:endIndex]
-						print(expressionText)
+				endIndex, err := ParseExpression(i, runeText)
+				if err != nil {
+					return nil, err
+				}
+				expressionText := string(runeText[i:endIndex])
 
-						j := endIndex
-						for {
-							if j >= len(runeText)-1 {
-								continue LOOP
-							}
+				if expressionText == "let" {
+					state = LexStateLet
+					continue LOOP
+				}
 
-							if runeText[j] != ' ' {
-								break
-							}
+				// On the first statement, only expressions and let are valid
+				if len(shorthand.Statements.Elements) == 0 {
+					state = LexStateExpression
+					continue LOOP
+				}
 
-							j++
-						}
+				if !isHtmlIdentifierString(expressionText) {
+					state = LexStateExpression
+					continue LOOP
+				}
 
-						if runeText[j] == ':' {
-							state = LexStateKeyExp
-						} else {
-							state = LexStateExpression
-						}
-
+				// consume to next token
+				j := endIndex
+				for {
+					if j >= len(runeText)-1 {
+						state = LexStateExpression
 						continue LOOP
 					}
+
+					if runeText[j] != ' ' {
+						break
+					}
+
+					j++
 				}
+
+				if runeText[j] == ':' {
+					state = LexStateKeyExp
+					continue LOOP
+				}
+
+				endIndex, err = ParseExpression(j, runeText)
+				expressionText = string(runeText[j:endIndex])
+
+				if expressionText == "as" {
+					state = LexStateExpression
+					continue LOOP
+				}
+
+				state = LexStateKeyExp
+				continue LOOP
 			}
 		case LexStateLet:
 			{
@@ -239,10 +255,8 @@ LOOP:
 					return nil, e
 				}
 
-				e = expectAndTake(&i, runeText[i], ':')
-				if e != nil {
-					return nil, e
-				}
+				// ':' is optional
+				_ = expectAndTake(&i, runeText[i], ':')
 
 				e = consumeSpaces(&i, runeText, false)
 				if e != nil {
@@ -320,7 +334,7 @@ func consumeSpaces(i *int, runeText []rune, requireOne bool) error {
 		}
 	}
 
-	for runeText[*i] == ' ' {
+	for (*i) < len(runeText) && runeText[*i] == ' ' {
 		(*i)++
 	}
 
@@ -328,11 +342,11 @@ func consumeSpaces(i *int, runeText []rune, requireOne bool) error {
 }
 
 func expectAndTake(i *int, c rune, expected rune) error {
-	(*i)++
-
 	if c != expected {
 		return fmt.Errorf("bad character: %q, expected %q", c, expected)
 	}
+
+	(*i)++
 
 	return nil
 }
@@ -396,6 +410,16 @@ func expectAndTakeLet(i *int, runeText []rune) error {
 
 func isHtmlIdentifierChar(c rune) bool {
 	return unicode.IsLetter(c) || unicode.IsNumber(c) || c == '_' || c == '-'
+}
+
+func isHtmlIdentifierString(s string) bool {
+	for _, c := range s {
+		if !isHtmlIdentifierChar(c) {
+			return false
+		}
+	}
+
+	return true
 }
 
 func isJsIdentifierChar(c rune) bool {
