@@ -96,6 +96,10 @@ func (s *State) GetInterestingPoints() []InterestingPoint {
 		interestingPoints = append(interestingPoints, class.GetInterestingPoints()...)
 	}
 
+	for _, file := range *s.GetFiles() {
+		interestingPoints = append(interestingPoints, file.GetInterestingPoints()...)
+	}
+
 	return interestingPoints
 }
 

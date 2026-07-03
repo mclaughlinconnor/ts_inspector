@@ -28,6 +28,7 @@ type fileState struct {
 	DynamicImportPaths []string
 	Exports            References
 	Filetype           string
+	Functions          []*Function
 	Imports            []*ast.ImportParseResult
 	IsOpen             bool
 	LineOffsets        []uint32
@@ -128,6 +129,85 @@ func (f *File) GetDependencies(state *State) []string {
 	slices.Sort(vs)
 
 	return vs
+}
+
+func (f *File) GetInterestingPoints() []InterestingPoint {
+	interestingPoints := make([]InterestingPoint, 0)
+
+	uri := f.Snapshot().URI
+	content := f.Snapshot().Content
+
+	if utils.SemanticSearchIncludeFileInterestingPoints {
+		filename := FilenameFromUri(uri)
+		interestingPoint := InterestingPoint{Text: filename, Kind: interfaces.SymbolKind.File}
+		interestingPoint.SetPosition(0, 0)
+		interestingPoint.SetFile(content, uri)
+
+		interestingPoints = append(interestingPoints, interestingPoint)
+	}
+
+	for _, v := range f.Snapshot().Variables {
+		if !v.IsExport {
+			continue
+		}
+
+		var locationNode *sitter.Node
+
+		nameNode := v.Node.ChildByFieldName("name")
+		if nameNode != nil {
+			locationNode = nameNode
+		} else {
+			locationNode = v.Node
+		}
+
+		startOffset := locationNode.StartByte()
+		endOffset := locationNode.EndByte()
+
+		var kind interfaces.TSymbolKind
+
+		switch v.Kind {
+		case "const":
+			kind = interfaces.SymbolKind.Constant
+		case "let":
+			fallthrough
+		case "var":
+			kind = interfaces.SymbolKind.Variable
+		}
+
+		interestingPoint := InterestingPoint{Text: v.Name, Kind: kind}
+		interestingPoint.SetPosition(startOffset, endOffset)
+		interestingPoint.SetFile(content, uri)
+
+		interestingPoints = append(interestingPoints, interestingPoint)
+	}
+
+	for _, v := range f.Snapshot().Functions {
+		if !v.IsExport {
+			continue
+		}
+
+		var locationNode *sitter.Node
+
+		nameNode := v.NameNode
+		if nameNode != nil {
+			locationNode = nameNode
+		} else {
+			locationNode = v.Node
+		}
+
+		startOffset := locationNode.StartByte()
+		endOffset := locationNode.EndByte()
+
+		var kind = interfaces.SymbolKind.Function
+
+		interestingPoint := InterestingPoint{Text: v.Name, Kind: kind}
+		interestingPoint.SetPosition(startOffset, endOffset)
+		interestingPoint.SetFile(content, uri)
+
+		interestingPoints = append(interestingPoints, interestingPoint)
+	}
+
+	return interestingPoints
 }
 
 func (f *File) GetOffsetForPosition(p utils.Position) uint32 {

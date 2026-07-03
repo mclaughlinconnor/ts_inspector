@@ -23,6 +23,10 @@ type classWalkState struct {
 	IsExport  bool
 }
 
+type funcWalkState struct {
+	IsExport bool
+}
+
 type varWalkState struct {
 	Kind     string // const/let/var
 	IsExport bool
@@ -44,6 +48,7 @@ func IndexTypeScriptFileFromIndexer(state *State, filename string) error {
 		}
 
 		parseClasses(state, root, file)
+		parseRootFunctions(state, root, file)
 		parseRootVariables(state, root, file)
 
 		return nil, nil
@@ -68,6 +73,7 @@ func IndexTypeScriptFileFromLsp(state *State, uri string, languageId string, ver
 		}
 
 		parseClasses(state, root, file)
+		parseRootFunctions(state, root, file)
 		parseRootVariables(state, root, file)
 
 		return nil, nil
@@ -506,6 +512,53 @@ func parseClasses(state *State, root *sitter.Node, file *File) {
 
 	classWalkState := classWalkState{}
 	walk.WalkTypeScript(root, classWalkState, funcMap)
+}
+
+func parseRootFunctions(state *State, root *sitter.Node, file *File) {
+	fileContent := []byte(file.Snapshot().Content)
+
+	funcMap := walk.NewVisitorFuncsMap[funcWalkState]()
+
+	funcMap["export_statement"] = func(node *sitter.Node, funcWalkState funcWalkState, indexInParent int, funcMap walk.VisitorFuncMap[funcWalkState]) funcWalkState {
+		funcWalkState.IsExport = true
+		walk.VisitNamedChildren(node, funcWalkState, funcMap, true)
+		funcWalkState.IsExport = false
+
+		return funcWalkState
+	}
+
+	funcVisitor := func(node *sitter.Node, funcWalkState funcWalkState, indexInParent int, _funcMap walk.VisitorFuncMap[funcWalkState]) funcWalkState {
+		nameNode := node.ChildByFieldName("name")
+		parametersNode := node.ChildByFieldName("parameters")
+		bodyNode := node.ChildByFieldName("body")
+
+		function := Function{Node: node, BodyNode: bodyNode, ParametersNode: parametersNode}
+
+		if nameNode != nil {
+			name := nameNode.Content(fileContent)
+			function.Name = name
+		}
+
+		function.IsExport = funcWalkState.IsExport
+
+		file.Update(func(data *fileState) {
+			data.Functions = append(data.Functions, &function)
+		})
+
+		return funcWalkState
+	}
+
+	funcMap["function_declaration"] = funcVisitor
+	funcMap["function_signature"] = funcVisitor
+
+	funcMap["program"] = func(node *sitter.Node, funcWalkState funcWalkState, indexInParent int, funcMap walk.VisitorFuncMap[funcWalkState]) funcWalkState {
+		walk.VisitNamedChildren(node, funcWalkState, funcMap, true)
+
+		return funcWalkState
+	}
+
+	funcWalkState := funcWalkState{}
+	walk.WalkTypeScriptShallow(root, funcWalkState, funcMap)
 }
 
 func parseRootVariables(state *State, root *sitter.Node, file *File) {
