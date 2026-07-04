@@ -157,7 +157,7 @@ LOOP:
 				j := endIndex
 				for {
 					if j >= len(runeText)-1 {
-						state = LexStateExpression
+						state = LexStateKeyExp
 						continue LOOP
 					}
 
@@ -186,18 +186,18 @@ LOOP:
 			}
 		case LexStateLet:
 			{
-				if e := expectAndTakeLet(&i, runeText); e != nil {
-					return nil, e
+				if err := expectAndTakeLet(&i, runeText); err != nil {
+					return nil, err
 				}
 
-				if e := expectAndTake(&i, runeText[i], ' '); e != nil {
-					return nil, e
+				if err := expectAndTake(&i, runeText, ' '); err != nil {
+					return nil, err
 				}
 
 				localOffset := i
-				local, e := expectAndTakeIdentifier(&i, runeText, true)
-				if e != nil {
-					return nil, e
+				local, err := expectAndTakeIdentifier(&i, runeText, true)
+				if err != nil {
+					return nil, err
 				}
 
 				let := Let{Local: local, LocalOffset: localOffset}
@@ -209,9 +209,9 @@ LOOP:
 					continue LOOP
 				}
 
-				e = consumeSpaces(&i, runeText, false)
-				if e != nil {
-					return nil, e
+				err = consumeSpaces(&i, runeText, false)
+				if err != nil {
+					return nil, err
 				}
 
 				if runeText[i] != '=' {
@@ -220,19 +220,19 @@ LOOP:
 					continue LOOP
 				}
 
-				if e := expectAndTake(&i, runeText[i], '='); e != nil {
-					return nil, e
+				if err := expectAndTake(&i, runeText, '='); err != nil {
+					return nil, err
 				}
 
-				e = consumeSpaces(&i, runeText, false)
-				if e != nil {
-					return nil, e
+				err = consumeSpaces(&i, runeText, false)
+				if err != nil {
+					return nil, err
 				}
 
 				exportOffset := i
-				export, e := expectAndTakeIdentifier(&i, runeText, true)
-				if e != nil {
-					return nil, e
+				export, err := expectAndTakeIdentifier(&i, runeText, true)
+				if err != nil {
+					return nil, err
 				}
 
 				let.Export = &export
@@ -274,9 +274,9 @@ LOOP:
 					continue LOOP
 				}
 
-				if e := expectAndTakeAs(&i, runeText); e != nil {
+				if err := expectAndTakeAs(&i, runeText); err != nil {
 					i = saveI
-					return nil, e
+					return nil, err
 				}
 
 				err = consumeSpaces(&i, runeText, false)
@@ -285,9 +285,9 @@ LOOP:
 				}
 
 				localOffset := i
-				local, e := expectAndTakeIdentifier(&i, runeText, true)
-				if e != nil {
-					return nil, e
+				local, err := expectAndTakeIdentifier(&i, runeText, true)
+				if err != nil {
+					return nil, err
 				}
 
 				expression.Local = &local
@@ -300,27 +300,32 @@ LOOP:
 		case LexStateKeyExp:
 			{
 				keyOffset := i
-				key, e := expectAndTakeIdentifier(&i, runeText, false)
-				if e != nil {
-					return nil, e
+				key, err := expectAndTakeIdentifier(&i, runeText, false)
+				if err != nil {
+					return nil, err
 				}
 
-				e = consumeSpaces(&i, runeText, false)
-				if e != nil {
-					return nil, e
+				err = consumeSpaces(&i, runeText, false)
+				if err != nil {
+					return nil, err
+				}
+
+				err = expectNotEof(&i, runeText)
+				if err != nil {
+					return nil, err
 				}
 
 				// ':' is optional
-				_ = expectAndTake(&i, runeText[i], ':')
+				take(&i, runeText, ':')
 
-				e = consumeSpaces(&i, runeText, false)
-				if e != nil {
-					return nil, e
+				err = consumeSpaces(&i, runeText, false)
+				if err != nil {
+					return nil, err
 				}
 
-				endIndex, e := ParseExpression(i, runeText)
-				if e != nil {
-					return nil, e
+				endIndex, err := ParseExpression(i, runeText)
+				if err != nil {
+					return nil, err
 				}
 
 				expression := string(runeText[i:endIndex])
@@ -337,9 +342,9 @@ LOOP:
 					continue
 				}
 
-				e = consumeSpaces(&i, runeText, false)
-				if e != nil {
-					return nil, e
+				err = consumeSpaces(&i, runeText, false)
+				if err != nil {
+					return nil, err
 				}
 
 				if i+2 >= len(runeText) || runeText[i] != 'a' || runeText[i+1] != 's' || runeText[i+2] != ' ' {
@@ -348,19 +353,19 @@ LOOP:
 					continue
 				}
 
-				if e := expectAndTakeAs(&i, runeText); e != nil {
-					return nil, e
+				if err := expectAndTakeAs(&i, runeText); err != nil {
+					return nil, err
 				}
 
-				e = consumeSpaces(&i, runeText, true)
-				if e != nil {
-					return nil, e
+				err = consumeSpaces(&i, runeText, true)
+				if err != nil {
+					return nil, err
 				}
 
 				localOffset := i
-				local, e := expectAndTakeIdentifier(&i, runeText, true)
-				if e != nil {
-					return nil, e
+				local, err := expectAndTakeIdentifier(&i, runeText, true)
+				if err != nil {
+					return nil, err
 				}
 
 				keyExp.Local = &local
@@ -387,8 +392,8 @@ func consumeOptionalDelimiter(i *int, runeText []rune) {
 
 func consumeSpaces(i *int, runeText []rune, requireOne bool) error {
 	if requireOne {
-		if e := expectAndTake(i, runeText[*i], ' '); e != nil {
-			return e
+		if err := expectAndTake(i, runeText, ' '); err != nil {
+			return err
 		}
 	}
 
@@ -399,7 +404,13 @@ func consumeSpaces(i *int, runeText []rune, requireOne bool) error {
 	return nil
 }
 
-func expectAndTake(i *int, c rune, expected rune) error {
+func expectAndTake(i *int, runeText []rune, expected rune) error {
+	if (*i) >= len(runeText) {
+		return fmt.Errorf("bad eof, expected %q", expected)
+	}
+
+	c := runeText[*i]
+
 	if c != expected {
 		return fmt.Errorf("bad character: %q, expected %q", c, expected)
 	}
@@ -410,11 +421,11 @@ func expectAndTake(i *int, c rune, expected rune) error {
 }
 
 func expectAndTakeAs(i *int, runeText []rune) error {
-	if e := expectAndTake(i, runeText[*i], 'a'); e != nil {
-		return e
+	if err := expectAndTake(i, runeText, 'a'); err != nil {
+		return err
 	}
-	if e := expectAndTake(i, runeText[*i], 's'); e != nil {
-		return e
+	if err := expectAndTake(i, runeText, 's'); err != nil {
+		return err
 	}
 
 	return nil
@@ -453,14 +464,22 @@ func expectAndTakeIdentifier(i *int, runeText []rune, jsIdentifier bool) (string
 }
 
 func expectAndTakeLet(i *int, runeText []rune) error {
-	if e := expectAndTake(i, runeText[*i], 'l'); e != nil {
-		return e
+	if err := expectAndTake(i, runeText, 'l'); err != nil {
+		return err
 	}
-	if e := expectAndTake(i, runeText[*i], 'e'); e != nil {
-		return e
+	if err := expectAndTake(i, runeText, 'e'); err != nil {
+		return err
 	}
-	if e := expectAndTake(i, runeText[*i], 't'); e != nil {
-		return e
+	if err := expectAndTake(i, runeText, 't'); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func expectNotEof(i *int, runeText []rune) error {
+	if (*i) >= len(runeText) {
+		return fmt.Errorf("bad eof")
 	}
 
 	return nil
@@ -482,4 +501,13 @@ func isHtmlIdentifierString(s string) bool {
 
 func isJsIdentifierChar(c rune) bool {
 	return unicode.IsLetter(c) || unicode.IsNumber(c) || c == '_' || c == '$'
+}
+
+func take(i *int, runeText []rune, expected rune) {
+	c := runeText[*i]
+	if c != expected {
+		return
+	}
+
+	(*i)++
 }
