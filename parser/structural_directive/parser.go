@@ -425,19 +425,19 @@ func expectAndTakeIdentifier(i *int, runeText []rune, jsIdentifier bool) (string
 
 	c := runeText[index]
 
-	if !unicode.IsLetter(c) && c != '_' { // The first char of an identifier can't be a number
-		return "", fmt.Errorf("bad character: %q, expected identifier", c)
-	}
-
-	start := index
-	index++
-
 	var isIdentifier func(c rune) bool
 	if jsIdentifier {
 		isIdentifier = isJsIdentifierChar
 	} else {
 		isIdentifier = isHtmlIdentifierChar
 	}
+
+	if !isIdentifier(c) || unicode.IsNumber(c) { // The first char of an identifier can't be a number
+		return "", fmt.Errorf("bad character: %q, expected identifier", c)
+	}
+
+	start := index
+	index++
 
 	for index < len(runeText) {
 		if !isIdentifier(runeText[index]) {
@@ -481,5 +481,5 @@ func isHtmlIdentifierString(s string) bool {
 }
 
 func isJsIdentifierChar(c rune) bool {
-	return unicode.IsLetter(c) || unicode.IsNumber(c) || c == '_'
+	return unicode.IsLetter(c) || unicode.IsNumber(c) || c == '_' || c == '$'
 }
