@@ -14,6 +14,7 @@ type Scope struct {
 }
 
 type Variable struct {
+	Alias      string
 	LastPart   *Part
 	Identifier string
 	RefName    string
@@ -48,12 +49,11 @@ func (s *Scope) AddVariable(v *Variable) {
 	s.Variables = append(s.Variables, v)
 }
 
-func (s *Scope) GetVariableByValue(value *Statement) *Variable {
-	v := value.ToString()
+func (s *Scope) GetVariableByAlias(alias string) *Variable {
 	scope := s
 
 	for scope != nil {
-		index := slices.IndexFunc(scope.Variables, func(variable *Variable) bool { return variable.Value == v })
+		index := slices.IndexFunc(scope.Variables, func(variable *Variable) bool { return variable.Alias == alias })
 		if index != -1 {
 			return scope.Variables[index]
 		}

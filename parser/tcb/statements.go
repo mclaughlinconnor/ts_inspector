@@ -113,9 +113,13 @@ func (s *Statement) AddStatementAfterPart(statement *Statement, after *Part) *Pa
 	return newAfter
 }
 
-func (s *Statement) OffsetByNodeStart(node *sitter.Node) {
+func (s *Statement) OffsetByNodeStart(node *sitter.Node) *Statement {
 	offset := int(node.StartByte())
 
+	return s.OffsetByOffset(offset)
+}
+
+func (s *Statement) OffsetByOffset(offset int) *Statement {
 	for _, p := range s.Parts {
 		if p.node == nil || p.PugStartOffset == nil || p.PugEndOffset == nil {
 			continue
@@ -124,6 +128,8 @@ func (s *Statement) OffsetByNodeStart(node *sitter.Node) {
 		(*p.PugStartOffset) += offset
 		(*p.PugEndOffset) += offset
 	}
+
+	return s
 }
 
 func (s *Statement) PrependVirtPart(text string) {

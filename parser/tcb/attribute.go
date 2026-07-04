@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 	"ts_inspector/parser"
+	structuraldirective "ts_inspector/parser/structural_directive"
 	"ts_inspector/utils"
 
 	sitter "github.com/smacker/go-tree-sitter"
@@ -13,23 +14,58 @@ import (
 
 type Attribute struct {
 	renderable
-	tcb *Tcb
+	tcb       *Tcb
+	value     string
+	valueExpr *structuraldirective.ShorthandValue
 
 	Name      string // includes angular [] and ()
 	NameNode  *sitter.Node
 	Node      *sitter.Node
 	Mixin     *Mixin
 	Tag       *Tag
-	Value     string
 	ValueNode *sitter.Node
+}
+
+func (a *Attribute) GetExpression() (*structuraldirective.Expression, error) {
+	if !a.IsStructuralInput() {
+		return &structuraldirective.Expression{Expression: a.value}, nil
+	}
+
+	valueShv, err := a.GetShv()
+	if err != nil {
+		return nil, err
+	}
+
+	return valueShv.GetExpression(), nil
+}
+
+func (a *Attribute) GetShv() (*structuraldirective.ShorthandValue, error) {
+	if a.valueExpr == nil {
+		v, err := structuraldirective.ParseShorthand(a.GetStrippedName(), a.value)
+		if err != nil {
+			return nil, err
+		}
+
+		a.valueExpr = v
+	}
+
+	return a.valueExpr, nil
 }
 
 func (a *Attribute) GetSourceClass() *parser.Class {
 	return a.Tcb().Class
 }
 
+func (a *Attribute) GetStrippedName() string {
+	return utils.StripAngularFromAttributeNoType(a.Name)
+}
+
 func (a *Attribute) IsInput() bool {
-	return (strings.HasPrefix(a.Name, "*")) || (strings.HasPrefix(a.Name, "[") && strings.HasSuffix(a.Name, "]"))
+	return a.IsStructuralInput() || strings.HasPrefix(a.Name, "[") && strings.HasSuffix(a.Name, "]")
+}
+
+func (a *Attribute) IsStructuralInput() bool {
+	return strings.HasPrefix(a.Name, "*")
 }
 
 func (a *Attribute) IsOutput() bool {
@@ -44,7 +80,7 @@ func (a *Attribute) Tcb() *Tcb {
 	return a.tcb
 }
 
-func (t *Tag) renderAttributes() {
+func (t *Tag) renderAttributes() error {
 	allAttributes := map[string]*Attribute{}
 	for _, a := range t.Attributes.Elements {
 		attributeName, _ := utils.StripAngularFromAttribute(a.Attribute.Name)
@@ -54,18 +90,25 @@ func (t *Tag) renderAttributes() {
 	renderedDirectives := map[string]bool{}
 
 	for _, a := range t.Attributes.Elements {
-		renderedDirectives = renderAttribute(&allAttributes, a.Attribute, renderedDirectives)
+		rd, err := renderAttribute(&allAttributes, a.Attribute, renderedDirectives)
+		if err != nil {
+			return err
+		}
+
+		renderedDirectives = rd
 	}
+
+	return nil
 }
 
-func renderAttribute(allAttributes *map[string]*Attribute, attribute *Attribute, renderedDirectives map[string]bool) map[string]bool {
+func renderAttribute(allAttributes *map[string]*Attribute, attribute *Attribute, renderedDirectives map[string]bool) (map[string]bool, error) {
 	if !attribute.IsInput() {
-		return renderedDirectives
+		return renderedDirectives, nil
 	}
 
 	sourceClass := attribute.Tcb().Class
 	if !sourceClass.HasComponent() {
-		return renderedDirectives
+		return renderedDirectives, nil
 	}
 
 	tcb := attribute.Tcb()
@@ -92,11 +135,20 @@ THING:
 			for _, def := range thing.GetAllDefinitions() {
 				inputName := def.GetInputName()
 				a, isAttached := (*allAttributes)[inputName]
-				if !isAttached {
+				if isAttached {
+					attachedInputs[inputName] = a
 					continue
 				}
 
-				attachedInputs[inputName] = a
+				for attributeName, attribute := range *allAttributes {
+					if !attribute.IsStructuralInput() {
+						continue
+					}
+
+					if strings.HasPrefix(inputName, attributeName) {
+						attachedInputs[inputName] = attribute
+					}
+				}
 			}
 
 			if len(attachedInputs) == 0 {
@@ -109,52 +161,78 @@ THING:
 			classIdent := tcb.AddImport(thing)
 			declIdent := buildDirectiveDeclaration(tcb, thing)
 
-			assIdent := buildDirectiveAssignment(tcb, thing, attribute, declIdent, &attachedInputs)
+			assIdent, err := buildDirectiveAssignment(tcb, thing, attribute, declIdent, &attachedInputs)
+			if err != nil {
+				return map[string]bool{}, err
+			}
 
-			buildGuards(tcb, attribute, thing, assIdent, classIdent)
+			ctxIdent, err := buildGuards(tcb, attribute, thing, assIdent, classIdent)
+			if err != nil {
+				return map[string]bool{}, err
+			}
+
+			if attribute.IsStructuralInput() {
+				valueShv, err := attribute.GetShv()
+				if err != nil {
+					return map[string]bool{}, err
+				}
+
+				buildStructuralShorthandContextExpansion(tcb, valueShv, ctxIdent)
+			}
 
 			continue THING
 		}
 	}
 
 	if !hasMatched {
-		expr := buildTcbExpression(tcb.Ast, attribute.Value)
-		if attribute.ValueNode != nil {
-			expr.OffsetByNodeStart(attribute.ValueNode)
+		valueExpr, err := attribute.GetExpression()
+		if err != nil {
+			return map[string]bool{}, err
 		}
 
-		tcb.AddVirtPart("(")
-		tcb.AddStatement(expr)
-		tcb.AddVirtPart(");\n")
+		if valueExpr != nil {
+			expr := buildTcbExpression(tcb.Ast, valueExpr.Expression)
+			if attribute.ValueNode != nil {
+				expr.OffsetByNodeStart(attribute.ValueNode)
+			}
+
+			tcb.AddVirtPart("(")
+			tcb.AddStatement(expr)
+			tcb.AddVirtPart(");\n")
+		}
 	}
 
-	return renderedDirectives
+	return renderedDirectives, nil
 }
 
-func buildDirectiveAssignment(tcb *Tcb, thing *parser.Class, attribute *Attribute, declIdent string, attachedInputs *map[string]*Attribute) string {
+func buildDirectiveAssignment(tcb *Tcb, thing *parser.Class, attribute *Attribute, declIdent string, attachedInputs *map[string]*Attribute) (string, error) {
 	assIdent := declIdent
 	if len(thing.Snapshot().TypeParameters) > 0 {
-		assIdent = buildGenericDirectiveAssignment(tcb, attribute, thing, declIdent, attachedInputs)
+		ai, err := buildGenericDirectiveAssignment(tcb, attribute, thing, declIdent, attachedInputs)
+		if err != nil {
+			return "", err
+		}
+		assIdent = ai
 	}
 
 	buildNonGenericDirectiveAssignment(tcb, attribute, thing, assIdent, attachedInputs)
 
-	return assIdent
+	return assIdent, nil
 }
 
-func buildGuards(tcb *Tcb, attribute *Attribute, thing *parser.Class, assIdent string, classIdent string) {
+func buildGuards(tcb *Tcb, attribute *Attribute, thing *parser.Class, assIdent string, classIdent string) (string, error) {
 	if !thing.HasDirective() && !strings.HasPrefix(attribute.Name, "*") && attribute.Tag.Name != "ng-template" {
-		return
+		return "", nil
 	}
 
 	hasContextGuard := false
 	var inputGuard *parser.ClassedDefinition = nil
 
 	strippedAttributeName := utils.StripAngularFromAttributeNoType(attribute.Name)
-	inputGuardDefName := parser.NG_TEMPLATE_GUARD_PREFIX + strippedAttributeName
+	inputGuardDefName := NG_TEMPLATE_GUARD_PREFIX + strippedAttributeName
 
 	for _, definition := range thing.GetAllDefinitions() {
-		if definition.Name == parser.NG_TEMPLATE_CONTEXT_GUARD {
+		if definition.Name == NG_TEMPLATE_CONTEXT_GUARD {
 			hasContextGuard = true
 		}
 
@@ -167,33 +245,43 @@ func buildGuards(tcb *Tcb, attribute *Attribute, thing *parser.Class, assIdent s
 		}
 
 		// For `@Input('alias') public prop`, `ngTemplateGuard_alias` and `ngTemplateGuard_prop` are both valid
-		if strings.HasPrefix(definition.Name, parser.NG_TEMPLATE_GUARD_PREFIX) {
-			if definition.Name == parser.NG_TEMPLATE_GUARD_PREFIX+strippedAttributeName {
+		if strings.HasPrefix(definition.Name, NG_TEMPLATE_GUARD_PREFIX) {
+			if definition.Name == NG_TEMPLATE_GUARD_PREFIX+strippedAttributeName {
 				inputGuard = &definition
 			}
 		} else {
 			inputName := definition.GetInputName()
 			if inputName == strippedAttributeName {
-				thing.GetDefinition(parser.NG_TEMPLATE_GUARD_PREFIX + inputName)
+				thing.GetDefinition(NG_TEMPLATE_GUARD_PREFIX + inputName)
 			}
 		}
 	}
 
 	if !hasContextGuard && inputGuard == nil {
-		return
+		return "", nil
 	}
 
-	value := buildTcbExpression(tcb.Ast, attribute.Value)
-	if attribute.ValueNode != nil {
-		value.OffsetByNodeStart(attribute.ValueNode)
+	valueExpr, err := attribute.GetExpression()
+	if err != nil {
+		return "", err
+	}
+
+	var value *Statement
+	if valueExpr != nil {
+		value = buildTcbExpression(tcb.Ast, valueExpr.Expression)
+		if attribute.ValueNode != nil {
+			value.OffsetByNodeStart(attribute.ValueNode)
+		}
+	} else {
+		value = StatementFromString(UNDEFINED)
 	}
 
 	statement := Statement{}
 	statement.AddVirtPart("if (")
 
-	ctxIdent := tcb.CreateVarInCurrentScope(StatementFromString(NULL_AS_ANY))
+	ctxIdent := tcb.CreateVarInCurrentScope(StatementFromString(NULL_AS_ANY), "")
 	if hasContextGuard {
-		statement.AddVirtPart(fmt.Sprintf("%s.%s(%s, %s)", classIdent, parser.NG_TEMPLATE_CONTEXT_GUARD, assIdent, ctxIdent))
+		statement.AddVirtPart(fmt.Sprintf("%s.%s(%s, %s)", classIdent, NG_TEMPLATE_CONTEXT_GUARD, assIdent, ctxIdent))
 	}
 
 	if hasContextGuard && inputGuard != nil {
@@ -228,9 +316,11 @@ func buildGuards(tcb *Tcb, attribute *Attribute, thing *parser.Class, assIdent s
 	}
 
 	attribute.Tag.closeScope = true
+
+	return ctxIdent, nil
 }
 
-func buildGenericDirectiveAssignment(tcb *Tcb, attribute *Attribute, thing *parser.Class, compIdent string, attachedInputs *map[string]*Attribute) string {
+func buildGenericDirectiveAssignment(tcb *Tcb, attribute *Attribute, thing *parser.Class, compIdent string, attachedInputs *map[string]*Attribute) (string, error) {
 	ctorExpr := Statement{}
 	ctorExpr.AddVirtPart(compIdent)
 	ctorExpr.AddVirtPart("({")
@@ -240,15 +330,50 @@ func buildGenericDirectiveAssignment(tcb *Tcb, attribute *Attribute, thing *pars
 	for _, input := range thing.GetInputs(true) {
 		inputName := input.GetInputName()
 		attached, isAttached := (*attachedInputs)[inputName]
-		if isAttached {
-			v := buildTcbExpression(tcb.Ast, attached.Value)
+		if !isAttached {
+			values[inputName] = nil
+			continue
+		}
+
+		valueShv, err := attached.GetShv()
+		if err != nil {
+			return "", err
+		}
+
+		if !attached.IsStructuralInput() || inputName == valueShv.Prefix {
+			valueExpr, err := attached.GetExpression()
+			if err != nil {
+				return "", err
+			}
+
+			if valueExpr == nil {
+				values[inputName] = nil
+				continue
+			}
+
+			v := buildTcbExpression(tcb.Ast, valueExpr.Expression)
 			if attached.ValueNode != nil {
 				v.OffsetByNodeStart(attached.ValueNode)
 			}
+
 			values[inputName] = v
-		} else {
-			values[inputName] = nil
 		}
+
+		hasKeyExp, keyExp := valueShv.GetKeyExprWithKey(inputName, false)
+		if !hasKeyExp {
+			// Don't overwrite the existing value
+			if values[inputName] == nil {
+				values[inputName] = nil
+			}
+			continue
+		}
+
+		v := buildTcbExpression(tcb.Ast, keyExp.Expression)
+		if attached.ValueNode != nil {
+			v.OffsetByNodeStart(attached.ValueNode)
+		}
+
+		values[inputName] = v
 	}
 
 	keys := slices.Collect(maps.Keys(values))
@@ -273,12 +398,16 @@ func buildGenericDirectiveAssignment(tcb *Tcb, attribute *Attribute, thing *pars
 
 	ctorExpr.AddVirtPart("})")
 
-	assIdent := tcb.CreateVarInCurrentScope(&ctorExpr)
+	assIdent := tcb.CreateVarInCurrentScope(&ctorExpr, "")
 
-	return assIdent
+	return assIdent, nil
 }
 
-func buildNonGenericDirectiveAssignment(tcb *Tcb, attribute *Attribute, thing *parser.Class, dirIdent string, attachedInputs *map[string]*Attribute) {
+func buildNonGenericDirectiveAssignment(tcb *Tcb, attribute *Attribute, thing *parser.Class, dirIdent string, attachedInputs *map[string]*Attribute) error {
+	nullAssignment := func(def *parser.ClassedDefinition) {
+		tcb.AddAssignment(dirIdent+"."+def.Name, nil, *StatementFromString(NULL_AS_ANY))
+	}
+
 	for _, def := range thing.GetInputs(true) {
 		inputName := def.GetInputName()
 		attached, isAttached := (*attachedInputs)[inputName]
@@ -286,14 +415,53 @@ func buildNonGenericDirectiveAssignment(tcb *Tcb, attribute *Attribute, thing *p
 			continue
 		}
 
-		if attached.ValueNode != nil {
-			value := buildTcbExpression(tcb.Ast, attached.Value)
+		if attached.ValueNode == nil {
+			nullAssignment(&def)
+		}
+
+		valueShv, err := attached.GetShv()
+		if err != nil {
+			return err
+		}
+
+		if !attached.IsStructuralInput() || inputName == valueShv.Prefix {
+			valueExpr, err := attached.GetExpression()
+			if err != nil {
+				return err
+			}
+
+			if valueExpr == nil {
+				nullAssignment(&def)
+				continue
+			}
+
+			value := buildTcbExpression(tcb.Ast, valueExpr.Expression)
 			value.OffsetByNodeStart(attached.ValueNode)
 			tcb.AddAssignment(dirIdent+"."+def.Name, attached.NameNode, *value)
-		} else {
-			tcb.AddAssignment(dirIdent+"."+def.Name, nil, *StatementFromString(NULL_AS_ANY))
+
+			continue
 		}
+
+		hasKeyExp, keyExp := valueShv.GetKeyExprWithKey(inputName, false)
+		if !hasKeyExp {
+			continue
+		}
+
+		value := buildTcbExpression(tcb.Ast, keyExp.Expression)
+		value.OffsetByNodeStart(attached.ValueNode).OffsetByOffset(keyExp.ExpressionOffset)
+		tcb.AddAssignment(dirIdent+"."+def.Name, attached.NameNode, *value)
 	}
+
+	valueShv, err := attribute.GetShv()
+	if err != nil {
+		return err
+	}
+
+	if valueShv == nil {
+		return nil
+	}
+
+	return nil
 }
 
 func buildDirectiveDeclaration(tcb *Tcb, thing *parser.Class) string {
@@ -370,9 +538,39 @@ func buildNonGenericDirectiveDeclaration(tcb *Tcb, thing *parser.Class) string {
 	value := Statement{}
 	value.AddVirtPart("null! as " + classIdent)
 
-	ident := tcb.CreateVarInRootScope(&value)
+	ident := tcb.CreateVarInRootScope(&value, "")
 
 	tcb.AddDirectiveConstructor(ident, thing, nil, false)
 
 	return ident
+}
+
+// The expansion for stuff that affects the context
+func buildStructuralShorthandContextExpansion(tcb *Tcb, shv *structuraldirective.ShorthandValue, ctxIdent string) {
+	for _, statement := range shv.Statements.Elements {
+		if statement.HasExpression() {
+			expr := statement.Expression
+			if expr.Local != nil {
+				tcb.CreateVarInCurrentScope(StatementFromString(ctxIdent+"."+shv.Prefix), expr.Expression)
+			}
+
+			continue
+		}
+
+		if statement.HasLet() {
+			let := statement.Let
+
+			var export string
+			if let.Export != nil {
+				export = *let.Export
+			} else {
+				export = IMPLICIT
+			}
+
+			tcb.CreateVarInCurrentScope(StatementFromString(ctxIdent+"."+export), let.Local)
+			continue
+		}
+
+		// if statement.HasKeyExp() {} // doesn't affect context
+	}
 }

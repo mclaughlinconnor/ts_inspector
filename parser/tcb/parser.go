@@ -12,6 +12,7 @@ import (
 type Ast struct {
 	Content []byte
 	Current utils.Stack[*Node]
+	Errors  []error
 	Root    *Node
 	Tcb     *Tcb
 }
@@ -179,7 +180,7 @@ func (n *Node) Render() {
 }
 
 func handleAttribute(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) *Ast {
-	attribute := Attribute{Name: "", Tag: (*state.Current.Peek()).Tag, Value: "", tcb: state.Tcb}
+	attribute := Attribute{Name: "", Tag: (*state.Current.Peek()).Tag, tcb: state.Tcb, value: ""}
 
 	a := &attribute
 	state.Current.Push((*state.Current.Peek()).Tag.addAttribute(a))
@@ -203,7 +204,7 @@ func handleAttributeName(node *sitter.Node, state *Ast, indexInParent int, inter
 func handleAttributeValue(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) *Ast {
 	attributeValueNode := node.NamedChild(0)
 	if attributeValueNode != nil {
-		(*state.Current.Peek()).Attribute.Value = attributeValueNode.Content(state.Content)
+		(*state.Current.Peek()).Attribute.value = attributeValueNode.Content(state.Content)
 		(*state.Current.Peek()).Attribute.ValueNode = attributeValueNode
 	}
 
@@ -251,7 +252,7 @@ func handleMixinAttributes(node *sitter.Node, state *Ast, indexInParent int, int
 }
 
 func handleMixinAttributeName(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) *Ast {
-	attribute := Attribute{Name: "", Mixin: (*state.Current.Peek()).Mixin, Value: "", tcb: state.Tcb}
+	attribute := Attribute{Mixin: (*state.Current.Peek()).Mixin, Name: "", tcb: state.Tcb, value: ""}
 
 	a := &attribute
 	state.Current.Push((*state.Current.Peek()).Mixin.addAttribute(a))
@@ -286,7 +287,12 @@ func handleTag(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap
 
 	for _, attr := range tag.Attributes.Elements {
 		if strings.HasPrefix(attr.Attribute.Name, "#") {
-			ref := TemplateRef{Attribute: attr, Name: attr.Attribute.Name, Tag: &tag, Value: attr.Attribute.Value}
+			valueExpr, err := attr.Attribute.GetExpression()
+			if err != nil {
+				state.Errors = append(state.Errors, err)
+				return state
+			}
+			ref := TemplateRef{Attribute: attr, Name: attr.Attribute.Name, Tag: &tag, Value: valueExpr.Expression}
 			tag.TemplateRefs.Add(ref)
 		}
 	}

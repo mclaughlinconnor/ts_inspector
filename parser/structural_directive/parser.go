@@ -2,6 +2,7 @@ package structuraldirective
 
 import (
 	"fmt"
+	"strings"
 	"ts_inspector/utils"
 	"unicode"
 )
@@ -18,23 +19,67 @@ type Statement struct {
 }
 
 type Expression struct {
-	Expression string
-	Local      *string // as
+	Expression       string
+	ExpressionOffset int
+	Local            *string // as
+	LocalOffset      int
 }
 
 type KeyExp struct {
-	Key        string
-	Expression string
-	Local      *string
+	Key              string
+	KeyOffset        int
+	Expression       string
+	ExpressionOffset int
+	Local            *string
+	LocalOffset      int
 }
 
 type Let struct {
-	Export *string
-	Local  string
+	Export       *string
+	ExportOffset int
+	Local        string
+	LocalOffset  int
 }
 
-func (s *Statement) HasAs() bool {
-	return s.As != nil
+func (shv *ShorthandValue) GetExpression() *Expression {
+	if len(shv.Statements.Elements) == 0 {
+		return nil
+	}
+
+	if !shv.Statements.Elements[0].HasExpression() {
+		return nil
+	}
+
+	return shv.Statements.Elements[0].Expression
+}
+
+func (shv *ShorthandValue) GetKeyExprWithKey(queryKey string, needsPrefix bool) (bool, *KeyExp) {
+	doesMatch := func(keyExpKey string) bool {
+		if shv.Prefix+keyExpKey == queryKey {
+			return true
+		}
+
+		titleCasedKey := shv.Prefix + strings.ToUpper(keyExpKey[:1]) + keyExpKey[1:]
+		return queryKey == titleCasedKey
+	}
+
+	for _, s := range shv.Statements.Elements {
+		if !s.HasKeyExp() {
+			continue
+		}
+
+		keyExp := s.KeyExp
+
+		if doesMatch(keyExp.Key) {
+			return true, s.KeyExp
+		}
+	}
+
+	return false, nil
+}
+
+func (s *Statement) HasExpression() bool {
+	return s.Expression != nil
 }
 
 func (s *Statement) HasKeyExp() bool {
@@ -145,12 +190,13 @@ LOOP:
 					return nil, e
 				}
 
+				localOffset := i
 				local, e := expectAndTakeIdentifier(&i, runeText, true)
 				if e != nil {
 					return nil, e
 				}
 
-				let := Let{Local: local}
+				let := Let{Local: local, LocalOffset: localOffset}
 				statement := Statement{Let: &let}
 				shorthand.Statements.Add(&statement)
 
@@ -179,12 +225,14 @@ LOOP:
 					return nil, e
 				}
 
+				exportOffset := i
 				export, e := expectAndTakeIdentifier(&i, runeText, true)
 				if e != nil {
 					return nil, e
 				}
 
 				let.Export = &export
+				let.ExportOffset = exportOffset
 
 				if i == len(runeText) {
 					state = LexStateBase
@@ -202,7 +250,7 @@ LOOP:
 				}
 
 				expressionText := runeText[i:endIndex]
-				expression := Expression{Expression: string(expressionText)}
+				expression := Expression{Expression: string(expressionText), ExpressionOffset: i}
 				statement := Statement{Expression: &expression}
 				shorthand.Statements.Add(&statement)
 
@@ -232,19 +280,22 @@ LOOP:
 					return nil, err
 				}
 
+				localOffset := i
 				local, e := expectAndTakeIdentifier(&i, runeText, true)
 				if e != nil {
 					return nil, e
 				}
 
-				consumeOptionalDelimiter(&i, runeText)
-
 				expression.Local = &local
+				expression.LocalOffset = localOffset
+
+				consumeOptionalDelimiter(&i, runeText)
 
 				state = LexStateBase
 			}
 		case LexStateKeyExp:
 			{
+				keyOffset := i
 				key, e := expectAndTakeIdentifier(&i, runeText, false)
 				if e != nil {
 					return nil, e
@@ -269,11 +320,12 @@ LOOP:
 				}
 
 				expression := string(runeText[i:endIndex])
-				i = endIndex + 1
 
-				keyExp := KeyExp{Key: key, Expression: expression}
+				keyExp := KeyExp{Key: key, KeyOffset: keyOffset, Expression: expression, ExpressionOffset: i}
 				statement := Statement{KeyExp: &keyExp}
 				shorthand.Statements.Add(&statement)
+
+				i = endIndex + 1
 
 				if i >= len(runeText) {
 					state = LexStateBase
@@ -301,12 +353,14 @@ LOOP:
 					return nil, e
 				}
 
+				localOffset := i
 				local, e := expectAndTakeIdentifier(&i, runeText, true)
 				if e != nil {
 					return nil, e
 				}
 
 				keyExp.Local = &local
+				keyExp.LocalOffset = localOffset
 
 				consumeOptionalDelimiter(&i, runeText)
 				state = LexStateBase

@@ -15,9 +15,6 @@ type exprState struct {
 	pipesToClose int
 }
 
-const NULL_AS_ANY string = "0 as any"
-const UNDEFINED string = "undefined"
-
 var angularExprLang = utils.GetLanguage(utils.AngularExpr)
 
 var exprVisitorFuncMap = walk.NewVisitorFuncsMap[*exprState]()

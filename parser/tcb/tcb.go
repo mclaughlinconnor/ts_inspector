@@ -203,17 +203,21 @@ func (t *Tcb) BuildPipeConstructorsStatement() *Statement {
 	return &statement
 }
 
-func (t *Tcb) CreateVarInCurrentScope(value *Statement) string {
-	return t.CreateVarInScope(value, t.GetScope())
+func (t *Tcb) CreateVarInCurrentScope(value *Statement, alias string) string {
+	return t.CreateVarInScope(value, t.GetScope(), alias)
 }
 
-func (t *Tcb) CreateVarInRootScope(value *Statement) string {
+func (t *Tcb) CreateVarInRootScope(value *Statement, alias string) string {
 	// TODO: should probably put the var at the top of the scope, not at the end
-	return t.CreateVarInScope(value, t.RootScope)
+	return t.CreateVarInScope(value, t.RootScope, alias)
 }
 
-func (t *Tcb) CreateVarInScope(value *Statement, scope *Scope) string {
-	if v := scope.GetVariableByValue(value); v != nil {
+func (t *Tcb) CreateVarInScope(value *Statement, scope *Scope, alias string) string {
+	if v := t.GetScope().GetVariableByAlias(alias); v != nil {
+		return v.Identifier
+	}
+
+	if v := scope.GetVariableByAlias(value.ToString()); v != nil {
 		return v.Identifier
 	}
 
@@ -227,13 +231,25 @@ func (t *Tcb) CreateVarInScope(value *Statement, scope *Scope) string {
 	scope.AddVirtPart(";\n")
 
 	lastPart := t.CurrentScope.Parts.GetLastPart()
-	scope.AddVariable(&Variable{Identifier: name, LastPart: lastPart, Value: value.ToString()})
+
+	var a string
+	if alias != "" {
+		a = alias
+	} else {
+		a = value.ToString()
+	}
+
+	scope.AddVariable(&Variable{Alias: a, Identifier: name, LastPart: lastPart, Value: value.ToString()})
 
 	return name
 }
 
-func (t *Tcb) CreateVarAfterPart(value *Statement, after *Part) (string, *Part) {
-	if v := t.GetScope().GetVariableByValue(value); v != nil {
+func (t *Tcb) CreateVarAfterPart(value *Statement, alias string, after *Part) (string, *Part) {
+	if v := t.GetScope().GetVariableByAlias(alias); v != nil {
+		return v.Identifier, v.LastPart
+	}
+
+	if v := t.GetScope().GetVariableByAlias(value.ToString()); v != nil {
 		return v.Identifier, v.LastPart
 	}
 
@@ -250,7 +266,15 @@ func (t *Tcb) CreateVarAfterPart(value *Statement, after *Part) (string, *Part) 
 	newAfter := t.AddStatementAfterPart(&statement, after)
 
 	lastPart := t.CurrentScope.Parts.GetLastPart()
-	t.GetScope().AddVariable(&Variable{Identifier: name, LastPart: lastPart, Value: value.ToString()})
+
+	var a string
+	if alias != "" {
+		a = alias
+	} else {
+		a = value.ToString()
+	}
+
+	t.GetScope().AddVariable(&Variable{Alias: a, Identifier: name, LastPart: lastPart, Value: value.ToString()})
 
 	return name, newAfter
 }

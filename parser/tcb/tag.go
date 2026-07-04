@@ -149,7 +149,7 @@ func (t *Tag) Tcb() *Tcb {
 func (t *Tag) insertValue(value *Statement, insertBeforeCurrentTag bool, shouldAddReferenceVar bool) {
 	tcb := t.Tcb()
 	if insertBeforeCurrentTag {
-		ident, newAfter := tcb.CreateVarAfterPart(value, *tcb.TagBoundaryPartStack.Peek())
+		ident, newAfter := tcb.CreateVarAfterPart(value, "", *tcb.TagBoundaryPartStack.Peek())
 		t.Identifier = ident
 
 		if !shouldAddReferenceVar {
@@ -173,15 +173,15 @@ func (t *Tag) insertValue(value *Statement, insertBeforeCurrentTag bool, shouldA
 		} else {
 			value = StatementFromString(t.Identifier)
 		}
-		refIdent, _ := tcb.CreateVarAfterPart(value, newAfter)
+		refIdent, _ := tcb.CreateVarAfterPart(value, "", newAfter)
 		for i := range t.TemplateRefs.Elements {
 			t.TemplateRefs.Elements[i].Identifier = refIdent
 		}
 	} else {
-		t.Identifier = tcb.CreateVarInCurrentScope(value)
+		t.Identifier = tcb.CreateVarInCurrentScope(value, "")
 		if shouldAddReferenceVar {
 			value = StatementFromString(t.Identifier)
-			tcb.CreateVarInCurrentScope(StatementFromString(t.Identifier))
+			tcb.CreateVarInCurrentScope(StatementFromString(t.Identifier), "")
 		}
 	}
 }
