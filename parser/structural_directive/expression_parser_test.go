@@ -24,6 +24,7 @@ func Test_parseExpression(t *testing.T) {
 		{name: "9", text: "one + two, two+three, three +four, four+ five trackBy: func", want: "one + two"},
 		{name: "10", text: "one + two - two+three - three +four - four+ five trackBy: func", want: "one + two - two+three - three +four - four+ five"},
 		{name: "11", text: "four+ five trackBy: func", want: "four+ five"},
+		{name: "12", text: "5", want: "5"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
