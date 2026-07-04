@@ -54,15 +54,6 @@ func (shv *ShorthandValue) GetExpression() *Expression {
 }
 
 func (shv *ShorthandValue) GetKeyExprWithKey(queryKey string, needsPrefix bool) (bool, *KeyExp) {
-	doesMatch := func(keyExpKey string) bool {
-		if shv.Prefix+keyExpKey == queryKey {
-			return true
-		}
-
-		titleCasedKey := shv.Prefix + strings.ToUpper(keyExpKey[:1]) + keyExpKey[1:]
-		return queryKey == titleCasedKey
-	}
-
 	for _, s := range shv.Statements.Elements {
 		if !s.HasKeyExp() {
 			continue
@@ -70,7 +61,7 @@ func (shv *ShorthandValue) GetKeyExprWithKey(queryKey string, needsPrefix bool) 
 
 		keyExp := s.KeyExp
 
-		if doesMatch(keyExp.Key) {
+		if keyExp.Matches(shv, queryKey) {
 			return true, s.KeyExp
 		}
 	}
@@ -92,6 +83,19 @@ func (s *Statement) HasLet() bool {
 
 func (l *Let) HasExport() bool {
 	return l.Export != nil
+}
+
+func (k *KeyExp) GetFullName(shv *ShorthandValue) string {
+	titleCasedKey := shv.Prefix + strings.ToUpper(k.Key[:1]) + k.Key[1:]
+	return titleCasedKey
+}
+
+func (k *KeyExp) Matches(shv *ShorthandValue, queryKey string) bool {
+	if shv.Prefix+k.Key == queryKey {
+		return true
+	}
+
+	return queryKey == k.GetFullName(shv)
 }
 
 const (

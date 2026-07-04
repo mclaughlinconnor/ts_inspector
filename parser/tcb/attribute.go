@@ -122,7 +122,7 @@ func renderAttribute(allAttributes *map[string]*Attribute, attribute *Attribute,
 THING:
 	for _, thing := range things {
 		for _, selector := range thing.GetSelectors() {
-			if !attribute.Tag.matchesSelector(selector) {
+			if !attribute.Tag.MatchesSelector(selector) {
 				continue
 			}
 

@@ -49,32 +49,6 @@ func (t *Tag) addAttribute(attribute *Attribute) *Node {
 	return node
 }
 
-func (t *Tag) matchesSelector(selector string) bool {
-	if t.Name == selector {
-		return true
-	}
-
-	valid, tagName, attrName := ast.ExtractTagNameAndAttrFromSelector(selector)
-	if !valid || (tagName != "" && t.Name != tagName) {
-		return false
-	}
-
-	for _, attr := range t.Attributes.Elements {
-		attr := attr.Attribute.Name
-
-		if attr == attrName {
-			return true
-		}
-
-		angularlessAttr, _ := utils.StripAngularFromAttribute(attr)
-		if angularlessAttr == attrName {
-			return true
-		}
-	}
-
-	return false
-}
-
 func (t *Tag) AddDeclaration(insertBeforeCurrentTag bool, shouldAddReferenceVar bool) {
 	tcb := t.Tcb()
 
@@ -90,7 +64,7 @@ func (t *Tag) AddDeclaration(insertBeforeCurrentTag bool, shouldAddReferenceVar 
 		}
 
 		for _, selector := range thing.Snapshot().Angular.Component.Selectors {
-			if !t.matchesSelector(selector) {
+			if !t.MatchesSelector(selector) {
 				continue
 			}
 
@@ -115,6 +89,32 @@ func (t *Tag) AddDeclaration(insertBeforeCurrentTag bool, shouldAddReferenceVar 
 	}
 
 	t.insertValue(StatementFromString("document.createElement(\""+t.Name+"\")"), insertBeforeCurrentTag, shouldAddReferenceVar)
+}
+
+func (t *Tag) MatchesSelector(selector string) bool {
+	if t.Name == selector {
+		return true
+	}
+
+	valid, tagName, attrName := ast.ExtractTagNameAndAttrFromSelector(selector)
+	if !valid || (tagName != "" && t.Name != tagName) {
+		return false
+	}
+
+	for _, attr := range t.Attributes.Elements {
+		attr := attr.Attribute.Name
+
+		if attr == attrName {
+			return true
+		}
+
+		angularlessAttr, _ := utils.StripAngularFromAttribute(attr)
+		if angularlessAttr == attrName {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (t *Tag) Render() {

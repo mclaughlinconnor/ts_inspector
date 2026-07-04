@@ -23,7 +23,7 @@ func (t *Tag) ResolveSourceClassOfAttribute(state *parser.State, attribute *Attr
 			continue
 		}
 
-		if slices.ContainsFunc(thing.Snapshot().Angular.Directive.Selectors, t.matchesSelector) {
+		if slices.ContainsFunc(thing.Snapshot().Angular.Directive.Selectors, t.MatchesSelector) {
 			attribute.SetSourceClass(thing)
 			return attribute.GetSourceClass()
 		}
