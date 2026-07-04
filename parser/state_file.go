@@ -136,10 +136,12 @@ func (f *File) GetInterestingPoints() []InterestingPoint {
 
 	uri := f.Snapshot().URI
 	content := f.Snapshot().Content
+	filepath := FilenameFromUri(uri)
+	basefilepath := path.Base(filepath)
+	filename := basefilepath[0 : len(basefilepath)-len(path.Ext(basefilepath))]
 
 	if utils.SemanticSearchIncludeFileInterestingPoints {
-		filename := FilenameFromUri(uri)
-		interestingPoint := InterestingPoint{Text: filename, Kind: interfaces.SymbolKind.File}
+		interestingPoint := InterestingPoint{Text: filepath, Kind: interfaces.SymbolKind.File}
 		interestingPoint.SetPosition(0, 0)
 		interestingPoint.SetFile(content, uri)
 
@@ -174,7 +176,7 @@ func (f *File) GetInterestingPoints() []InterestingPoint {
 			kind = interfaces.SymbolKind.Variable
 		}
 
-		interestingPoint := InterestingPoint{Text: v.Name, Kind: kind}
+		interestingPoint := InterestingPoint{Text: filename + "." + v.Name, Kind: kind}
 		interestingPoint.SetPosition(startOffset, endOffset)
 		interestingPoint.SetFile(content, uri)
 
@@ -200,7 +202,7 @@ func (f *File) GetInterestingPoints() []InterestingPoint {
 
 		var kind = interfaces.SymbolKind.Function
 
-		interestingPoint := InterestingPoint{Text: v.Name, Kind: kind}
+		interestingPoint := InterestingPoint{Text: filename + "." + v.Name, Kind: kind}
 		interestingPoint.SetPosition(startOffset, endOffset)
 		interestingPoint.SetFile(content, uri)
 
