@@ -177,7 +177,7 @@ THING:
 					return map[string]bool{}, err
 				}
 
-				buildStructuralShorthandContextExpansion(tcb, valueShv, ctxIdent)
+				buildStructuralShorthandContextExpansion(attribute, tcb, valueShv, ctxIdent)
 			}
 
 			continue THING
@@ -405,7 +405,7 @@ func buildGenericDirectiveAssignment(tcb *Tcb, attribute *Attribute, thing *pars
 
 func buildNonGenericDirectiveAssignment(tcb *Tcb, attribute *Attribute, thing *parser.Class, dirIdent string, attachedInputs *map[string]*Attribute) error {
 	nullAssignment := func(def *parser.ClassedDefinition) {
-		tcb.AddAssignment(dirIdent+"."+def.Name, nil, *StatementFromString(NULL_AS_ANY))
+		tcb.AddAssignment(dirIdent+"."+def.Name, nil, StatementFromString(NULL_AS_ANY))
 	}
 
 	for _, def := range thing.GetInputs(true) {
@@ -437,7 +437,7 @@ func buildNonGenericDirectiveAssignment(tcb *Tcb, attribute *Attribute, thing *p
 
 			value := buildTcbExpression(tcb.Ast, valueExpr.Expression)
 			value.OffsetByNodeStart(attached.ValueNode)
-			tcb.AddAssignment(dirIdent+"."+def.Name, attached.NameNode, *value)
+			tcb.AddAssignment(dirIdent+"."+def.Name, attached.NameNode, value)
 
 			continue
 		}
@@ -449,7 +449,7 @@ func buildNonGenericDirectiveAssignment(tcb *Tcb, attribute *Attribute, thing *p
 
 		value := buildTcbExpression(tcb.Ast, keyExp.Expression)
 		value.OffsetByNodeStart(attached.ValueNode).OffsetByOffset(keyExp.ExpressionOffset)
-		tcb.AddAssignment(dirIdent+"."+def.Name, attached.NameNode, *value)
+		tcb.AddAssignment(dirIdent+"."+def.Name, attached.NameNode, value)
 	}
 
 	valueShv, err := attribute.GetShv()
@@ -546,7 +546,7 @@ func buildNonGenericDirectiveDeclaration(tcb *Tcb, thing *parser.Class) string {
 }
 
 // The expansion for stuff that affects the context
-func buildStructuralShorthandContextExpansion(tcb *Tcb, shv *structuraldirective.ShorthandValue, ctxIdent string) {
+func buildStructuralShorthandContextExpansion(attribute *Attribute, tcb *Tcb, shv *structuraldirective.ShorthandValue, ctxIdent string) {
 	for _, statement := range shv.Statements.Elements {
 		if statement.HasExpression() {
 			expr := statement.Expression
@@ -567,10 +567,37 @@ func buildStructuralShorthandContextExpansion(tcb *Tcb, shv *structuraldirective
 				export = IMPLICIT
 			}
 
-			tcb.CreateVarInCurrentScope(StatementFromString(ctxIdent+"."+export), let.Local)
+			text := ctxIdent + "." + export
+			valueStatement := buildStatementFromAttributeAndOffset(attribute, text, export, let.ExportOffset)
+
+			tcb.CreateVarInCurrentScope(valueStatement, let.Local)
+
 			continue
 		}
 
 		// if statement.HasKeyExp() {} // doesn't affect context
 	}
+}
+
+func buildStatementFromAttributeAndOffset(attribute *Attribute, tsText string, pugText string, shvOffset int) *Statement {
+	valueStatement := Statement{}
+
+	pugStartOffset := int(attribute.ValueNode.StartByte()) + shvOffset
+	pugEndOffset := pugStartOffset + len(pugText)
+
+	tsStartOffset := 0
+	tsEndOffset := tsStartOffset + len(tsText)
+	part := Part{
+		node:           nil,
+		text:           tsText,
+		PugEndOffset:   &pugStartOffset,
+		PugStartOffset: &pugEndOffset,
+		TsEndOffset:    &tsEndOffset,
+		TsStartOffset:  &tsStartOffset,
+		Id:             getNextId(),
+	}
+
+	valueStatement.AddPartRaw(&part)
+
+	return &valueStatement
 }

@@ -65,7 +65,7 @@ func (t *Tcb) GetNextIdString() string {
 	return strconv.Itoa(id)
 }
 
-func (t *Tcb) AddAssignment(identifer string, identNode *sitter.Node, value Statement) {
+func (t *Tcb) AddAssignment(identifer string, identNode *sitter.Node, value *Statement) {
 	if identNode == nil {
 		t.AddVirtPart(identifer)
 	} else {
@@ -73,7 +73,7 @@ func (t *Tcb) AddAssignment(identifer string, identNode *sitter.Node, value Stat
 	}
 
 	t.AddVirtPart(" = ")
-	t.AddStatement(&value)
+	t.AddStatement(value)
 	t.AddVirtPart(";\n")
 }
 

@@ -30,7 +30,7 @@ type Part struct {
 }
 
 func (p *Part) IsReal() bool {
-	return p.node != nil
+	return p.node != nil || (p.PugEndOffset != nil && p.PugStartOffset != nil)
 }
 
 func (p *Part) IsVirtual() bool {
@@ -178,6 +178,10 @@ func (s *Statement) AddPart(part *Part) {
 		part.PugEndOffset = &end
 	}
 
+	s.AddPartRaw(part)
+}
+
+func (s *Statement) AddPartRaw(part *Part) {
 	s.Parts = append(s.Parts, part)
 	s.sb.WriteString(part.text)
 }
