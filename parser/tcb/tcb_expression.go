@@ -144,7 +144,6 @@ func visitConditional(node *sitter.Node, state *exprState, indexInParent int, in
 	// This should be instead be `conditional /*1,2*/ ? trueExpr /*3,4*/ : (falseExpr /*5,6*/)`
 
 	falseState := newWalk(node.ChildByFieldName("alternative"), state)
-	wrapForTypeChecker(falseState.parts)
 
 	state.parts.AddStatement(condState.parts)
 	state.parts.AddVirtPart(" ? ")
@@ -179,7 +178,7 @@ func visitInterpolation(node *sitter.Node, state *exprState, indexInParent int, 
 		}
 
 		state.parts.AddVirtPart(" + ")
-		state.parts.AddStatement(wrapForTypeChecker(partExpr))
+		state.parts.AddStatement(partExpr)
 	}
 
 	return state
@@ -192,9 +191,9 @@ func visitKeyedRead(node *sitter.Node, state *exprState, indexInParent int, inte
 	keyNode := node.ChildByFieldName("property")
 	keyState := newWalk(keyNode, state)
 
-	state.parts.AddStatement(wrapForDiagnostics(receiverState.parts))
+	state.parts.AddStatement(receiverState.parts)
 	state.parts.AddVirtPart("[")
-	state.parts.AddStatement(wrapForDiagnostics(keyState.parts))
+	state.parts.AddStatement(keyState.parts)
 	state.parts.AddVirtPart("]")
 
 	return state
@@ -210,7 +209,8 @@ func visitLiteralArray(node *sitter.Node, state *exprState, indexInParent int, i
 
 		element := node.NamedChild(int(i))
 		elementState := newWalk(element, state)
-		state.parts.AddStatement(wrapForTypeChecker(elementState.parts))
+		elementState.parts.OffsetByNodeStart(node)
+		state.parts.AddStatement(elementState.parts)
 	}
 
 	state.parts.AddVirtPart("]")
@@ -320,10 +320,10 @@ func visitKeyedNonNullAssertRead(node *sitter.Node, state *exprState, indexInPar
 	keyNode := node.ChildByFieldName("property")
 	keyState := newWalk(keyNode, state)
 
-	state.parts.AddStatement(wrapForDiagnostics(receiverState.parts))
+	state.parts.AddStatement(receiverState.parts)
 	state.parts.AddVirtPart("!")
 	state.parts.AddVirtPart("[")
-	state.parts.AddStatement(wrapForDiagnostics(keyState.parts))
+	state.parts.AddStatement(keyState.parts)
 	state.parts.AddVirtPart("]")
 
 	return state
@@ -380,14 +380,14 @@ func visitPropertyRead(node *sitter.Node, state *exprState, indexInParent int, i
 // visitPropertyWrite and visitKeyedWrite
 func visitWrite(node *sitter.Node, state *exprState, indexInParent int, internalFuncMap walk.VisitorFuncMap[*exprState]) *exprState {
 	leftNode := node.ChildByFieldName("name")
-	left := wrapForDiagnostics(newWalk(leftNode, state).parts)
+	left := newWalk(leftNode, state).parts
 
 	// The right needs to be wrapped in parens as well or we cannot accurately match its
 	// span to just the RHS. For example, the span in `e = $event /*0,10*/` is ambiguous.
 	// It could refer to either the whole binary expression or just the RHS.
 	// We should instead generate `e = ($event /*0,10*/)` so we know the span 0,10 matches RHS.
 	rightNode := node.ChildByFieldName("value")
-	right := wrapForTypeChecker(newWalk(rightNode, state).parts)
+	right := newWalk(rightNode, state).parts
 
 	state.parts.AddVirtPart("(")
 	state.parts.AddStatement(left)
@@ -401,7 +401,7 @@ func visitWrite(node *sitter.Node, state *exprState, indexInParent int, internal
 func visitSafePropertyRead(node *sitter.Node, state *exprState, indexInParent int, internalFuncMap walk.VisitorFuncMap[*exprState]) *exprState {
 	receiverNode := node.ChildByFieldName("object")
 	receiverState := newWalk(receiverNode, state)
-	receiver := wrapForDiagnostics(receiverState.parts)
+	receiver := receiverState.parts
 
 	nameNode := node.ChildByFieldName("property")
 	name := StatementFromNodeContent(nameNode, state.content)
@@ -452,7 +452,7 @@ func visitSafePropertyRead(node *sitter.Node, state *exprState, indexInParent in
 func visitSafeKeyedRead(node *sitter.Node, state *exprState, indexInParent int, internalFuncMap walk.VisitorFuncMap[*exprState]) *exprState {
 	receiverNode := node.ChildByFieldName("object")
 	receiverState := newWalk(receiverNode, state)
-	receiver := wrapForDiagnostics(receiverState.parts)
+	receiver := receiverState.parts
 
 	keyNode := node.ChildByFieldName("property")
 	keyState := newWalk(keyNode, state)
@@ -703,20 +703,6 @@ func convertToSafeCall(expr *Statement, args []*Statement) *Statement {
 	// // "a?.method(...)" becomes (a!.method(...) as any)
 	// return tsCastToAny(
 	//     ts.factory.createCallExpression(ts.factory.createNonNullExpression(expr), undefined, args));
-}
-
-func wrapForDiagnostics(expr *Statement) *Statement {
-	expr.PrependVirtPart("(")
-	expr.AddVirtPart(")")
-
-	return expr
-}
-
-func wrapForTypeChecker(expr *Statement) *Statement {
-	expr.PrependVirtPart("(")
-	expr.AddVirtPart(")")
-
-	return expr
 }
 
 func isIntrinsicValue(text string) bool {
