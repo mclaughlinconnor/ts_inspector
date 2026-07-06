@@ -26,7 +26,7 @@ func ParseExpression(startIndex int, runeText []rune) (int, error) {
 			}
 
 			// about to do lookaheads
-			if i == len(runeText) {
+			if i == len(runeText) - 1 {
 				break
 			}
 
