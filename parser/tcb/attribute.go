@@ -279,7 +279,7 @@ func buildGuards(tcb *Tcb, attribute *Attribute, thing *parser.Class, assIdent s
 	statement := Statement{}
 	statement.AddVirtPart("if (")
 
-	ctxIdent := tcb.CreateVarInCurrentScope(StatementFromString(NULL_AS_ANY), "")
+	ctxIdent := tcb.CreateVarInCurrentScope(StatementFromString(NULL_AS_ANY), classIdent)
 	if hasContextGuard {
 		statement.AddVirtPart(fmt.Sprintf("%s.%s(%s, %s)", classIdent, NG_TEMPLATE_CONTEXT_GUARD, assIdent, ctxIdent))
 	}
