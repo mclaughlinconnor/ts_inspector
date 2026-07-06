@@ -248,6 +248,8 @@ LOOP:
 			}
 		case LexStateExpression:
 			{
+				// NOTE: After the first statement, the first part of the expression must be an identifier, not a generic expression
+				// I.e., `true as a, true as b` is valid and `[a, b, c] as d, true as a` is valid, but `true as a, [a, b, c] as d` is invalid
 				endIndex, err := ParseExpression(i, runeText)
 				if err != nil {
 					return nil, err
