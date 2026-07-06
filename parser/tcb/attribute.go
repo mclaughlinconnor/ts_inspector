@@ -551,7 +551,7 @@ func buildStructuralShorthandContextExpansion(attribute *Attribute, tcb *Tcb, sh
 		if statement.HasExpression() {
 			expr := statement.Expression
 			if expr.Local != nil {
-				tcb.CreateVarInCurrentScope(StatementFromString(ctxIdent+"."+shv.Prefix), expr.Expression)
+				tcb.CreateVarInCurrentScope(StatementFromString(ctxIdent+"."+expr.Expression), *expr.Local)
 			}
 
 			continue
