@@ -111,7 +111,7 @@ func visit(node *tcb.Node, analyses *[]Analysis, analyse func(*tcb.Attribute)) {
 	for _, attributeNode := range node.Tag.Attributes.Elements {
 		attribute := attributeNode.Attribute
 		if !attribute.IsStructuralInput() {
-			return
+			break
 		}
 
 		analyse(attribute)
