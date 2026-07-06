@@ -341,6 +341,10 @@ func buildGenericDirectiveAssignment(tcb *Tcb, attribute *Attribute, thing *pars
 		}
 
 		if !attached.IsStructuralInput() || inputName == valueShv.Prefix {
+			if attached.ValueNode == nil {
+				continue
+			}
+
 			valueExpr, err := attached.GetExpression()
 			if err != nil {
 				return "", err
@@ -425,6 +429,10 @@ func buildNonGenericDirectiveAssignment(tcb *Tcb, attribute *Attribute, thing *p
 		}
 
 		if !attached.IsStructuralInput() || inputName == valueShv.Prefix {
+			if attached.ValueNode == nil {
+				continue
+			}
+
 			valueExpr, err := attached.GetExpression()
 			if err != nil {
 				return err
