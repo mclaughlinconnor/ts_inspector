@@ -44,6 +44,10 @@ func structuralDirectiveUnfoundKeyExprKey(state *parser.State, file *parser.File
 		}
 
 		for _, thing := range class.Snapshot().Angular.Component.GetAvailableThings(state) {
+			if !thing.HasDirective() {
+				continue
+			}
+
 			for _, selector := range thing.GetSelectors() {
 				if !attribute.Tag.MatchesSelector(selector) {
 					continue
