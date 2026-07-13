@@ -2,6 +2,7 @@ package search
 
 import (
 	"math"
+	"sync"
 	"ts_inspector/parser"
 
 	"github.com/hybridgroup/yzma/pkg/llama"
@@ -10,7 +11,11 @@ import (
 var model llama.Model
 var context llama.Context
 
+var mutex sync.Mutex
+
 func GetEmbedding(text string) []float32 {
+	mutex.Lock()
+
 	vocab := llama.ModelGetVocab(model)
 	tokens := llama.Tokenize(vocab, text, true, true)
 
@@ -39,10 +44,28 @@ func GetEmbedding(text string) []float32 {
 		normalisedEmbedding[i] = e * normal
 	}
 
+	mutex.Unlock()
+
 	return normalisedEmbedding
 }
 
-func indexEmbeddings(interestingPoints []parser.InterestingPoint, ids []int64) {
+func indexEmbeddings(interestingPoints []parser.InterestingPoint, ids []int64) error {
+	indexEmbeddingsFaiss(interestingPoints, ids)
+	err := indexEmbeddingsSqlite(interestingPoints, ids)
+	if err != nil {
+		return err
+	}
+
+	setEmbeddingsReady()
+
+	return nil
+}
+
+func indexEmbeddingsFaiss(interestingPoints []parser.InterestingPoint, ids []int64) {
+	if len(interestingPoints) == 0 {
+		return
+	}
+
 	vectors := make([]Vector, len(interestingPoints))
 
 	for i, interestingPoint := range interestingPoints {
@@ -52,13 +75,24 @@ func indexEmbeddings(interestingPoints []parser.InterestingPoint, ids []int64) {
 		vectors[i] = Vector{ids[i], vector}
 	}
 
-	if len(vectors) == 0 {
-		return
+	AddToFAISS(vectors)
+}
+
+func indexEmbeddingsSqlite(interestingPoints []parser.InterestingPoint, ids []int64) error {
+	if len(interestingPoints) == 0 {
+		return nil
 	}
 
-	AddToFAISS(vectors)
+	rows := make([]row, len(interestingPoints))
 
-	setEmbeddingsReady()
+	for i, interestingPoint := range interestingPoints {
+		ppText := preprocessText(interestingPoint.Text)
+
+		vector := GetEmbedding(ppText)
+		rows[i] = row{ids[i], vector, ppText}
+	}
+
+	return AddToSqlite(rows)
 }
 
 func initEmbedding() {

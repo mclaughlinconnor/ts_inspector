@@ -4,8 +4,11 @@ import (
 	"cmp"
 	"fmt"
 	"hash/fnv"
+	"log"
 	"slices"
 	"strings"
+	"sync"
+	"time"
 	"ts_inspector/parser"
 	"ts_inspector/utils"
 	"unicode"
@@ -23,7 +26,7 @@ type ClassResult struct {
 type Result struct {
 	Distance float32
 	Id       int64
-	Source   string // "embedding" or "fzf"
+	Source   string // "faiss" or "fzf" or "sqlite"
 }
 
 const (
@@ -54,7 +57,12 @@ func IndexState(state *parser.State) {
 		ids = append(ids, id)
 	}
 
-	go indexEmbeddings(interestingPoints, ids)
+	go func() {
+		err := indexEmbeddings(interestingPoints, ids)
+		if err != nil {
+			state.Logger.Println(err)
+		}
+	}()
 	indexFzf(interestingPoints, ids)
 
 	setSearchReady()
@@ -63,21 +71,63 @@ func IndexState(state *parser.State) {
 func InitSearch() {
 	initEmbedding()
 	initFAISS()
+	initSqlite()
 }
 
-func FindInterestingPoints(text string) ([]parser.InterestingPoint, error) {
+func FindInterestingPoints(logger *log.Logger, text string) ([]parser.InterestingPoint, error) {
+	defer utils.Timer(logger, "FindInterestingPoints", time.Now(), utils.Debug)
 	if !canSearch() {
 		return []parser.InterestingPoint{}, nil
 	}
 
 	ppText := preprocessText(text)
 
-	results, err := SearchFAISS(ppText, EmbeddingResultsCount)
+	wg := sync.WaitGroup{}
+
+	var faissResults []Result
+	var fzfResults []Result
+	var sqliteResults []Result
+
+	var err error
+
+	wg.Go(func() {
+		defer utils.Timer(logger, "SearchFaiss", time.Now(), utils.Debug)
+		results, e := SearchFAISS(ppText, EmbeddingResultsCount)
+		if e != nil {
+			err = e
+			return
+		}
+
+		faissResults = results
+	})
+
+	wg.Go(func() {
+		defer utils.Timer(logger, "SearchFZF", time.Now(), utils.Debug)
+		results := SearchFZF(ppText, FzfResultsCount)
+		fzfResults = results
+	})
+
+	wg.Go(func() {
+		defer utils.Timer(logger, "sqliteSearch", time.Now(), utils.Debug)
+		results, e := SearchSqlite(ppText, EmbeddingResultsCount)
+		if e != nil {
+			err = e
+			return
+		}
+
+		sqliteResults = results
+	})
+
+	wg.Wait()
+
 	if err != nil {
 		return []parser.InterestingPoint{}, err
 	}
 
-	results = append(results, SearchFZF(ppText, FzfResultsCount)...)
+	results := []Result{}
+	results = append(results, faissResults...)
+	results = append(results, fzfResults...)
+	results = append(results, sqliteResults...)
 
 	slices.SortFunc(results, func(a Result, b Result) int { return cmp.Compare(b.Distance, a.Distance) })
 	results = makeUnique(results)

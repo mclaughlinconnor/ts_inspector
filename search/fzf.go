@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 	"ts_inspector/parser"
+	"ts_inspector/utils"
 
 	"github.com/junegunn/fzf/src/algo"
 	"github.com/junegunn/fzf/src/util"
@@ -22,11 +23,19 @@ const (
 var slab = util.MakeSlab(slab16Size, slab32Size)
 
 func AddToFZF(text string, labels int64) {
+	if !utils.SemanticSearchEnableFzf {
+		return
+	}
+
 	fzfIndex = append(fzfIndex, strings.ToLower(text))
 	fzfLabels = append(fzfLabels, labels)
 }
 
 func SearchFZF(queryText string, resultsCount int64) []Result {
+	if !utils.SemanticSearchEnableFzf {
+		return []Result{}
+	}
+
 	query := []rune(strings.ToLower(queryText))
 
 	results := make([]Result, len(fzfIndex))

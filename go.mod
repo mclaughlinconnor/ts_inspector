@@ -9,6 +9,7 @@ require (
 )
 
 require (
+	github.com/asg017/sqlite-vec-go-bindings v0.1.6 // indirect
 	github.com/charlievieth/fastwalk v1.0.14 // indirect
 	github.com/ebitengine/purego v0.9.1 // indirect
 	github.com/fatih/camelcase v1.0.0 // indirect
@@ -20,6 +21,7 @@ require (
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
+	github.com/mattn/go-sqlite3 v1.14.47 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	golang.org/x/sys v0.40.0 // indirect
 	golang.org/x/term v0.34.0 // indirect

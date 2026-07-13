@@ -13,6 +13,7 @@ import "C"
 
 import (
 	"log"
+	"ts_inspector/utils"
 	"unsafe"
 )
 
@@ -26,6 +27,10 @@ type Vector struct {
 }
 
 func AddToFAISS(vectors []Vector) {
+	if !utils.SemanticSearchEnableFaiss {
+		return
+	}
+
 	nVectors := len(vectors)
 	combinedVectors := make([]float32, nVectors*dimension)
 	ids := make([]int64, nVectors)
@@ -41,7 +46,7 @@ func AddToFAISS(vectors []Vector) {
 }
 
 func SearchFAISS(queryText string, resultsCount int64) ([]Result, error) {
-	if !canUseEmbeddings() {
+	if !utils.SemanticSearchEnableFaiss || !canUseEmbeddings() {
 		return []Result{}, nil
 	}
 
@@ -50,7 +55,7 @@ func SearchFAISS(queryText string, resultsCount int64) ([]Result, error) {
 
 	results := make([]Result, resultsCount)
 	for i := range resultsCount {
-		results[i] = Result{1 - distances[i] + SortOrderEmbedding, labels[i], "embedding"}
+		results[i] = Result{1 - distances[i] + SortOrderEmbedding, labels[i], "faiss"}
 	}
 
 	return results, nil

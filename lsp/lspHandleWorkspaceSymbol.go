@@ -22,7 +22,7 @@ func newWorkspaceSymbolResponse(id int, symbols []interfaces.WorkspaceSymbol) in
 func lspHandleWorkspaceSymbol(writer io.Writer, logger *log.Logger, state *parser.State, request interfaces.WorkspaceSymbolRequest) {
 	params := request.Params
 
-	interestingPoints, err := search.FindInterestingPoints(params.Query)
+	interestingPoints, err := search.FindInterestingPoints(logger, params.Query)
 	if err != nil {
 		logger.Println(err)
 	}
