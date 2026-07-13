@@ -68,7 +68,9 @@ func (s *Scope) GetVariableByName(name string) *Variable {
 	scope := s
 
 	for scope != nil {
-		index := slices.IndexFunc(scope.Variables, func(variable *Variable) bool { return variable.Alias == name || variable.Identifier == name || variable.RefName == name })
+		index := slices.IndexFunc(scope.Variables, func(variable *Variable) bool {
+			return variable.Alias == name || variable.Identifier == name || variable.RefName == name
+		})
 		if index != -1 {
 			return scope.Variables[index]
 		}
