@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"maps"
 	"slices"
+	"ts_inspector/utils"
 
 	sitter "github.com/smacker/go-tree-sitter"
 )
@@ -24,6 +25,8 @@ type Component struct {
 	Template        *Template
 	TemplateUrl     string
 	TemplateUrlFile *File
+
+	things *[]*Class
 }
 
 type Directive struct {
@@ -39,6 +42,8 @@ type Module struct {
 	Exports      *Value
 	Imports      *Value
 	Providers    []*Provider
+
+	exportedThings *[]*Class
 }
 
 type Pipe struct {
@@ -135,6 +140,10 @@ func (c *Component) EnsureTemplate() {
 }
 
 func (c *Component) GetAvailableThings(state *State) []*Class {
+	if utils.TsGoExperimentalThingCaching && c.things != nil {
+		return *c.things
+	}
+
 	things := make(map[string]*Class)
 
 	for _, declaringClass := range c.DeclaredIn {
@@ -145,7 +154,6 @@ func (c *Component) GetAvailableThings(state *State) []*Class {
 		for _, thing := range declaringClass.Snapshot().Angular.Module.GetThingsFromInside(state) {
 			things[thing.Id()] = thing
 		}
-
 	}
 
 	for imp := range c.Imports.FlattenReferenceArraysToReferences(state) {
@@ -167,7 +175,13 @@ func (c *Component) GetAvailableThings(state *State) []*Class {
 	vs := slices.Collect(maps.Values(things))
 	slices.SortFunc(vs, func(a *Class, b *Class) int { return cmp.Compare(b.Snapshot().Name, a.Snapshot().Name) })
 
+	c.things = &vs
+
 	return vs
+}
+
+func (c *Component) ResetAvailableThings() {
+	c.things = nil
 }
 
 func (m *Module) DoesDeclare(class *Class) bool {
@@ -240,6 +254,10 @@ func (m *Module) GetDeclaredThings(state *State) []*Class {
 }
 
 func (m *Module) GetExportedThings(state *State) []*Class {
+	if m.exportedThings != nil {
+		return *m.exportedThings
+	}
+
 	selectors := make([]*Class, 0)
 
 	for exp := range m.Exports.FlattenReferenceArraysToReferences(state) {
@@ -261,6 +279,8 @@ func (m *Module) GetExportedThings(state *State) []*Class {
 			selectors = append(selectors, angular.Module.GetExportedThings(state)...)
 		}
 	}
+
+	m.exportedThings = &selectors
 
 	return selectors
 }
@@ -325,4 +345,8 @@ func (m *Module) Postprocess(state *State, class *Class) {
 			})
 		}
 	}
+}
+
+func (m *Module) ResetExportedThings() {
+	m.exportedThings = nil
 }

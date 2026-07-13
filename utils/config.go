@@ -6,3 +6,4 @@ var LSP = true
 var SemanticSearch = true
 var SemanticSearchIncludeFileInterestingPoints = false
 var TsGo = false
+var TsGoExperimentalThingCaching = false

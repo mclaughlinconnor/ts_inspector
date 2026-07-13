@@ -652,6 +652,16 @@ func (c *Class) Reset() {
 	})
 }
 
+func (c *Class) ResetThings() {
+	if c.HasComponent() {
+		c.Snapshot().Angular.Component.ResetAvailableThings()
+	}
+
+	if c.HasModule() {
+		c.Snapshot().Angular.Module.ResetExportedThings()
+	}
+}
+
 func (c *Class) SetUsageAccessType(name string, access access) {
 	usage := c.Snapshot().Usages[name]
 	usage.Access = CalculateNewAccessType(access, usage.Access)

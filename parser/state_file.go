@@ -268,6 +268,8 @@ func (f *File) GetTcbUri() string {
 }
 
 func (f *File) Postprocess(state *State) {
+	f.ResetThings()
+
 	for _, class := range f.Snapshot().Classes {
 		state.SetClass(class.Id(), class)
 		class.Postprocess(state)
@@ -289,6 +291,16 @@ func (f *File) Postprocess(state *State) {
 				})
 			}
 		}
+	}
+}
+
+func (f *File) ResetThings() {
+	for _, class := range f.Snapshot().Classes {
+		if !class.HasAngular() {
+			continue
+		}
+
+		class.ResetThings()
 	}
 }
 
