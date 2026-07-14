@@ -97,7 +97,7 @@ func initTsGo(state *parser.State) {
 	state.SetTsGo(t)
 
 	t.Initialize()
-	us := t.UpdateSnapshot(state.GetTsConfigFiles()[1], nil)
+	us := t.UpdateSnapshot("tsconfig.json", nil)
 	print(us)
 
 	state.SetTsGo(t)
