@@ -26,8 +26,10 @@ func AddToSqlite(rows []row) error {
 		return nil
 	}
 
+	prefix := "INSERT or REPLACE INTO vec_interesting_points(id, embedding, text) VALUES "
+
 	sb := strings.Builder{}
-	sb.WriteString("INSERT or REPLACE INTO vec_interesting_points(id, embedding, text) VALUES ")
+	sb.WriteString(prefix)
 
 	ids := make(map[int64]row)
 
@@ -42,21 +44,27 @@ func AddToSqlite(rows []row) error {
 		ids[row.id] = row
 		args = append(args, row.id, vector, row.text)
 
-		if i < len(rows)-1 {
+		if i < len(rows)-1 && i%500 != 0 && i != 0 {
 			sb.WriteString(",")
-		} else {
-			sb.WriteString(";")
+			continue
 		}
-	}
 
-	insertStatement, err := db.Prepare(sb.String())
-	if err != nil {
-		return err
-	}
+		sb.WriteString(";")
 
-	_, err = insertStatement.Exec(args...)
-	if err != nil {
-		return err
+		insertStatement, err := db.Prepare(sb.String())
+		if err != nil {
+			return err
+		}
+
+		sb.Reset()
+		sb.WriteString(prefix)
+
+		_, err = insertStatement.Exec(args...)
+		if err != nil {
+			return err
+		}
+
+		args = []any{}
 	}
 
 	return nil
