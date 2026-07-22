@@ -63,6 +63,50 @@ func newState(content []byte) *State {
 	}
 }
 
+func (b *Block) getExpressionNode() *sitter.Node {
+	node := b.Node
+
+	if node == nil {
+		return nil
+	}
+
+	if node.Type() == "parenthesized_expression" {
+		node = node.NamedChild(0)
+		if node == nil {
+			return nil
+		}
+	}
+
+	return node
+}
+
+func (b *Block) hasConstantExpression() bool {
+	node := b.getExpressionNode()
+	if node == nil {
+		return false
+	}
+
+	return node.Type() == "true" || node.Type() == "false"
+}
+
+func (b *Block) hasConstantFalse() bool {
+	node := b.getExpressionNode()
+	if node == nil {
+		return false
+	}
+
+	return node.Type() == "false"
+}
+
+func (b *Block) hasConstantTrue() bool {
+	node := b.getExpressionNode()
+	if node == nil {
+		return false
+	}
+
+	return node.Type() == "true"
+}
+
 func (s *State) cfg() *FunctionCFG {
 	return *s.cfgStack.Peek()
 }
@@ -362,9 +406,14 @@ func handleWhile(state *State, node *sitter.Node, content []byte) {
 
 	state.current = condBlock
 	state.AddInstruction(InstructionBranch, "", node, "", content)
-	state.cfg().AddEdge(condBlock, afterBlock)
 
-	state.cfg().AddEdge(state.current, bodyBlock)
+	if !condBlock.hasConstantTrue() {
+		state.cfg().AddEdge(condBlock, afterBlock)
+	}
+
+	if !condBlock.hasConstantFalse() {
+		state.cfg().AddEdge(state.current, bodyBlock)
+	}
 
 	bodyNode := node.ChildByFieldName("body")
 	if bodyNode == nil {
