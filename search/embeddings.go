@@ -4,6 +4,7 @@ import (
 	"math"
 	"sync"
 	"ts_inspector/parser"
+	"ts_inspector/utils"
 
 	"github.com/hybridgroup/yzma/pkg/llama"
 )
@@ -62,7 +63,7 @@ func indexEmbeddings(interestingPoints []parser.InterestingPoint, ids []int64) e
 }
 
 func indexEmbeddingsFaiss(interestingPoints []parser.InterestingPoint, ids []int64) {
-	if len(interestingPoints) == 0 {
+	if len(interestingPoints) == 0 || !utils.SemanticSearchEnableFaiss {
 		return
 	}
 
@@ -79,7 +80,7 @@ func indexEmbeddingsFaiss(interestingPoints []parser.InterestingPoint, ids []int
 }
 
 func indexEmbeddingsSqlite(interestingPoints []parser.InterestingPoint, ids []int64) error {
-	if len(interestingPoints) == 0 {
+	if len(interestingPoints) == 0 || !utils.SemanticSearchEnableSqlite {
 		return nil
 	}
 
