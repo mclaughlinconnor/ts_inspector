@@ -313,7 +313,7 @@ func (f *File) ResolveDynamicallyImportedFiles(state *State) {
 
 	for i, importPath := range file.DynamicImportPaths {
 		wg.Go(func() {
-			absolutePath, err := filepath.Abs(path.Join(filepath.Dir(FilenameFromUri(file.URI)), importPath))
+			absolutePath, err := filepath.Abs(path.Join(utils.PathDir(FilenameFromUri(file.URI)), importPath))
 			if err != nil {
 				logger.Println(err)
 				return
@@ -526,7 +526,7 @@ func getFileByPath(state *State, path string) *File {
 }
 
 func resolveProjectImportPath(state *State, currentFile *File, importPath string) *File {
-	absolutePath, err := filepath.Abs(path.Join(filepath.Dir(FilenameFromUri(currentFile.Snapshot().URI)), importPath))
+	absolutePath, err := filepath.Abs(path.Join(utils.PathDir(FilenameFromUri(currentFile.Snapshot().URI)), importPath))
 
 	if err != nil {
 		logger.Println(err)

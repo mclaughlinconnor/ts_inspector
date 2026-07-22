@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"ts_inspector/utils"
 )
 
 // Use github.com/hybridgroup/yzma/pkg/download to download the libs
@@ -99,7 +100,7 @@ func makeDir(path string) error {
 }
 
 func makeFile(reader io.Reader, path string, mode int64) error {
-	err := os.MkdirAll(filepath.Dir(path), 0755)
+	err := os.MkdirAll(utils.PathDir(path), 0755)
 	if err != nil {
 		return err
 	}
@@ -116,7 +117,7 @@ func makeFile(reader io.Reader, path string, mode int64) error {
 }
 
 func makeSymlink(linkName string, path string) error {
-	err := os.MkdirAll(filepath.Dir(path), 0755)
+	err := os.MkdirAll(utils.PathDir(path), 0755)
 	if err != nil {
 		return err
 	}

@@ -3,7 +3,6 @@ package parser
 import (
 	"os"
 	"path"
-	"path/filepath"
 	"slices"
 	"sync"
 	"ts_inspector/utils"
@@ -186,13 +185,13 @@ func resolveIdents(idents []string, file *File, state *State) []*Reference {
 }
 
 func resolveNodeModulesImportPath(state *State, currentFile *File, importPath string) *File {
-	currentPath := filepath.Dir(FilenameFromUri(currentFile.Snapshot().URI))
+	currentPath := utils.PathDir(FilenameFromUri(currentFile.Snapshot().URI))
 
 	for currentPath != "." && currentPath != "/" {
 		nmPath := path.Join(currentPath, "node_modules")
 		stat, err := os.Stat(nmPath)
 		if err != nil {
-			currentPath = path.Dir(currentPath)
+			currentPath = utils.PathDir(currentPath)
 			continue
 		}
 
@@ -203,7 +202,7 @@ func resolveNodeModulesImportPath(state *State, currentFile *File, importPath st
 			}
 		}
 
-		currentPath = path.Dir(currentPath)
+		currentPath = utils.PathDir(currentPath)
 	}
 
 	return nil

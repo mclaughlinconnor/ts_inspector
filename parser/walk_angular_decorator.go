@@ -660,7 +660,7 @@ func handleTemplateUrlKv(class *Class, vNode *sitter.Node, content []byte) {
 		return
 	}
 
-	controllerDirectory := filepath.Dir(class.Snapshot().File.Filename())
+	controllerDirectory := utils.PathDir(class.Snapshot().File.Filename())
 
 	templateFilePath, err := filepath.Abs(path.Join(controllerDirectory, relativePath))
 	if err != nil {

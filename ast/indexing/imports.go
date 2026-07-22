@@ -48,7 +48,7 @@ func extractImportsFromFile(filename string) ([]string, error) {
 				return state
 			}
 
-			resolvedFilename, found := DetermineFilename(filepath.Join(filepath.Dir(filename), pathString))
+			resolvedFilename, found := DetermineFilename(filepath.Join(utils.PathDir(filename), pathString))
 			if found {
 				state = append(state, resolvedFilename)
 			}
