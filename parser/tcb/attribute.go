@@ -5,6 +5,7 @@ import (
 	"maps"
 	"slices"
 	"strings"
+	"ts_inspector/ast"
 	"ts_inspector/parser"
 	structuraldirective "ts_inspector/parser/structural_directive"
 	"ts_inspector/utils"
@@ -72,6 +73,53 @@ func (a *Attribute) IsOutput() bool {
 	return strings.HasPrefix(a.Name, "[") && strings.HasSuffix(a.Name, "]")
 }
 
+func (a *Attribute) MatchesSelector(selector string, ignoreTag bool) (bool, *ast.Selector) {
+	s, err := ast.ParseSelector(selector)
+	if err != nil {
+		return false, s
+	}
+
+	return a.MatchesParsedSelector(s, ignoreTag)
+}
+
+func (a *Attribute) MatchesParsedSelector(selector *ast.Selector, ignoreTag bool) (bool, *ast.Selector) {
+	if !ignoreTag && selector.Tag != "" {
+		if a.Tag.Name != selector.Tag {
+			return false, selector
+		}
+	}
+
+	if len(selector.Attributes) > 0 {
+		found := false
+		for _, selectorAttr := range selector.Attributes {
+			if a.GetStrippedName() == selectorAttr {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			return false, selector
+		}
+	}
+
+	if !ignoreTag && len(selector.NotTags) > 0 {
+		if slices.Contains(selector.NotTags, a.Tag.Name) {
+			return false, selector
+		}
+	}
+
+	if len(selector.NotAttributes) > 0 {
+		for _, selectorAttr := range selector.Attributes {
+			if a.GetStrippedName() == selectorAttr {
+				return false, selector
+			}
+		}
+	}
+
+	return true, selector
+}
+
 func (a *Attribute) SetSourceClass(class *parser.Class) {
 	a.Tcb().Class = class
 }
@@ -122,7 +170,8 @@ func renderAttribute(allAttributes *map[string]*Attribute, attribute *Attribute,
 THING:
 	for _, thing := range things {
 		for _, selector := range thing.GetSelectors() {
-			if !attribute.Tag.MatchesSelector(selector) {
+			matchesSelector, _ := attribute.Tag.MatchesSelector(selector)
+			if !matchesSelector {
 				continue
 			}
 
@@ -363,7 +412,7 @@ func buildGenericDirectiveAssignment(tcb *Tcb, attribute *Attribute, thing *pars
 			values[inputName] = v
 		}
 
-		hasKeyExp, keyExp := valueShv.GetKeyExprWithKey(inputName, false)
+		hasKeyExp, keyExp := valueShv.GetKeyExprWithKey(inputName)
 		if !hasKeyExp {
 			// Don't overwrite the existing value
 			if values[inputName] == nil {
@@ -450,7 +499,7 @@ func buildNonGenericDirectiveAssignment(tcb *Tcb, attribute *Attribute, thing *p
 			continue
 		}
 
-		hasKeyExp, keyExp := valueShv.GetKeyExprWithKey(inputName, false)
+		hasKeyExp, keyExp := valueShv.GetKeyExprWithKey(inputName)
 		if !hasKeyExp {
 			continue
 		}

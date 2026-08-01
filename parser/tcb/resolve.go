@@ -1,7 +1,6 @@
 package tcb
 
 import (
-	"slices"
 	"ts_inspector/parser"
 )
 
@@ -23,7 +22,17 @@ func (t *Tag) ResolveSourceClassOfAttribute(state *parser.State, attribute *Attr
 			continue
 		}
 
-		if slices.ContainsFunc(thing.Snapshot().Angular.Directive.Selectors, t.MatchesSelector) {
+		matches := false
+		for _, selector := range thing.Snapshot().Angular.Directive.Selectors {
+			match, _ := t.MatchesSelector(selector)
+			if !match {
+				continue
+			}
+
+			matches = true
+		}
+
+		if matches {
 			attribute.SetSourceClass(thing)
 			return attribute.GetSourceClass()
 		}

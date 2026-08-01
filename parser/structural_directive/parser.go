@@ -53,7 +53,7 @@ func (shv *ShorthandValue) GetExpression() *Expression {
 	return shv.Statements.Elements[0].Expression
 }
 
-func (shv *ShorthandValue) GetKeyExprWithKey(queryKey string, needsPrefix bool) (bool, *KeyExp) {
+func (shv *ShorthandValue) GetKeyExprWithKey(queryKey string) (bool, *KeyExp) {
 	for _, s := range shv.Statements.Elements {
 		if !s.HasKeyExp() {
 			continue

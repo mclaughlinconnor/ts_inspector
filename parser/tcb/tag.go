@@ -1,6 +1,7 @@
 package tcb
 
 import (
+	"slices"
 	"ts_inspector/ast"
 	"ts_inspector/parser"
 	"ts_inspector/utils"
@@ -64,7 +65,8 @@ func (t *Tag) AddDeclaration(insertBeforeCurrentTag bool, shouldAddReferenceVar 
 		}
 
 		for _, selector := range thing.Snapshot().Angular.Component.Selectors {
-			if !t.MatchesSelector(selector) {
+			matchesSelector, _ := t.MatchesSelector(selector)
+			if !matchesSelector {
 				continue
 			}
 
@@ -91,30 +93,78 @@ func (t *Tag) AddDeclaration(insertBeforeCurrentTag bool, shouldAddReferenceVar 
 	t.insertValue(StatementFromString("document.createElement(\""+t.Name+"\")"), insertBeforeCurrentTag, shouldAddReferenceVar)
 }
 
-func (t *Tag) MatchesSelector(selector string) bool {
-	if t.Name == selector {
-		return true
-	}
-
-	valid, tagName, attrName := ast.ExtractTagNameAndAttrFromSelector(selector)
-	if !valid || (tagName != "" && t.Name != tagName) {
-		return false
-	}
-
-	for _, attr := range t.Attributes.Elements {
-		attr := attr.Attribute.Name
-
-		if attr == attrName {
+func (t *Tag) HasAttribute(attribute string) bool {
+	strippedAttr, _ := utils.StripAngularFromAttribute(attribute)
+	return slices.ContainsFunc(t.Attributes.Elements, func(a *Node) bool {
+		attr := a.Attribute
+		if attr.GetStrippedName() == strippedAttr {
 			return true
 		}
 
-		angularlessAttr, _ := utils.StripAngularFromAttribute(attr)
-		if angularlessAttr == attrName {
-			return true
+		if attr.IsStructuralInput() {
+			shv, err := attr.GetShv()
+			if err != nil {
+				return false
+			}
+
+			found, _ := shv.GetKeyExprWithKey(strippedAttr)
+			return found
+		} else {
+			sa, _ := utils.StripAngularFromAttribute(attr.Name)
+			return sa == strippedAttr
+		}
+	})
+}
+
+func (t *Tag) HasAttributes(attributes []string) bool {
+	for _, attribute := range attributes {
+		if !t.HasAttribute(attribute) {
+			return false
 		}
 	}
 
-	return false
+	return true
+}
+
+func (t *Tag) MatchesParsedSelector(selector *ast.Selector) (bool, *ast.Selector) {
+	if selector.Tag != "" {
+		if t.Name != selector.Tag {
+			return false, selector
+		}
+	}
+
+	if len(selector.Attributes) > 0 {
+		if !t.HasAttributes(selector.Attributes) {
+			return false, selector
+		}
+	}
+
+	if len(selector.NotTags) > 0 {
+		if slices.Contains(selector.NotTags, t.Name) {
+			return false, selector
+		}
+	}
+
+	if len(selector.NotAttributes) > 0 {
+		if !t.NotHasAttributes(selector.NotAttributes) {
+			return false, selector
+		}
+	}
+
+	return true, selector
+}
+
+func (t *Tag) MatchesSelector(selector string) (bool, *ast.Selector) {
+	s, err := ast.ParseSelector(selector)
+	if err != nil {
+		return false, s
+	}
+
+	return t.MatchesParsedSelector(s)
+}
+
+func (t *Tag) NotHasAttributes(attributes []string) bool {
+	return !slices.ContainsFunc(attributes, t.HasAttribute)
 }
 
 func (t *Tag) Render() {

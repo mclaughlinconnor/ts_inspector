@@ -8,6 +8,7 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
+// TODO: Should be combined with parser.tcb.Tag
 type Tag struct {
 	Name       string
 	Attributes []string // Has [angular]
@@ -29,13 +30,7 @@ func (t *Tag) HasAttributes(attributes []string) bool {
 }
 
 func (t *Tag) NotHasAttributes(attributes []string) bool {
-	for _, attribute := range attributes {
-		if t.HasAttribute(attribute) {
-			return false
-		}
-	}
-
-	return true
+	return !slices.ContainsFunc(attributes, t.HasAttribute)
 }
 
 func (t *Tag) MatchesParsedSelector(selector *Selector) (bool, *Selector) {
@@ -52,10 +47,8 @@ func (t *Tag) MatchesParsedSelector(selector *Selector) (bool, *Selector) {
 	}
 
 	if len(selector.NotTags) > 0 {
-		for _, tag := range selector.NotTags {
-			if t.Name == tag {
-				return false, selector
-			}
+		if slices.Contains(selector.NotTags, t.Name) {
+			return false, selector
 		}
 	}
 
@@ -77,6 +70,7 @@ func (t *Tag) MatchesSelector(selector string) (bool, *Selector) {
 	return t.MatchesParsedSelector(s)
 }
 
+// Deprecated: use ast.ParseSelector
 func ExtractTagNameAndAttrFromSelector(selector string) (bool, string, string) {
 	firstBracket := strings.Index(selector, "[")
 	lastBracket := strings.Index(selector, "]")
