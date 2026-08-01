@@ -1,12 +1,21 @@
 package analysis
 
 import (
+	"slices"
 	"strconv"
 	"strings"
 	"ts_inspector/parser"
 	"ts_inspector/parser/tcb"
 	"ts_inspector/utils"
 )
+
+var excludedCodes = []int32{
+	2540, // Cannot assign to '' because it is a read-only property.
+}
+
+func shouldSkip(diagnostic *parser.Diagnostic) bool {
+	return slices.Contains(excludedCodes, diagnostic.Code)
+}
 
 func typescript(state *parser.State, file *parser.File) []Analysis {
 	analyses := []Analysis{}
@@ -21,6 +30,10 @@ func typescript(state *parser.State, file *parser.File) []Analysis {
 	tcbBlock, _ := tcb.BuildTcbBlock(state, file)
 
 	for _, diagnostic := range typescriptDiagnostics {
+		if shouldSkip(&diagnostic) {
+			continue
+		}
+
 		part := tcbBlock.TsToPugLocation(diagnostic.Pos, diagnostic.End)
 		if part == nil {
 			continue
