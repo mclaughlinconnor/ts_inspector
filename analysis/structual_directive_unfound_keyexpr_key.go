@@ -3,6 +3,7 @@ package analysis
 import (
 	"fmt"
 	"slices"
+	"strings"
 	"ts_inspector/parser"
 	"ts_inspector/parser/tcb"
 	"ts_inspector/utils"
@@ -43,15 +44,25 @@ func structuralDirectiveUnfoundKeyExprKey(state *parser.State, file *parser.File
 			return
 		}
 
+		foundMatch := false
+
 		for _, thing := range class.Snapshot().Angular.Component.GetAvailableThings(state) {
 			if !thing.HasDirective() {
 				continue
 			}
 
 			for _, selector := range thing.GetSelectors() {
-				if !attribute.Tag.MatchesSelector(selector) {
+				matchesTag, _ := attribute.Tag.MatchesSelector(selector)
+				if !matchesTag {
 					continue
 				}
+
+				matchesAttribute, _ := attribute.MatchesSelector(selector, true)
+				if !matchesAttribute {
+					continue
+				}
+
+				foundMatch = true
 
 				definitions := thing.GetAllDefinitions()
 
@@ -85,6 +96,28 @@ func structuralDirectiveUnfoundKeyExprKey(state *parser.State, file *parser.File
 					analyses = append(analyses, analysis)
 				}
 			}
+		}
+
+		if !foundMatch {
+			shv, err := attribute.GetShv()
+			if err != nil {
+				return
+			}
+
+			keyExprs := strings.Builder{}
+			for _, expr := range shv.Statements.Elements {
+				if !expr.HasKeyExp() {
+					continue
+				}
+
+				keyExprs.WriteString("[")
+				keyExprs.WriteString(expr.KeyExp.GetFullName(shv))
+				keyExprs.WriteString("]")
+			}
+
+			message := fmt.Sprintf("[%v]%v is not selected by any directive", attribute.GetStrippedName(), keyExprs.String())
+			analysis := newAnalysisFromNode(file, "structuralDirectiveUnfoundKeyExprKey", attribute.NameNode, AnalysisSeverity.Error, message, nil)
+			analyses = append(analyses, analysis)
 		}
 	}
 

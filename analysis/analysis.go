@@ -80,6 +80,23 @@ func newAnalysis(code string, highlightRange utils.Range, severity int, message 
 	return Analysis{code, message, highlightRange, ri, severity, "ts_inspector"}
 }
 
+func newAnalysisFromNode(file *parser.File, code string, node *sitter.Node, severity int, message string, relatedInformation *[]RelatedInformation) Analysis {
+	var ri []RelatedInformation
+	if relatedInformation == nil {
+		ri = []RelatedInformation{}
+	} else {
+		ri = *relatedInformation
+	}
+
+	content := file.Snapshot().Content
+	startPosition := utils.GetPositionForOffset(content, node.StartByte())
+	endPosition := utils.GetPositionForOffset(content, node.EndByte())
+
+	rrange := utils.Range{Start: startPosition, End: endPosition}
+
+	return Analysis{code, message, rrange, ri, severity, "ts_inspector"}
+}
+
 func InitAnalysers() {
 	registerAnalyser(analyser{exec: angularManyDecorators, expensive: false})
 	registerAnalyser(analyser{exec: angularMethodNoImplements, expensive: false})
