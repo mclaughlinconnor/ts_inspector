@@ -80,31 +80,31 @@ func (b *Block) getExpressionNode() *sitter.Node {
 	return node
 }
 
-func (b *Block) hasConstantExpression() bool {
+func (b *Block) hasConstantExpression(content []byte) bool {
 	node := b.getExpressionNode()
 	if node == nil {
 		return false
 	}
 
-	return node.Type() == "true" || node.Type() == "false"
+	return hasConstantExpression(node, content)
 }
 
-func (b *Block) hasConstantFalse() bool {
+func (b *Block) hasConstantFalse(content []byte) bool {
 	node := b.getExpressionNode()
 	if node == nil {
 		return false
 	}
 
-	return node.Type() == "false"
+	return hasConstantFalse(node, content)
 }
 
-func (b *Block) hasConstantTrue() bool {
+func (b *Block) hasConstantTrue(content []byte) bool {
 	node := b.getExpressionNode()
 	if node == nil {
 		return false
 	}
 
-	return node.Type() == "true"
+	return hasConstantTrue(node, content)
 }
 
 func (s *State) cfg() *FunctionCFG {
@@ -340,6 +340,7 @@ func handleFunction(state *State, node *sitter.Node, content []byte) {
 }
 
 func handleIf(state *State, node *sitter.Node, content []byte) {
+	condBlock := state.cfg().AddBlock("If condition block")
 	thenBlock := state.cfg().AddBlock("If then block")
 	elseBlock := state.cfg().AddBlock("If else block")
 	afterBlock := state.cfg().AddBlock("If after block")
@@ -351,7 +352,16 @@ func handleIf(state *State, node *sitter.Node, content []byte) {
 
 	state.AddInstruction(InstructionBranch, "", node, "", content)
 
-	state.cfg().AddEdge(state.current, thenBlock)
+	state.cfg().AddEdge(state.current, condBlock)
+	condBlock.Node = conditionNode
+
+	state.current = condBlock
+	state.AddInstruction(InstructionBranch, "", node, "", content)
+
+	if !condBlock.hasConstantFalse(content) {
+		state.cfg().AddEdge(state.current, thenBlock)
+	}
+
 	thenNode := node.ChildByFieldName("consequence")
 	if thenNode == nil {
 		return // grammar guarantees that it exists
@@ -363,7 +373,10 @@ func handleIf(state *State, node *sitter.Node, content []byte) {
 	if elseNode == nil {
 		state.cfg().AddEdge(state.current, afterBlock)
 	} else {
-		state.cfg().AddEdge(state.current, elseBlock)
+		if !condBlock.hasConstantTrue(content) {
+			state.cfg().AddEdge(state.current, elseBlock)
+		}
+
 		elseBlock.Node = elseNode
 	}
 
@@ -407,11 +420,11 @@ func handleWhile(state *State, node *sitter.Node, content []byte) {
 	state.current = condBlock
 	state.AddInstruction(InstructionBranch, "", node, "", content)
 
-	if !condBlock.hasConstantTrue() {
+	if !condBlock.hasConstantTrue(content) {
 		state.cfg().AddEdge(condBlock, afterBlock)
 	}
 
-	if !condBlock.hasConstantFalse() {
+	if !condBlock.hasConstantFalse(content) {
 		state.cfg().AddEdge(state.current, bodyBlock)
 	}
 
@@ -570,4 +583,89 @@ func printFromBlock(sb *strings.Builder, visited *map[*Block]any, parent *Block,
 	for _, after := range block.After {
 		printFromBlock(sb, visited, block, after)
 	}
+}
+
+func checkBinaryExpression(node *sitter.Node, content []byte, check func(*sitter.Node, []byte) bool) bool {
+	if node.Type() != "binary_expression" {
+		return false
+	}
+
+	operatorNode := node.ChildByFieldName("operator")
+	if operatorNode == nil {
+		return false
+	}
+
+	operator := operatorNode.Content(content)
+	if operator != "&&" {
+		return false
+	}
+
+	leftNode := node.ChildByFieldName("left")
+	if leftNode == nil {
+		return false
+	}
+
+	rightNode := node.ChildByFieldName("right")
+	if rightNode == nil {
+		return false
+	}
+
+	return check(leftNode, content) || check(rightNode, content)
+}
+
+func getExpressionNode(node *sitter.Node) *sitter.Node {
+	if node == nil {
+		return nil
+	}
+
+	if node.Type() == "parenthesized_expression" {
+		node = node.NamedChild(0)
+		if node == nil {
+			return nil
+		}
+	}
+
+	return node
+}
+
+func hasConstantExpression(node *sitter.Node, content []byte) bool {
+	n := getExpressionNode(node)
+
+	if n.Type() == "true" || n.Type() == "false" {
+		return true
+	}
+
+	if n.Type() == "binary_expression" {
+		return checkBinaryExpression(n, content, hasConstantExpression)
+	}
+
+	return false
+}
+
+func hasConstantFalse(node *sitter.Node, content []byte) bool {
+	n := getExpressionNode(node)
+
+	if n.Type() == "false" {
+		return true
+	}
+
+	if n.Type() == "binary_expression" {
+		return checkBinaryExpression(n, content, hasConstantFalse)
+	}
+
+	return false
+}
+
+func hasConstantTrue(node *sitter.Node, content []byte) bool {
+	n := getExpressionNode(node)
+
+	if n.Type() == "true" {
+		return true
+	}
+
+	if n.Type() == "binary_expression" {
+		return checkBinaryExpression(n, content, hasConstantTrue)
+	}
+
+	return false
 }
