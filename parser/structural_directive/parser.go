@@ -131,11 +131,11 @@ LOOP:
 					continue LOOP
 				}
 
-				endIndex, err := ParseExpression(i, runeText)
+				endIndex := i
+				expressionText, err := expectAndTakeIdentifier(&endIndex, runeText, true)
 				if err != nil {
 					return nil, err
 				}
-				expressionText := string(runeText[i:endIndex])
 
 				if expressionText == "let" {
 					state = LexStateLet
@@ -144,11 +144,6 @@ LOOP:
 
 				// On the first statement, only expressions and let are valid
 				if len(shorthand.Statements.Elements) == 0 {
-					state = LexStateExpression
-					continue LOOP
-				}
-
-				if !isHtmlIdentifierString(expressionText) {
 					state = LexStateExpression
 					continue LOOP
 				}
