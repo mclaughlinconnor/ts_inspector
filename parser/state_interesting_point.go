@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"math/rand"
 	"strconv"
 	"ts_inspector/interfaces"
 	"ts_inspector/utils"
@@ -16,16 +15,10 @@ type InterestingPoint struct {
 	location    *interfaces.Location
 	startOffset uint32
 	uri         string
-
-	randint int
 }
 
 func (i *InterestingPoint) Id() string {
-	if i.randint == 0 {
-		i.randint = rand.Int()
-	}
-
-	return strconv.FormatUint(uint64(i.startOffset), 10) + strconv.FormatUint(uint64(i.endOffset), 10) + i.Text + strconv.FormatUint(uint64(i.Kind), 10) + strconv.FormatUint(uint64(i.randint), 10)
+	return strconv.FormatUint(uint64(i.startOffset), 10) + strconv.FormatUint(uint64(i.endOffset), 10) + i.Text + strconv.FormatUint(uint64(i.Kind), 10) + i.uri
 }
 
 func (i *InterestingPoint) ResolveLocation() interfaces.Location {

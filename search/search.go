@@ -45,7 +45,9 @@ func IndexState(state *parser.State) {
 	hash := fnv.New64a()
 	hash.Sum64()
 
+	ips := make([]parser.InterestingPoint, 0)
 	ids := make([]int64, 0)
+
 	for _, interestingPoint := range interestingPoints {
 		ipId := interestingPoint.Id()
 
@@ -53,17 +55,21 @@ func IndexState(state *parser.State) {
 		id := int64(hash.Sum64())
 		hash.Reset()
 
-		interestingPointsIdCache[id] = interestingPoint
-		ids = append(ids, id)
+		_, found := interestingPointsIdCache[id]
+		if !found {
+			interestingPointsIdCache[id] = interestingPoint
+			ids = append(ids, id)
+			ips = append(ips, interestingPoint)
+		}
 	}
 
 	go func() {
-		err := indexEmbeddings(interestingPoints, ids)
+		err := indexEmbeddings(ips, ids, state.GetRootPath())
 		if err != nil {
 			state.Logger.Println(err)
 		}
 	}()
-	indexFzf(interestingPoints, ids)
+	indexFzf(ips, ids)
 
 	setSearchReady()
 }

@@ -2,10 +2,13 @@ package search
 
 import (
 	"math"
+	"strings"
 	"sync"
 	"ts_inspector/parser"
 	"ts_inspector/utils"
+	"unsafe"
 
+	sqlite_vec "github.com/asg017/sqlite-vec-go-bindings/cgo"
 	"github.com/hybridgroup/yzma/pkg/llama"
 )
 
@@ -54,19 +57,39 @@ func GetEmbedding(text string) []float32 {
 }
 
 func GetEmbeddingBatch(texts []string) [][]float32 {
+	embeddings := make([][]float32, len(texts))
+
+	precalculatedEmbeddings, err := GetEmbeddingsFromSqlite(texts)
+	if err != nil {
+		precalculatedEmbeddings = map[string][]float32{}
+	}
+
+	for i, text := range texts {
+		embedding, found := precalculatedEmbeddings[text]
+		if !found {
+			continue
+		}
+
+		embeddings[i] = embedding
+	}
+
 	mutex.Lock()
 
 	vocab := llama.ModelGetVocab(model)
 	allTokens := [][]llama.Token{}
 
-	for _, text := range texts {
+	for i, text := range texts {
+		if embeddings[i] != nil {
+			continue
+		}
+
 		tokens := llama.Tokenize(vocab, text, true, true)
 		allTokens = append(allTokens, tokens)
 	}
 
 	mutex.Unlock()
 
-	embeddings := [][]float32{}
+	embeddingIndex := 0
 
 	for i := 0; i < len(allTokens); i += EMBEDDING_BATCH_SIZE {
 		end := i + EMBEDDING_BATCH_SIZE
@@ -74,10 +97,69 @@ func GetEmbeddingBatch(texts []string) [][]float32 {
 			end = len(allTokens)
 		}
 
-		embeddings = append(embeddings, GetEmbeddingsFromTokens(allTokens[i:end])...)
+		for embeddings[embeddingIndex] != nil {
+			embeddingIndex++
+		}
+
+		for _, calculatedEmbedding := range GetEmbeddingsFromTokens(allTokens[i:end]) {
+			for embeddings[embeddingIndex] != nil {
+				embeddingIndex++
+			}
+
+			embeddings[embeddingIndex] = calculatedEmbedding
+		}
 	}
 
 	return embeddings
+}
+
+func GetEmbeddingsFromSqlite(texts []string) (map[string][]float32, error) {
+	embeddings := map[string][]float32{}
+
+	prefix := "SELECT text, embedding FROM vec_cache WHERE "
+
+	sb := strings.Builder{}
+	sb.WriteString(prefix)
+
+	args := []any{}
+	for i, text := range texts {
+		if i < len(texts)-1 && (i%500 != 0 || i == 0) {
+			if len(args) > 0 {
+				sb.WriteString(" OR ")
+			}
+
+			sb.WriteString("text = ?")
+			args = append(args, text)
+
+			continue
+		}
+
+		sb.WriteString(";")
+
+		rows, err := db.Query(sb.String(), args...)
+		if err != nil {
+			return map[string][]float32{}, err
+		}
+
+		sb.Reset()
+		sb.WriteString(prefix)
+
+		for rows.Next() {
+			var text string
+			var embedding []byte
+
+			if err := rows.Scan(&text, &embedding); err != nil {
+				return nil, err
+			}
+
+			e := unsafe.Slice((*float32)(unsafe.Pointer(&embedding[0])), len(embedding)/4)
+			embeddings[text] = e
+		}
+
+		args = []any{}
+	}
+
+	return embeddings, nil
 }
 
 func GetEmbeddingsFromTokens(allTokens [][]llama.Token) [][]float32 {
@@ -139,9 +221,9 @@ func GetEmbeddingsFromTokens(allTokens [][]llama.Token) [][]float32 {
 	return embeddings
 }
 
-func indexEmbeddings(interestingPoints []parser.InterestingPoint, ids []int64) error {
+func indexEmbeddings(interestingPoints []parser.InterestingPoint, ids []int64, rootPath string) error {
 	indexEmbeddingsFaiss(interestingPoints, ids)
-	err := indexEmbeddingsSqlite(interestingPoints, ids)
+	err := indexEmbeddingsSqlite(interestingPoints, ids, rootPath)
 	if err != nil {
 		return err
 	}
@@ -168,7 +250,7 @@ func indexEmbeddingsFaiss(interestingPoints []parser.InterestingPoint, ids []int
 	AddToFAISS(vectors)
 }
 
-func indexEmbeddingsSqlite(interestingPoints []parser.InterestingPoint, ids []int64) error {
+func indexEmbeddingsSqlite(interestingPoints []parser.InterestingPoint, ids []int64, rootPath string) error {
 	if len(interestingPoints) == 0 || !utils.SemanticSearchEnableSqlite {
 		return nil
 	}
@@ -188,7 +270,26 @@ func indexEmbeddingsSqlite(interestingPoints []parser.InterestingPoint, ids []in
 		rows[i].embedding = embedding
 	}
 
-	return AddToSqlite(rows)
+	err := AddToSqlite("vec_cache", rows, []string{"embedding", "text"}, []string{"text"}, func(args []any, r row) []any {
+		vector := unsafe.Slice((*byte)(unsafe.Pointer(&r.embedding[0])), len(r.embedding)*4)
+
+		return append(args, vector, r.text)
+	})
+
+	if err != nil {
+		return err
+	}
+
+	DeleteInterestingFromUri(rootPath)
+
+	return AddToSqlite("vec_interesting_points", rows, []string{"id", "embedding", "text", "rootPath"}, []string{}, func(args []any, r row) []any {
+		vector, err := sqlite_vec.SerializeFloat32(r.embedding)
+		if err != nil {
+			return args
+		}
+
+		return append(args, r.id, vector, r.text, rootPath)
+	})
 }
 
 func initEmbedding() {

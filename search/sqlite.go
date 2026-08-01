@@ -2,6 +2,7 @@ package search
 
 import (
 	"database/sql"
+	"slices"
 	"strings"
 	"ts_inspector/utils"
 
@@ -17,7 +18,16 @@ type row struct {
 
 var db *sql.DB
 
-func AddToSqlite(rows []row) error {
+func DeleteInterestingFromUri(rootPath string) error {
+	_, err := db.Exec("DELETE FROM vec_interesting_points WHERE rootPath = ?;", rootPath)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func AddToSqlite(table string, rows []row, columns []string, ignoreConflicts []string, appendArgs func([]any, row) []any) error {
 	if !utils.SemanticSearchEnableSqlite {
 		return nil
 	}
@@ -26,30 +36,33 @@ func AddToSqlite(rows []row) error {
 		return nil
 	}
 
-	prefix := "INSERT or REPLACE INTO vec_interesting_points(id, embedding, text) VALUES "
+	prefix := "INSERT or IGNORE INTO " + table + "(" + strings.Join(columns, ", ") + ") VALUES "
+
+	suffix := ""
+	if len(ignoreConflicts) > 0 {
+		suffix = " ON CONFLICT(" + strings.Join(ignoreConflicts, ", ") + ") DO NOTHING;"
+	}
 
 	sb := strings.Builder{}
 	sb.WriteString(prefix)
 
 	ids := make(map[int64]row)
 
+	placeholders := strings.Join(slices.Repeat([]string{"?"}, len(columns)), ", ")
+
 	args := []any{}
 	for i, row := range rows {
-		sb.WriteString("(?, ?, ?)")
-		vector, err := sqlite_vec.SerializeFloat32(row.embedding)
-		if err != nil {
-			return err
-		}
+		sb.WriteString("(" + placeholders + ")")
 
 		ids[row.id] = row
-		args = append(args, row.id, vector, row.text)
+		args = appendArgs(args, row)
 
 		if i < len(rows)-1 && i%500 != 0 && i != 0 {
 			sb.WriteString(",")
 			continue
 		}
 
-		sb.WriteString(";")
+		sb.WriteString(suffix)
 
 		insertStatement, err := db.Prepare(sb.String())
 		if err != nil {
@@ -112,19 +125,26 @@ func SearchSqlite(queryText string, resultsCount int64) ([]Result, error) {
 
 func initSqlite() error {
 	sqlite_vec.Auto()
-	d, err := sql.Open("sqlite3", ":memory:")
+	d, err := sql.Open("sqlite3", "./sqlite.sqlite")
 	db = d
 
 	if err != nil {
 		return err
 	}
 
-	db.Exec(`
-		create virtual table vec_interesting_points using vec0(
-			id integer primary key,
+	_, err = db.Exec(`
+		create virtual table if not exists vec_interesting_points using vec0(
+			id integer,
 			embedding float[384],
+			rootPath text,
 			text text,
 		);
+
+		create table if not exists vec_cache (
+			embedding blob,
+			text text unique
+		);
+
 	`)
 
 	if err != nil {
