@@ -33,7 +33,6 @@ type Node struct {
 	renderable
 
 	Kind int
-	Node *sitter.Node
 
 	Attribute *Attribute
 	Mixin     *Mixin
@@ -180,7 +179,7 @@ func (n *Node) Render() {
 }
 
 func handleAttribute(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) *Ast {
-	attribute := Attribute{Name: "", Tag: (*state.Current.Peek()).Tag, tcb: state.Tcb, value: ""}
+	attribute := Attribute{Name: "", Node: node, Tag: (*state.Current.Peek()).Tag, tcb: state.Tcb, value: ""}
 
 	a := &attribute
 	state.Current.Push((*state.Current.Peek()).Tag.addAttribute(a))
@@ -224,7 +223,7 @@ func handleChildNodes(node *sitter.Node, state *Ast, indexInParent int, internal
 }
 
 func handleMixin(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) *Ast {
-	mixin := Mixin{Children: utils.HelpfulArray[*Node]{}, Name: "", tcb: state.Tcb}
+	mixin := Mixin{Children: utils.HelpfulArray[*Node]{}, Name: "", Node: node, tcb: state.Tcb}
 	mixinNode := newMixinNode(&mixin)
 
 	state.AddChildToCurrent(mixinNode)
@@ -252,7 +251,7 @@ func handleMixinAttributes(node *sitter.Node, state *Ast, indexInParent int, int
 }
 
 func handleMixinAttributeName(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) *Ast {
-	attribute := Attribute{Mixin: (*state.Current.Peek()).Mixin, Name: "", tcb: state.Tcb, value: ""}
+	attribute := Attribute{Mixin: (*state.Current.Peek()).Mixin, Name: "", Node: node, tcb: state.Tcb, value: ""}
 
 	a := &attribute
 	state.Current.Push((*state.Current.Peek()).Mixin.addAttribute(a))
@@ -275,7 +274,7 @@ func handleMixinName(node *sitter.Node, state *Ast, indexInParent int, internalF
 }
 
 func handleTag(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) *Ast {
-	tag := Tag{Children: utils.HelpfulArray[*Node]{}, Name: "", tcb: state.Tcb}
+	tag := Tag{Children: utils.HelpfulArray[*Node]{}, Name: "", Node: node, tcb: state.Tcb}
 	tagNode := newTagNode(&tag)
 
 	state.AddChildToCurrent(tagNode)
