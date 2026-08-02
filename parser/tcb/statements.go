@@ -3,6 +3,7 @@ package tcb
 import (
 	"slices"
 	"strings"
+	"ts_inspector/utils"
 
 	sitter "github.com/smacker/go-tree-sitter"
 )
@@ -157,6 +158,32 @@ func (s *Statement) PugToTsLocation(start int, _end int) *Part {
 	}
 
 	return nil
+}
+
+func (s *Statement) TsNodeToRange(content string, node *sitter.Node, zeroPositionForVirtual bool) *utils.Range {
+	return s.TsOffsetToRange(content, int(node.StartByte()), int(node.EndByte()), zeroPositionForVirtual)
+}
+
+func (s *Statement) TsOffsetToRange(content string, startOffset int, endOffset int, zeroPositionForVirtual bool) *utils.Range {
+	part := s.TsToPugLocation(startOffset, endOffset)
+	if part == nil {
+		return nil
+	}
+
+	var start utils.Position
+	var end utils.Position
+
+	if part.IsReal() {
+		start = utils.GetPositionForOffset(content, uint32(*part.PugStartOffset))
+		end = utils.GetPositionForOffset(content, uint32(*part.PugEndOffset))
+	} else if utils.Debug {
+		start = utils.ZeroPosition()
+		end = utils.ZeroPosition()
+	} else {
+		return nil
+	}
+
+	return &utils.Range{Start: start, End: end}
 }
 
 func (s *Statement) TsToPugLocation(start int, _end int) *Part {

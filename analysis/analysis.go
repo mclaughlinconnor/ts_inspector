@@ -80,7 +80,7 @@ func newAnalysis(code string, highlightRange utils.Range, severity int, message 
 	return Analysis{code, message, highlightRange, ri, severity, "ts_inspector"}
 }
 
-func newAnalysisFromNode(file *parser.File, code string, node *sitter.Node, severity int, message string, relatedInformation *[]RelatedInformation) Analysis {
+func newAnalysisFromFileContent(content string, code string, node *sitter.Node, severity int, message string, relatedInformation *[]RelatedInformation) Analysis {
 	var ri []RelatedInformation
 	if relatedInformation == nil {
 		ri = []RelatedInformation{}
@@ -88,13 +88,18 @@ func newAnalysisFromNode(file *parser.File, code string, node *sitter.Node, seve
 		ri = *relatedInformation
 	}
 
-	content := file.Snapshot().Content
 	startPosition := utils.GetPositionForOffset(content, node.StartByte())
 	endPosition := utils.GetPositionForOffset(content, node.EndByte())
 
 	rrange := utils.Range{Start: startPosition, End: endPosition}
 
 	return Analysis{code, message, rrange, ri, severity, "ts_inspector"}
+}
+
+func newAnalysisFromFileNode(file *parser.File, code string, node *sitter.Node, severity int, message string, relatedInformation *[]RelatedInformation) Analysis {
+	content := file.Snapshot().Content
+
+	return newAnalysisFromFileContent(content, code, node, severity, message, relatedInformation)
 }
 
 func InitAnalysers() {

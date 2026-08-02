@@ -536,9 +536,7 @@ func Run() {
 	println(sb.String())
 }
 
-func BuildGraph(file *parser.File) *State {
-	content := file.Snapshot().Content
-
+func BuildGraphFromContent(content string) *State {
 	state := newState([]byte(content))
 
 	utils.ParseFile(false, content, utils.TypeScript, nil, func(root *sitter.Node, content []byte, _ any) (any, error) {
@@ -548,6 +546,12 @@ func BuildGraph(file *parser.File) *State {
 	})
 
 	return state
+}
+
+func BuildGraphFromFile(file *parser.File) *State {
+	content := file.Snapshot().Content
+
+	return BuildGraphFromContent(content)
 }
 
 func (s *State) PrintFromState(sb *strings.Builder, visited *map[*Block]any) {

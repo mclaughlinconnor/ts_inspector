@@ -34,25 +34,11 @@ func typescript(state *parser.State, file *parser.File) []Analysis {
 			continue
 		}
 
-		part := tcbBlock.TsToPugLocation(diagnostic.Pos, diagnostic.End)
-		if part == nil {
+		r := tcbBlock.TsOffsetToRange(file.Snapshot().Content, diagnostic.Pos, diagnostic.End, utils.Debug)
+		if r == nil {
 			continue
 		}
 
-		var start utils.Position
-		var end utils.Position
-
-		if part.IsReal() {
-			start = utils.GetPositionForOffset(file.Snapshot().Content, uint32(*part.PugStartOffset))
-			end = utils.GetPositionForOffset(file.Snapshot().Content, uint32(*part.PugEndOffset))
-		} else if utils.Debug {
-			start = utils.ZeroPosition()
-			end = utils.ZeroPosition()
-		} else {
-			continue
-		}
-
-		r := utils.Range{Start: start, End: end}
 		code := "typescript-" + strconv.Itoa(int(diagnostic.Code))
 
 		relatedInformation := []RelatedInformation{}
@@ -62,7 +48,7 @@ func typescript(state *parser.State, file *parser.File) []Analysis {
 		}
 
 		text := strings.TrimRight(flattenText(&diagnostic, 0), "\n")
-		analyses = append(analyses, newAnalysis(code, r, AnalysisSeverityFromTsGoCategory(&diagnostic.Category), text, &relatedInformation))
+		analyses = append(analyses, newAnalysis(code, *r, AnalysisSeverityFromTsGoCategory(&diagnostic.Category), text, &relatedInformation))
 	}
 
 	return analyses

@@ -116,7 +116,7 @@ func structuralDirectiveUnfoundKeyExprKey(state *parser.State, file *parser.File
 			}
 
 			message := fmt.Sprintf("[%v]%v is not selected by any directive", attribute.GetStrippedName(), keyExprs.String())
-			analysis := newAnalysisFromNode(file, "structuralDirectiveUnfoundKeyExprKey", attribute.NameNode, AnalysisSeverity.Error, message, nil)
+			analysis := newAnalysisFromFileNode(file, "structuralDirectiveUnfoundKeyExprKey", attribute.NameNode, AnalysisSeverity.Error, message, nil)
 			analyses = append(analyses, analysis)
 		}
 	}

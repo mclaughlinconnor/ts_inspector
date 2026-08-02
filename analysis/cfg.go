@@ -3,19 +3,59 @@ package analysis
 import (
 	"ts_inspector/analysis/cfg"
 	"ts_inspector/parser"
+	"ts_inspector/parser/tcb"
 	"ts_inspector/utils"
 
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
-func cfgUnreachableBlock(_ *parser.State, file *parser.File) []Analysis {
-	if file.Snapshot().Filetype != "typescript" {
-		return []Analysis{}
-	}
+const unreachableCode = "unreachable"
 
+func cfgUnreachableBlock(state *parser.State, file *parser.File) []Analysis {
 	analyses := []Analysis{}
 
-	cfgState := cfg.BuildGraph(file)
+	if file.Snapshot().Filetype == "typescript" {
+		return analyseCfg(cfg.BuildGraphFromFile(file), analyses, func(m string, n *sitter.Node, s int) *Analysis {
+			a := newAnalysisFromFileNode(file, unreachableCode, n, s, m, nil)
+			return &a
+		})
+	}
+
+	if file.Snapshot().Filetype != "pug" {
+		return analyses
+	}
+
+	content := []byte(file.Snapshot().Content)
+
+	buildPugAnalysis := func(tcbBlock *tcb.Statement) func(string, *sitter.Node, int) *Analysis {
+		return func(message string, node *sitter.Node, severity int) *Analysis {
+			r := tcbBlock.TsNodeToRange(file.Snapshot().Content, node, utils.Debug)
+			if r == nil {
+				return nil
+			}
+
+			a := newAnalysis(unreachableCode, *r, severity, message, nil)
+
+			return &a
+		}
+	}
+
+	for _, class := range file.Snapshot().Classes {
+		root, err := utils.ParseText2([]byte(content), utils.Pug)
+		if err != nil {
+			continue
+		}
+
+		tcb := tcb.GenerateTcb(state, class, root, content)
+		tcbBlock := tcb.ToString()
+
+		analyses = analyseCfg(cfg.BuildGraphFromContent(tcbBlock), analyses, buildPugAnalysis(tcb))
+	}
+
+	return analyses
+}
+
+func analyseCfg(cfgState *cfg.State, analyses []Analysis, buildAnalysis func(string, *sitter.Node, int) *Analysis) []Analysis {
 	for _, cfg := range cfgState.AllCfg {
 		for _, block := range cfg.Blocks {
 			if len(block.Before) != 0 || cfg.Start == block {
@@ -35,11 +75,10 @@ func cfgUnreachableBlock(_ *parser.State, file *parser.File) []Analysis {
 				continue
 			}
 
-			content := file.Snapshot().Content
-			startPosition := utils.GetPositionForOffset(content, node.StartByte())
-			endPosition := utils.GetPositionForOffset(content, node.EndByte())
-
-			analyses = append(analyses, newAnalysis("unreachable", utils.Range{Start: startPosition, End: endPosition}, AnalysisSeverity.Error, message, nil))
+			a := buildAnalysis(message, node, AnalysisSeverity.Error)
+			if a != nil {
+				analyses = append(analyses, *a)
+			}
 		}
 	}
 

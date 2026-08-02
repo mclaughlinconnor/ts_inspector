@@ -47,6 +47,20 @@ func ParseText[V any](content []byte, language string, v V, callback parseCallba
 	return callback(root, content, v)
 }
 
+func ParseText2(content []byte, language string) (*sitter.Node, error) {
+	parser := sitter.NewParser()
+	parser.SetLanguage(GetLanguage(language))
+
+	tree, err := parser.ParseCtx(context.TODO(), nil, content)
+	if err != nil {
+		return nil, err
+	}
+
+	root := tree.RootNode()
+
+	return root, nil
+}
+
 func GetRootNode(fromDisk bool, source string, language string) (*sitter.Node, error) {
 	var content []byte
 	var err error
