@@ -163,6 +163,11 @@ func (t *Tcb) BeginScope() {
 	t.AddVirtPart("{\n")
 }
 
+func (t *Tcb) BeginRealScope(node *sitter.Node) {
+	t.NewScope()
+	t.AddRealPart("{\n", node)
+}
+
 func (t *Tcb) BuildDirectiveConstructorsStatement() *Statement {
 	statement := Statement{}
 

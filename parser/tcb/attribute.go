@@ -358,7 +358,12 @@ func buildGuards(tcb *Tcb, attribute *Attribute, thing *parser.Class, assIdent s
 
 	tcb.AddStatement(&statement)
 
-	tcb.BeginScope()
+	if len(attribute.Tag.Children.Elements) != 0 {
+		tcb.BeginRealScope(attribute.Tag.Children.Elements[0].Tag.Node)
+	} else {
+		tcb.BeginScope()
+	}
+
 	tcb.AddVirtPart("(" + ctxIdent + ");\n")
 	if attribute.Tag.Identifier == "" {
 		attribute.Tag.AddDeclaration(false, false)
