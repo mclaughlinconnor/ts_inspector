@@ -4,8 +4,8 @@ import (
 	"math"
 	"strings"
 	"sync"
+	"ts_inspector/config"
 	"ts_inspector/parser"
-	"ts_inspector/utils"
 	"unsafe"
 
 	sqlite_vec "github.com/asg017/sqlite-vec-go-bindings/cgo"
@@ -234,7 +234,7 @@ func indexEmbeddings(interestingPoints []parser.InterestingPoint, ids []int64, r
 }
 
 func indexEmbeddingsFaiss(interestingPoints []parser.InterestingPoint, ids []int64) {
-	if len(interestingPoints) == 0 || !utils.SemanticSearchEnableFaiss {
+	if len(interestingPoints) == 0 || !config.SemanticSearchEnableFaiss {
 		return
 	}
 
@@ -251,7 +251,7 @@ func indexEmbeddingsFaiss(interestingPoints []parser.InterestingPoint, ids []int
 }
 
 func indexEmbeddingsSqlite(interestingPoints []parser.InterestingPoint, ids []int64, rootPath string) error {
-	if len(interestingPoints) == 0 || !utils.SemanticSearchEnableSqlite {
+	if len(interestingPoints) == 0 || !config.SemanticSearchEnableSqlite {
 		return nil
 	}
 

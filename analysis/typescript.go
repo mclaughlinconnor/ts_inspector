@@ -4,6 +4,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"ts_inspector/config"
 	"ts_inspector/parser"
 	"ts_inspector/parser/tcb"
 	"ts_inspector/utils"
@@ -34,7 +35,7 @@ func typescript(state *parser.State, file *parser.File) []Analysis {
 			continue
 		}
 
-		r := tcbBlock.TsOffsetToRange(file.Snapshot().Content, diagnostic.Pos, diagnostic.End, utils.Debug)
+		r := tcbBlock.TsOffsetToRange(file.Snapshot().Content, diagnostic.Pos, diagnostic.End, config.Debug)
 		if r == nil {
 			continue
 		}

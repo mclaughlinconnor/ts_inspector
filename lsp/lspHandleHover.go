@@ -5,6 +5,7 @@ import (
 	"log"
 	"strings"
 	"ts_inspector/ast"
+	"ts_inspector/config"
 	"ts_inspector/interfaces"
 	"ts_inspector/parser"
 	"ts_inspector/parser/tcb"
@@ -70,7 +71,7 @@ func lspHandleHover(writer io.Writer, logger *log.Logger, state *parser.State, r
 		}
 	}
 
-	if utils.TsGo {
+	if config.TsGo {
 		sb = handleTsGoHover(sb, state, file, int(cursorOffset))
 	}
 

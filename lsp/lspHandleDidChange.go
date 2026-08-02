@@ -4,6 +4,7 @@ import (
 	"io"
 	"log"
 	"ts_inspector/analysis"
+	"ts_inspector/config"
 	"ts_inspector/interfaces"
 	"ts_inspector/parser"
 	"ts_inspector/utils"
@@ -27,7 +28,7 @@ func lspHandleDidChange(writer io.Writer, logger *log.Logger, state *parser.Stat
 			return
 		}
 
-		if utils.TsGo {
+		if config.TsGo {
 			state.GetTsGo().UpdateSnapshot("", []parser.DocumentIdentifier{{URI: file.Snapshot().URI}})
 		}
 

@@ -2,6 +2,7 @@ package actions
 
 import (
 	"io"
+	"ts_inspector/config"
 	"ts_inspector/interfaces"
 	"ts_inspector/parser"
 	"ts_inspector/utils"
@@ -31,7 +32,7 @@ func InitActions() {
 	registerAction(Action{MakeAsync, "Make surrounding method async"})
 	registerAction(Action{RearrangeClass, "Rearrange class"})
 
-	if utils.Debug {
+	if config.Debug {
 		registerAction(Action{SaveDotForCfg, "Save dot graph for CFG"})
 	}
 }

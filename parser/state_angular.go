@@ -4,7 +4,7 @@ import (
 	"cmp"
 	"maps"
 	"slices"
-	"ts_inspector/utils"
+	"ts_inspector/config"
 
 	sitter "github.com/smacker/go-tree-sitter"
 )
@@ -140,7 +140,7 @@ func (c *Component) EnsureTemplate() {
 }
 
 func (c *Component) GetAvailableThings(state *State) []*Class {
-	if utils.TsGoExperimentalThingCaching && c.things != nil {
+	if config.TsGoExperimentalThingCaching && c.things != nil {
 		return *c.things
 	}
 

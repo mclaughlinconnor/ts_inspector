@@ -5,6 +5,7 @@ import (
 	"path"
 	"slices"
 	"sync"
+	"ts_inspector/config"
 	"ts_inspector/utils"
 
 	sitter "github.com/smacker/go-tree-sitter"
@@ -174,7 +175,7 @@ func resolveIdents(idents []string, file *File, state *State) []*Reference {
 			}
 		})
 
-		if !utils.Concurrency {
+		if !config.Concurrency {
 			wg.Wait()
 		}
 	}

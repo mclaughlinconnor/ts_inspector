@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"ts_inspector/config"
 	"ts_inspector/parser"
 	"ts_inspector/utils"
 	"unicode"
@@ -81,7 +82,7 @@ func InitSearch() {
 }
 
 func FindInterestingPoints(logger *log.Logger, text string) ([]parser.InterestingPoint, error) {
-	defer utils.Timer(logger, "FindInterestingPoints", time.Now(), utils.Debug)
+	defer utils.Timer(logger, "FindInterestingPoints", time.Now(), config.Debug)
 	if !canSearch() {
 		return []parser.InterestingPoint{}, nil
 	}
@@ -97,7 +98,7 @@ func FindInterestingPoints(logger *log.Logger, text string) ([]parser.Interestin
 	var err error
 
 	wg.Go(func() {
-		defer utils.Timer(logger, "SearchFaiss", time.Now(), utils.Debug)
+		defer utils.Timer(logger, "SearchFaiss", time.Now(), config.Debug)
 		results, e := SearchFAISS(ppText, EmbeddingResultsCount)
 		if e != nil {
 			err = e
@@ -108,13 +109,13 @@ func FindInterestingPoints(logger *log.Logger, text string) ([]parser.Interestin
 	})
 
 	wg.Go(func() {
-		defer utils.Timer(logger, "SearchFZF", time.Now(), utils.Debug)
+		defer utils.Timer(logger, "SearchFZF", time.Now(), config.Debug)
 		results := SearchFZF(ppText, FzfResultsCount)
 		fzfResults = results
 	})
 
 	wg.Go(func() {
-		defer utils.Timer(logger, "sqliteSearch", time.Now(), utils.Debug)
+		defer utils.Timer(logger, "sqliteSearch", time.Now(), config.Debug)
 		results, e := SearchSqlite(ppText, EmbeddingResultsCount)
 		if e != nil {
 			err = e
@@ -145,7 +146,7 @@ func FindInterestingPoints(logger *log.Logger, text string) ([]parser.Interestin
 			continue
 		}
 
-		if utils.Debug {
+		if config.Debug {
 			ip.Text += fmt.Sprintf(" (%v) (%v)", result.Distance, result.Source)
 		}
 

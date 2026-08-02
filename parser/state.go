@@ -3,6 +3,7 @@ package parser
 import (
 	"log"
 	"sync"
+	"ts_inspector/config"
 	"ts_inspector/utils"
 
 	sitter "github.com/smacker/go-tree-sitter"
@@ -128,7 +129,7 @@ func (s *State) GetTsConfigFiles() []string {
 }
 
 func (s *State) GetTsGo() *TsGo {
-	if !utils.TsGo {
+	if !config.TsGo {
 		s.Logger.Fatalln("You may not call \"GetTsGo\" when the TsGo integration is disabled")
 	}
 
@@ -145,7 +146,7 @@ func (s *State) Postprocess() {
 	for _, file := range *s.GetFiles() {
 		wg.Go(func() { file.Postprocess(s) })
 
-		if !utils.Concurrency {
+		if !config.Concurrency {
 			wg.Wait()
 		}
 	}

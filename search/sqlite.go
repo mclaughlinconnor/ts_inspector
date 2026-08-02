@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"slices"
 	"strings"
-	"ts_inspector/utils"
+	"ts_inspector/config"
 
 	sqlite_vec "github.com/asg017/sqlite-vec-go-bindings/cgo"
 	_ "github.com/mattn/go-sqlite3"
@@ -28,7 +28,7 @@ func DeleteInterestingFromUri(rootPath string) error {
 }
 
 func AddToSqlite(table string, rows []row, columns []string, ignoreConflicts []string, appendArgs func([]any, row) []any) error {
-	if !utils.SemanticSearchEnableSqlite {
+	if !config.SemanticSearchEnableSqlite {
 		return nil
 	}
 
@@ -84,7 +84,7 @@ func AddToSqlite(table string, rows []row, columns []string, ignoreConflicts []s
 }
 
 func SearchSqlite(queryText string, resultsCount int64) ([]Result, error) {
-	if !utils.SemanticSearchEnableSqlite || !canUseEmbeddings() {
+	if !config.SemanticSearchEnableSqlite || !canUseEmbeddings() {
 		return []Result{}, nil
 	}
 

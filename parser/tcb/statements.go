@@ -3,6 +3,7 @@ package tcb
 import (
 	"slices"
 	"strings"
+	"ts_inspector/config"
 	"ts_inspector/utils"
 
 	sitter "github.com/smacker/go-tree-sitter"
@@ -176,7 +177,7 @@ func (s *Statement) TsOffsetToRange(content string, startOffset int, endOffset i
 	if part.IsReal() {
 		start = utils.GetPositionForOffset(content, uint32(*part.PugStartOffset))
 		end = utils.GetPositionForOffset(content, uint32(*part.PugEndOffset))
-	} else if utils.Debug {
+	} else if config.Debug {
 		start = utils.ZeroPosition()
 		end = utils.ZeroPosition()
 	} else {

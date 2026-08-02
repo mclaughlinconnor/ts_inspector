@@ -12,6 +12,7 @@ import (
 	"ts_inspector/analysis"
 	traversetypescriptfiles "ts_inspector/ast/indexing"
 	"ts_inspector/commands"
+	"ts_inspector/config"
 	"ts_inspector/lsp"
 	"ts_inspector/parser"
 	"ts_inspector/parser/tcb"
@@ -44,14 +45,14 @@ func main() {
 	analysis.InitAnalysers()
 	tcb.InitTcb()
 
-	if utils.Debug {
+	if config.Debug {
 		go func() {
 			http.ListenAndServe("localhost:6060", nil)
 		}()
 	}
 
 	args := flag.Args()
-	if utils.LSP && len(args) == 0 {
+	if config.LSP && len(args) == 0 {
 		startLsp()
 		return
 	}

@@ -2,6 +2,7 @@ package analysis
 
 import (
 	"ts_inspector/analysis/cfg"
+	"ts_inspector/config"
 	"ts_inspector/parser"
 	"ts_inspector/utils"
 
@@ -116,11 +117,11 @@ func InitAnalysers() {
 	registerAnalyser(analyser{exec: unnecessaryPublic, expensive: false})
 	registerAnalyser(analyser{exec: unusedAngular, expensive: false})
 
-	if utils.Debug {
+	if config.Debug {
 		registerAnalyser(analyser{exec: debug, expensive: true})
 	}
 
-	if utils.TsGo {
+	if config.TsGo {
 		registerAnalyser(analyser{exec: typescript, expensive: true})
 	}
 

@@ -13,7 +13,7 @@ import "C"
 
 import (
 	"log"
-	"ts_inspector/utils"
+	"ts_inspector/config"
 	"unsafe"
 )
 
@@ -27,7 +27,7 @@ type Vector struct {
 }
 
 func AddToFAISS(vectors []Vector) {
-	if !utils.SemanticSearchEnableFaiss {
+	if !config.SemanticSearchEnableFaiss {
 		return
 	}
 
@@ -46,7 +46,7 @@ func AddToFAISS(vectors []Vector) {
 }
 
 func SearchFAISS(queryText string, resultsCount int64) ([]Result, error) {
-	if !utils.SemanticSearchEnableFaiss || !canUseEmbeddings() {
+	if !config.SemanticSearchEnableFaiss || !canUseEmbeddings() {
 		return []Result{}, nil
 	}
 

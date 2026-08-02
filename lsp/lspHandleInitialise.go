@@ -5,6 +5,7 @@ import (
 	"log"
 	traversetypescriptfiles "ts_inspector/ast/indexing"
 	"ts_inspector/commands"
+	"ts_inspector/config"
 	"ts_inspector/interfaces"
 	"ts_inspector/parser"
 	"ts_inspector/search"
@@ -44,7 +45,7 @@ func newInitializeResponse(id int) interfaces.InitializeResponse {
 				HoverProvider:           true,
 				ReferencesProvider:      true,
 				TextDocumentSync:        interfaces.TextDocumentSyncKind.Full,
-				WorkspaceSymbolProvider: utils.SemanticSearch,
+				WorkspaceSymbolProvider: config.SemanticSearch,
 			},
 		},
 	}
@@ -72,7 +73,7 @@ func lspHandleInitialise(writer io.Writer, logger *log.Logger, state *parser.Sta
 
 	initTsGo(state)
 
-	if utils.SemanticSearch {
+	if config.SemanticSearch {
 		utils.WriteResponse(writer, interfaces.BuildMessageNotification("Building search indexes...", interfaces.MessageType.Info))
 		go (func() {
 			search.InitSearch()
@@ -85,7 +86,7 @@ func lspHandleInitialise(writer io.Writer, logger *log.Logger, state *parser.Sta
 }
 
 func initTsGo(state *parser.State) {
-	if !utils.TsGo {
+	if !config.TsGo {
 		return
 	}
 

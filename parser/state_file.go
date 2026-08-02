@@ -13,6 +13,7 @@ import (
 	"sync"
 	"ts_inspector/ast"
 	"ts_inspector/ast/indexing"
+	"ts_inspector/config"
 	"ts_inspector/interfaces"
 	"ts_inspector/utils"
 
@@ -140,7 +141,7 @@ func (f *File) GetInterestingPoints() []InterestingPoint {
 	basefilepath := path.Base(filepath)
 	filename := basefilepath[0 : len(basefilepath)-len(path.Ext(basefilepath))]
 
-	if utils.SemanticSearchIncludeFileInterestingPoints {
+	if config.SemanticSearchIncludeFileInterestingPoints {
 		interestingPoint := InterestingPoint{Text: filepath, Kind: interfaces.SymbolKind.File}
 		interestingPoint.SetPosition(0, 0)
 		interestingPoint.SetFile(content, uri)
@@ -327,7 +328,7 @@ func (f *File) ResolveDynamicallyImportedFiles(state *State) {
 			dynamicImportFiles[i] = resolvedFile
 		})
 
-		if !utils.Concurrency {
+		if !config.Concurrency {
 			wg.Wait()
 		}
 	}
