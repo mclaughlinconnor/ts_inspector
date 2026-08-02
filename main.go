@@ -8,6 +8,8 @@ import (
 	"os/signal"
 	"runtime/pprof"
 	"syscall"
+
+	"time"
 	"ts_inspector/actions"
 	"ts_inspector/analysis"
 	traversetypescriptfiles "ts_inspector/ast/indexing"
@@ -28,6 +30,10 @@ import (
 func main() {
 
 	var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
+
+	if config.DelayStart {
+		time.Sleep(5 * time.Second)
+	}
 
 	flag.Parse()
 	if *cpuprofile != "" {
