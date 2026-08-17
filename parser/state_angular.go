@@ -254,7 +254,7 @@ func (m *Module) GetDeclaredThings(state *State) []*Class {
 }
 
 func (m *Module) GetExportedThings(state *State) []*Class {
-	if m.exportedThings != nil {
+	if config.TsGoExperimentalThingCaching && m.exportedThings != nil {
 		return *m.exportedThings
 	}
 
