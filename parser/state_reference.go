@@ -86,7 +86,7 @@ func (r *Reference) Resolve(state *State) {
 	var importedFile *File
 
 	extensions := []string{"", ".ts", ".d.ts", ".js"}
-	joinSuffixes := []string{"", "index"}
+	joinSuffixes := []string{"", "index", path.Base(importPath)}
 
 	for _, join := range joinSuffixes {
 		ip := path.Join(importPath, join)
