@@ -322,8 +322,8 @@ func (t *TsGo) UpdateSnapshot(tsconfig string, changes []DocumentIdentifier) *Up
 	}
 
 	var openProjects *[]string = nil
-	if tsconfig != "" {
-		openProjects = &[]string{tsconfig}
+	if tsconfig != nil && *tsconfig != "" {
+		openProjects = &[]string{*tsconfig}
 	}
 
 	request := UpdateSnapshotRequest{
