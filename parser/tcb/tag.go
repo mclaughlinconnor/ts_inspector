@@ -174,6 +174,7 @@ func (t *Tag) Render() {
 		tcb.TagBoundaryPartStack.Push(tcb.CurrentScope.Parts.Parts[len(tcb.CurrentScope.Parts.Parts)-1])
 	}
 
+	// TODO: needs to return errors
 	t.renderAttributes()
 
 	if t.Identifier == "" {

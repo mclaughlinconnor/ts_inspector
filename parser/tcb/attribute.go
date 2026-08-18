@@ -131,8 +131,10 @@ func (a *Attribute) Tcb() *Tcb {
 func (t *Tag) renderAttributes() error {
 	allAttributes := map[string]*Attribute{}
 	for _, a := range t.Attributes.Elements {
-		attributeName, _ := utils.StripAngularFromAttribute(a.Attribute.Name)
-		allAttributes[attributeName] = a.Attribute
+		attributeName, attributeType := utils.StripAngularFromAttribute(a.Attribute.Name)
+		if attributeType != 0 {
+			allAttributes[attributeName] = a.Attribute
+		}
 	}
 
 	renderedDirectives := map[string]bool{}
@@ -389,12 +391,7 @@ func buildGenericDirectiveAssignment(tcb *Tcb, attribute *Attribute, thing *pars
 			continue
 		}
 
-		valueShv, err := attached.GetShv()
-		if err != nil {
-			return "", err
-		}
-
-		if !attached.IsStructuralInput() || inputName == valueShv.Prefix {
+		if !attached.IsStructuralInput() || inputName == attached.GetStrippedName() {
 			if attached.ValueNode == nil {
 				continue
 			}
@@ -415,6 +412,11 @@ func buildGenericDirectiveAssignment(tcb *Tcb, attribute *Attribute, thing *pars
 			}
 
 			values[inputName] = v
+		}
+
+		valueShv, err := attached.GetShv()
+		if err != nil {
+			return "", err
 		}
 
 		hasKeyExp, keyExp := valueShv.GetKeyExprWithKey(inputName)
@@ -477,12 +479,7 @@ func buildNonGenericDirectiveAssignment(tcb *Tcb, attribute *Attribute, thing *p
 			nullAssignment(&def)
 		}
 
-		valueShv, err := attached.GetShv()
-		if err != nil {
-			return err
-		}
-
-		if !attached.IsStructuralInput() || inputName == valueShv.Prefix {
+		if !attached.IsStructuralInput() || inputName == attached.GetStrippedName() {
 			if attached.ValueNode == nil {
 				continue
 			}
@@ -502,6 +499,11 @@ func buildNonGenericDirectiveAssignment(tcb *Tcb, attribute *Attribute, thing *p
 			tcb.AddAssignment(dirIdent+"."+def.Name, attached.NameNode, value)
 
 			continue
+		}
+
+		valueShv, err := attached.GetShv()
+		if err != nil {
+			return err
 		}
 
 		hasKeyExp, keyExp := valueShv.GetKeyExprWithKey(inputName)
