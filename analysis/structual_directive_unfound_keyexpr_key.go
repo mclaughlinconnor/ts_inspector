@@ -36,7 +36,7 @@ func structuralDirectiveUnfoundKeyExprKey(state *parser.State, file *parser.File
 	analyseClass := func(class *parser.Class, attribute *tcb.Attribute) {
 		valueShv, err := attribute.GetShv()
 		if err != nil {
-			analyses = append(analyses, newAnalysis("structuralDirectiveUnfoundKeyExprKey", utils.ZeroRange(), AnalysisSeverity.Error, err.Error(), nil))
+			analyses = append(analyses, newAnalysisFromFileNode(file, "structuralDirectiveUnfoundKeyExprKey", attribute.ValueNode, AnalysisSeverity.Error, err.Error(), nil))
 			return
 		}
 
