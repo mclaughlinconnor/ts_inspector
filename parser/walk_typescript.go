@@ -416,6 +416,7 @@ func parseClasses(state *State, root *sitter.Node, file *File) {
 		classRoot, err := utils.ParseText(classContentW, utils.TypeScript)
 		uri := file.Snapshot().URI
 
+		// TODO: it's valid to have an interface with the same name as a class in a file, but this will count them both as the same thing
 		className, classNameNode := extractClassName(classRoot, classContentW)
 		if className == "" || classNameNode == nil {
 			return classWalkState
