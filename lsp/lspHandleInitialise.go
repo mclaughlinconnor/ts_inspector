@@ -71,18 +71,16 @@ func lspHandleInitialise(writer io.Writer, logger *log.Logger, state *parser.Sta
 	utils.WriteResponse(writer, interfaces.BuildMessageNotification("Postprocessing...", interfaces.MessageType.Info))
 	state.Postprocess()
 
-	initTsGo(state)
-
 	if config.SemanticSearch {
 		utils.WriteResponse(writer, interfaces.BuildMessageNotification("Building search indexes...", interfaces.MessageType.Info))
-		go (func() {
-			search.InitSearch()
-			search.IndexState(state)
-			utils.WriteResponse(writer, interfaces.BuildMessageNotification("Search index built", interfaces.MessageType.Info))
-		})()
+		search.InitSearch()
+		search.IndexState(state)
+		utils.WriteResponse(writer, interfaces.BuildMessageNotification("Search index built", interfaces.MessageType.Info))
 	}
 
 	utils.WriteResponse(writer, interfaces.BuildMessageNotification("State ready", interfaces.MessageType.Info))
+
+	initTsGo(state, writer)
 }
 
 func initTsGo(state *parser.State, writer io.Writer) {
