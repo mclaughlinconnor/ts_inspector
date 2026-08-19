@@ -32,54 +32,42 @@ type varWalkState struct {
 	IsExport bool
 }
 
-func IndexTypeScriptFileFromIndexer(state *State, filename string) error {
-	var err error
+func Index(state *State, file *File) error {
+	file.ResetDeclarations()
 
+	root, err := utils.ParseText([]byte(file.Snapshot().Content), utils.TypeScript)
+	if err != nil {
+		return err
+	}
+
+	err = extractFileImports(root, file) // todo need to reset imports too
+	if err != nil {
+		return err
+	}
+
+	parseClasses(state, root, file)
+	parseRootFunctions(state, root, file)
+	parseRootVariables(state, root, file)
+
+	return nil
+}
+
+func IndexTypeScriptFileFromIndexer(state *State, filename string) error {
 	file, err := createFileIfNotExists(state, filename, "", 0)
 	if err != nil {
 		return err
 	}
-	file.ResetDeclarations()
 
-	_, err = utils.ParseFile(false, file.Snapshot().Content, utils.TypeScript, nil, func(root *sitter.Node, fileContent []byte, _ any) (any, error) {
-		err = extractFileImports(root, file)
-		if err != nil {
-			return nil, err
-		}
-
-		parseClasses(state, root, file)
-		parseRootFunctions(state, root, file)
-		parseRootVariables(state, root, file)
-
-		return nil, nil
-	})
-
-	return err
+	return Index(state, file)
 }
 
 func IndexTypeScriptFileFromLsp(state *State, uri string, languageId string, version int, content string, logger *log.Logger) error {
-	var err error
-
 	file, err := createFileIfNotExists(state, FilenameFromUri(uri), content, version)
 	if err != nil {
 		return err
 	}
-	file.ResetDeclarations()
 
-	_, err = utils.ParseFile(false, file.Snapshot().Content, utils.TypeScript, nil, func(root *sitter.Node, fileContent []byte, _ any) (any, error) {
-		err = extractFileImports(root, file) // todo need to reset imports too
-		if err != nil {
-			return nil, err
-		}
-
-		parseClasses(state, root, file)
-		parseRootFunctions(state, root, file)
-		parseRootVariables(state, root, file)
-
-		return nil, nil
-	})
-
-	return err
+	return Index(state, file)
 }
 
 func addUsage(class *Class, name string, node *sitter.Node, content []byte) {
@@ -421,75 +409,73 @@ func parseClasses(state *State, root *sitter.Node, file *File) {
 	}
 
 	classVisitor := func(node *sitter.Node, classWalkState classWalkState, indexInParent int, funcMap walk.VisitorFuncMap[classWalkState]) classWalkState {
-		classContent := node.Content([]byte(file.Snapshot().Content))
+		classContentS := node.Content([]byte(file.Snapshot().Content))
+		classContentW := []byte(classContentS)
 
 		var class *Class
-		_, err := utils.ParseFile(false, classContent, utils.TypeScript, nil, func(classRoot *sitter.Node, content []byte, _ any) (any, error) {
-			uri := file.Snapshot().URI
+		classRoot, err := utils.ParseText(classContentW, utils.TypeScript)
+		uri := file.Snapshot().URI
 
-			className, classNameNode := extractClassName(classRoot, content)
-			if className == "" || classNameNode == nil {
-				return nil, nil
-			}
+		className, classNameNode := extractClassName(classRoot, classContentW)
+		if className == "" || classNameNode == nil {
+			return classWalkState
+		}
 
-			var found bool
-			class, found = state.GetClass(ClassId(uri, className))
+		var found bool
+		class, found = state.GetClass(ClassId(uri, className))
 
-			if !found {
-				c := NewClass(classContent, file, node)
-				c.Update(func(data *classState) {
-					data.Name = className
-					data.NameNode = classNameNode
-				})
+		if !found {
+			c := NewClass(classContentS, file, node)
+			c.Update(func(data *classState) {
+				data.Name = className
+				data.NameNode = classNameNode
+			})
 
-				class = &c
-			} else {
-				class.Reset()
-				class.Update(func(data *classState) {
-					data.Node = node
-					data.Content = CStr2GoStr(content)
-					data.Name = className
-					data.NameNode = classNameNode
-				})
-			}
+			class = &c
+		} else {
+			class.Reset()
+			class.Update(func(data *classState) {
+				data.Node = node
+				data.Content = classContentS
+				data.Name = className
+				data.NameNode = classNameNode
+			})
+		}
 
-			extractMetadata(class, classRoot, []byte(class.Snapshot().Content))
+		extractMetadata(class, classRoot, classContentW)
 
-			err := extractTypeScriptDefinitions(class, classRoot, []byte(class.Snapshot().Content))
-			if err != nil {
-				return class, err
-			}
+		err = extractTypeScriptDefinitions(class, classRoot, []byte(class.Snapshot().Content))
+		if err != nil {
+			return classWalkState
+		}
 
-			err = extractTypeScriptUsages(class, classRoot, content)
-			if err != nil {
-				return class, err
-			}
+		err = extractTypeScriptUsages(class, classRoot, classContentW)
+		if err != nil {
+			return classWalkState
+		}
 
-			if classWalkState.Decorator != nil {
+		if classWalkState.Decorator != nil {
+			ExtractComponentData(class, classWalkState.Decorator, []byte(file.Snapshot().Content))
+
+			for classWalkState.Decorator.NextSibling() != nil {
+				if classWalkState.Decorator.NextSibling().Type() != "decorator" {
+					break
+				}
+
+				classWalkState.Decorator = classWalkState.Decorator.NextSibling()
+
 				ExtractComponentData(class, classWalkState.Decorator, []byte(file.Snapshot().Content))
-
-				for classWalkState.Decorator.NextSibling() != nil {
-					if classWalkState.Decorator.NextSibling().Type() != "decorator" {
-						break
-					}
-
-					classWalkState.Decorator = classWalkState.Decorator.NextSibling()
-
-					ExtractComponentData(class, classWalkState.Decorator, []byte(file.Snapshot().Content))
-				}
-			} else {
-				ExtractComponentData(class, node, []byte(file.Snapshot().Content))
 			}
+		} else {
+			ExtractComponentData(class, node, []byte(file.Snapshot().Content))
+		}
 
-			if class.Snapshot().Angular != nil && class.Snapshot().Angular.Component != nil && class.Snapshot().Angular.Component.TemplateUrl != "" {
-				err = handleTemplate(state, class, class.Snapshot().Angular.Component.TemplateUrl)
-				if err != nil {
-					return class, err
-				}
+		if class.Snapshot().Angular != nil && class.Snapshot().Angular.Component != nil && class.Snapshot().Angular.Component.TemplateUrl != "" {
+			err = handleTemplate(state, class, class.Snapshot().Angular.Component.TemplateUrl)
+			if err != nil {
+				return classWalkState
 			}
-
-			return nil, nil
-		})
+		}
 
 		if err != nil || class == nil {
 			return classWalkState

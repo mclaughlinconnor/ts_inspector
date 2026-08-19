@@ -25,7 +25,10 @@ func SaveDotForCfg(writer io.Writer, state *parser.State, args *any) (map[string
 		return map[string]utils.TextEdits{}, nil
 	}
 
-	cfgState := cfg.BuildGraphFromFile(file)
+	cfgState, err := cfg.BuildGraphFromFile(file)
+	if err != nil {
+		return changes, err
+	}
 
 	sb := strings.Builder{}
 	visited := map[*cfg.Block]any{}

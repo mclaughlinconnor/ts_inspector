@@ -4,8 +4,6 @@ import (
 	"slices"
 	"strings"
 	"ts_inspector/utils"
-
-	sitter "github.com/smacker/go-tree-sitter"
 )
 
 // TODO: Should be combined with parser.tcb.Tag
@@ -86,62 +84,69 @@ func ExtractTagNameAndAttrFromSelector(selector string) (bool, string, string) {
 }
 
 func GetTagNameAtOffset(content string, offset uint32) (string, bool) {
-	tagName, _ := utils.ParseFile(false, content, utils.Pug, "", func(root *sitter.Node, content []byte, v string) (string, error) {
-		node := HasNodeInHierarchy(root, "tag_name", offset, offset)
-		if node == nil {
-			return "", nil
-		}
+	c := []byte(content)
 
-		tagName := node.Content([]byte(content))
-		return tagName, nil
-	})
-
-	if tagName != "" {
-		return tagName, true
+	root, err := utils.ParseText(c, utils.Pug)
+	if err != nil {
+		return "", false
 	}
 
-	return "", false
+	node := HasNodeInHierarchy(root, "tag_name", offset, offset)
+	if node == nil {
+		return "", false
+	}
+
+	tagName := node.Content(c)
+
+	if tagName == "" {
+		return "", false
+	}
+
+	return tagName, true
 }
 
 func GetTagAtOffset(content string, offset uint32) (Tag, bool) {
+	c := []byte(content)
+
 	foundTag := Tag{Name: "", Attributes: []string{}}
 
-	utils.ParseFile(false, content, utils.Pug, "", func(root *sitter.Node, content []byte, v string) (string, error) {
-		tag := HasNodeInHierarchy(root, "tag", offset, offset)
-		if tag == nil {
-			return "", nil
+	root, err := utils.ParseText(c, utils.Pug)
+	if err != nil {
+		return foundTag, false
+	}
+
+	tag := HasNodeInHierarchy(root, "tag", offset, offset)
+	if tag == nil {
+		return foundTag, false
+	}
+
+	for i := range tag.NamedChildCount() {
+		child := tag.NamedChild(int(i))
+		if child == nil {
+			continue
 		}
 
-		for i := range tag.NamedChildCount() {
-			child := tag.NamedChild(int(i))
-			if child == nil {
-				continue
-			}
+		if child.Type() == "tag_name" {
+			tagName := child.Content([]byte(content))
+			foundTag.Name = tagName
+		}
 
-			if child.Type() == "tag_name" {
-				tagName := child.Content([]byte(content))
-				foundTag.Name = tagName
-			}
+		if (child.Type() == "class" || child.Type() == "id") && foundTag.Name == "" {
+			foundTag.Name = "div"
+		}
 
-			if (child.Type() == "class" || child.Type() == "id") && foundTag.Name == "" {
-				foundTag.Name = "div"
-			}
-
-			if child.Type() == "attributes" {
-				for j := range child.NamedChildCount() {
-					attribute := child.NamedChild(int(j))
-					for k := range attribute.NamedChildCount() {
-						attributeChild := attribute.NamedChild(int(k))
-						if attributeChild.Type() == "attribute_name" {
-							foundTag.Attributes = append(foundTag.Attributes, attributeChild.Content(content))
-						}
+		if child.Type() == "attributes" {
+			for j := range child.NamedChildCount() {
+				attribute := child.NamedChild(int(j))
+				for k := range attribute.NamedChildCount() {
+					attributeChild := attribute.NamedChild(int(k))
+					if attributeChild.Type() == "attribute_name" {
+						foundTag.Attributes = append(foundTag.Attributes, attributeChild.Content(c))
 					}
 				}
 			}
 		}
-
-		return "", nil
-	})
+	}
 
 	if foundTag.Name != "" {
 		return foundTag, true

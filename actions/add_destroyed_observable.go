@@ -6,8 +6,6 @@ import (
 	"ts_inspector/interfaces"
 	"ts_inspector/parser"
 	"ts_inspector/utils"
-
-	sitter "github.com/smacker/go-tree-sitter"
 )
 
 func AddDestroyedObservable(_ io.Writer, state *parser.State, file *parser.File, _ utils.Range) (actionEdits *utils.TextEdits, command *interfaces.Command, allowed bool, err error) {
@@ -15,78 +13,86 @@ func AddDestroyedObservable(_ io.Writer, state *parser.State, file *parser.File,
 		return nil, nil, false, nil
 	}
 
-	action := addDestroyedAction{[]utils.TextEdit{}, true}
-	action, err = utils.ParseFile(false, file.Snapshot().Content, utils.TypeScript, action, func(root *sitter.Node, content []byte, edits addDestroyedAction) (addDestroyedAction, error) {
-		definitionResults := ast.ExtractDefinitions(content)
-		definitionResult, err := ast.FindDefinition(&definitionResults, "_destroyed$")
-		if err != nil || definitionResult != nil {
-			return addDestroyedAction{[]utils.TextEdit{}, false}, err
+	ret := func(action actionEditHolder, err error) (*utils.TextEdits, *interfaces.Command, bool, error) {
+		return &action.Edits, nil, action.IsAllowed, nil
+	}
+
+	retErr := func(err error) (*utils.TextEdits, *interfaces.Command, bool, error) {
+		return ret(actionEditHolder{[]utils.TextEdit{}, false}, err)
+	}
+
+	action := actionEditHolder{[]utils.TextEdit{}, true}
+	content := []byte(file.Snapshot().Content)
+
+	definitionResults := ast.ExtractDefinitions(content)
+	definitionResult, err := ast.FindDefinition(&definitionResults, "_destroyed$")
+	if err != nil || definitionResult != nil {
+		return retErr(err)
+	}
+
+	imports := [][]string{
+		{"@aloreljs/rxutils", "nextComplete", ""},
+		{"rxjs", "AsyncSubject", ""},
+		{"@angular/core", "", "OnDestroy"},
+		{"@angular/core", "", "OnInit"},
+	}
+
+	for _, i := range imports {
+		pkg := i[0]
+		valImport := i[1]
+		typeImport := i[2]
+
+		var valImports = []string{}
+		if valImport != "" {
+			valImports = []string{valImport}
 		}
 
-		imports := [][]string{
-			{"@aloreljs/rxutils", "nextComplete", ""},
-			{"rxjs", "AsyncSubject", ""},
-			{"@angular/core", "", "OnDestroy"},
-			{"@angular/core", "", "OnInit"},
+		var typeImports = []string{}
+		if typeImport != "" {
+			typeImports = []string{typeImport}
 		}
 
-		for _, i := range imports {
-			pkg := i[0]
-			valImport := i[1]
-			typeImport := i[2]
-
-			var valImports = []string{}
-			if valImport != "" {
-				valImports = []string{valImport}
-			}
-
-			var typeImports = []string{}
-			if typeImport != "" {
-				typeImports = []string{typeImport}
-			}
-
-			importEdits, err := ast.AddImportToFile(content, pkg, valImports, typeImports)
-			if err != nil {
-				return action, err
-			}
-
-			action.Edits = append(action.Edits, importEdits...)
-		}
-
-		for _, imp := range []string{"OnDestroy", "OnInit"} {
-			implementEdits, err := ast.AddImplementToFile(content, imp)
-			if err != nil {
-				return edits, err
-			} else if len(implementEdits) == 1 {
-				action.Edits = append(action.Edits, implementEdits[0])
-			}
-		}
-
-		propertyEdits, err := ast.AddMethodDefinitionToFile(content, "  private _destroyed$: AsyncSubject<void>;", "_destroyed$", 300)
+		importEdits, err := ast.AddImportToFile(content, pkg, valImports, typeImports)
 		if err != nil {
-			return edits, err
+			return ret(action, err)
 		}
 
-		action.Edits = append(action.Edits, propertyEdits...)
+		action.Edits = append(action.Edits, importEdits...)
+	}
 
-		onInitEdits, err := addNgOnInit(content)
+	for _, imp := range []string{"OnDestroy", "OnInit"} {
+		implementEdits, err := ast.AddImplementToFile(content, imp)
 		if err != nil {
-			return action, err
+			return ret(action, err)
 		}
 
-		action.Edits = append(action.Edits, onInitEdits...)
-
-		onDestroyEdits, err := addNgOnDestroy(content)
-		if err != nil {
-			return action, err
+		if len(implementEdits) == 1 {
+			action.Edits = append(action.Edits, implementEdits[0])
 		}
+	}
 
-		action.Edits = append(action.Edits, onDestroyEdits...)
+	propertyEdits, err := ast.AddMethodDefinitionToFile(content, "  private _destroyed$: AsyncSubject<void>;", "_destroyed$", 300)
+	if err != nil {
+		return ret(action, err)
+	}
 
-		return action, nil
-	})
+	action.Edits = append(action.Edits, propertyEdits...)
 
-	return &action.Edits, nil, action.IsAllowed, err
+	onInitEdits, err := addNgOnInit(content)
+	if err != nil {
+		return ret(action, err)
+	}
+
+	action.Edits = append(action.Edits, onInitEdits...)
+
+	onDestroyEdits, err := addNgOnDestroy(content)
+	if err != nil {
+		return ret(action, err)
+	}
+
+	action.Edits = append(action.Edits, onDestroyEdits...)
+
+	return ret(action, nil)
 }
 
 func addNgOnInit(content []byte) (utils.TextEdits, error) {
@@ -143,9 +149,4 @@ func addOrPrependMethod(content []byte, methodName string, toPrepend string) (ut
 	}
 
 	return edits, nil
-}
-
-type addDestroyedAction struct {
-	Edits     utils.TextEdits
-	IsAllowed bool
 }

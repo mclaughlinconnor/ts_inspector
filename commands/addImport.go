@@ -6,8 +6,6 @@ import (
 	"ts_inspector/ast"
 	"ts_inspector/parser"
 	"ts_inspector/utils"
-
-	sitter "github.com/smacker/go-tree-sitter"
 )
 
 func AddImport(_ io.Writer, state *parser.State, args *any) (map[string]utils.TextEdits, error) {
@@ -49,13 +47,11 @@ func AddImport(_ io.Writer, state *parser.State, args *any) (map[string]utils.Te
 
 	file, _ := state.GetFile(parser.FilenameFromUri(uri))
 
-	return utils.ParseFile(false, file.Snapshot().Content, utils.TypeScript, changes, func(root *sitter.Node, content []byte, changes map[string]utils.TextEdits) (map[string]utils.TextEdits, error) {
-		edits, err := ast.AddImportToFile(content, packageName, imports, typeImports)
-		if err != nil {
-			return changes, err
-		}
+	edits, err := ast.AddImportToFile([]byte(file.Snapshot().Content), packageName, imports, typeImports)
+	if err != nil {
+		return changes, err
+	}
 
-		changes[uri] = edits
-		return changes, nil
-	})
+	changes[uri] = edits
+	return changes, nil
 }

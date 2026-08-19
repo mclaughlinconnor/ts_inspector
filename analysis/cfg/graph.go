@@ -517,17 +517,18 @@ func handleVariableDeclaration(state *State, node *sitter.Node, content []byte) 
 }
 
 func Run() {
-	content := "function hello() { for (const x of xs) { break } op(); } function hello() { for (const x of xs) { continue } op(); } function hello() { for (const x of xs) { return } op(); }"
+	content := []byte("function hello() { for (const x of xs) { break } op(); } function hello() { for (const x of xs) { continue } op(); } function hello() { for (const x of xs) { return } op(); }")
 
 	state := newState([]byte(content))
 
-	utils.ParseFile(false, content, utils.TypeScript, nil, func(root *sitter.Node, content []byte, _ any) (any, error) {
-		for i := range root.NamedChildCount() { // the root it a `(program)`
-			build(state, root.NamedChild(int(i)), content)
-		}
+	root, err := utils.ParseText(content, utils.TypeScript)
+	if err != nil {
+		panic(err)
+	}
 
-		return nil, nil
-	})
+	for i := range root.NamedChildCount() { // the root it a `(program)`
+		build(state, root.NamedChild(int(i)), content)
+	}
 
 	sb := strings.Builder{}
 	visited := map[*Block]any{}
@@ -536,19 +537,21 @@ func Run() {
 	println(sb.String())
 }
 
-func BuildGraphFromContent(content string) *State {
-	state := newState([]byte(content))
+func BuildGraphFromContent(content string) (*State, error) {
+	c := []byte(content)
+	state := newState(c)
 
-	utils.ParseFile(false, content, utils.TypeScript, nil, func(root *sitter.Node, content []byte, _ any) (any, error) {
-		build(state, root, content)
+	root, err := utils.ParseText(c, utils.TypeScript)
+	if err != nil {
+		return nil, err
+	}
 
-		return nil, nil
-	})
+	build(state, root, c)
 
-	return state
+	return state, nil
 }
 
-func BuildGraphFromFile(file *parser.File) *State {
+func BuildGraphFromFile(file *parser.File) (*State, error) {
 	content := file.Snapshot().Content
 
 	return BuildGraphFromContent(content)

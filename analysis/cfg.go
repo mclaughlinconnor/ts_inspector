@@ -16,7 +16,12 @@ func cfgUnreachableBlock(state *parser.State, file *parser.File) []Analysis {
 	analyses := []Analysis{}
 
 	if file.Snapshot().Filetype == "typescript" {
-		return analyseCfg(cfg.BuildGraphFromFile(file), analyses, func(m string, n *sitter.Node, s int) *Analysis {
+		cfg, err := cfg.BuildGraphFromFile(file)
+		if err != nil {
+			return analyses
+		}
+
+		return analyseCfg(cfg, analyses, func(m string, n *sitter.Node, s int) *Analysis {
 			a := newAnalysisFromFileNode(file, unreachableCode, n, s, m, nil)
 			return &a
 		})
@@ -50,7 +55,12 @@ func cfgUnreachableBlock(state *parser.State, file *parser.File) []Analysis {
 		tcb := tcb.GenerateTcb(state, class, root, content)
 		tcbBlock := tcb.ToString()
 
-		analyses = analyseCfg(cfg.BuildGraphFromContent(tcbBlock), analyses, buildPugAnalysis(tcb))
+		cfg, err := cfg.BuildGraphFromContent(tcbBlock)
+		if err != nil {
+			return analyses
+		}
+
+		analyses = analyseCfg(cfg, analyses, buildPugAnalysis(tcb))
 	}
 
 	return analyses

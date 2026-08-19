@@ -10,8 +10,6 @@ import (
 	"ts_inspector/interfaces"
 	"ts_inspector/parser"
 	"ts_inspector/utils"
-
-	sitter "github.com/smacker/go-tree-sitter"
 )
 
 func send(writer io.Writer, items []interfaces.CompletionItem, id *int) {
@@ -30,9 +28,8 @@ func lspHandleCompletion(writer io.Writer, logger *log.Logger, state *parser.Sta
 
 	offset := file.GetOffsetForPosition(request.Params.Position)
 
-	node, err := utils.ParseFile(false, file.Snapshot().Content, utils.Pug, nil, func(root *sitter.Node, content []byte, v *sitter.Node) (*sitter.Node, error) {
-		return ast.GetNamedNodeAtPosition(root, offset), nil
-	})
+	root, err := utils.ParseText([]byte(file.Snapshot().Content), utils.Pug)
+	node := ast.GetNamedNodeAtPosition(root, offset)
 
 	if err != nil || node == nil {
 		return

@@ -165,9 +165,12 @@ func ExtractDynamicImports(node *sitter.Node, content []byte) ([]string, error) 
 		return doExtractDynamicImports(node, content)
 	}
 
-	return utils.ParseFile(false, CStr2GoStr(content), utils.TypeScript, []string{}, func(root *sitter.Node, content []byte, state []string) ([]string, error) {
-		return doExtractDynamicImports(root, content)
-	})
+	root, err := utils.ParseText(content, utils.TypeScript)
+	if err != nil {
+		return []string{}, err
+	}
+
+	return doExtractDynamicImports(root, content)
 }
 
 func ExtractImports(node *sitter.Node, content []byte) ([]*ImportParseResult, error) {
@@ -175,9 +178,12 @@ func ExtractImports(node *sitter.Node, content []byte) ([]*ImportParseResult, er
 		return doExtractImports(node, content)
 	}
 
-	return utils.ParseFile(false, CStr2GoStr(content), utils.TypeScript, []*ImportParseResult{}, func(root *sitter.Node, content []byte, state []*ImportParseResult) ([]*ImportParseResult, error) {
-		return doExtractImports(root, content)
-	})
+	root, err := utils.ParseText(content, utils.TypeScript)
+	if err != nil {
+		return []*ImportParseResult{}, err
+	}
+
+	return doExtractImports(root, content)
 }
 
 func FindPackageImport(importResults []*ImportParseResult, packageName string, isType bool) *ImportParseResult {
