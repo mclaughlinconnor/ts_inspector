@@ -57,7 +57,7 @@ func structuralDirectiveUnfoundKeyExprKey(state *parser.State, file *parser.File
 					continue
 				}
 
-				matchesAttribute, _ := attribute.MatchesSelector(selector, true)
+				matchesAttribute, _ := attribute.MatchesSelector(selector, true, true)
 				if !matchesAttribute {
 					continue
 				}

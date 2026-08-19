@@ -73,9 +73,13 @@ func (a *Attribute) IsOutput() bool {
 	return strings.HasPrefix(a.Name, "[") && strings.HasSuffix(a.Name, "]")
 }
 
-func (a *Attribute) MatchesSelector(selector string, ignoreTag bool) (bool, *ast.Selector) {
+func (a *Attribute) MatchesSelector(selector string, ignoreTag bool, requiresAttributeComponent bool) (bool, *ast.Selector) {
 	s, err := ast.ParseSelector(selector)
 	if err != nil {
+		return false, nil
+	}
+
+	if requiresAttributeComponent && len(s.Attributes) == 0 && len(s.NotAttributes) == 0 {
 		return false, s
 	}
 
