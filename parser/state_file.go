@@ -469,34 +469,38 @@ func NewFile(uri string, filetype string, version int) (*File, error) {
 func createFileIfNotExists(state *State, filename string, content string, version int) (*File, error) {
 	file, found := state.GetFile(filename)
 
-	if !found {
-		uri := UriFromFilename(filename)
-		filetype, err := FiletypeFromFilename(filename)
-
-		if err != nil {
-			return nil, err
-		}
-
-		file, err = NewFile(uri, filetype, versionFallback(0, uri))
-		if err != nil {
-			return nil, err
-		}
-
-		if content != "" {
-			file.SetContent(content, version)
-		} else {
-			_, err = utils.ParseFile(true, file.Filename(), filetype, nil, func(root *sitter.Node, content []byte, _ any) (any, error) {
-				file.SetContent(CStr2GoStr(content), version)
-				return nil, nil
-			})
-		}
-
-		state.SetFile(file.Filename(), file)
-	} else {
+	if found {
 		if content != "" || version != 0 {
 			file.SetContent(content, version)
 		}
+
+		return file, nil
 	}
+
+	uri := UriFromFilename(filename)
+	filetype, err := FiletypeFromFilename(filename)
+
+	if err != nil {
+		return nil, err
+	}
+
+	file, err = NewFile(uri, filetype, versionFallback(0, uri))
+	if err != nil {
+		return nil, err
+	}
+
+	if content != "" {
+		file.SetContent(content, version)
+		return file, nil
+	}
+
+	_, fileContent, err := utils.ParseTextFromPath(file.Filename(), filetype)
+	if err != nil {
+		return nil, err
+	}
+
+	file.SetContent(CStr2GoStr(fileContent), version)
+	state.SetFile(file.Filename(), file)
 
 	return file, nil
 }

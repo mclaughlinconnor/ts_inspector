@@ -8,29 +8,18 @@ import (
 
 type parseCallback[V any] func(root *sitter.Node, content []byte, v V) (V, error)
 
-func ParseFile[V any](fromDisk bool, source string, language string, v V, callback parseCallback[V]) (V, error) {
-	var content []byte
-	var err error
-	if fromDisk {
-		content, err = ReadFile(source)
-		if err != nil {
-			return v, err
-		}
-	} else {
-		content = []byte(source)
-	}
-
-	parser := sitter.NewParser()
-	parser.SetLanguage(GetLanguage(language))
-
-	tree, err := parser.ParseCtx(context.TODO(), nil, content)
+func ParseTextFromPath(path string, language string) (*sitter.Node, []byte, error) {
+	content, err := ReadFile(path)
 	if err != nil {
-		return v, err
+		return nil, []byte{}, err
 	}
 
-	root := tree.RootNode()
+	root, err := ParseText(content, language)
+	if err != nil {
+		return nil, []byte{}, err
+	}
 
-	return callback(root, content, v)
+	return root, content, nil
 }
 
 func ParseText(content []byte, language string) (*sitter.Node, error) {
