@@ -150,13 +150,8 @@ func getTagCompletions(state *parser.State, class *parser.Class) []interfaces.Co
 			Description: thing.Snapshot().Name,
 		}
 
-		selectors := []string{}
-		if thing.HasComponent() {
-			selectors = append(selectors, thing.Snapshot().Angular.Component.Selectors...)
-		}
-
-		if thing.HasDirective() {
-			selectors = append(selectors, thing.Snapshot().Angular.Directive.Selectors...)
+		if !thing.HasComponent() {
+			continue
 		}
 
 		item := interfaces.CompletionItem{
@@ -168,12 +163,31 @@ func getTagCompletions(state *parser.State, class *parser.Class) []interfaces.Co
 		documentation := thing.GetDocumentation(false)
 		item.Documentation = &interfaces.MarkupContent{Kind: interfaces.MarkupKind.Markdown, Value: documentation}
 
-		for _, selector := range selectors {
+		for _, selector := range thing.Snapshot().Angular.Component.Selectors {
+			ps, err := ast.ParseSelector(selector)
+			if err != nil || len(ps.Tag) == 0 {
+				continue
+			}
+
 			i := interfaces.CompletionItem(item)
 
-			insertText := selector + "($0)"
+			insertText := strings.Builder{}
+			insertText.WriteString(ps.Tag)
+
+			insertText.WriteRune('(')
+			for i, psa := range ps.Attributes {
+				insertText.WriteRune('[')
+				insertText.WriteString(psa)
+				insertText.WriteString("]='$")
+				insertText.WriteString(strconv.Itoa(i))
+				insertText.WriteRune('\'')
+			}
+			insertText.WriteString("$0)")
+
+			it := insertText.String()
+			i.InsertText = &it
+
 			i.Label = selector
-			i.InsertText = &insertText
 
 			items = append(items, i)
 		}
