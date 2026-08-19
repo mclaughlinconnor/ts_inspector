@@ -18,16 +18,35 @@ var libTgzFs embed.FS
 
 // investigate https://github.com/stephantul/pynife and https://huggingface.co/blobbybob/potion-mxbai-128d-v2
 
-//go:embed granite-embedding-30m-english-Q8_0.gguf
+//go:embed granite-embedding-30m-english-Q4_K_S.gguf
 var modelFs embed.FS
 
-func extractEmbeddedModel() (string, error) {
-	tempDir, err := os.MkdirTemp("", "ts_inspector-model-*")
+var modelName = "granite-embedding-30m-english-Q4_K_S.gguf"
+
+func getCacheDir() (string, error) {
+	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
 	}
 
-	f, err := modelFs.Open("granite-embedding-30m-english-Q8_0.gguf")
+	return filepath.Join(home, ".cache", "ts_inspector"), nil
+}
+
+func extractEmbeddedModel() (string, error) {
+	cacheDir, err := getCacheDir()
+	if err != nil {
+		return "", err
+	}
+
+	dir := filepath.Join(cacheDir, "models")
+	path := filepath.Join(dir, modelName)
+
+	_, err = os.Stat(path)
+	if err == nil { // file found
+		return path, nil
+	}
+
+	f, err := modelFs.Open(modelName)
 	if err != nil {
 		return "", err
 	}
@@ -35,7 +54,6 @@ func extractEmbeddedModel() (string, error) {
 
 	reader := bufio.NewReader(f)
 
-	path := filepath.Join(tempDir, "models/granite-embedding-30m-english-Q8_0.gguf")
 	makeFile(reader, path, 0755)
 
 	return path, nil
