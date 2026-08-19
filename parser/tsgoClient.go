@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"strconv"
 	"sync"
+	"ts_inspector/config"
 	"ts_inspector/rpc"
 	"ts_inspector/utils"
 )
@@ -39,6 +40,7 @@ type TsGo struct {
 
 func StartTsGo(state *State) (*TsGo, error) {
 	args := []string{
+		config.TsGoPath,
 		"--api",
 		"--async",
 		"--callbacks",
@@ -47,7 +49,7 @@ func StartTsGo(state *State) (*TsGo, error) {
 		state.GetRootPath(),
 	}
 
-	cmd := exec.Command("/home/connor/.local/share/nvim/mason/bin/tsgo", args...)
+	cmd := exec.Command("node", args...)
 
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
