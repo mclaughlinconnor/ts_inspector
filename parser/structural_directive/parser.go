@@ -132,6 +132,17 @@ LOOP:
 				}
 
 				endIndex := i
+
+				unaryOperator, err := consumeOptionalUnaryOperator(&endIndex, runeText)
+				if err != nil {
+					return nil, err
+				}
+
+				if unaryOperator != "" {
+					state = LexStateExpression
+					continue LOOP
+				}
+
 				expressionText, err := expectAndTakeIdentifier(&endIndex, runeText, true)
 				if err != nil {
 					return nil, err
@@ -385,6 +396,41 @@ func consumeOptionalDelimiter(i *int, runeText []rune) {
 	if runeText[*i] == ';' || runeText[*i] == ',' {
 		(*i)++
 	}
+}
+
+func consumeOptionalUnaryOperator(i *int, runeText []rune) (string, error) {
+	start := *i
+	index := *i
+
+	c := runeText[index]
+	howMany := 0
+
+LOOP:
+	for true {
+
+		switch c {
+		case '!':
+			fallthrough
+		case '+':
+			fallthrough
+		case '-':
+			{
+				howMany++
+				index++
+				c = runeText[index]
+			}
+		default:
+			break LOOP
+		}
+
+		if howMany >= 2 {
+			return "", fmt.Errorf("bad character: %q, may not be chained more than twice", c)
+		}
+	}
+
+	*i = index
+
+	return string(runeText[start:index]), nil
 }
 
 func consumeSpaces(i *int, runeText []rune, requireOne bool) error {

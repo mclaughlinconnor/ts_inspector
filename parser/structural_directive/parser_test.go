@@ -183,6 +183,16 @@ func TestParseShorthand(t *testing.T) {
 			text: "let user, of {1, 2, 3}; index as i; first as isFirst",
 			want: makeShorthand("prefix", makeStatements(makeLet("user", 4, "", 0), makeKeyExpr("of", 10, "{1, 2, 3}", 13, "", 0), makeExpression("index", 24, "i", 33), makeExpression("first", 36, "isFirst", 45))),
 		},
+		{
+			name: "unary operator good",
+			text: "!false",
+			want: makeShorthand("prefix", makeStatements(makeExpression("!false", 0, "", 0))),
+		},
+		{
+			name:    "unary operator bad",
+			text:    "!!!false",
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
