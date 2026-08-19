@@ -83,6 +83,8 @@ type InitializeResponse struct {
 // All fields are optional. With no fields set, the server adopts the latest LSP state.
 type UpdateSnapshotParams struct {
 	// OpenProject is the path to a tsconfig.json file to open/load in the new snapshot.
+	// Unsure OpenProject and OpenProjects are both needed. Possibly some tsgo versioning weirdness between setups
+	OpenProject  *string   `json:"openProject,omitempty"`
 	OpenProjects *[]string `json:"openProjects,omitempty"`
 	// FileChanges describes file system changes since the last snapshot.
 	FileChanges *APIFileChanges `json:"fileChanges,omitempty"`

@@ -21,6 +21,7 @@ type Responses struct {
 type TsGo struct {
 	logger          *log.Logger
 	nextId          int
+	opLock          sync.Mutex
 	projectHandle   ProjectID
 	requestHandlers map[string]func(request TsGoRequest) any
 	responses       *Responses
@@ -148,7 +149,10 @@ func (t *TsGo) GetNextId() string {
 }
 
 func (t *TsGo) GetSemanticDiagnostics(uri string) *DiagnosticResponse {
-	t.UpdateSnapshot("", []DocumentIdentifier{{URI: uri}})
+	t.opLock.Lock()
+	defer t.opLock.Unlock()
+
+	t.updateSnapshotLocked(nil, []DocumentIdentifier{{URI: uri}})
 
 	id := t.GetNextId()
 	request := GetDiagnosticsRequest{
@@ -175,7 +179,10 @@ func (t *TsGo) GetSemanticDiagnostics(uri string) *DiagnosticResponse {
 }
 
 func (t *TsGo) GetSymbolAtPosition(uri string, offset uint32) *SymbolResponse {
-	t.UpdateSnapshot("", []DocumentIdentifier{{URI: uri}})
+	t.opLock.Lock()
+	defer t.opLock.Unlock()
+
+	t.updateSnapshotLocked(nil, []DocumentIdentifier{{URI: uri}})
 
 	id := t.GetNextId()
 	request := GetSymbolAtPositionRequest{
@@ -203,6 +210,8 @@ func (t *TsGo) GetSymbolAtPosition(uri string, offset uint32) *SymbolResponse {
 }
 
 func (t *TsGo) GetTypeOfSymbol(symbol SymbolID) *TypeResponse {
+	t.opLock.Lock()
+	defer t.opLock.Unlock()
 	id := t.GetNextId()
 	request := GetTypeOfSymbolRequest{
 		TsGoRequest: TsGoRequest{RPC: "2.0", ID: id, Method: "getTypeOfSymbol"},
@@ -257,6 +266,9 @@ func (t *TsGo) GetTypeAtPosition(uri string, offset uint32) *TypeResponse {
 }
 
 func (t *TsGo) Initialize() *InitializeResponse {
+	t.opLock.Lock()
+	defer t.opLock.Unlock()
+
 	id := t.GetNextId()
 	request := TsGoRequest{RPC: "2.0", ID: id, Method: "initialize"}
 
@@ -275,6 +287,8 @@ func (t *TsGo) Initialize() *InitializeResponse {
 }
 
 func (t *TsGo) TypeToString(ttype TypeID) *TypeToStringResponse {
+	t.opLock.Lock()
+	defer t.opLock.Unlock()
 	id := t.GetNextId()
 	request := TypeToTypeNodeRequest{
 		TsGoRequest: TsGoRequest{RPC: "2.0", ID: id, Method: "typeToString"},
@@ -301,6 +315,13 @@ func (t *TsGo) TypeToString(ttype TypeID) *TypeToStringResponse {
 }
 
 func (t *TsGo) UpdateSnapshot(tsconfig string, changes []DocumentIdentifier) *UpdateSnapshotResponse {
+	t.opLock.Lock()
+	defer t.opLock.Unlock()
+
+	return t.updateSnapshotLocked(&tsconfig, changes)
+}
+
+func (t *TsGo) updateSnapshotLocked(tsconfig *string, changes []DocumentIdentifier) *UpdateSnapshotResponse {
 	id := t.GetNextId()
 
 	tsGoChanges := []DocumentIdentifier{}
@@ -329,6 +350,7 @@ func (t *TsGo) UpdateSnapshot(tsconfig string, changes []DocumentIdentifier) *Up
 	request := UpdateSnapshotRequest{
 		TsGoRequest: TsGoRequest{RPC: "2.0", ID: id, Method: "updateSnapshot"},
 		Params: UpdateSnapshotParams{
+			OpenProject:  tsconfig,
 			OpenProjects: openProjects,
 			FileChanges:  &APIFileChanges{Changed: tsGoChanges, Created: tsGoCreated, Deleted: []DocumentIdentifier{}},
 		},
