@@ -361,6 +361,8 @@ func GenerateTcb(state *parser.State, template *parser.Class, root *sitter.Node,
 		ast.Render()
 	})
 
+	// TODO: need to handle state.Errors
+
 	return tcb.ToString()
 }
 

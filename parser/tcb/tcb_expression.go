@@ -44,19 +44,19 @@ func initTcbExpression() {
 	exprOptimisedMap = walk.GenerateSymbolMap(angularExprLang, exprVisitorFuncMap)
 }
 
-func buildTcbExpression(ast *Ast, expression string) *Statement {
+func buildTcbExpression(ast *Ast, expression string) (*Statement, error) {
 	content := []byte(expression)
 
 	root, err := utils.ParseText(content, utils.AngularExpr)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	state := exprState{ast: ast, content: content, parts: &Statement{}}
 	output := newWalk(root, &state)
 	s := output.parts
 
-	return s
+	return s, nil
 }
 
 func newWalk(node *sitter.Node, state *exprState) *exprState {

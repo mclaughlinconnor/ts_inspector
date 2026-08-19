@@ -246,7 +246,15 @@ THING:
 		}
 
 		if valueExpr != nil {
-			expr := buildTcbExpression(tcb.Ast, valueExpr.Expression)
+			expr, err := buildTcbExpression(tcb.Ast, valueExpr.Expression)
+			if err != nil {
+				return map[string]bool{}, err
+			}
+
+			if expr == nil {
+				return renderedDirectives, nil
+			}
+
 			if attribute.ValueNode != nil {
 				expr.OffsetByNodeStart(attribute.ValueNode)
 			}
@@ -323,7 +331,11 @@ func buildGuards(tcb *Tcb, attribute *Attribute, thing *parser.Class, assIdent s
 
 	var value *Statement
 	if valueExpr != nil {
-		value = buildTcbExpression(tcb.Ast, valueExpr.Expression)
+		value, err = buildTcbExpression(tcb.Ast, valueExpr.Expression)
+		if err != nil {
+			return "", err
+		}
+
 		if attribute.ValueNode != nil {
 			value.OffsetByNodeStart(attribute.ValueNode)
 		}
@@ -410,7 +422,11 @@ func buildGenericDirectiveAssignment(tcb *Tcb, attribute *Attribute, thing *pars
 				continue
 			}
 
-			v := buildTcbExpression(tcb.Ast, valueExpr.Expression)
+			v, err := buildTcbExpression(tcb.Ast, valueExpr.Expression)
+			if err != nil {
+				return "", err
+			}
+
 			if attached.ValueNode != nil {
 				v.OffsetByNodeStart(attached.ValueNode)
 			}
@@ -432,7 +448,11 @@ func buildGenericDirectiveAssignment(tcb *Tcb, attribute *Attribute, thing *pars
 			continue
 		}
 
-		v := buildTcbExpression(tcb.Ast, keyExp.Expression)
+		v, err := buildTcbExpression(tcb.Ast, keyExp.Expression)
+		if err != nil {
+			return "", err
+		}
+
 		if attached.ValueNode != nil {
 			v.OffsetByNodeStart(attached.ValueNode)
 		}
@@ -498,7 +518,11 @@ func buildNonGenericDirectiveAssignment(tcb *Tcb, attribute *Attribute, thing *p
 				continue
 			}
 
-			value := buildTcbExpression(tcb.Ast, valueExpr.Expression)
+			value, err := buildTcbExpression(tcb.Ast, valueExpr.Expression)
+			if err != nil {
+				return err
+			}
+
 			value.OffsetByNodeStart(attached.ValueNode)
 			tcb.AddAssignment(dirIdent+"."+def.Name, attached.NameNode, value)
 
@@ -515,7 +539,11 @@ func buildNonGenericDirectiveAssignment(tcb *Tcb, attribute *Attribute, thing *p
 			continue
 		}
 
-		value := buildTcbExpression(tcb.Ast, keyExp.Expression)
+		value, err := buildTcbExpression(tcb.Ast, keyExp.Expression)
+		if err != nil {
+			return err
+		}
+
 		value.OffsetByNodeStart(attached.ValueNode).OffsetByOffset(keyExp.ExpressionOffset)
 		tcb.AddAssignment(dirIdent+"."+def.Name, attached.NameNode, value)
 	}
