@@ -93,6 +93,16 @@ func extractPugUsages(class *Class, content []byte) error {
 	pugFuncMap["attribute"] = visitAttribute(content)
 	pugFuncMap["content"] = visitContent(content)
 	pugFuncMap["tag_name"] = func(node *sitter.Node, state *Class, indexInParent int, _ walk.VisitorFuncMap[*Class]) *Class {
+		if state.Snapshot().Angular == nil {
+			logger.Printf("Somehow class.Angular has ended up nil. I have no idea how. Class: %v\n", state.Snapshot().Name)
+			return state
+		}
+
+		if state.Snapshot().Angular.Component == nil {
+			logger.Printf("Somehow class.Angular.Component has ended up nil. I have no idea how. Class: %v\n", state.Snapshot().Name)
+			return state
+		}
+
 		state.Snapshot().Angular.Component.AddTagUsage(node, node.Content(content))
 
 		return state
