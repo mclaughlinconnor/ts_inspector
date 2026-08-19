@@ -99,7 +99,6 @@ func run(tsgo *TsGo) {
 
 	for scanner.Scan() {
 		msg := scanner.Bytes()
-		tsgo.logger.Println(string(msg))
 		_, contents, err := rpc.DecodeMessage(msg)
 		if err != nil {
 			continue

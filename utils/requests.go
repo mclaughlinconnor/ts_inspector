@@ -15,8 +15,6 @@ func TryParseRequest[T any](logger *log.Logger, contents []byte) T {
 		logger.Printf("Could not parse: %s\n%s", err, contents)
 	}
 
-	logger.Printf("Got request: %+v", request)
-
 	return request
 }
 
