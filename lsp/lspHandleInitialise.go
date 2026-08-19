@@ -85,10 +85,12 @@ func lspHandleInitialise(writer io.Writer, logger *log.Logger, state *parser.Sta
 	utils.WriteResponse(writer, interfaces.BuildMessageNotification("State ready", interfaces.MessageType.Info))
 }
 
-func initTsGo(state *parser.State) {
+func initTsGo(state *parser.State, writer io.Writer) {
 	if !config.TsGo {
 		return
 	}
+
+	utils.WriteResponse(writer, interfaces.BuildMessageNotification("Starting TsGo...", interfaces.MessageType.Info))
 
 	t, err := parser.StartTsGo(state)
 	if err != nil {
@@ -102,4 +104,6 @@ func initTsGo(state *parser.State) {
 	print(us)
 
 	state.SetTsGo(t)
+
+	utils.WriteResponse(writer, interfaces.BuildMessageNotification("TsGo started", interfaces.MessageType.Info))
 }
