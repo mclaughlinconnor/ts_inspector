@@ -311,32 +311,33 @@ func handleTagClass(node *sitter.Node, state *Ast, indexInParent int, internalFu
 }
 
 func handleTagContent(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) *Ast {
-	utils.ParseText([]byte(node.Content(state.Content)), utils.AngularContent, nil, func(root *sitter.Node, content []byte, _ *sitter.Node) (*sitter.Node, error) {
-		for i := range root.ChildCount() {
-			child := root.Child(int(i))
+	content := []byte(node.Content(state.Content))
+	root, err := utils.ParseText([]byte(node.Content(state.Content)), utils.AngularContent)
 
-			tagContent := TagContent{}
-			switch child.Type() {
-			case "text":
-				tagContent.Text = child.Content(content)
-			case "interpolation":
-				tagContent.Interpolation = child.Content(content)
+	if err != nil {
+		state.Errors = append(state.Errors, err)
+		return state
+	}
 
-				interpolationContentWithBraces := child.Content(content)
-				interpolationContent := interpolationContentWithBraces[2 : len(interpolationContentWithBraces)-2]
+	for i := range root.ChildCount() {
+		child := root.Child(int(i))
 
-				utils.ParseText([]byte(interpolationContent), utils.AngularExpr, nil, func(root *sitter.Node, content []byte, _ *sitter.Node) (*sitter.Node, error) {
-					// TODO: also parse the interpolation content
-
-					return nil, nil
-				})
-			}
-
-			(*state.Current.Peek()).Tag.Content.Add(&tagContent)
+		tagContent := TagContent{}
+		switch child.Type() {
+		case "text":
+			tagContent.Text = child.Content(content)
+		case "interpolation":
+			// TODO: also parse the interpolation content
+			// tagContent.Interpolation = child.Content(content)
+			//
+			// interpolationContentWithBraces := child.Content(content)
+			// interpolationContent := interpolationContentWithBraces[2 : len(interpolationContentWithBraces)-2]
+			//
+			// _, _ = utils.ParseText2([]byte(interpolationContent), utils.AngularExpr)
 		}
 
-		return nil, nil
-	})
+		(*state.Current.Peek()).Tag.Content.Add(&tagContent)
+	}
 
 	return state
 }

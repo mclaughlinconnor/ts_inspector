@@ -42,7 +42,7 @@ func cfgUnreachableBlock(state *parser.State, file *parser.File) []Analysis {
 	}
 
 	for _, class := range file.Snapshot().Classes {
-		root, err := utils.ParseText2([]byte(content), utils.Pug)
+		root, err := utils.ParseText([]byte(content), utils.Pug)
 		if err != nil {
 			continue
 		}

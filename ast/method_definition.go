@@ -85,10 +85,7 @@ func calculateSortScore(node *sitter.Node, content []byte) int {
 }
 
 func ExtractDefinitions(content []byte) []MethodDefinitionParseResult {
-	node, _ := utils.ParseText(content, utils.TypeScript, nil, func(root *sitter.Node, content []byte, state *sitter.Node) (*sitter.Node, error) {
-		state = root
-		return state, nil
-	})
+	node, _ := utils.ParseText(content, utils.TypeScript)
 
 	funcMap := walk.NewVisitorFuncsMap[[]MethodDefinitionParseResult]()
 

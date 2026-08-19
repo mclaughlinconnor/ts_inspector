@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"ts_inspector/parser"
 	"ts_inspector/utils"
-
-	sitter "github.com/smacker/go-tree-sitter"
 )
 
 func BuildTcbBlock(state *parser.State, file *parser.File) (*Statement, error) {
@@ -17,11 +15,14 @@ func BuildTcbBlock(state *parser.State, file *parser.File) (*Statement, error) {
 	class := classes[0]
 	content := []byte(file.Snapshot().Content)
 
-	return utils.ParseText(content, utils.Pug, nil, func(root *sitter.Node, _ []byte, _ *Statement) (*Statement, error) {
-		tcb := GenerateTcb(state, class, root, content)
+	root, err := utils.ParseText(content, utils.Pug)
+	if err != nil {
+		return nil, err
+	}
 
-		return tcb, nil
-	})
+	tcb := GenerateTcb(state, class, root, content)
+
+	return tcb, nil
 }
 
 func PugToTsLocation(state *parser.State, file *parser.File, start int, end int) *Part {

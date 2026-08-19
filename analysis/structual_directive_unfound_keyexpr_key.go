@@ -7,8 +7,6 @@ import (
 	"ts_inspector/parser"
 	"ts_inspector/parser/tcb"
 	"ts_inspector/utils"
-
-	sitter "github.com/smacker/go-tree-sitter"
 )
 
 func structuralDirectiveUnfoundKeyExprKey(state *parser.State, file *parser.File) []Analysis {
@@ -22,15 +20,22 @@ func structuralDirectiveUnfoundKeyExprKey(state *parser.State, file *parser.File
 		return analyses
 	}
 
-	strContent := file.Snapshot().Content
-	byteContent := []byte(strContent)
-	ast, err := utils.ParseText(byteContent, utils.Pug, nil, func(root *sitter.Node, _ []byte, _ *tcb.Ast) (*tcb.Ast, error) {
-		return tcb.Parse(root, byteContent, &tcb.Tcb{}), nil
-	})
-
-	if err != nil {
+	throwGeneric := func(err error) []Analysis {
 		analyses = append(analyses, newAnalysis("structuralDirectiveUnfoundKeyExprKey", utils.ZeroRange(), AnalysisSeverity.Error, err.Error(), nil))
 		return analyses
+	}
+
+	strContent := file.Snapshot().Content
+	byteContent := []byte(strContent)
+
+	root, err := utils.ParseText(byteContent, utils.Pug)
+	if err != nil {
+		return throwGeneric(err)
+	}
+
+	ast, err := tcb.Parse(root, byteContent, &tcb.Tcb{}), nil
+	if err != nil {
+		return throwGeneric(err)
 	}
 
 	analyseClass := func(class *parser.Class, attribute *tcb.Attribute) {

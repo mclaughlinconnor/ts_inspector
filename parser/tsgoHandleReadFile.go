@@ -5,8 +5,6 @@ import (
 	"strings"
 	"ts_inspector/interfaces"
 	"ts_inspector/utils"
-
-	sitter "github.com/smacker/go-tree-sitter"
 )
 
 func tsgoHandleReadFileResponse(tsgo *TsGo, request ReadFileRequest, content *Content) {
@@ -48,20 +46,19 @@ func tsgoHandleReadFile(tsgo *TsGo, request ReadFileRequest) {
 	}
 
 	content := []byte(file.Snapshot().Content)
-	tcbBlock, err := utils.ParseText(content, utils.Pug, "", func(root *sitter.Node, _ []byte, _ string) (string, error) {
-		classes := file.Snapshot().Classes
-		if len(classes) == 0 {
-			return "", nil
-		}
-
-		tcb := generateTcb(tsgo.state, classes[0], root, content)
-
-		return tcb, nil
-	})
-
+	root, err := utils.ParseText(content, utils.Pug)
 	if err != nil {
-		tcbBlock = err.Error()
+		tsgoHandleReadFileResponse(tsgo, request, &Content{Content: err.Error()})
+		return
 	}
+
+	classes := file.Snapshot().Classes
+	if len(classes) == 0 {
+		tsgoHandleReadFileResponse(tsgo, request, nil)
+		return
+	}
+
+	tcbBlock := generateTcb(tsgo.state, classes[0], root, content)
 
 	tsgoHandleReadFileResponse(tsgo, request, &Content{Content: tcbBlock})
 }

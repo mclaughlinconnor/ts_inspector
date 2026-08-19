@@ -33,21 +33,7 @@ func ParseFile[V any](fromDisk bool, source string, language string, v V, callba
 	return callback(root, content, v)
 }
 
-func ParseText[V any](content []byte, language string, v V, callback parseCallback[V]) (V, error) {
-	parser := sitter.NewParser()
-	parser.SetLanguage(GetLanguage(language))
-
-	tree, err := parser.ParseCtx(context.TODO(), nil, content)
-	if err != nil {
-		return v, err
-	}
-
-	root := tree.RootNode()
-
-	return callback(root, content, v)
-}
-
-func ParseText2(content []byte, language string) (*sitter.Node, error) {
+func ParseText(content []byte, language string) (*sitter.Node, error) {
 	parser := sitter.NewParser()
 	parser.SetLanguage(GetLanguage(language))
 

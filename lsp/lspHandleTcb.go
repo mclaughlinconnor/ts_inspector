@@ -9,15 +9,17 @@ import (
 	"ts_inspector/parser"
 	"ts_inspector/parser/tcb"
 	"ts_inspector/utils"
-
-	sitter "github.com/smacker/go-tree-sitter"
 )
 
 func lspHandleTcb(writer io.Writer, logger *log.Logger, state *parser.State, request interfaces.TcbRequest) {
-	parsedUrl, err := url.Parse(request.Params.Uri)
-	if err != nil {
+	throwErr := func(err error) {
 		response := interfaces.TcbRequestResponse{Response: interfaces.Response{RPC: "2.0", ID: &request.ID}, Result: err.Error()}
 		utils.WriteResponse(writer, response)
+	}
+
+	parsedUrl, err := url.Parse(request.Params.Uri)
+	if err != nil {
+		throwErr(err)
 		return
 	}
 
@@ -32,15 +34,14 @@ func lspHandleTcb(writer io.Writer, logger *log.Logger, state *parser.State, req
 	}
 
 	content := []byte(file.Snapshot().Content)
-	tcbBlock, err := utils.ParseText(content, utils.Pug, "", func(root *sitter.Node, _ []byte, _ string) (string, error) {
-		tcb := tcb.GenerateTcb(state, file.Snapshot().Classes[0], root, content)
-
-		return tcb.ToString(), nil
-	})
-
+	root, err := utils.ParseText(content, utils.Pug)
 	if err != nil {
-		tcbBlock = err.Error()
+		throwErr(err)
+		return
 	}
+
+	tcb := tcb.GenerateTcb(state, file.Snapshot().Classes[0], root, content)
+	tcbBlock := tcb.ToString()
 
 	response := interfaces.TcbRequestResponse{
 		Response: interfaces.Response{RPC: "2.0", ID: &request.ID},
