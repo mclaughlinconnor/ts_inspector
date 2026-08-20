@@ -2,7 +2,9 @@ package parser
 
 import (
 	"fmt"
+	"iter"
 	"strings"
+	"sync"
 	"ts_inspector/utils"
 
 	sitter "github.com/smacker/go-tree-sitter"
@@ -27,7 +29,11 @@ type Definition struct {
 	Usages               []*UsageInstance
 }
 
-type Definitions map[string]*Definition
+type Definitions struct {
+	sync.RWMutex
+
+	data map[string]*Definition
+}
 
 type accessibility struct {
 	Modifier string
@@ -37,6 +43,42 @@ var NoAccessibility = accessibility{""}
 var PrivateAccessibility = accessibility{"private"}
 var ProtectedAccessibility = accessibility{"protected"}
 var PublicAccessibility = accessibility{"public"}
+
+func (d *Definitions) All() iter.Seq2[string, Definition] {
+	return func(yield func(string, Definition) bool) {
+		for i, v := range d.data {
+			if !yield(i, *v) {
+				return
+			}
+		}
+	}
+}
+
+func (d *Definitions) Clear() {
+	clear(d.data)
+}
+
+func (d *Definitions) Get(name string) (Definition, bool) {
+	d.RLock()
+	definition, found := d.data[name]
+	d.RUnlock()
+
+	if found {
+		return *definition, true
+	}
+
+	return Definition{}, false
+}
+
+func (d *Definitions) Len() int {
+	return len(d.data)
+}
+
+func (d *Definitions) Set(name string, definition Definition) {
+	d.Lock()
+	d.data[name] = &definition
+	d.Unlock()
+}
 
 func (d *Definition) GetDocumentation(includeDefinitionName bool) string {
 	documentation := make([]string, 0)

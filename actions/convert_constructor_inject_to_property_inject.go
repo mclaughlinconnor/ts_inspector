@@ -49,7 +49,7 @@ func ConvertInjectToProperty(_ io.Writer, state *parser.State, file *parser.File
 		return retActionErr(err)
 	}
 
-	definition, found := class.Snapshot().Definitions[name]
+	definition, found := class.Snapshot().Definitions.Get(name)
 	if !found {
 		return retActionErr(err)
 	}

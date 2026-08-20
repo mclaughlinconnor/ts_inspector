@@ -12,7 +12,7 @@ func debug(_ *parser.State, file *parser.File) []Analysis {
 	analyses = append(analyses, analyseClasses(file, func(class *parser.Class) []Analysis {
 		analyses := []Analysis{}
 
-		for _, definition := range class.Snapshot().Definitions {
+		for _, definition := range class.Snapshot().Definitions.All() {
 			message := fmt.Sprintf("Usages: %d", len(definition.Usages))
 			analyses = append(analyses, newAnalysisHighlightName(definition.Node, class, AnalysisSeverity.Hint, "", message))
 		}

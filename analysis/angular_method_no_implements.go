@@ -9,7 +9,7 @@ func angularMethodNoImplements(_ *parser.State, file *parser.File) []Analysis {
 		analyses := []Analysis{}
 
 	OUTER:
-		for _, definition := range class.Snapshot().Definitions {
+		for _, definition := range class.Snapshot().Definitions.All() {
 			if !definition.IsAngularMethod() {
 				continue
 			}

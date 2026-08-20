@@ -9,7 +9,7 @@ func constructorOnlyProperty(_ *parser.State, file *parser.File) []Analysis {
 	return analyseClasses(file, func(class *parser.Class) []Analysis {
 		analyses := []Analysis{}
 
-		for _, definition := range class.Snapshot().Definitions {
+		for _, definition := range class.Snapshot().Definitions.All() {
 			used := len(definition.Usages) != 0
 
 			if used && definition.IsConstructorParam() && definition.UsageAccess == parser.ConstructorAccess {

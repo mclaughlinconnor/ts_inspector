@@ -9,7 +9,7 @@ func unnecessaryPublic(_ *parser.State, file *parser.File) []Analysis {
 	return analyseClasses(file, func(class *parser.Class) []Analysis {
 		analyses := []Analysis{}
 
-		for _, definition := range class.Snapshot().Definitions {
+		for _, definition := range class.Snapshot().Definitions.All() {
 			if definition.IsPublic() && !definition.HasAngularDecorator() && !definition.Static && !definition.IsAngularesqueMethod && !definition.Override {
 				code := "unnecessary-public"
 				if !definition.IsUsed() {

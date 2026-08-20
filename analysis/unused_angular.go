@@ -9,7 +9,7 @@ func unusedAngular(_ *parser.State, file *parser.File) []Analysis {
 	return analyseClasses(file, func(class *parser.Class) []Analysis {
 		analyses := []Analysis{}
 
-		for _, definition := range class.Snapshot().Definitions {
+		for _, definition := range class.Snapshot().Definitions.All() {
 			if definition.HasAngularDecorator() && !definition.IsUsed() && !definition.IsLocalParam() {
 				code := "unused-angular"
 				if definition.Override {

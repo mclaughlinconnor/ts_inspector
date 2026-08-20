@@ -19,7 +19,7 @@ type Decorator struct {
 type classState struct {
 	Angular              *Angular
 	Content              string
-	Definitions          Definitions
+	Definitions          *Definitions
 	Extends              References // Extends may have nil references if resolution failed
 	ExtendsIdentNames    []string
 	File                 *File
@@ -52,15 +52,15 @@ func (c *Class) AddDefinition(definition Definition) {
 
 	c.Update(func(data *classState) {
 		if data.Definitions == nil {
-			data.Definitions = make(map[string]*Definition)
+			data.Definitions = &Definitions{RWMutex: sync.RWMutex{}, data: map[string]*Definition{}}
 		}
 
-		data.Definitions[name] = &definition
+		data.Definitions.Set(name, definition)
 	})
 }
 
 func (c *Class) AppendDefinitionUsage(name string, usage *UsageInstance) {
-	definition, found := c.Snapshot().Definitions[name]
+	definition, found := c.Snapshot().Definitions.Get(name)
 	if !found {
 		return
 	}
@@ -69,7 +69,7 @@ func (c *Class) AppendDefinitionUsage(name string, usage *UsageInstance) {
 	definition.Usages = append(definition.Usages, usage)
 
 	c.Update(func(data *classState) {
-		data.Definitions[name] = definition
+		data.Definitions.Set(name, definition)
 	})
 }
 
@@ -142,14 +142,14 @@ func (c *Class) DropTemplateUsages() {
 			data.Usages[usageIndex] = usage
 		})
 
-		for definitionIndex, definition := range c.Snapshot().Definitions {
+		for definitionIndex, definition := range c.Snapshot().Definitions.All() {
 			if definition.Name == usage.Name {
 				definition.Usages = usageInstances
 				definition.UsageAccess = access
 			}
 
 			c.Update(func(data *classState) {
-				data.Definitions[definitionIndex] = definition
+				data.Definitions.Set(definitionIndex, definition)
 			})
 		}
 	}
@@ -212,7 +212,7 @@ func (c *Class) GetInterestingPoints() []InterestingPoint {
 
 	interestingPoints = append(interestingPoints, interestingPoint)
 
-	for _, d := range c.Snapshot().Definitions {
+	for _, d := range c.Snapshot().Definitions.All() {
 		var locationNode *sitter.Node
 
 		nameNode := d.Node.ChildByFieldName("name")
@@ -492,11 +492,11 @@ func (c *Class) GetAllDefinitions() []ClassedDefinition {
 
 func (c *Class) GetClassedDefinitions() []ClassedDefinition {
 	definitions := c.Snapshot().Definitions
-	classedDefinitions := make([]ClassedDefinition, len(definitions))
+	classedDefinitions := make([]ClassedDefinition, definitions.Len())
 
 	i := 0
-	for _, d := range definitions {
-		classedDefinitions[i] = ClassedDefinition{d, c}
+	for _, d := range definitions.All() {
+		classedDefinitions[i] = ClassedDefinition{&d, c}
 		i++
 	}
 
@@ -581,9 +581,9 @@ func (c *Class) GetOutputs() []ClassedDefinition {
 }
 
 func (c *Class) GetOwnDefinition(name string) *Definition {
-	for _, d := range c.Snapshot().Definitions {
+	for _, d := range c.Snapshot().Definitions.All() {
 		if d.Name == name {
-			return d
+			return &d
 		}
 	}
 
@@ -640,7 +640,7 @@ func (c *Class) Reset() {
 	c.Update(func(data *classState) {
 		data.Angular = nil
 		data.Content = ""
-		clear(data.Definitions)
+		data.Definitions.Clear()
 		clear(data.Extends)
 		data.ExtendsIdentNames = make([]string, 0)
 		clear(data.Implements)
@@ -705,8 +705,7 @@ func (c *Class) removeOwnUagesUpwards() {
 // Remove all of the usages originating from a particular class all the way up the hierarchy
 func (c *Class) removeUsagesFromClassUpwards(class *Class) {
 	for e := range c.Snapshot().Extends.IterateResolved {
-		definitions := e.Class.Snapshot().Definitions
-		for name, d := range definitions {
+		for name, d := range e.Class.Snapshot().Definitions.All() {
 			newUsageInstances := []*UsageInstance{}
 
 			for _, instance := range d.Usages {
@@ -718,14 +717,13 @@ func (c *Class) removeUsagesFromClassUpwards(class *Class) {
 				d.UsageAccess = CalculateNewAccessType(d.UsageAccess, instance.Access)
 			}
 
-			definition := definitions[name]
+			definition, _ := e.Class.Snapshot().Definitions.Get(name)
 			definition.Usages = newUsageInstances
-			definitions[name] = definition
-		}
 
-		e.Class.Update(func(data *classState) {
-			data.Definitions = definitions
-		})
+			e.Class.Update(func(data *classState) {
+				data.Definitions.Set(name, definition)
+			})
+		}
 
 		e.Class.removeUsagesFromClassUpwards(class)
 	}
@@ -747,7 +745,7 @@ func ClassId(uri string, className string) string { return uri + "-" + className
 func NewClass(content string, file *File, node *sitter.Node) Class {
 	state := classState{
 		Content:              content,
-		Definitions:          make(map[string]*Definition),
+		Definitions:          &Definitions{RWMutex: sync.RWMutex{}, data: map[string]*Definition{}},
 		Extends:              []*Reference{},
 		ExtendsIdentNames:    []string{},
 		File:                 file,
