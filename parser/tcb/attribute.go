@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 	"ts_inspector/ast"
+	"ts_inspector/config"
 	"ts_inspector/parser"
 	structuraldirective "ts_inspector/parser/structural_directive"
 	"ts_inspector/utils"
@@ -141,6 +142,10 @@ func (t *Tag) renderAttributes() error {
 		}
 	}
 
+	if config.TcbExperimentalTagBasedAttributeRendering {
+		return renderAttributes(&allAttributes, t)
+	}
+
 	renderedDirectives := map[string]bool{}
 
 	for _, a := range t.Attributes.Elements {
@@ -266,6 +271,84 @@ THING:
 	}
 
 	return renderedDirectives, nil
+}
+
+func renderAttributes(allAttributes *map[string]*Attribute, tag *Tag) error {
+	sourceClass := tag.Tcb().Class
+	if !sourceClass.HasComponent() {
+		return nil
+	}
+
+	tcb := tag.Tcb()
+	state := tcb.State
+	component := sourceClass.Snapshot().Angular.Component
+
+	things := component.GetAvailableThings(state)
+
+THING:
+	for _, thing := range things {
+		for _, selector := range thing.GetSelectors() {
+			matchesSelector, _ := tag.MatchesSelector(selector)
+			if !matchesSelector {
+				continue
+			}
+
+			attachedInputs := map[string]*Attribute{}
+			for _, def := range thing.GetAllDefinitions() {
+				inputName := def.GetInputName()
+				a, isAttached := (*allAttributes)[inputName]
+				if isAttached {
+					attachedInputs[inputName] = a
+					continue
+				}
+
+				for attributeName, attribute := range *allAttributes {
+					if !attribute.IsStructuralInput() {
+						continue
+					}
+
+					if strings.HasPrefix(inputName, attributeName) {
+						attachedInputs[inputName] = attribute
+					}
+				}
+			}
+
+			for _, definition := range thing.GetAllDefinitions() {
+				attribute, found := (*allAttributes)[definition.GetInputName()]
+				if !found {
+					continue
+				}
+
+				classIdent := tcb.AddImport(thing)
+				declIdent := buildDirectiveDeclaration(tcb, thing)
+
+				assIdent, err := buildDirectiveAssignment(tcb, thing, attribute, declIdent, &attachedInputs)
+				if err != nil {
+					return err
+				}
+
+				ctxIdent, err := buildGuards(tcb, attribute, thing, assIdent, classIdent)
+				if err != nil {
+					return err
+				}
+
+				if attribute.IsStructuralInput() {
+					valueShv, err := attribute.GetShv()
+					if err != nil {
+						return err
+					}
+
+					buildStructuralShorthandContextExpansion(attribute, tcb, valueShv, ctxIdent)
+				}
+
+				continue THING
+
+			}
+
+		}
+	}
+
+	return nil
 }
 
 func buildDirectiveAssignment(tcb *Tcb, thing *parser.Class, attribute *Attribute, declIdent string, attachedInputs *map[string]*Attribute) (string, error) {
