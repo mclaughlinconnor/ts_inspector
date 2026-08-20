@@ -6,7 +6,6 @@ import (
 	"io"
 	"log"
 	"os/exec"
-	"strconv"
 	"sync"
 	"ts_inspector/config"
 	"ts_inspector/rpc"
@@ -21,7 +20,6 @@ type Responses struct {
 
 type TsGo struct {
 	logger          *log.Logger
-	nextId          int
 	opLock          sync.Mutex
 	projectHandle   ProjectID
 	requestHandlers map[string]func(request TsGoRequest) any
@@ -72,7 +70,6 @@ func StartTsGo(state *State) (*TsGo, error) {
 
 	tsgo := &TsGo{
 		logger:    state.Logger,
-		nextId:    0,
 		responses: &Responses{response: make(map[string]chan []byte)},
 		rootFiles: make(map[string]bool),
 		state:     state,
@@ -142,20 +139,13 @@ func (r *Responses) GetHandler(id string) chan []byte {
 	return c
 }
 
-func (t *TsGo) GetNextId() string {
-	id := t.nextId
-	t.nextId += 1
-
-	return strconv.Itoa(id)
-}
-
 func (t *TsGo) GetSemanticDiagnostics(uri string) *DiagnosticResponse {
 	t.opLock.Lock()
 	defer t.opLock.Unlock()
 
 	t.updateSnapshotLocked(nil, []DocumentIdentifier{{URI: uri}})
 
-	id := t.GetNextId()
+	id := utils.GetNextStringId()
 	request := GetDiagnosticsRequest{
 		TsGoRequest: TsGoRequest{RPC: "2.0", ID: id, Method: "getSemanticDiagnostics"},
 		Params: GetDiagnosticsParams{
@@ -185,7 +175,7 @@ func (t *TsGo) GetSymbolAtPosition(uri string, offset uint32) *SymbolResponse {
 
 	t.updateSnapshotLocked(nil, []DocumentIdentifier{{URI: uri}})
 
-	id := t.GetNextId()
+	id := utils.GetNextStringId()
 	request := GetSymbolAtPositionRequest{
 		TsGoRequest: TsGoRequest{RPC: "2.0", ID: id, Method: "getSymbolAtPosition"},
 		Params: GetSymbolAtPositionParams{
@@ -213,7 +203,7 @@ func (t *TsGo) GetSymbolAtPosition(uri string, offset uint32) *SymbolResponse {
 func (t *TsGo) GetTypeOfSymbol(symbol SymbolID) *TypeResponse {
 	t.opLock.Lock()
 	defer t.opLock.Unlock()
-	id := t.GetNextId()
+	id := utils.GetNextStringId()
 	request := GetTypeOfSymbolRequest{
 		TsGoRequest: TsGoRequest{RPC: "2.0", ID: id, Method: "getTypeOfSymbol"},
 		Params: GetTypeOfSymbolParams{
@@ -241,7 +231,7 @@ func (t *TsGo) GetTypeAtPosition(uri string, offset uint32) *TypeResponse {
 	documentIdentifier := DocumentIdentifier{URI: uri}
 	t.UpdateSnapshot("", []DocumentIdentifier{documentIdentifier})
 
-	id := t.GetNextId()
+	id := utils.GetNextStringId()
 	request := GetTypeAtPositionParamsRequest{
 		TsGoRequest: TsGoRequest{RPC: "2.0", ID: id, Method: "getTypeAtPosition"},
 		Params: GetTypeAtPositionParams{
@@ -270,7 +260,7 @@ func (t *TsGo) Initialize() *InitializeResponse {
 	t.opLock.Lock()
 	defer t.opLock.Unlock()
 
-	id := t.GetNextId()
+	id := utils.GetNextStringId()
 	request := TsGoRequest{RPC: "2.0", ID: id, Method: "initialize"}
 
 	utils.WriteResponse(*t.stdin, request)
@@ -290,7 +280,7 @@ func (t *TsGo) Initialize() *InitializeResponse {
 func (t *TsGo) TypeToString(ttype TypeID) *TypeToStringResponse {
 	t.opLock.Lock()
 	defer t.opLock.Unlock()
-	id := t.GetNextId()
+	id := utils.GetNextStringId()
 	request := TypeToTypeNodeRequest{
 		TsGoRequest: TsGoRequest{RPC: "2.0", ID: id, Method: "typeToString"},
 		Params: TypeToTypeNodeParams{
@@ -323,7 +313,7 @@ func (t *TsGo) UpdateSnapshot(tsconfig string, changes []DocumentIdentifier) *Up
 }
 
 func (t *TsGo) updateSnapshotLocked(tsconfig *string, changes []DocumentIdentifier) *UpdateSnapshotResponse {
-	id := t.GetNextId()
+	id := utils.GetNextStringId()
 
 	tsGoChanges := []DocumentIdentifier{}
 	tsGoCreated := []DocumentIdentifier{}

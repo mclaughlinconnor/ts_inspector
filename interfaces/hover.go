@@ -20,7 +20,7 @@ type HoverParams struct {
 }
 
 type HoverRequest struct {
-	Request
+	RequestMessage
 	Params HoverParams `json:"params"`
 }
 
@@ -30,6 +30,6 @@ type Hover struct {
 }
 
 type HoverResponse struct {
-	Response
+	ResponseMessage
 	Result Hover `json:"result"`
 }

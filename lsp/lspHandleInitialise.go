@@ -24,7 +24,7 @@ func newInitializeResponse(id int) interfaces.InitializeResponse {
 	labelDetailsSupport := true
 
 	return interfaces.InitializeResponse{
-		Response: interfaces.Response{
+		ResponseMessage: interfaces.ResponseMessage{
 			RPC: "2.0",
 			ID:  &id,
 		},
@@ -53,10 +53,13 @@ func newInitializeResponse(id int) interfaces.InitializeResponse {
 
 func lspHandleInitialise(writer io.Writer, logger *log.Logger, state *parser.State, request interfaces.InitializeRequest) {
 	response := newInitializeResponse(request.ID)
+	progressToken, _ := lspCreateProgressToken(writer)
 	utils.WriteResponse(writer, response)
 
+	lspBeginProgress(writer, progressToken, "Initialising", "", -1)
+
 	state.SetRootUri(request.Params.RootUri)
-	utils.WriteResponse(writer, interfaces.BuildMessageNotification("Starting indexing...", interfaces.MessageType.Info))
+	lspReportProgress(writer, progressToken, "Indexing", -1)
 	filenames, tsconfigFiles := traversetypescriptfiles.Index(state.GetRootPath())
 	state.SetTsConfigFiles(tsconfigFiles)
 
@@ -68,27 +71,28 @@ func lspHandleInitialise(writer io.Writer, logger *log.Logger, state *parser.Sta
 		}
 	}
 
-	utils.WriteResponse(writer, interfaces.BuildMessageNotification("Postprocessing...", interfaces.MessageType.Info))
+	lspReportProgress(writer, progressToken, "Postprocessing", -1)
 	state.Postprocess()
 
 	if config.SemanticSearch {
-		utils.WriteResponse(writer, interfaces.BuildMessageNotification("Building search indexes...", interfaces.MessageType.Info))
+		lspReportProgress(writer, progressToken, "Building search indexes", -1)
 		search.InitSearch()
 		search.IndexState(state)
-		utils.WriteResponse(writer, interfaces.BuildMessageNotification("Search index built", interfaces.MessageType.Info))
 	}
 
-	utils.WriteResponse(writer, interfaces.BuildMessageNotification("State ready", interfaces.MessageType.Info))
+	initTsGo(state, writer, progressToken)
 
-	initTsGo(state, writer)
+	lspEndProgress(writer, progressToken, "Initialised")
+
+	lspReady = true
 }
 
-func initTsGo(state *parser.State, writer io.Writer) {
+func initTsGo(state *parser.State, writer io.Writer, progressToken *interfaces.ProgressToken) {
 	if !config.TsGo {
 		return
 	}
 
-	utils.WriteResponse(writer, interfaces.BuildMessageNotification("Starting TsGo...", interfaces.MessageType.Info))
+	lspReportProgress(writer, progressToken, "Starting TsGo", -1)
 
 	t, err := parser.StartTsGo(state)
 	if err != nil {
@@ -102,6 +106,4 @@ func initTsGo(state *parser.State, writer io.Writer) {
 	print(us)
 
 	state.SetTsGo(t)
-
-	utils.WriteResponse(writer, interfaces.BuildMessageNotification("TsGo started", interfaces.MessageType.Info))
 }

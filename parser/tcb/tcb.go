@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"path/filepath"
 	"slices"
-	"strconv"
 	"strings"
 	"ts_inspector/parser"
 	"ts_inspector/utils"
@@ -44,25 +43,10 @@ type Tcb struct {
 	Directives                   []*Directive
 	GenericDirectiveConstructors []*GenericDirectiveConstructor
 	Imports                      []*Import
-	NextId                       int
 	Pipes                        []*Pipe
 	RootScope                    *Scope
 	State                        *parser.State
 	TagBoundaryPartStack         utils.Stack[*Part]
-}
-
-func (t *Tcb) GetNextId() int {
-	id := t.NextId
-	t.NextId += 1
-
-	return id
-}
-
-func (t *Tcb) GetNextIdString() string {
-	id := t.NextId
-	t.NextId += 1
-
-	return strconv.Itoa(id)
 }
 
 func (t *Tcb) AddAssignment(identifer string, identNode *sitter.Node, value *Statement) {
@@ -92,7 +76,7 @@ func (t *Tcb) AddImport(class *parser.Class) string {
 	if index != -1 {
 		i = t.Imports[index]
 	} else {
-		i = &Import{Class: class, File: f, Identifier: t.GetNextIdString()}
+		i = &Import{Class: class, File: f, Identifier: utils.GetNextStringId()}
 		t.Imports = append(t.Imports, i)
 	}
 
@@ -226,7 +210,7 @@ func (t *Tcb) CreateVarInScope(value *Statement, scope *Scope, alias string) str
 		return v.Identifier
 	}
 
-	name := "_t" + t.GetNextIdString()
+	name := "_t" + utils.GetNextStringId()
 	scope.AddVirtPart("var ")
 	scope.AddVirtPart(name)
 	scope.AddVirtPart(" = ")
@@ -258,7 +242,7 @@ func (t *Tcb) CreateVarAfterPart(value *Statement, alias string, after *Part) (s
 		return v.Identifier, v.LastPart
 	}
 
-	name := "_t" + t.GetNextIdString()
+	name := "_t" + utils.GetNextStringId()
 	statement := Statement{}
 	statement.AddVirtPart("var ")
 	statement.AddVirtPart(name)
@@ -347,7 +331,6 @@ func GenerateTcb(state *parser.State, template *parser.Class, root *sitter.Node,
 
 	tcb := Tcb{
 		CurrentScope: scope,
-		NextId:       0,
 		RootScope:    scope,
 		State:        state,
 		Class:        template,
@@ -373,7 +356,7 @@ func InitTcb() {
 
 func buildTemplatePreamble(tcb *Tcb) {
 	tcb.GetScope().AddVirtPart("function _tcb")
-	tcb.GetScope().AddVirtPart(tcb.GetNextIdString())
+	tcb.GetScope().AddVirtPart(utils.GetNextStringId())
 	tcb.GetScope().AddVirtPart("(this: ")
 
 	classIdent := tcb.AddImport(tcb.Class)

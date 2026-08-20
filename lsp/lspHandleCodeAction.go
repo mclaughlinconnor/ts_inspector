@@ -11,7 +11,7 @@ import (
 
 func newCodeActionResponse(id int, codeActions []interfaces.CodeAction) interfaces.CodeActionRepsonse {
 	return interfaces.CodeActionRepsonse{
-		Response: interfaces.Response{
+		ResponseMessage: interfaces.ResponseMessage{
 			RPC: "2.0",
 			ID:  &id,
 		},

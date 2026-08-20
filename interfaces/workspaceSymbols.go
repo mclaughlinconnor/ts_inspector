@@ -1,7 +1,7 @@
 package interfaces
 
 type WorkspaceSymbolRequest struct {
-	Request
+	RequestMessage
 	Params WorkspaceSymbolParams `json:"params"`
 }
 
@@ -60,6 +60,6 @@ type WorkspaceSymbol struct {
 }
 
 type WorkspaceSymbolResponse struct {
-	Response
+	ResponseMessage
 	Result []WorkspaceSymbol `json:"result"`
 }

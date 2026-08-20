@@ -1,7 +1,7 @@
 package interfaces
 
 type ApplyWorkspaceEditRequest struct {
-	Request
+	RequestMessage
 	Params ApplyWorkspaceEditParams `json:"params"`
 }
 

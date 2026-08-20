@@ -22,7 +22,7 @@ type CompletionParams struct {
 }
 
 type CompletionRequest struct {
-	Request
+	RequestMessage
 	Params CompletionParams `json:"params"`
 }
 
@@ -36,7 +36,7 @@ type CompletionOptions struct {
 }
 
 type CompletionItemRequest struct {
-	Request
+	RequestMessage
 	Params CompletionItem `json:"params"`
 }
 
@@ -129,6 +129,6 @@ type TextEdit struct {
 }
 
 type CompletionResponse struct {
-	Response
+	ResponseMessage
 	Result []CompletionItem `json:"result"` // no CompletionItemList here
 }

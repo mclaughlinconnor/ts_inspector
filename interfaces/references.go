@@ -13,11 +13,11 @@ type ReferenceParams struct {
 }
 
 type ReferenceRequest struct {
-	Request
+	RequestMessage
 	Params ReferenceParams `json:"params"`
 }
 
 type ReferenceResponse struct {
-	Response
+	ResponseMessage
 	Result []Location `json:"result"`
 }

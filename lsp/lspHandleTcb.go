@@ -13,7 +13,7 @@ import (
 
 func lspHandleTcb(writer io.Writer, logger *log.Logger, state *parser.State, request interfaces.TcbRequest) {
 	throwErr := func(err error) {
-		response := interfaces.TcbRequestResponse{Response: interfaces.Response{RPC: "2.0", ID: &request.ID}, Result: err.Error()}
+		response := interfaces.TcbRequestResponse{ResponseMessage: interfaces.ResponseMessage{RPC: "2.0", ID: &request.ID}, Result: err.Error()}
 		utils.WriteResponse(writer, response)
 	}
 
@@ -28,7 +28,7 @@ func lspHandleTcb(writer io.Writer, logger *log.Logger, state *parser.State, req
 
 	file, _ := state.GetFile(parser.FilenameFromUri(fileUrl))
 	if file == nil || file.Snapshot().Filetype != "pug" || len(file.Snapshot().Classes) < 1 {
-		response := interfaces.TcbRequestResponse{Response: interfaces.Response{RPC: "2.0", ID: &request.ID}, Result: ""}
+		response := interfaces.TcbRequestResponse{ResponseMessage: interfaces.ResponseMessage{RPC: "2.0", ID: &request.ID}, Result: ""}
 		utils.WriteResponse(writer, response)
 		return
 	}
@@ -44,8 +44,8 @@ func lspHandleTcb(writer io.Writer, logger *log.Logger, state *parser.State, req
 	tcbBlock := tcb.ToString()
 
 	response := interfaces.TcbRequestResponse{
-		Response: interfaces.Response{RPC: "2.0", ID: &request.ID},
-		Result:   tcbBlock,
+		ResponseMessage: interfaces.ResponseMessage{RPC: "2.0", ID: &request.ID},
+		Result:          tcbBlock,
 	}
 
 	utils.WriteResponse(writer, response)

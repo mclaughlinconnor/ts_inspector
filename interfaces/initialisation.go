@@ -1,7 +1,7 @@
 package interfaces
 
 type InitializeRequest struct {
-	Request
+	RequestMessage
 	Params InitializeParams `json:"params"`
 }
 
@@ -10,7 +10,7 @@ type InitializeParams struct {
 }
 
 type InitializeResponse struct {
-	Response
+	ResponseMessage
 	Result InitializeResult `json:"result"`
 }
 

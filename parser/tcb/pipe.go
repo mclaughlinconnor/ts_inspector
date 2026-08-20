@@ -1,6 +1,8 @@
 package tcb
 
 import (
+	"ts_inspector/utils"
+
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
@@ -28,7 +30,7 @@ func renderPipeNode(node *sitter.Node, content []byte, tcb *Tcb) *Statement {
 
 		pipeIdent := tcb.GetPipeIdent(thing)
 		if pipeIdent == "" {
-			pipeIdent = "_pipe" + tcb.GetNextIdString()
+			pipeIdent = "_pipe" + utils.GetNextStringId()
 
 			impIdent := tcb.AddImport(thing)
 

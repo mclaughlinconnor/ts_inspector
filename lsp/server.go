@@ -18,6 +18,10 @@ import (
 
 var Shutdown = make(chan int, 1)
 
+var lspReady = true
+var lspIdHandler map[int]func(io.Writer, *log.Logger, []byte) = map[int]func(io.Writer, *log.Logger, []byte){}
+var lspPendingMessages [][]byte = [][]byte{}
+
 func Start() {
 	state := parser.CreateState()
 
@@ -35,18 +39,36 @@ func Start() {
 
 	writer := os.Stdout
 
-	for scanner.Scan() {
-		logger.Println("Scanner found the next message")
-		msg := scanner.Bytes()
-		logger.Println("Received msg", string(msg))
+	handleBytes := func(msg []byte) {
 		method, contents, err := rpc.DecodeMessage(msg)
 		logger.Println(method)
 		if err != nil {
 			logger.Printf("Error: %s", err)
-			continue
+			return
 		}
 
 		handleMessage(logger, writer, &state, method, contents)
+	}
+
+	for scanner.Scan() {
+		logger.Println("Scanner found the next message")
+		msg := scanner.Bytes()
+		logger.Println("Received msg", string(msg))
+
+		if !lspReady {
+			lspPendingMessages = append(lspPendingMessages, msg)
+			continue
+		}
+
+		if lspReady && len(lspPendingMessages) != 0 {
+			for _, m := range lspPendingMessages {
+				handleBytes(m)
+			}
+
+			lspPendingMessages = [][]byte{}
+		}
+
+		handleBytes(msg)
 	}
 
 	logger.Println("LSP event loop finished")
@@ -64,15 +86,14 @@ func handleMessage(logger *log.Logger, writer io.Writer, state *parser.State, me
 		}
 	}()
 
-	r := utils.TryParseRequest[interfaces.Request](logger, contents)
-	utils.MostRecentId = r.ID
+	r := utils.TryParseRequest[interfaces.RequestMessage](logger, contents)
 
 	logger.Printf("Received msg with method: %s", method)
 
 	switch method {
 	case "initialize":
 		request := utils.TryParseRequest[interfaces.InitializeRequest](logger, contents)
-		lspHandleInitialise(writer, logger, state, request)
+		go lspHandleInitialise(writer, logger, state, request)
 	case "shutdown":
 		Shutdown <- 1
 	case "textDocument/didOpen":
@@ -107,12 +128,15 @@ func handleMessage(logger *log.Logger, writer io.Writer, state *parser.State, me
 		lspHandleTcb(writer, logger, state, request)
 	case "initialized":
 		{
+			lspReady = false
 		}
 	default:
-		if utils.MostRecentId == 0 || method == "" {
+		handler, found := lspIdHandler[r.ID]
+		if handler == nil || !found {
+			log.Println("Not handling request for:", method)
 			break
 		}
 
-		log.Println("Not handling request for:", method)
+		handler(writer, logger, contents)
 	}
 }

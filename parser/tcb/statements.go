@@ -9,15 +9,6 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
-var nextPartId = 0
-
-func getNextId() int {
-	id := nextPartId
-	nextPartId++
-
-	return id
-}
-
 type Part struct {
 	PugEndOffset   *int
 	PugStartOffset *int
@@ -67,7 +58,7 @@ func (s *Statement) AddStatement(statement *Statement) {
 			PugStartOffset: p.PugStartOffset,
 			PugEndOffset:   p.PugEndOffset,
 
-			Id: getNextId(),
+			Id: utils.GetNextId(),
 		}
 
 		s.AddPart(newPart)
@@ -138,7 +129,7 @@ func (s *Statement) PrependVirtPart(text string) {
 	tsStartOffset := 0
 	tsEndOffset := len(text)
 
-	p := &Part{text: text, TsStartOffset: &tsStartOffset, TsEndOffset: &tsEndOffset, Id: getNextId()}
+	p := &Part{text: text, TsStartOffset: &tsStartOffset, TsEndOffset: &tsEndOffset, Id: utils.GetNextId()}
 	s.Parts = slices.Insert(s.Parts, 0, p)
 
 	for _, p := range s.Parts {
@@ -218,7 +209,7 @@ func (s *Statement) AddRealPart(text string, node *sitter.Node) {
 	tsStartOffset := s.sb.Len()
 	tsEndOffset := tsStartOffset + len(text)
 
-	s.AddPart(&Part{node: node, text: text, TsEndOffset: &tsEndOffset, TsStartOffset: &tsStartOffset, Id: getNextId()})
+	s.AddPart(&Part{node: node, text: text, TsEndOffset: &tsEndOffset, TsStartOffset: &tsStartOffset, Id: utils.GetNextId()})
 }
 
 func (s *Statement) AddScopePart(scope *Scope) {
@@ -227,7 +218,7 @@ func (s *Statement) AddScopePart(scope *Scope) {
 		startOffset = *s.Parts[len(s.Parts)-1].TsEndOffset
 	}
 
-	s.AddPart(&Part{scope: scope, TsStartOffset: &startOffset, Id: getNextId()})
+	s.AddPart(&Part{scope: scope, TsStartOffset: &startOffset, Id: utils.GetNextId()})
 }
 
 func (s *Statement) AppendStatement(statement Statement) {

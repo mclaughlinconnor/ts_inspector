@@ -13,7 +13,7 @@ type CodeActionParams struct {
 }
 
 type CodeActionRequest struct {
-	Request
+	RequestMessage
 
 	Params CodeActionParams `json:"params"`
 }
@@ -47,7 +47,7 @@ type CodeAction struct {
 }
 
 type CodeActionRepsonse struct {
-	Response
+	ResponseMessage
 
 	Result []CodeAction `json:"result"`
 }

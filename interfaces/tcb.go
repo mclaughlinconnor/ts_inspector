@@ -7,7 +7,7 @@ type TcbParams struct {
 }
 
 type TcbRequest struct {
-	Request
+	RequestMessage
 
 	Params TcbParams `json:"params"`
 }
@@ -15,7 +15,7 @@ type TcbRequest struct {
 type TcbRequestResult = string
 
 type TcbRequestResponse struct {
-	Response
+	ResponseMessage
 
 	Result TcbRequestResult `json:"result"`
 }

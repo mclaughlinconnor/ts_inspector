@@ -16,7 +16,7 @@ func lspHandleDefinition(writer io.Writer, logger *log.Logger, state *parser.Sta
 
 	locations := make([]interfaces.Location, 0)
 	if file == nil || file.Snapshot().Filetype != "pug" {
-		utils.WriteResponse(writer, interfaces.DefinitionResponse{Result: locations, Response: interfaces.Response{ID: &request.ID, RPC: "2.0"}})
+		utils.WriteResponse(writer, interfaces.DefinitionResponse{Result: locations, ResponseMessage: interfaces.ResponseMessage{ID: &request.ID, RPC: "2.0"}})
 
 		return
 	}
@@ -62,7 +62,7 @@ func lspHandleDefinition(writer io.Writer, logger *log.Logger, state *parser.Sta
 		}
 	}
 
-	utils.WriteResponse(writer, interfaces.DefinitionResponse{Result: locations, Response: interfaces.Response{ID: &request.ID, RPC: "2.0"}})
+	utils.WriteResponse(writer, interfaces.DefinitionResponse{Result: locations, ResponseMessage: interfaces.ResponseMessage{ID: &request.ID, RPC: "2.0"}})
 }
 
 func nodeFilter(offsetStart int, offsetEnd int) func(parser.ClassedDefinition) bool {

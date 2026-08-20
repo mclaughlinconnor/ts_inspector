@@ -9,11 +9,11 @@ type DefinitionParams struct {
 }
 
 type DefinitionRequest struct {
-	Request
+	RequestMessage
 	Params DefinitionParams `json:"params"`
 }
 
 type DefinitionResponse struct {
-	Response
+	ResponseMessage
 	Result []Location `json:"result"`
 }

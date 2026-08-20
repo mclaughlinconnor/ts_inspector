@@ -11,7 +11,7 @@ import (
 
 func newWorkspaceSymbolResponse(id int, symbols []interfaces.WorkspaceSymbol) interfaces.WorkspaceSymbolResponse {
 	return interfaces.WorkspaceSymbolResponse{
-		Response: interfaces.Response{
+		ResponseMessage: interfaces.ResponseMessage{
 			RPC: "2.0",
 			ID:  &id,
 		},

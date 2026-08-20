@@ -13,7 +13,7 @@ import (
 )
 
 func send(writer io.Writer, items []interfaces.CompletionItem, id *int) {
-	utils.WriteResponse(writer, interfaces.CompletionResponse{Result: items, Response: interfaces.Response{ID: id, RPC: "2.0"}})
+	utils.WriteResponse(writer, interfaces.CompletionResponse{Result: items, ResponseMessage: interfaces.ResponseMessage{ID: id, RPC: "2.0"}})
 }
 
 func lspHandleCompletion(writer io.Writer, logger *log.Logger, state *parser.State, request interfaces.CompletionRequest) {

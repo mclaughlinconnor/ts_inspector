@@ -16,7 +16,7 @@ func lspHandleHover(writer io.Writer, logger *log.Logger, state *parser.State, r
 	file, _ := state.GetFile(parser.FilenameFromUri(request.Params.TextDocument.Uri))
 
 	if file == nil || file.Snapshot().Filetype != "pug" {
-		utils.WriteResponse(writer, interfaces.EmptyResponse{Result: nil, Response: interfaces.Response{ID: &request.ID, RPC: "2.0"}})
+		utils.WriteResponse(writer, interfaces.EmptyResponse{Result: nil, ResponseMessage: interfaces.ResponseMessage{ID: &request.ID, RPC: "2.0"}})
 
 		return
 	}
@@ -76,12 +76,12 @@ func lspHandleHover(writer io.Writer, logger *log.Logger, state *parser.State, r
 	}
 
 	if len(sb) == 0 {
-		utils.WriteResponse(writer, interfaces.EmptyResponse{Result: nil, Response: interfaces.Response{ID: &request.ID, RPC: "2.0"}})
+		utils.WriteResponse(writer, interfaces.EmptyResponse{Result: nil, ResponseMessage: interfaces.ResponseMessage{ID: &request.ID, RPC: "2.0"}})
 		return
 	}
 
 	hover := interfaces.Hover{Contents: interfaces.MarkupContent{Kind: interfaces.MarkupKind.Markdown, Value: strings.Join(sb, "\n---\n")}}
-	utils.WriteResponse(writer, interfaces.HoverResponse{Result: hover, Response: interfaces.Response{ID: &request.ID, RPC: "2.0"}})
+	utils.WriteResponse(writer, interfaces.HoverResponse{Result: hover, ResponseMessage: interfaces.ResponseMessage{ID: &request.ID, RPC: "2.0"}})
 }
 
 func handleAttributeHover(sb []string, class *parser.Class, attributeName string, selector string) []string {

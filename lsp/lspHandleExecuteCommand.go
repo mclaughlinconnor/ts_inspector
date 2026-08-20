@@ -3,7 +3,6 @@ package lsp
 import (
 	"io"
 	"log"
-	"math/rand"
 	"ts_inspector/commands"
 	"ts_inspector/interfaces"
 	"ts_inspector/parser"
@@ -33,9 +32,9 @@ func lspHandleExecuteCommand(writer io.Writer, logger *log.Logger, state *parser
 	utils.WriteResponse(
 		writer,
 		interfaces.ApplyWorkspaceEditRequest{
-			Request: interfaces.Request{
+			RequestMessage: interfaces.RequestMessage{
 				RPC:    "2.0",
-				ID:     rand.Intn(10_000),
+				ID:     utils.GetNextId(),
 				Method: "workspace/applyEdit",
 			},
 			Params: interfaces.ApplyWorkspaceEditParams{
