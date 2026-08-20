@@ -1,17 +1,21 @@
 package utils
 
-import "path"
+import (
+	"path"
 
-var cache = map[string]string{}
+	"golang.org/x/sync/syncmap"
+)
+
+var cache = syncmap.Map{}
 
 func PathDir(fullpath string) string {
-	dir, found := cache[fullpath]
+	dir, found := cache.Load(fullpath)
 	if found {
-		return dir
+		return dir.(string)
 	}
 
 	dir = path.Dir(fullpath)
-	cache[fullpath] = dir
+	cache.Store(fullpath, dir)
 
-	return dir
+	return dir.(string)
 }

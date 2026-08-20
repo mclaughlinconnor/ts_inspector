@@ -238,7 +238,7 @@ func (t *Tag) insertValue(value *Statement, insertBeforeCurrentTag bool, shouldA
 }
 
 func findTemplateRefClass(tcb *Tcb) *parser.Class {
-	for _, class := range *tcb.State.GetClasses() {
+	for _, class := range tcb.State.GetClasses() {
 		if class.Snapshot().Name != "TemplateRef" {
 			continue
 		}

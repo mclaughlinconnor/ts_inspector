@@ -25,7 +25,7 @@ func lspHandleReferences(writer io.Writer, logger *log.Logger, state *parser.Sta
 
 	tagName, found := ast.GetTagNameAtOffset(file.Snapshot().Content, offset)
 	if found {
-		for _, c := range *state.GetClasses() {
+		for _, c := range state.GetClasses() {
 			if !c.HasComponent() {
 				continue
 			}

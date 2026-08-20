@@ -60,13 +60,13 @@ func (f *File) FindImportPath(identifier string) string {
 func (f *File) GetDependencies(state *State) []string {
 	dependents := make(map[string]bool, 0)
 
-	for _, class := range *state.GetClasses() {
+	for _, class := range state.GetClasses() {
 		if class.GetTemplateFile() == f {
 			dependents[class.Snapshot().File.Filename()] = true
 		}
 	}
 
-	for _, class := range *state.GetClasses() {
+	for _, class := range state.GetClasses() {
 		for _, fileClass := range f.Snapshot().Classes {
 			if class.DoesExtendOrImplement(fileClass) {
 				dependents[class.Snapshot().File.Filename()] = true
@@ -279,7 +279,7 @@ func (f *File) Postprocess(state *State) {
 	f.ResolveDynamicallyImportedFiles(state)
 
 	if f.Snapshot().Filetype == "pug" {
-		for _, class := range *state.GetClasses() {
+		for _, class := range state.GetClasses() {
 			snapshot := class.Snapshot()
 			isValid := snapshot.Angular != nil &&
 				snapshot.Angular.Component != nil &&
@@ -390,7 +390,7 @@ func FiletypeFromFilename(filename string) (string, error) {
 	return "", fmt.Errorf("Couldn't determine filetype from filename: %s", filename)
 }
 
-func IndexFileFromIndexer(state *State, filename string) error {
+func IndexFileFromIndexer(state *State, filename string, postprocess bool) error {
 	var err error
 
 	filetype, err := FiletypeFromFilename(filename)
@@ -521,7 +521,7 @@ func getFileByPath(state *State, path string) *File {
 		return file
 	}
 
-	IndexFileFromIndexer(state, extensionedPath)
+	IndexFileFromIndexer(state, extensionedPath, true)
 	file, found = state.GetFile(extensionedPath)
 	if found {
 		return file

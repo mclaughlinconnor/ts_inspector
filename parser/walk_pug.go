@@ -122,7 +122,7 @@ func extractPugUsages(class *Class, content []byte) error {
 }
 
 func indexPug(state *State, file *File) error {
-	for _, class := range *state.GetClasses() {
+	for _, class := range state.GetClasses() {
 		if class.GetTemplateFile() == file {
 			class.DropTemplateUsages()
 

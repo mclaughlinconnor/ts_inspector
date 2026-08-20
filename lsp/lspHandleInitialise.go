@@ -10,6 +10,8 @@ import (
 	"ts_inspector/parser"
 	"ts_inspector/search"
 	"ts_inspector/utils"
+
+	"golang.org/x/sync/errgroup"
 )
 
 func newInitializeResponse(id int) interfaces.InitializeResponse {
@@ -63,11 +65,23 @@ func lspHandleInitialise(writer io.Writer, logger *log.Logger, state *parser.Sta
 	filenames, tsconfigFiles := traversetypescriptfiles.Index(state.GetRootPath())
 	state.SetTsConfigFiles(tsconfigFiles)
 
-	var err error
-	for _, filename := range filenames {
-		err = parser.IndexFileFromIndexer(state, filename)
-		if err != nil {
+	if config.IndexingExperiementalParallelInitialIndexing {
+		eg := errgroup.Group{}
+
+		for _, filename := range filenames {
+			eg.Go(func() error { return parser.IndexFileFromIndexer(state, filename, false) })
+		}
+
+		if err := eg.Wait(); err != nil {
 			logger.Fatal(err)
+		}
+	} else {
+		var err error
+		for _, filename := range filenames {
+			err = parser.IndexFileFromIndexer(state, filename, false)
+			if err != nil {
+				logger.Fatal(err)
+			}
 		}
 	}
 

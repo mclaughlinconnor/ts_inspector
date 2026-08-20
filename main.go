@@ -77,7 +77,7 @@ func main() {
 	filenames, _ := traversetypescriptfiles.Index(args[0])
 	for _, filename := range filenames {
 		logger.Println(filename)
-		err := parser.IndexFileFromIndexer(&state, filename)
+		err := parser.IndexFileFromIndexer(&state, filename, true)
 		if err != nil {
 			logger.Fatal(err)
 		}

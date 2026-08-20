@@ -2,6 +2,7 @@ package parser
 
 import (
 	"log"
+	"maps"
 	"sync"
 	"ts_inspector/config"
 	"ts_inspector/utils"
@@ -41,9 +42,9 @@ func (s *State) GetFile(filename string) (*File, bool) {
 	return file, found
 }
 
-func (s *State) GetFiles() *map[string]*File {
+func (s *State) GetFiles() map[string]*File {
 	s.RLock()
-	files := &s.files
+	files := maps.Clone(s.files)
 	s.RUnlock()
 
 	return files
@@ -57,9 +58,9 @@ func (s *State) GetClass(id string) (*Class, bool) {
 	return class, found
 }
 
-func (s *State) GetClasses() *map[string]*Class {
+func (s *State) GetClasses() map[string]*Class {
 	s.RLock()
-	classes := &s.classes
+	classes := maps.Clone(s.classes)
 	s.RUnlock()
 
 	return classes
@@ -71,7 +72,7 @@ func (s *State) GetClassesBySelectorUsage(selectors []string) []*Class {
 	s.RLock()
 
 	for _, selector := range selectors {
-		for _, class := range *s.GetClasses() {
+		for _, class := range s.GetClasses() {
 			if !class.HasComponent() || class.Snapshot().Angular.Component.Template == nil {
 				continue
 			}
@@ -93,11 +94,11 @@ func (s *State) GetClassesBySelectorUsage(selectors []string) []*Class {
 
 func (s *State) GetInterestingPoints() []InterestingPoint {
 	interestingPoints := make([]InterestingPoint, 0)
-	for _, class := range *s.GetClasses() {
+	for _, class := range s.GetClasses() {
 		interestingPoints = append(interestingPoints, class.GetInterestingPoints()...)
 	}
 
-	for _, file := range *s.GetFiles() {
+	for _, file := range s.GetFiles() {
 		interestingPoints = append(interestingPoints, file.GetInterestingPoints()...)
 	}
 
@@ -143,7 +144,7 @@ func (s *State) GetTsGo() *TsGo {
 func (s *State) Postprocess() {
 	wg := sync.WaitGroup{}
 
-	for _, file := range *s.GetFiles() {
+	for _, file := range s.GetFiles() {
 		wg.Go(func() { file.Postprocess(s) })
 
 		if !config.Concurrency {

@@ -347,7 +347,7 @@ func (s *State) FindPlacesThatUseThisClassComponent(class *Class) []*Class {
 		return places
 	}
 
-	for _, c := range *s.GetClasses() {
+	for _, c := range s.GetClasses() {
 		if !c.HasComponent() {
 			continue
 		}
@@ -377,7 +377,7 @@ func (s *State) FindPlacesThatDeclareThisClassComponent(class *Class) []*Class {
 		return places
 	}
 
-	for _, c := range *s.GetClasses() {
+	for _, c := range s.GetClasses() {
 		if !c.HasModule() {
 			continue
 		}
@@ -398,7 +398,7 @@ func (s *State) FindPlacesThatDeclareThisClassComponent(class *Class) []*Class {
 func (s *State) FindModulesThatAngularImportThisClass(class *Class) []*Class {
 	places := []*Class{}
 
-	for _, c := range *s.GetClasses() {
+	for _, c := range s.GetClasses() {
 		if !c.HasModule() {
 			continue
 		}
