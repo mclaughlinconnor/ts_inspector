@@ -1,6 +1,7 @@
 package analysis
 
 import (
+	"fmt"
 	"ts_inspector/analysis/cfg"
 	"ts_inspector/config"
 	"ts_inspector/parser"
@@ -21,7 +22,7 @@ func cfgUnreachableBlock(state *parser.State, file *parser.File) []Analysis {
 			return analyses
 		}
 
-		return analyseCfg(cfg, analyses, func(m string, n *sitter.Node, s int) *Analysis {
+		return analyseCfg(file.Snapshot().Content, cfg, analyses, func(m string, n *sitter.Node, s int) *Analysis {
 			a := newAnalysisFromFileNode(file, unreachableCode, n, s, m, nil)
 			return &a
 		})
@@ -60,14 +61,16 @@ func cfgUnreachableBlock(state *parser.State, file *parser.File) []Analysis {
 			return analyses
 		}
 
-		analyses = analyseCfg(cfg, analyses, buildPugAnalysis(tcb))
+		analyses = analyseCfg(tcbBlock, cfg, analyses, buildPugAnalysis(tcb))
 	}
 
 	return analyses
 }
 
-func analyseCfg(cfgState *cfg.State, analyses []Analysis, buildAnalysis func(string, *sitter.Node, int) *Analysis) []Analysis {
+func analyseCfg(content string, cfgState *cfg.State, analyses []Analysis, buildAnalysis func(string, *sitter.Node, int) *Analysis) []Analysis {
 	for _, cfg := range cfgState.AllCfg {
+		analyses = analyseComplexity(analyses, content, cfg)
+
 		for _, block := range cfg.Blocks {
 			if len(block.Before) != 0 || cfg.Start == block {
 				continue
@@ -92,6 +95,35 @@ func analyseCfg(cfgState *cfg.State, analyses []Analysis, buildAnalysis func(str
 			}
 		}
 	}
+
+	return analyses
+}
+
+func analyseComplexity(analyses []Analysis, content string, cfg *cfg.FunctionCFG) []Analysis {
+	complexity := cfg.CalculateCyclomaticComplexity()
+	if complexity <= 10 {
+		return analyses
+	}
+
+	var level string
+	var severity int
+
+	if complexity <= 20 {
+		level = "Moderate"
+		severity = AnalysisSeverity.Warning
+	} else if complexity <= 50 {
+		level = "High"
+		severity = AnalysisSeverity.Error
+	} else {
+		level = "Very high"
+		severity = AnalysisSeverity.Error
+	}
+
+	message := fmt.Sprintf("%v complexity: %v", level, cfg.CalculateCyclomaticComplexity())
+
+	analysis := newAnalysisFromFileContent(content, "complexity", cfg.Node, severity, message, nil)
+	analysis.Range.End = analysis.Range.Start
+	analyses = append(analyses, analysis)
 
 	return analyses
 }

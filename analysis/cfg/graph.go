@@ -2,6 +2,7 @@ package cfg
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 	"ts_inspector/ast/walk"
@@ -38,8 +39,10 @@ type Block struct {
 
 type FunctionCFG struct {
 	Blocks []*Block
-	Start  *Block
 	End    *Block
+	Node   *sitter.Node
+	Start  *Block
+	Type   string
 }
 
 type State struct {
@@ -60,6 +63,33 @@ func newState(content []byte) *State {
 		continueStack: *continueStack,
 		cfgStack:      *cfgStack,
 		content:       content,
+	}
+}
+
+func (b *Block) countDownwardEdges(seen map[*Block]bool) int {
+	seen[b] = true
+	count := len(b.After)
+
+	for _, a := range b.After {
+		if seen[a] == true {
+			continue
+		}
+
+		count += a.countDownwardEdges(seen)
+	}
+
+	return count
+}
+
+func (b *Block) getDownwardNodes(blocks map[*Block]bool) {
+	blocks[b] = true
+
+	for _, a := range b.After {
+		if blocks[a] == true {
+			continue
+		}
+
+		a.getDownwardNodes(blocks)
 	}
 }
 
@@ -105,6 +135,23 @@ func (b *Block) hasConstantTrue(content []byte) bool {
 	}
 
 	return hasConstantTrue(node, content)
+}
+
+func (b *Block) CalculateCyclomaticComplexity() int {
+	return b.CountDownwardEdges() - b.CountDownwardNodes() + 2
+}
+
+func (b *Block) CountDownwardEdges() int {
+	seen := map[*Block]bool{}
+
+	return b.countDownwardEdges(seen)
+}
+
+func (b *Block) CountDownwardNodes() int {
+	blocks := map[*Block]bool{}
+	b.getDownwardNodes(blocks)
+
+	return len(slices.Collect(maps.Keys(blocks)))
 }
 
 func (s *State) cfg() *FunctionCFG {
@@ -161,6 +208,18 @@ func (cfg *FunctionCFG) AddBlock(label string) *Block {
 	return &block
 }
 
+func (cfg *FunctionCFG) CalculateCyclomaticComplexity() int {
+	return cfg.Start.CalculateCyclomaticComplexity()
+}
+
+func (cfg *FunctionCFG) CountDownwardEdges() int {
+	return cfg.Start.CountDownwardEdges()
+}
+
+func (cfg *FunctionCFG) CountDownwardNodes() int {
+	return cfg.Start.CountDownwardNodes()
+}
+
 func (state *State) AddInstruction(kind InstructionKind, left string, node *sitter.Node, right string, content []byte) {
 	if len(state.current.After) != 0 {
 		current := state.cfg().AddBlock("Continuation")
@@ -174,7 +233,9 @@ func (state *State) AddInstruction(kind InstructionKind, left string, node *sitt
 type visitorFunction = func(state *State, node *sitter.Node, content []byte)
 
 var visitMap = map[string]visitorFunction{
+	"arguments":            handleNamedChildren,
 	"arrow_function":       handleFunction,
+	"await_expression":     handleNamedChildren,
 	"break_statement":      handleBreak,
 	"call_expression":      handleCall,
 	"class_declaration":    handleClass,
@@ -186,7 +247,9 @@ var visitMap = map[string]visitorFunction{
 	"function_declaration": handleFunction,
 	"if_statement":         handleIf,
 	"lexical_declaration":  handleVariableDeclaration,
+	"member_expression":    handleNamedChildren,
 	"method_definition":    handleFunction,
+	"new_expression":       handleNamedChildren,
 	"program":              handleProgram,
 	"return_statement":     handleReturn,
 	"statement_block":      handleNamedChildren,
@@ -237,7 +300,7 @@ func handleNamedChildren(state *State, node *sitter.Node, content []byte) {
 }
 
 func handleProgram(state *State, node *sitter.Node, content []byte) {
-	cfg := &FunctionCFG{Blocks: []*Block{}}
+	cfg := &FunctionCFG{Blocks: []*Block{}, Node: node, Type: "program"}
 	state.AllCfg = append(state.AllCfg, cfg)
 	state.cfgStack.Push(cfg)
 
@@ -299,6 +362,7 @@ func handleContinue(state *State, node *sitter.Node, content []byte) {
 
 func handleCall(state *State, node *sitter.Node, content []byte) {
 	state.AddInstruction(InstructionCall, "", node, "", content)
+	handleNamedChildren(state, node, content)
 }
 
 func handleFunction(state *State, node *sitter.Node, content []byte) {
@@ -313,7 +377,7 @@ func handleFunction(state *State, node *sitter.Node, content []byte) {
 
 	state.AddInstruction(InstructionAssign, nameContent, node, "", content)
 
-	cfg := &FunctionCFG{Blocks: []*Block{}}
+	cfg := &FunctionCFG{Blocks: []*Block{}, Node: node, Type: "function"}
 	state.AllCfg = append(state.AllCfg, cfg)
 	state.cfgStack.Push(cfg)
 
@@ -485,11 +549,9 @@ func handleForIn(state *State, node *sitter.Node, content []byte) {
 
 	build(state, bodyNode, content)
 
-	if len(state.current.After) != 0 {
-		skipsAfterBlock := !slices.Contains(state.current.After, afterBlock)
-		if !skipsAfterBlock {
-			state.cfg().AddEdge(state.current, afterBlock)
-		}
+	if len(state.current.After) == 0 {
+		// If the loop doesn't break/return
+		state.cfg().AddEdge(state.current, nextBlock)
 	}
 
 	state.current = afterBlock
@@ -512,6 +574,8 @@ func handleVariableDeclaration(state *State, node *sitter.Node, content []byte) 
 
 	name := nameNode.Content(content)
 	value := valueNode.Content(content)
+
+	build(state, valueNode, content)
 
 	state.AddInstruction(InstructionAssign, name, node, value, content)
 }

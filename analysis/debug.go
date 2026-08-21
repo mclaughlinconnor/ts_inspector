@@ -2,6 +2,7 @@ package analysis
 
 import (
 	"fmt"
+	"ts_inspector/analysis/cfg"
 	"ts_inspector/parser"
 	"ts_inspector/utils"
 )
@@ -48,6 +49,21 @@ func debug(_ *parser.State, file *parser.File) []Analysis {
 		message := "Found " + variable.Kind + " `" + variable.Name + "` with value `" + str + "`"
 
 		analyses = append(analyses, newAnalysis("variable", utils.Range{Start: startPosition, End: endPosition}, AnalysisSeverity.Warning, message, nil))
+	}
+
+	if file.Snapshot().Filetype == "typescript" {
+		cfgState, _ := cfg.BuildGraphFromFile(file)
+		for _, cfg := range cfgState.AllCfg {
+			if cfg.Type == "program" {
+				continue
+			}
+
+			message := fmt.Sprintf("Complexity: %v (%v edges, %v nodes)", cfg.CalculateCyclomaticComplexity(), cfg.CountDownwardEdges(), cfg.CountDownwardNodes())
+
+			analysis := newAnalysisFromFileNode(file, "complexity", cfg.Node, AnalysisSeverity.Warning, message, nil)
+			analysis.Range.End = analysis.Range.Start
+			analyses = append(analyses, analysis)
+		}
 	}
 
 	if file.Snapshot().Filetype != "pug" {
