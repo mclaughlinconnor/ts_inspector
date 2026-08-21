@@ -3,6 +3,7 @@ package parser
 import (
 	"fmt"
 	"iter"
+	"maps"
 	"strings"
 	"sync"
 	"ts_inspector/utils"
@@ -45,8 +46,10 @@ var ProtectedAccessibility = accessibility{"protected"}
 var PublicAccessibility = accessibility{"public"}
 
 func (d *Definitions) All() iter.Seq2[string, Definition] {
+	data := maps.Clone(d.data)
+
 	return func(yield func(string, Definition) bool) {
-		for i, v := range d.data {
+		for i, v := range data {
 			if !yield(i, *v) {
 				return
 			}
