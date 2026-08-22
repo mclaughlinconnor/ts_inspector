@@ -156,3 +156,55 @@ func GetTagAtOffset(content string, offset uint32) (Tag, bool) {
 
 	return Tag{}, false
 }
+
+func GetTagAtOffset2(content string, offset uint32) (*Tag, bool) {
+	c := []byte(content)
+
+	root, err := utils.ParseText(c, utils.Pug)
+	if err != nil {
+		return nil, false
+	}
+
+	tag := HasNodeInHierarchy(root, "tag", offset, offset)
+	if tag == nil {
+		return nil, false
+	}
+
+	cursorOnTagName := false
+	foundTag := Tag{Name: "", Attributes: []string{}}
+
+	for i := range tag.NamedChildCount() {
+		child := tag.NamedChild(int(i))
+		if child == nil {
+			continue
+		}
+
+		if child.Type() == "tag_name" {
+			cursorOnTagName = cursorOnTagName || (child.StartByte() <= offset && offset <= child.EndByte())
+			tagName := child.Content([]byte(content))
+			foundTag.Name = tagName
+		}
+
+		if (child.Type() == "class" || child.Type() == "id") && foundTag.Name == "" {
+			foundTag.Name = "div"
+		}
+
+		if child.Type() == "attributes" {
+			for j := range child.NamedChildCount() {
+				attribute := child.NamedChild(int(j))
+				for k := range attribute.NamedChildCount() {
+					attributeChild := attribute.NamedChild(int(k))
+					if attributeChild.Type() == "attribute_name" {
+						foundTag.Attributes = append(foundTag.Attributes, attributeChild.Content(c))
+					}
+				}
+			}
+		}
+	}
+
+	if foundTag.Name == "" {
+		return nil, false
+	}
+
+	return &foundTag, cursorOnTagName
+}

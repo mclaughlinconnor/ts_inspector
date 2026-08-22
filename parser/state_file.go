@@ -2,6 +2,7 @@ package parser
 
 import (
 	"fmt"
+	"iter"
 	"log"
 	"maps"
 	"net/url"
@@ -41,6 +42,22 @@ type File struct {
 	state fileState
 }
 
+func (f *File) Components() iter.Seq2[int, *Class] {
+	classes := f.Snapshot().Classes
+
+	return func(yield func(int, *Class) bool) {
+		for i, c := range classes {
+			if !c.HasComponent() {
+				continue
+			}
+
+			if !yield(i, c) {
+				return
+			}
+		}
+	}
+}
+
 func (f *File) Filename() string { return FilenameFromUri(f.Snapshot().URI) }
 
 func (f *File) FindImportPath(identifier string) string {
@@ -53,6 +70,16 @@ func (f *File) FindImportPath(identifier string) string {
 	}
 
 	return ""
+}
+
+func (f *File) GetAvailableThings(state *State) []*Class {
+	availableThings := []*Class{}
+
+	for _, c := range f.Components() {
+		availableThings = append(availableThings, c.GetAvailableThings(state)...)
+	}
+
+	return availableThings
 }
 
 func (f *File) GetDependencies(state *State) []string {
@@ -266,6 +293,14 @@ func (f *File) GetTcbUri() (string, error) {
 	parsedUrl.Path = strings.TrimSuffix(parsedUrl.Path, path.Ext(parsedUrl.Path)) + interfaces.TCB_FILENAME_SUFFIX
 
 	return parsedUrl.String(), nil
+}
+
+func (f *File) IsPug() bool {
+	return f.Snapshot().Filetype == "pug"
+}
+
+func (f *File) IsTypeScript() bool {
+	return f.Snapshot().Filetype == "typescript"
 }
 
 func (f *File) Postprocess(state *State) {

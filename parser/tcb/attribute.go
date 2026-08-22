@@ -71,7 +71,7 @@ func (a *Attribute) IsStructuralInput() bool {
 }
 
 func (a *Attribute) IsOutput() bool {
-	return strings.HasPrefix(a.Name, "[") && strings.HasSuffix(a.Name, "]")
+	return strings.HasPrefix(a.Name, "(") && strings.HasSuffix(a.Name, ")")
 }
 
 func (a *Attribute) MatchesSelector(selector string, ignoreTag bool, requiresAttributeComponent bool) (bool, *ast.Selector) {

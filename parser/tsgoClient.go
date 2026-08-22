@@ -235,7 +235,7 @@ func (t *TsGo) GetTypeOfSymbol(symbol SymbolID) *TypeResponse {
 	}
 }
 
-func (t *TsGo) GetTypeAtPosition(uri string, offset uint32) *TypeResponse {
+func (t *TsGo) GetTypeAtPosition(uri string, offset int) *TypeResponse {
 	documentIdentifier := DocumentIdentifier{URI: uri}
 	t.UpdateSnapshot("", []DocumentIdentifier{documentIdentifier})
 
@@ -246,7 +246,7 @@ func (t *TsGo) GetTypeAtPosition(uri string, offset uint32) *TypeResponse {
 			Project:  t.projectHandle,
 			Snapshot: t.snapshotHandle,
 			File:     documentIdentifier,
-			Position: offset,
+			Position: uint32(offset),
 		},
 	}
 

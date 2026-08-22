@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"ts_inspector/ast"
 	"ts_inspector/interfaces"
 
 	sitter "github.com/smacker/go-tree-sitter"
@@ -490,6 +491,14 @@ func (c *Class) GetAllDefinitions() []ClassedDefinition {
 	return c.FilterAllDefinitions(func(d ClassedDefinition) bool { return true })
 }
 
+func (c *Class) GetAvailableThings(state *State) []*Class {
+	if !c.HasComponent() {
+		return []*Class{}
+	}
+
+	return c.Snapshot().Angular.Component.GetAvailableThings(state)
+}
+
 func (c *Class) GetClassedDefinitions() []ClassedDefinition {
 	definitions := c.Snapshot().Definitions
 	classedDefinitions := make([]ClassedDefinition, definitions.Len())
@@ -660,6 +669,24 @@ func (c *Class) ResetThings() {
 	if c.HasModule() {
 		c.Snapshot().Angular.Module.ResetExportedThings()
 	}
+}
+
+func (c *Class) SelectorsMatchingTag(tag *ast.Tag) ([]*ast.Selector, error) {
+	matchingSelectors := []*ast.Selector{}
+
+	selectors := c.GetSelectors()
+	for _, selector := range selectors {
+		matches, s, err := tag.MatchesSelector(selector)
+		if err != nil {
+			return []*ast.Selector{}, err
+		}
+
+		if matches {
+			matchingSelectors = append(matchingSelectors, s)
+		}
+	}
+
+	return matchingSelectors, nil
 }
 
 func (c *Class) SetUsageAccessType(name string, access access) {

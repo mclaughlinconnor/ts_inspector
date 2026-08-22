@@ -147,3 +147,19 @@ func handleMessage(logger *log.Logger, writer *utils.Writer, state *parser.State
 		handler(writer, logger, contents)
 	}
 }
+
+func emptyResponse(writer *utils.Writer, requestId int) {
+	utils.WriteResponse(writer, interfaces.EmptyResponse{Result: nil, ResponseMessage: interfaces.ResponseMessage{ID: &requestId, RPC: "2.0"}})
+}
+
+func logError(writer *utils.Writer, logger *log.Logger, err error) {
+	notification := interfaces.BuildMessageNotification(err.Error(), interfaces.MessageType.Error)
+	utils.WriteResponse(writer, notification)
+
+	logger.Println(err)
+}
+
+func logErrorWithResponse(writer *utils.Writer, logger *log.Logger, err error, requestId int) {
+	logError(writer, logger, err)
+	emptyResponse(writer, requestId)
+}
