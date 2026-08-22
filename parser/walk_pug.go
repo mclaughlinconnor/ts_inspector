@@ -59,7 +59,7 @@ func IndexPugFromTypeScript(state *State, class *Class, templateFileName string)
 	class.Snapshot().Angular.EnsureComponent()
 	class.Snapshot().Angular.Component.TemplateUrlFile = file
 
-	err = extractPugUsages(class, []byte(file.Snapshot().Content))
+	err = extractPugUsages(state, class, []byte(file.Snapshot().Content))
 	if err != nil {
 		return err
 	}
@@ -95,24 +95,24 @@ func extractIndentifierUsages(text []byte, class *Class) error {
 	return nil
 }
 
-func extractPugUsages(class *Class, content []byte) error {
+func extractPugUsages(state *State, class *Class, content []byte) error {
 	pugFuncMap := walk.NewVisitorFuncsMap[*Class]()
 	pugFuncMap["attribute"] = visitAttribute(content)
 	pugFuncMap["content"] = visitContent(content)
-	pugFuncMap["tag_name"] = func(node *sitter.Node, state *Class, indexInParent int, _ walk.VisitorFuncMap[*Class]) (*Class, error) {
-		if state.Snapshot().Angular == nil {
-			logger.Printf("Somehow class.Angular has ended up nil. I have no idea how. Class: %v\n", state.Snapshot().Name)
-			return state, nil
+	pugFuncMap["tag_name"] = func(node *sitter.Node, classState *Class, indexInParent int, _ walk.VisitorFuncMap[*Class]) (*Class, error) {
+		if classState.Snapshot().Angular == nil {
+			state.Logger.Printf("Somehow class.Angular has ended up nil. I have no idea how. Class: %v\n", classState.Snapshot().Name)
+			return classState, nil
 		}
 
-		if state.Snapshot().Angular.Component == nil {
-			logger.Printf("Somehow class.Angular.Component has ended up nil. I have no idea how. Class: %v\n", state.Snapshot().Name)
-			return state, nil
+		if classState.Snapshot().Angular.Component == nil {
+			state.Logger.Printf("Somehow class.Angular.Component has ended up nil. I have no idea how. Class: %v\n", classState.Snapshot().Name)
+			return classState, nil
 		}
 
-		state.Snapshot().Angular.Component.AddTagUsage(node, node.Content(content))
+		classState.Snapshot().Angular.Component.AddTagUsage(node, node.Content(content))
 
-		return state, nil
+		return classState, nil
 	}
 
 	root, err := utils.GetRootNode(false, string(content), utils.Pug)
@@ -137,7 +137,7 @@ func indexPug(state *State, file *File) error {
 		if class.GetTemplateFile() == file {
 			class.DropTemplateUsages()
 
-			err := extractPugUsages(class, []byte(file.Snapshot().Content))
+			err := extractPugUsages(state, class, []byte(file.Snapshot().Content))
 			if err != nil {
 				return err
 			}

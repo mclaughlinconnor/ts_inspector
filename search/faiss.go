@@ -27,7 +27,7 @@ type Vector struct {
 }
 
 func AddToFAISS(vectors []Vector) {
-	if !config.SemanticSearchEnableFaiss {
+	if !config.GetConfig().SemanticSearch.EnableFaiss {
 		return
 	}
 
@@ -46,7 +46,7 @@ func AddToFAISS(vectors []Vector) {
 }
 
 func SearchFAISS(queryText string, resultsCount int64) ([]Result, error) {
-	if !config.SemanticSearchEnableFaiss || !canUseEmbeddings() {
+	if !config.GetConfig().SemanticSearch.EnableFaiss || !canUseEmbeddings() {
 		return []Result{}, nil
 	}
 

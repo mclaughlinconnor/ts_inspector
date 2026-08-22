@@ -48,7 +48,7 @@ func InitActions() {
 	registerAction(Action{MakeAsync, "Make surrounding method async"})
 	registerAction(Action{RearrangeClass, "Rearrange class"})
 
-	if config.Debug {
+	if config.GetConfig().Debug {
 		registerAction(Action{SaveDotForCfg, "Save dot graph for CFG"})
 	}
 }

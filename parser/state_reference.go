@@ -95,7 +95,7 @@ func (r *Reference) Resolve(state *State) {
 		for _, extension := range extensions {
 			importedFile, err = resolveProjectImportPath(state, r.File, ip+extension)
 			if err != nil {
-				logger.Println(err)
+				state.Logger.Println(err)
 				break
 			}
 
@@ -108,7 +108,7 @@ func (r *Reference) Resolve(state *State) {
 			for _, extension := range extensions {
 				importedFile, err = resolveNodeModulesImportPath(state, r.File, ip+extension)
 				if err != nil {
-					logger.Println(err)
+					state.Logger.Println(err)
 					break
 				}
 				if importedFile != nil {
@@ -157,7 +157,7 @@ func resolveIdents(idents []string, file *File, state *State) []*Reference {
 				for _, extension := range extensions {
 					importedFile, err := resolveProjectImportPath(state, file, ip+extension)
 					if err != nil {
-						logger.Println(err)
+						state.Logger.Println(err)
 						break
 					}
 
@@ -170,7 +170,7 @@ func resolveIdents(idents []string, file *File, state *State) []*Reference {
 					for _, extension := range extensions {
 						importedFile, err := resolveNodeModulesImportPath(state, file, ip+extension)
 						if err != nil {
-							logger.Println(err)
+							state.Logger.Println(err)
 							break
 						}
 
@@ -196,7 +196,7 @@ func resolveIdents(idents []string, file *File, state *State) []*Reference {
 			}
 		})
 
-		if !config.Concurrency {
+		if !config.GetConfig().Concurrency {
 			wg.Wait()
 		}
 	}

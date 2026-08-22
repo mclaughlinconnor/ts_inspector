@@ -79,7 +79,7 @@ LOOP:
 		}
 	}
 
-	if config.TsGo {
+	if config.GetConfig().TsGo.Enable {
 		sb = handleTsGoHover(sb, state, file, int(cursorOffset))
 	}
 

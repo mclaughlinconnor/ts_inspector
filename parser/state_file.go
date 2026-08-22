@@ -20,8 +20,6 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
-var logger = utils.GetLogger("parser_state")
-
 type fileState struct {
 	Classes            []*Class
 	Content            string
@@ -141,7 +139,7 @@ func (f *File) GetInterestingPoints() []InterestingPoint {
 	basefilepath := path.Base(filepath)
 	filename := basefilepath[0 : len(basefilepath)-len(path.Ext(basefilepath))]
 
-	if config.SemanticSearchIncludeFileInterestingPoints {
+	if config.GetConfig().SemanticSearch.IncludeFileInterestingPoints {
 		interestingPoint := InterestingPoint{Text: filepath, Kind: interfaces.SymbolKind.File}
 		interestingPoint.SetPosition(0, 0)
 		interestingPoint.SetFile(content, uri)
@@ -318,13 +316,13 @@ func (f *File) ResolveDynamicallyImportedFiles(state *State) {
 		wg.Go(func() {
 			absolutePath, err := filepath.Abs(path.Join(utils.PathDir(FilenameFromUri(file.URI)), importPath))
 			if err != nil {
-				logger.Println(err)
+				state.Logger.Println(err)
 				return
 			}
 
 			resolvedFile, err := getFileByPath(state, absolutePath)
 			if err != nil {
-				logger.Println(err)
+				state.Logger.Println(err)
 				return
 			}
 
@@ -335,7 +333,7 @@ func (f *File) ResolveDynamicallyImportedFiles(state *State) {
 			dynamicImportFiles[i] = resolvedFile
 		})
 
-		if !config.Concurrency {
+		if !config.GetConfig().Concurrency {
 			wg.Wait()
 		}
 	}

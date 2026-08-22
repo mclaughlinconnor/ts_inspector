@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"ts_inspector/config"
 	"ts_inspector/utils"
 )
 
@@ -33,12 +34,11 @@ func getCacheDir() (string, error) {
 }
 
 func extractEmbeddedModel() (string, error) {
-	cacheDir, err := getCacheDir()
+	dir, err := config.GetCacheDir("models")
 	if err != nil {
-		return "", err
+		return "", nil
 	}
 
-	dir := filepath.Join(cacheDir, "models")
 	path := filepath.Join(dir, modelName)
 
 	_, err = os.Stat(path)

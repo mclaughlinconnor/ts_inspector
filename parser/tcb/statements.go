@@ -168,7 +168,7 @@ func (s *Statement) TsOffsetToRange(content string, startOffset int, endOffset i
 	if part.IsReal() {
 		start = utils.GetPositionForOffset(content, uint32(*part.PugStartOffset))
 		end = utils.GetPositionForOffset(content, uint32(*part.PugEndOffset))
-	} else if config.Debug {
+	} else if config.GetConfig().Debug {
 		start = utils.ZeroPosition()
 		end = utils.ZeroPosition()
 	} else {

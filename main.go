@@ -27,10 +27,11 @@ import (
 )
 
 func main() {
+	config.InitConfig()
 
 	var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
 
-	if config.DelayStart {
+	if config.GetConfig().DelayStart {
 		time.Sleep(5 * time.Second)
 	}
 
@@ -54,7 +55,7 @@ func main() {
 	analysis.InitAnalysers()
 	tcb.InitTcb()
 
-	if config.Debug {
+	if config.GetConfig().Debug {
 		go func() {
 			err := http.ListenAndServe("localhost:6060", nil)
 			if err != nil {
@@ -64,7 +65,7 @@ func main() {
 	}
 
 	args := flag.Args()
-	if config.LSP && len(args) == 0 {
+	if config.GetConfig().LSP.Enable && len(args) == 0 {
 		startLsp()
 		return
 	}
@@ -73,9 +74,11 @@ func main() {
 		return
 	}
 
-	logger := utils.GetLogger("indexer")
+	state, err := parser.CreateState()
+	if err != nil {
+		panic(err)
+	}
 
-	state := parser.CreateState()
 	state.SetTcbGenerator(func(s *parser.State, c *parser.Class, r *sitter.Node, co []byte) (string, error) {
 		tcbBlock, err := tcb.GenerateTcb(s, c, r, co)
 		if err != nil {
@@ -87,14 +90,14 @@ func main() {
 
 	filenames, _, err := traversetypescriptfiles.Index(args[0])
 	if err != nil {
-		logger.Fatal(err)
+		state.Logger.Fatal(err)
 	}
 
 	for _, filename := range filenames {
-		logger.Println(filename)
+		state.Logger.Println(filename)
 		err := parser.IndexFileFromIndexer(&state, filename, true)
 		if err != nil {
-			logger.Fatal(err)
+			state.Logger.Fatal(err)
 		}
 	}
 
@@ -103,7 +106,7 @@ func main() {
 	search.InitSearch()
 	search.IndexState(&state)
 
-	logger.Println("Done")
+	state.Logger.Println("Done")
 }
 
 func startLsp() {

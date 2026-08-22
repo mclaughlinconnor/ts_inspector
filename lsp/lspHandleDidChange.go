@@ -27,7 +27,7 @@ func lspHandleDidChange(writer *utils.Writer, logger *log.Logger, state *parser.
 			return
 		}
 
-		if config.TsGo {
+		if config.GetConfig().TsGo.Enable {
 			state.GetTsGo().UpdateSnapshot("", []parser.DocumentIdentifier{{URI: file.Snapshot().URI}})
 		}
 

@@ -28,7 +28,7 @@ func DeleteInterestingFromUri(rootPath string) error {
 }
 
 func AddToSqlite(table string, rows []row, columns []string, ignoreConflicts []string, appendArgs func([]any, row) []any) error {
-	if !config.SemanticSearchEnableSqlite {
+	if !config.GetConfig().SemanticSearch.EnableSqlite {
 		return nil
 	}
 
@@ -84,7 +84,7 @@ func AddToSqlite(table string, rows []row, columns []string, ignoreConflicts []s
 }
 
 func SearchSqlite(queryText string, resultsCount int64) ([]Result, error) {
-	if !config.SemanticSearchEnableSqlite || !canUseEmbeddings() {
+	if !config.GetConfig().SemanticSearch.EnableSqlite || !canUseEmbeddings() {
 		return []Result{}, nil
 	}
 

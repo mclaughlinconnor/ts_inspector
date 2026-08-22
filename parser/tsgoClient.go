@@ -37,7 +37,7 @@ type TsGo struct {
 
 func StartTsGo(state *State) (*TsGo, error) {
 	args := []string{
-		config.TsGoPath,
+		config.GetConfig().TsGo.BinaryPath,
 		"--api",
 		"--async",
 		"--callbacks",
@@ -376,7 +376,7 @@ func (t *TsGo) handleRequest(method string, contents []byte) {
 	case "readFile":
 		{
 			r := utils.TryParseRequest[ReadFileRequest](t.logger, contents)
-			if config.TsGoExperimentalConcurrentRequestHandling {
+			if config.GetConfig().TsGo.ExperimentalConcurrentRequestHandling {
 				go tsgoHandleReadFile(t, r)
 			} else {
 				tsgoHandleReadFile(t, r)
@@ -385,7 +385,7 @@ func (t *TsGo) handleRequest(method string, contents []byte) {
 	case "fileExists":
 		{
 			r := utils.TryParseRequest[FileExistsRequest](t.logger, contents)
-			if config.TsGoExperimentalConcurrentRequestHandling {
+			if config.GetConfig().TsGo.ExperimentalConcurrentRequestHandling {
 				go tsgoHandleFileExists(t, r)
 			} else {
 				tsgoHandleFileExists(t, r)
@@ -394,7 +394,7 @@ func (t *TsGo) handleRequest(method string, contents []byte) {
 	case "getAccessibleEntries":
 		{
 			r := utils.TryParseRequest[GetAccessibleEntriesRequest](t.logger, contents)
-			if config.TsGoExperimentalConcurrentRequestHandling {
+			if config.GetConfig().TsGo.ExperimentalConcurrentRequestHandling {
 				go tsgoHandleGetAccessibleEntries(t, r)
 			} else {
 				tsgoHandleGetAccessibleEntries(t, r)

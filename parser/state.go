@@ -5,7 +5,6 @@ import (
 	"maps"
 	"sync"
 	"ts_inspector/config"
-	"ts_inspector/utils"
 
 	sitter "github.com/smacker/go-tree-sitter"
 )
@@ -26,12 +25,17 @@ type State struct {
 	tsgo          *TsGo
 }
 
-func CreateState() State {
+func CreateState() (State, error) {
+	logger, err := config.GetLogger("ts_inspector")
+	if err != nil {
+		return State{}, err
+	}
+
 	return State{
-		Logger:  utils.GetLogger("ts_inspector"),
+		Logger:  logger,
 		classes: map[string]*Class{},
 		files:   map[string]*File{},
-	}
+	}, nil
 }
 
 func (s *State) GetFile(filename string) (*File, bool) {
@@ -136,7 +140,7 @@ func (s *State) GetTsConfigFiles() []string {
 }
 
 func (s *State) GetTsGo() *TsGo {
-	if !config.TsGo {
+	if !config.GetConfig().TsGo.Enable {
 		s.Logger.Fatalln("You may not call \"GetTsGo\" when the TsGo integration is disabled")
 	}
 
@@ -153,7 +157,7 @@ func (s *State) Postprocess() {
 	for _, file := range s.GetFiles() {
 		wg.Go(func() { file.Postprocess(s) })
 
-		if !config.Concurrency {
+		if !config.GetConfig().Concurrency {
 			wg.Wait()
 		}
 	}

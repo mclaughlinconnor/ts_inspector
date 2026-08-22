@@ -142,7 +142,7 @@ func (t *Tag) renderAttributes() error {
 		}
 	}
 
-	if config.TcbExperimentalTagBasedAttributeRendering {
+	if config.GetConfig().Tcb.ExperimentalTagBasedAttributeRendering {
 		return renderAttributes(&allAttributes, t)
 	}
 

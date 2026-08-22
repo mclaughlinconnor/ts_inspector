@@ -156,11 +156,11 @@ func InitAnalysers() {
 	registerAnalyser(analyser{exec: unnecessaryPublic, expensive: false, name: "unnecessaryPublic"})
 	registerAnalyser(analyser{exec: unusedAngular, expensive: false, name: "unusedAngular"})
 
-	if config.Debug {
+	if config.GetConfig().Debug {
 		registerAnalyser(analyser{exec: debug, expensive: true, name: "debug"})
 	}
 
-	if config.TsGo {
+	if config.GetConfig().TsGo.Enable {
 		registerAnalyser(analyser{exec: typescript, expensive: true, name: "typescript"})
 	}
 

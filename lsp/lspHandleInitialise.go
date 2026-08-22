@@ -46,7 +46,7 @@ func newInitializeResponse(id int) interfaces.InitializeResponse {
 				HoverProvider:           true,
 				ReferencesProvider:      true,
 				TextDocumentSync:        interfaces.TextDocumentSyncKind.Full,
-				WorkspaceSymbolProvider: config.SemanticSearch,
+				WorkspaceSymbolProvider: config.GetConfig().SemanticSearch.Enable,
 			},
 		},
 	}
@@ -69,7 +69,7 @@ func lspHandleInitialise(writer *utils.Writer, logger *log.Logger, state *parser
 
 	state.SetTsConfigFiles(tsconfigFiles)
 
-	if config.IndexingExperiementalParallelInitialIndexing {
+	if config.GetConfig().Indexing.ExperiementalParallelInitialIndexing {
 		eg := errgroup.Group{}
 
 		for _, filename := range filenames {
@@ -92,7 +92,7 @@ func lspHandleInitialise(writer *utils.Writer, logger *log.Logger, state *parser
 	lspReportProgress(writer, progressToken, "Postprocessing", -1)
 	state.Postprocess()
 
-	if config.SemanticSearch {
+	if config.GetConfig().SemanticSearch.Enable {
 		lspReportProgress(writer, progressToken, "Building search indexes", -1)
 		search.InitSearch()
 		search.IndexState(state)
@@ -106,7 +106,7 @@ func lspHandleInitialise(writer *utils.Writer, logger *log.Logger, state *parser
 }
 
 func initTsGo(state *parser.State, writer *utils.Writer, progressToken *interfaces.ProgressToken) {
-	if !config.TsGo {
+	if !config.GetConfig().TsGo.Enable {
 		return
 	}
 

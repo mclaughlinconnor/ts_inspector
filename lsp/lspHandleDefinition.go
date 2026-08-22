@@ -36,7 +36,7 @@ func lspHandleDefinition(writer *utils.Writer, logger *log.Logger, state *parser
 
 	locations = append(locations, ls...)
 
-	if config.TsGo {
+	if config.GetConfig().TsGo.Enable {
 		part := tcb.PugToTsLocation(state, file, int(offset), int(offset))
 
 		if part != nil {

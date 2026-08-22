@@ -140,7 +140,7 @@ func (c *Component) EnsureTemplate() {
 }
 
 func (c *Component) GetAvailableThings(state *State) []*Class {
-	if config.TsGoExperimentalThingCaching && c.things != nil {
+	if config.GetConfig().TsGo.ExperimentalThingCaching && c.things != nil {
 		return *c.things
 	}
 
@@ -254,7 +254,7 @@ func (m *Module) GetDeclaredThings(state *State) []*Class {
 }
 
 func (m *Module) GetExportedThings(state *State) []*Class {
-	if config.TsGoExperimentalThingCaching && m.exportedThings != nil {
+	if config.GetConfig().TsGo.ExperimentalThingCaching && m.exportedThings != nil {
 		return *m.exportedThings
 	}
 

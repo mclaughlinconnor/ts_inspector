@@ -22,7 +22,10 @@ var lspIdHandler map[int]func(*utils.Writer, *log.Logger, []byte) = map[int]func
 var lspPendingMessages [][]byte = [][]byte{}
 
 func Start() {
-	state := parser.CreateState()
+	state, err := parser.CreateState()
+	if err != nil {
+		panic(err)
+	}
 
 	state.SetTcbGenerator(func(s *parser.State, c *parser.Class, r *sitter.Node, co []byte) (string, error) {
 		tcbBlock, err := tcb.GenerateTcb(s, c, r, co)

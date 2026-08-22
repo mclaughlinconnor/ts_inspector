@@ -36,7 +36,7 @@ func cfgUnreachableBlock(state *parser.State, file *parser.File) ([]Analysis, er
 
 	buildPugAnalysis := func(tcbBlock *tcb.Statement) func(string, *sitter.Node, int) *Analysis {
 		return func(message string, node *sitter.Node, severity int) *Analysis {
-			r := tcbBlock.TsNodeToRange(file.Snapshot().Content, node, config.Debug)
+			r := tcbBlock.TsNodeToRange(file.Snapshot().Content, node, config.GetConfig().Debug)
 			if r == nil {
 				return nil
 			}

@@ -29,7 +29,7 @@ func lspHandleDidOpen(writer *utils.Writer, logger *log.Logger, state *parser.St
 
 		file.SetOpen()
 
-		if config.TsGo {
+		if config.GetConfig().TsGo.Enable {
 			state.GetTsGo().UpdateSnapshot("", []parser.DocumentIdentifier{{URI: file.Snapshot().URI}})
 		}
 

@@ -42,7 +42,7 @@ func typescript(state *parser.State, file *parser.File) ([]Analysis, error) {
 			continue
 		}
 
-		r := tcbBlock.TsOffsetToRange(file.Snapshot().Content, diagnostic.Pos, diagnostic.End, config.Debug)
+		r := tcbBlock.TsOffsetToRange(file.Snapshot().Content, diagnostic.Pos, diagnostic.End, config.GetConfig().Debug)
 		if r == nil {
 			continue
 		}

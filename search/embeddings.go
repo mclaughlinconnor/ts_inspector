@@ -235,7 +235,7 @@ func indexEmbeddings(interestingPoints []parser.InterestingPoint, ids []int64, r
 }
 
 func indexEmbeddingsFaiss(interestingPoints []parser.InterestingPoint, ids []int64) {
-	if len(interestingPoints) == 0 || !config.SemanticSearchEnableFaiss {
+	if len(interestingPoints) == 0 || !config.GetConfig().SemanticSearch.EnableFaiss {
 		return
 	}
 
@@ -252,7 +252,7 @@ func indexEmbeddingsFaiss(interestingPoints []parser.InterestingPoint, ids []int
 }
 
 func indexEmbeddingsSqlite(interestingPoints []parser.InterestingPoint, ids []int64, rootPath string) error {
-	if len(interestingPoints) == 0 || !config.SemanticSearchEnableSqlite {
+	if len(interestingPoints) == 0 || !config.GetConfig().SemanticSearch.EnableSqlite {
 		return nil
 	}
 

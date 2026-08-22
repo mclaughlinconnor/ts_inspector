@@ -23,7 +23,7 @@ const (
 var slab = util.MakeSlab(slab16Size, slab32Size)
 
 func AddToFZF(text string, labels int64) {
-	if !config.SemanticSearchEnableFzf {
+	if !config.GetConfig().SemanticSearch.EnableFzf {
 		return
 	}
 
@@ -32,7 +32,7 @@ func AddToFZF(text string, labels int64) {
 }
 
 func SearchFZF(queryText string, resultsCount int64) []Result {
-	if !config.SemanticSearchEnableFzf {
+	if !config.GetConfig().SemanticSearch.EnableFzf {
 		return []Result{}
 	}
 
