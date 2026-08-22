@@ -18,12 +18,6 @@ type Directive struct {
 	Statement     *Statement
 }
 
-type GenericDirectiveConstructor struct {
-	class      *parser.Class
-	identifier string
-	statement  *Statement
-}
-
 type Import struct {
 	Class      *parser.Class
 	File       *parser.File
@@ -37,16 +31,15 @@ type Pipe struct {
 }
 
 type Tcb struct {
-	Ast                          *Ast
-	Class                        *parser.Class
-	CurrentScope                 *Scope
-	Directives                   []*Directive
-	GenericDirectiveConstructors []*GenericDirectiveConstructor
-	Imports                      []*Import
-	Pipes                        []*Pipe
-	RootScope                    *Scope
-	State                        *parser.State
-	TagBoundaryPartStack         utils.Stack[*Part]
+	Ast                  *Ast
+	Class                *parser.Class
+	CurrentScope         *Scope
+	Directives           []*Directive
+	Imports              []*Import
+	Pipes                []*Pipe
+	RootScope            *Scope
+	State                *parser.State
+	TagBoundaryPartStack utils.Stack[*Part]
 }
 
 func (t *Tcb) AddAssignment(identifer string, identNode *sitter.Node, value *Statement) {
@@ -320,13 +313,7 @@ func (t *Tcb) ToString() *Statement {
 	return &tcb
 }
 
-func (t *Tcb) WithScope(builder func()) {
-	t.BeginScope()
-	builder()
-	t.EndScope()
-}
-
-func GenerateTcb(state *parser.State, template *parser.Class, root *sitter.Node, content []byte) *Statement {
+func GenerateTcb(state *parser.State, template *parser.Class, root *sitter.Node, content []byte) (*Statement, error) {
 	scope := &Scope{}
 
 	tcb := Tcb{
@@ -336,17 +323,21 @@ func GenerateTcb(state *parser.State, template *parser.Class, root *sitter.Node,
 		Class:        template,
 	}
 
-	ast := Parse(root, content, &tcb)
+	ast, err := Parse(root, content, &tcb)
+	if err != nil {
+		return nil, err
+	}
 
 	buildTemplatePreamble(&tcb)
 
-	tcb.WithScope(func() {
-		ast.Render()
-	})
+	tcb.BeginScope()
+	err = ast.Render()
+	if err != nil {
+		return nil, err
+	}
+	tcb.EndScope()
 
-	// TODO: need to handle state.Errors
-
-	return tcb.ToString()
+	return tcb.ToString(), nil
 }
 
 func InitTcb() {

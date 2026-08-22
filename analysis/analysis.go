@@ -1,6 +1,7 @@
 package analysis
 
 import (
+	"fmt"
 	"ts_inspector/analysis/cfg"
 	"ts_inspector/config"
 	"ts_inspector/parser"
@@ -10,8 +11,9 @@ import (
 )
 
 type analyser struct {
-	exec      func(state *parser.State, file *parser.File) []Analysis
+	exec      func(state *parser.State, file *parser.File) ([]Analysis, error)
 	expensive bool
+	name      string // mostly for logging
 }
 
 var Analysers = []analyser{}
@@ -23,24 +25,61 @@ func registerAnalyser(analyser analyser) {
 func Analyse(state *parser.State, file *parser.File, runExpensive bool) []Analysis {
 	analyses := []Analysis{}
 
+	var errors = []error{}
+
 	for _, analyser := range Analysers {
-		if runExpensive || !analyser.expensive {
-			analyses = append(analyses, analyser.exec(state, file)...)
+		if !runExpensive && analyser.expensive {
+			continue
 		}
+
+		a, err := analyser.exec(state, file)
+		if err != nil {
+			errors = append(errors, fmt.Errorf("%v: %w", analyser.name, err))
+		}
+
+		analyses = append(analyses, a...)
 	}
+
+	analyses = append(analyses, errorsToAnalyses(errors)...)
 
 	return analyses
 }
 
-func analyseClasses(file *parser.File, analyse func(class *parser.Class) []Analysis) []Analysis {
+func analyseClasses(file *parser.File, analyse func(class *parser.Class) ([]Analysis, error)) []Analysis {
 	analyses := []Analysis{}
+
+	var errors = []error{}
 
 	for _, class := range file.Snapshot().Classes {
 		if file.Snapshot().URI != class.Snapshot().File.Snapshot().URI {
 			continue
 		}
 
-		analyses = append(analyses, analyse(class)...)
+		a, err := analyse(class)
+		if err != nil {
+			errors = append(errors, fmt.Errorf("anonymous: %w", err))
+		}
+
+		analyses = append(analyses, a...)
+	}
+
+	analyses = append(analyses, errorsToAnalyses(errors)...)
+
+	return analyses
+}
+
+func errorToAnalyses(err error) Analysis {
+	return newAnalysis("analysisError", utils.ZeroRange(), AnalysisSeverity.Error, err.Error(), nil)
+}
+
+func errorsToAnalyses(errors []error) []Analysis {
+	if len(errors) == 0 {
+		return []Analysis{}
+	}
+
+	analyses := []Analysis{}
+	for _, err := range errors {
+		analyses = append(analyses, errorToAnalyses(err))
 	}
 
 	return analyses
@@ -104,25 +143,25 @@ func newAnalysisFromFileNode(file *parser.File, code string, node *sitter.Node, 
 }
 
 func InitAnalysers() {
-	registerAnalyser(analyser{exec: angularManyDecorators, expensive: false})
-	registerAnalyser(analyser{exec: angularMethodNoImplements, expensive: false})
-	registerAnalyser(analyser{exec: asyncAngular, expensive: false})
-	registerAnalyser(analyser{exec: cfgUnreachableBlock, expensive: true})
-	registerAnalyser(analyser{exec: constructorOnlyProperty, expensive: false})
-	registerAnalyser(analyser{exec: getterUsedInTemplate, expensive: false})
-	registerAnalyser(analyser{exec: illegalDeclaringModule, expensive: false})
-	registerAnalyser(analyser{exec: nonPublicAngular, expensive: false})
-	registerAnalyser(analyser{exec: recursiveTemplate, expensive: false})
-	registerAnalyser(analyser{exec: structuralDirectiveUnfoundKeyExprKey, expensive: true})
-	registerAnalyser(analyser{exec: unnecessaryPublic, expensive: false})
-	registerAnalyser(analyser{exec: unusedAngular, expensive: false})
+	registerAnalyser(analyser{exec: angularManyDecorators, expensive: false, name: "angularManyDecorators"})
+	registerAnalyser(analyser{exec: angularMethodNoImplements, expensive: false, name: "angularMethodNoImplements"})
+	registerAnalyser(analyser{exec: asyncAngular, expensive: false, name: "asyncAngular"})
+	registerAnalyser(analyser{exec: cfgUnreachableBlock, expensive: true, name: "cfgUnreachableBlock"})
+	registerAnalyser(analyser{exec: constructorOnlyProperty, expensive: false, name: "constructorOnlyProperty"})
+	registerAnalyser(analyser{exec: getterUsedInTemplate, expensive: false, name: "getterUsedInTemplate"})
+	registerAnalyser(analyser{exec: illegalDeclaringModule, expensive: false, name: "illegalDeclaringModule"})
+	registerAnalyser(analyser{exec: nonPublicAngular, expensive: false, name: "nonPublicAngular"})
+	registerAnalyser(analyser{exec: recursiveTemplate, expensive: false, name: "recursiveTemplate"})
+	registerAnalyser(analyser{exec: structuralDirectiveUnfoundKeyExprKey, expensive: true, name: "structuralDirectiveUnfoundKeyExprKey"})
+	registerAnalyser(analyser{exec: unnecessaryPublic, expensive: false, name: "unnecessaryPublic"})
+	registerAnalyser(analyser{exec: unusedAngular, expensive: false, name: "unusedAngular"})
 
 	if config.Debug {
-		registerAnalyser(analyser{exec: debug, expensive: true})
+		registerAnalyser(analyser{exec: debug, expensive: true, name: "debug"})
 	}
 
 	if config.TsGo {
-		registerAnalyser(analyser{exec: typescript, expensive: true})
+		registerAnalyser(analyser{exec: typescript, expensive: true, name: "typescript"})
 	}
 
 	cfg.InitBuilder()

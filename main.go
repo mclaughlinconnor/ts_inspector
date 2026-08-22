@@ -8,7 +8,6 @@ import (
 	"os/signal"
 	"runtime/pprof"
 	"syscall"
-
 	"time"
 	"ts_inspector/actions"
 	"ts_inspector/analysis"
@@ -41,7 +40,11 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		pprof.StartCPUProfile(f)
+		err = pprof.StartCPUProfile(f)
+		if err != nil {
+			log.Fatal(err)
+		}
+
 		defer pprof.StopCPUProfile()
 	}
 
@@ -53,7 +56,10 @@ func main() {
 
 	if config.Debug {
 		go func() {
-			http.ListenAndServe("localhost:6060", nil)
+			err := http.ListenAndServe("localhost:6060", nil)
+			if err != nil {
+				log.Fatal(err)
+			}
 		}()
 	}
 
@@ -70,11 +76,20 @@ func main() {
 	logger := utils.GetLogger("indexer")
 
 	state := parser.CreateState()
-	state.SetTcbGenerator(func(s *parser.State, c *parser.Class, r *sitter.Node, co []byte) string {
-		return tcb.GenerateTcb(s, c, r, co).ToString()
+	state.SetTcbGenerator(func(s *parser.State, c *parser.Class, r *sitter.Node, co []byte) (string, error) {
+		tcbBlock, err := tcb.GenerateTcb(s, c, r, co)
+		if err != nil {
+			return "", err
+		}
+
+		return tcbBlock.ToString(), nil
 	})
 
-	filenames, _ := traversetypescriptfiles.Index(args[0])
+	filenames, _, err := traversetypescriptfiles.Index(args[0])
+	if err != nil {
+		logger.Fatal(err)
+	}
+
 	for _, filename := range filenames {
 		logger.Println(filename)
 		err := parser.IndexFileFromIndexer(&state, filename, true)

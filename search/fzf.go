@@ -12,8 +12,8 @@ import (
 	"github.com/junegunn/fzf/src/util"
 )
 
-var fzfIndex []string
-var fzfLabels []int64
+var fzfIndex = []string{}
+var fzfLabels = []int64{}
 
 const (
 	slab16Size int = 100 * 1024 // 200KB * 32 = 12.8MB

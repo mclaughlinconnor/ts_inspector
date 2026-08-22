@@ -61,7 +61,12 @@ func lspHandleInitialise(writer *utils.Writer, logger *log.Logger, state *parser
 
 	state.SetRootUri(request.Params.RootUri)
 	lspReportProgress(writer, progressToken, "Indexing", -1)
-	filenames, tsconfigFiles := traversetypescriptfiles.Index(state.GetRootPath())
+	filenames, tsconfigFiles, err := traversetypescriptfiles.Index(state.GetRootPath())
+	if err != nil {
+		logger.Fatal(err)
+		return
+	}
+
 	state.SetTsConfigFiles(tsconfigFiles)
 
 	if config.IndexingExperiementalParallelInitialIndexing {
@@ -110,6 +115,7 @@ func initTsGo(state *parser.State, writer *utils.Writer, progressToken *interfac
 	t, err := parser.StartTsGo(state)
 	if err != nil {
 		state.Logger.Print(err)
+		return
 	}
 
 	state.SetTsGo(t)

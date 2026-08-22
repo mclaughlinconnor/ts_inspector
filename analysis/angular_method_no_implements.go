@@ -4,8 +4,8 @@ import (
 	"ts_inspector/parser"
 )
 
-func angularMethodNoImplements(_ *parser.State, file *parser.File) []Analysis {
-	return analyseClasses(file, func(class *parser.Class) []Analysis {
+func angularMethodNoImplements(_ *parser.State, file *parser.File) ([]Analysis, error) {
+	return analyseClasses(file, func(class *parser.Class) ([]Analysis, error) {
 		analyses := []Analysis{}
 
 	OUTER:
@@ -23,6 +23,6 @@ func angularMethodNoImplements(_ *parser.State, file *parser.File) []Analysis {
 			analyses = append(analyses, newAnalysisHighlightName(definition.Node, class, AnalysisSeverity.Error, "angular-method-no-implements", message))
 		}
 
-		return analyses
-	})
+		return analyses, nil
+	}), nil
 }

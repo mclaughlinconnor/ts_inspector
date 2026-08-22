@@ -20,7 +20,10 @@ func IndexPugFileFromLsp(state *State, uri string, content string, version int) 
 	}
 
 	file.ResetDeclarations()
-	indexPug(state, file)
+	err = indexPug(state, file)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -72,7 +75,7 @@ func extractIndentifierUsages(text []byte, class *Class) error {
 	}
 
 	funcMap := walk.NewVisitorFuncsMap[*Class]()
-	funcMap["identifier"] = func(node *sitter.Node, state *Class, indexInParent int, _ walk.VisitorFuncMap[*Class]) *Class {
+	funcMap["identifier"] = func(node *sitter.Node, state *Class, indexInParent int, _ walk.VisitorFuncMap[*Class]) (*Class, error) {
 		name := node.Content(text)
 
 		usageInstance := UsageInstance{Access: TemplateAccess, Class: state, Node: node}
@@ -81,9 +84,13 @@ func extractIndentifierUsages(text []byte, class *Class) error {
 		class.AppendUsage(name, &usageInstance)
 		class.AppendDefinitionUsage(name, &usageInstance)
 
-		return class
+		return class, nil
 	}
-	class = walk.WalkJavaScript(root, class, funcMap)
+
+	_, err = walk.WalkJavaScript(root, class, funcMap)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -92,20 +99,20 @@ func extractPugUsages(class *Class, content []byte) error {
 	pugFuncMap := walk.NewVisitorFuncsMap[*Class]()
 	pugFuncMap["attribute"] = visitAttribute(content)
 	pugFuncMap["content"] = visitContent(content)
-	pugFuncMap["tag_name"] = func(node *sitter.Node, state *Class, indexInParent int, _ walk.VisitorFuncMap[*Class]) *Class {
+	pugFuncMap["tag_name"] = func(node *sitter.Node, state *Class, indexInParent int, _ walk.VisitorFuncMap[*Class]) (*Class, error) {
 		if state.Snapshot().Angular == nil {
 			logger.Printf("Somehow class.Angular has ended up nil. I have no idea how. Class: %v\n", state.Snapshot().Name)
-			return state
+			return state, nil
 		}
 
 		if state.Snapshot().Angular.Component == nil {
 			logger.Printf("Somehow class.Angular.Component has ended up nil. I have no idea how. Class: %v\n", state.Snapshot().Name)
-			return state
+			return state, nil
 		}
 
 		state.Snapshot().Angular.Component.AddTagUsage(node, node.Content(content))
 
-		return state
+		return state, nil
 	}
 
 	root, err := utils.GetRootNode(false, string(content), utils.Pug)
@@ -113,7 +120,11 @@ func extractPugUsages(class *Class, content []byte) error {
 		return err
 	}
 
-	output := walk.WalkPug(root, class, pugFuncMap)
+	output, err := walk.WalkPug(root, class, pugFuncMap)
+	if err != nil {
+		return err
+	}
+
 	if output != class {
 		panic("ExtractPugUsages altered the class pointer")
 	}
@@ -137,7 +148,7 @@ func indexPug(state *State, file *File) error {
 }
 
 func visitAttribute(content []byte) walk.VisitorFunction[*Class] {
-	return func(node *sitter.Node, state *Class, indexInParent int, _ walk.VisitorFuncMap[*Class]) *Class {
+	return func(node *sitter.Node, state *Class, indexInParent int, _ walk.VisitorFuncMap[*Class]) (*Class, error) {
 		var nameNode *sitter.Node
 		var valueNode *sitter.Node
 
@@ -156,14 +167,14 @@ func visitAttribute(content []byte) walk.VisitorFunction[*Class] {
 		}
 
 		if nameNode == nil || valueNode == nil {
-			return state
+			return state, nil
 		}
 
 		attrName := nameNode.Content(content)
 		isAttr, err := utils.IsAngularAttribute([]byte(attrName))
 
 		if err != nil || !isAttr {
-			return state
+			return state, nil
 		}
 
 		value := []byte(valueNode.Content(content))
@@ -171,29 +182,31 @@ func visitAttribute(content []byte) walk.VisitorFunction[*Class] {
 			value = value[1 : len(value)-1]
 		}
 
-		extractIndentifierUsages(value, state)
+		err = extractIndentifierUsages(value, state)
+		if err != nil {
+			return state, nil
+		}
 
-		return state
+		return state, nil
 	}
 }
 
 func visitContent(content []byte) walk.VisitorFunction[*Class] {
-	return func(node *sitter.Node, state *Class, indexInParent int, _ walk.VisitorFuncMap[*Class]) *Class {
+	return func(node *sitter.Node, state *Class, indexInParent int, _ walk.VisitorFuncMap[*Class]) (*Class, error) {
 		tagContent := []byte(node.Content(content))
 
 		angularContentFuncMap := walk.NewVisitorFuncsMap[*Class]()
-		angularContentFuncMap["interpolation"] = func(node *sitter.Node, state *Class, indexInParent int, _ walk.VisitorFuncMap[*Class]) *Class {
+		angularContentFuncMap["interpolation"] = func(node *sitter.Node, state *Class, indexInParent int, _ walk.VisitorFuncMap[*Class]) (*Class, error) {
 			interpolation := []byte(node.Content(tagContent))
 			_ = extractIndentifierUsages(interpolation, state)
-			return state
+			return state, nil
 		}
 
 		angularRoot, err := utils.GetRootNode(false, string(tagContent), utils.AngularContent)
 		if err != nil {
-			return state
+			return state, nil
 		}
 
-		state = walk.WalkAngular(angularRoot, state, angularContentFuncMap)
-		return state
+		return walk.WalkAngular(angularRoot, state, angularContentFuncMap)
 	}
 }

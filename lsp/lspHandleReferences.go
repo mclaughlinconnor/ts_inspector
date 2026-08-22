@@ -9,9 +9,15 @@ import (
 )
 
 func lspHandleReferences(writer *utils.Writer, logger *log.Logger, state *parser.State, request interfaces.ReferenceRequest) {
-	file, _ := state.GetFile(parser.FilenameFromUri(request.Params.TextDocument.Uri))
-
 	locations := make([]interfaces.Location, 0)
+
+	file, found := state.GetFile(parser.FilenameFromUri(request.Params.TextDocument.Uri))
+	if !found {
+		utils.WriteResponse(writer, interfaces.ReferenceResponse{Result: locations, ResponseMessage: interfaces.ResponseMessage{ID: &request.ID, RPC: "2.0"}})
+
+		return
+	}
+
 	if file.Snapshot().Filetype != "pug" {
 		utils.WriteResponse(writer, interfaces.ReferenceResponse{Result: locations, ResponseMessage: interfaces.ResponseMessage{ID: &request.ID, RPC: "2.0"}})
 
@@ -53,7 +59,17 @@ func lspHandleReferences(writer *utils.Writer, logger *log.Logger, state *parser
 	}
 
 	if request.Params.Context.IncludeDeclaration {
-		locations = append(locations, parser.FindDefinition(state, file, offset)...)
+		ls, err := parser.FindDefinition(state, file, offset)
+		if err != nil {
+			utils.WriteResponse(writer, interfaces.DefinitionResponse{Result: locations, ResponseMessage: interfaces.ResponseMessage{ID: &request.ID, RPC: "2.0"}})
+			notification := interfaces.BuildMessageNotification(err.Error(), interfaces.MessageType.Error)
+			utils.WriteResponse(writer, notification)
+
+			logger.Println(err)
+			return
+		}
+
+		locations = append(locations, ls...)
 	}
 
 	utils.WriteResponse(writer, interfaces.DefinitionResponse{Result: locations, ResponseMessage: interfaces.ResponseMessage{ID: &request.ID, RPC: "2.0"}})

@@ -24,8 +24,13 @@ var lspPendingMessages [][]byte = [][]byte{}
 func Start() {
 	state := parser.CreateState()
 
-	state.SetTcbGenerator(func(s *parser.State, c *parser.Class, r *sitter.Node, co []byte) string {
-		return tcb.GenerateTcb(s, c, r, co).ToString()
+	state.SetTcbGenerator(func(s *parser.State, c *parser.Class, r *sitter.Node, co []byte) (string, error) {
+		tcbBlock, err := tcb.GenerateTcb(s, c, r, co)
+		if err != nil {
+			return "", err
+		}
+
+		return tcbBlock.ToString(), nil
 	})
 
 	logger := state.Logger

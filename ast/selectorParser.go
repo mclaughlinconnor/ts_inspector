@@ -143,8 +143,7 @@ func ParseSelector(text string) (*Selector, error) {
 					continue
 				}
 
-				badChar(c, "] or letter")
-				i++
+				return nil, badChar(c, "] or letter")
 			}
 		}
 	}
@@ -156,7 +155,7 @@ func ParseSelector(text string) (*Selector, error) {
 	switch state {
 	case LexStateAttr:
 		{
-			return nil, fmt.Errorf("Unfinished attribute")
+			return nil, fmt.Errorf("unfinished attribute")
 		}
 	case LexStateTag:
 		{
@@ -165,7 +164,7 @@ func ParseSelector(text string) (*Selector, error) {
 		}
 	case LexStateNot:
 		{
-			return nil, fmt.Errorf("Unfinished not")
+			return nil, fmt.Errorf("unfinished not")
 		}
 	}
 
@@ -199,7 +198,7 @@ func expectAndTake(i *int, c rune, expected rune) error {
 }
 
 func badChar(actual rune, expected string) error {
-	return fmt.Errorf("Bad character: '" + string(actual) + "', expected " + expected)
+	return fmt.Errorf("bad character: '%q', expected %q", string(actual), expected)
 }
 
 func isIdentifierChar(c rune) bool {

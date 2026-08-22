@@ -21,13 +21,32 @@ func lspHandleDefinition(writer *utils.Writer, logger *log.Logger, state *parser
 	}
 
 	offset := file.GetOffsetForPosition(request.Params.Position)
-	locations = append(locations, parser.FindDefinition(state, file, offset)...)
+
+	ls, err := parser.FindDefinition(state, file, offset)
+	if err != nil {
+		utils.WriteResponse(writer, interfaces.DefinitionResponse{Result: locations, ResponseMessage: interfaces.ResponseMessage{ID: &request.ID, RPC: "2.0"}})
+
+		notification := interfaces.BuildMessageNotification(err.Error(), interfaces.MessageType.Error)
+		utils.WriteResponse(writer, notification)
+
+		logger.Println(err)
+
+		return
+	}
+
+	locations = append(locations, ls...)
 
 	if config.TsGo {
 		part := tcb.PugToTsLocation(state, file, int(offset), int(offset))
 
 		if part != nil {
 			v := state.GetTsGo().GetSymbolAtPosition(file.GetTcbUri(), uint32(*part.TsStartOffset))
+			if v == nil {
+				utils.WriteResponse(writer, interfaces.DefinitionResponse{Result: locations, ResponseMessage: interfaces.ResponseMessage{ID: &request.ID, RPC: "2.0"}})
+
+				return
+			}
+
 		DECLARATION:
 			for _, declaration := range v.Result.Declarations {
 				node, err := declaration.ExtractNode()

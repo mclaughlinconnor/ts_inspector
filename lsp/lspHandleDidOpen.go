@@ -35,7 +35,11 @@ func lspHandleDidOpen(writer *utils.Writer, logger *log.Logger, state *parser.St
 
 		dependencies := file.GetDependencies(state)
 		for _, dependency := range dependencies {
-			file, _ := state.GetFile(dependency)
+			file, found := state.GetFile(dependency)
+			if !found {
+				continue
+			}
+
 			file.Postprocess(state)
 		}
 		file.Postprocess(state)
@@ -47,9 +51,8 @@ func lspHandleDidOpen(writer *utils.Writer, logger *log.Logger, state *parser.St
 				continue
 			}
 
-			file, _ := state.GetFile(depFile)
-
-			if !file.Snapshot().IsOpen {
+			file, found := state.GetFile(depFile)
+			if !found || !file.Snapshot().IsOpen {
 				continue
 			}
 

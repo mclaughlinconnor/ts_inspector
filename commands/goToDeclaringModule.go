@@ -12,11 +12,11 @@ func GoToDeclaringModule(writer *utils.Writer, state *parser.State, args *any) (
 	slice, ok := (*args).([]any)
 
 	if !ok {
-		return changes, errors.New("The args aren't an array")
+		return changes, errors.New("the args aren't an array")
 	}
 
 	if len(slice) != 3 {
-		return changes, errors.New("The slice does not contain exactly three elements")
+		return changes, errors.New("the slice does not contain exactly three elements")
 	}
 
 	uri, ok1 := slice[0].(string)
@@ -24,7 +24,7 @@ func GoToDeclaringModule(writer *utils.Writer, state *parser.State, args *any) (
 	rangeEndOffsetF, ok3 := slice[2].(float64)
 
 	if !ok1 {
-		return changes, errors.New("URI must be string")
+		return changes, errors.New("uri must be string")
 	}
 
 	if !ok2 {

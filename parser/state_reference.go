@@ -88,10 +88,17 @@ func (r *Reference) Resolve(state *State) {
 	extensions := []string{"", ".ts", ".d.ts", ".js"}
 	joinSuffixes := []string{"", "index", path.Base(importPath)}
 
+	var err error
+
 	for _, join := range joinSuffixes {
 		ip := path.Join(importPath, join)
 		for _, extension := range extensions {
-			importedFile = resolveProjectImportPath(state, r.File, ip+extension)
+			importedFile, err = resolveProjectImportPath(state, r.File, ip+extension)
+			if err != nil {
+				logger.Println(err)
+				break
+			}
+
 			if importedFile != nil {
 				break
 			}
@@ -99,7 +106,11 @@ func (r *Reference) Resolve(state *State) {
 
 		if importedFile == nil {
 			for _, extension := range extensions {
-				importedFile = resolveNodeModulesImportPath(state, r.File, ip+extension)
+				importedFile, err = resolveNodeModulesImportPath(state, r.File, ip+extension)
+				if err != nil {
+					logger.Println(err)
+					break
+				}
 				if importedFile != nil {
 					break
 				}
@@ -144,7 +155,12 @@ func resolveIdents(idents []string, file *File, state *State) []*Reference {
 			for _, join := range joinSuffixes {
 				ip := path.Join(importPath, join)
 				for _, extension := range extensions {
-					importedFile = resolveProjectImportPath(state, file, ip+extension)
+					importedFile, err := resolveProjectImportPath(state, file, ip+extension)
+					if err != nil {
+						logger.Println(err)
+						break
+					}
+
 					if importedFile != nil {
 						break
 					}
@@ -152,7 +168,12 @@ func resolveIdents(idents []string, file *File, state *State) []*Reference {
 
 				if importedFile == nil {
 					for _, extension := range extensions {
-						importedFile = resolveNodeModulesImportPath(state, file, ip+extension)
+						importedFile, err := resolveNodeModulesImportPath(state, file, ip+extension)
+						if err != nil {
+							logger.Println(err)
+							break
+						}
+
 						if importedFile != nil {
 							break
 						}
@@ -185,7 +206,7 @@ func resolveIdents(idents []string, file *File, state *State) []*Reference {
 	return resolved
 }
 
-func resolveNodeModulesImportPath(state *State, currentFile *File, importPath string) *File {
+func resolveNodeModulesImportPath(state *State, currentFile *File, importPath string) (*File, error) {
 	currentPath := utils.PathDir(FilenameFromUri(currentFile.Snapshot().URI))
 
 	for currentPath != "." && currentPath != "/" {
@@ -197,14 +218,18 @@ func resolveNodeModulesImportPath(state *State, currentFile *File, importPath st
 		}
 
 		if stat.IsDir() {
-			resolvedFile := getFileByPath(state, path.Join(nmPath, importPath))
+			resolvedFile, err := getFileByPath(state, path.Join(nmPath, importPath))
+			if err != nil {
+				return nil, err
+			}
+
 			if resolvedFile != nil {
-				return resolvedFile
+				return resolvedFile, nil
 			}
 		}
 
 		currentPath = utils.PathDir(currentPath)
 	}
 
-	return nil
+	return nil, nil
 }

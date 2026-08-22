@@ -5,12 +5,12 @@ import (
 	"ts_inspector/utils"
 )
 
-func illegalDeclaringModule(state *parser.State, file *parser.File) []Analysis {
-	return analyseClasses(file, func(class *parser.Class) []Analysis {
+func illegalDeclaringModule(state *parser.State, file *parser.File) ([]Analysis, error) {
+	return analyseClasses(file, func(class *parser.Class) ([]Analysis, error) {
 		analyses := []Analysis{}
 
 		if class.Snapshot().Angular == nil || class.Snapshot().Angular.Module == nil {
-			return analyses
+			return analyses, nil
 		}
 
 		for declaration := range class.Snapshot().Angular.Module.Declarations.FlattenReferenceArraysToReferences(state) {
@@ -29,6 +29,6 @@ func illegalDeclaringModule(state *parser.State, file *parser.File) []Analysis {
 			}
 		}
 
-		return analyses
-	})
+		return analyses, nil
+	}), nil
 }

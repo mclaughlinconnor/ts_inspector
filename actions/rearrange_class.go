@@ -16,7 +16,10 @@ func RearrangeClass(
 	file *parser.File,
 	editRange utils.Range,
 ) (actionEdits *utils.TextEdits, command *interfaces.Command, allowed bool, err error) {
-	definitions := ast.ExtractDefinitions([]byte(file.Snapshot().Content))
+	definitions, err := ast.ExtractDefinitions([]byte(file.Snapshot().Content))
+	if err != nil {
+		return &utils.TextEdits{}, nil, false, err
+	}
 
 	if len(definitions) < 2 {
 		return &utils.TextEdits{}, nil, true, nil

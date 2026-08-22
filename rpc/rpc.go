@@ -24,7 +24,7 @@ type BaseMessage struct {
 func DecodeMessage(msg []byte) (string, []byte, error) {
 	header, content, found := bytes.Cut(msg, []byte{'\r', '\n', '\r', '\n'})
 	if !found {
-		return "", nil, errors.New("Could not find separator")
+		return "", nil, errors.New("could not find separator")
 	}
 
 	// Content-Length: <number>

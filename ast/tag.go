@@ -59,13 +59,15 @@ func (t *Tag) MatchesParsedSelector(selector *Selector) (bool, *Selector) {
 	return true, selector
 }
 
-func (t *Tag) MatchesSelector(selector string) (bool, *Selector) {
+func (t *Tag) MatchesSelector(selector string) (bool, *Selector, error) {
 	s, err := ParseSelector(selector)
 	if err != nil {
-		return false, s
+		return false, nil, err
 	}
 
-	return t.MatchesParsedSelector(s)
+	matches, s := t.MatchesParsedSelector(s)
+
+	return matches, s, nil
 }
 
 // Deprecated: use ast.ParseSelector

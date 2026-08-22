@@ -18,17 +18,24 @@ func shouldSkip(diagnostic *parser.Diagnostic) bool {
 	return slices.Contains(excludedCodes, diagnostic.Code)
 }
 
-func typescript(state *parser.State, file *parser.File) []Analysis {
+func typescript(state *parser.State, file *parser.File) ([]Analysis, error) {
 	analyses := []Analysis{}
 
 	if file.Snapshot().Filetype != "pug" {
-		return analyses
+		return analyses, nil
 	}
 
 	d := state.GetTsGo().GetSemanticDiagnostics(file.GetTcbUri())
+	if d == nil {
+		return analyses, nil
+	}
+
 	typescriptDiagnostics := d.Result
 
-	tcbBlock, _ := tcb.BuildTcbBlock(state, file)
+	tcbBlock, err := tcb.BuildTcbBlock(state, file)
+	if err != nil {
+		return analyses, err
+	}
 
 	for _, diagnostic := range typescriptDiagnostics {
 		if shouldSkip(&diagnostic) {
@@ -52,7 +59,7 @@ func typescript(state *parser.State, file *parser.File) []Analysis {
 		analyses = append(analyses, newAnalysis(code, *r, AnalysisSeverityFromTsGoCategory(&diagnostic.Category), text, &relatedInformation))
 	}
 
-	return analyses
+	return analyses, nil
 }
 
 func flattenText(diagnostic *parser.Diagnostic, depth int) string {

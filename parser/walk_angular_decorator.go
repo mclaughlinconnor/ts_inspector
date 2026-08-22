@@ -12,45 +12,50 @@ import (
 
 // TODO: needs despaghetti-ing
 
-func ExtractComponentData(class *Class, node *sitter.Node, content []byte) {
+func ExtractComponentData(class *Class, node *sitter.Node, content []byte) error {
 	funcMap := walk.NewVisitorFuncsMap[any]()
 
-	funcMap["decorator"] = func(node *sitter.Node, _ any, indexInParent int, funcMap walk.VisitorFuncMap[any]) any {
+	funcMap["decorator"] = func(node *sitter.Node, _ any, indexInParent int, funcMap walk.VisitorFuncMap[any]) (any, error) {
 		call := node.NamedChild(0)
 		if call.Type() != "call_expression" {
-			return nil
+			return nil, nil
 		}
 
 		decoratorNameNode := call.ChildByFieldName("function")
 		if decoratorNameNode == nil {
-			return nil
+			return nil, nil
 		}
 
 		decoratorName := decoratorNameNode.Content(content)
+
+		var err error
 
 		switch dn := decoratorName; dn {
 		case "Component":
 			class.EnsureAngular()
 			class.Snapshot().Angular.EnsureComponent()
-			walkComponentDecoratorParams(class, node, content)
+			err = walkComponentDecoratorParams(class, node, content)
 		case "Directive":
 			class.EnsureAngular()
 			class.Snapshot().Angular.EnsureDirective()
-			walkDirectiveDecoratorParams(class, node, content)
+			err = walkDirectiveDecoratorParams(class, node, content)
 		case "NgModule":
 			class.EnsureAngular()
 			class.Snapshot().Angular.EnsureModule()
-			walkModuleDecoratorParams(class, node, content)
+			err = walkModuleDecoratorParams(class, node, content)
 		case "Pipe":
 			class.EnsureAngular()
 			class.Snapshot().Angular.EnsurePipe()
-			walkPipeDecoratorParams(class, node, content)
+			err = walkPipeDecoratorParams(class, node, content)
 		}
 
-		return nil
+		return nil, err
 	}
 
-	walk.WalkTypeScript(node, nil, funcMap)
+	_, err := walk.WalkTypeScript(node, nil, funcMap)
+	if err != nil {
+		return err
+	}
 
 	dirDef := class.GetOwnDefinition(DIR_PROP)
 	if dirDef != nil {
@@ -66,6 +71,8 @@ func ExtractComponentData(class *Class, node *sitter.Node, content []byte) {
 	if pipeDef != nil {
 		handleCompiledPipeProp(class, pipeDef)
 	}
+
+	return nil
 }
 
 func extractProvider(node *sitter.Node, content []byte) *Provider {
@@ -117,7 +124,9 @@ func extractProvider(node *sitter.Node, content []byte) *Provider {
 	return &provider
 }
 
-func handleComponentKv(class *Class, vNode *sitter.Node, content []byte, keyName string) {
+func handleComponentKv(class *Class, vNode *sitter.Node, content []byte, keyName string) error {
+	var err error
+
 	switch kn := keyName; kn {
 	case "imports":
 		handleImportsComponentKv(class, vNode, content)
@@ -126,8 +135,10 @@ func handleComponentKv(class *Class, vNode *sitter.Node, content []byte, keyName
 	case "selector":
 		handleSelectorComponentKv(class, vNode, content)
 	case "templateUrl":
-		handleTemplateUrlKv(class, vNode, content)
+		err = handleTemplateUrlKv(class, vNode, content)
 	}
+
+	return err
 }
 
 func handleCompiledDirectiveProp(class *Class, def *Definition) {
@@ -210,17 +221,17 @@ func handleCompiledModuleProp(class *Class, def *Definition) {
 	}
 
 	declarationsNode := args.NamedChild(1)
-	if declarationsNode == nil && !(declarationsNode.Type() == "tuple_type" || declarationsNode.Type() == "predefined_type") {
+	if declarationsNode == nil && declarationsNode.Type() != "tuple_type" && declarationsNode.Type() != "predefined_type" {
 		return
 	}
 
 	importsNode := args.NamedChild(2)
-	if importsNode == nil && !(importsNode.Type() == "tuple_type" || importsNode.Type() == "predefined_type") {
+	if importsNode == nil && importsNode.Type() != "tuple_type" && importsNode.Type() != "predefined_type" {
 		return
 	}
 
 	exportsNode := args.NamedChild(3)
-	if exportsNode == nil && !(exportsNode.Type() == "tuple_type" || exportsNode.Type() == "predefined_type") {
+	if exportsNode == nil && exportsNode.Type() != "tuple_type" && exportsNode.Type() != "predefined_type" {
 		return
 	}
 
@@ -349,6 +360,7 @@ func handleCompiledInputs(class *Class, inputMapNode *sitter.Node) {
 				class.Update(func(data *classState) {
 					s := str.Content([]byte(data.Content))
 					def.Decorators = append(def.Decorators, Decorator{Arguments: []string{s}, IsAngular: true, Name: "Input"})
+					data.Definitions.Set(def.Name, *def.Definition)
 				})
 			}
 		case "object_type":
@@ -399,6 +411,7 @@ func handleCompiledInputs(class *Class, inputMapNode *sitter.Node) {
 
 				class.Update(func(data *classState) {
 					def.Decorators = append(def.Decorators, dec)
+					data.Definitions.Set(def.Name, *def.Definition)
 				})
 			}
 		}
@@ -641,129 +654,143 @@ func handleSelectorDirectiveKv(class *Class, vNode *sitter.Node, content []byte)
 	})
 }
 
-func handleTemplateUrlKv(class *Class, vNode *sitter.Node, content []byte) {
+func handleTemplateUrlKv(class *Class, vNode *sitter.Node, content []byte) error {
 	if vNode.Type() != "string" {
-		return
+		return nil
 	}
 
 	if vNode.NamedChildCount() != 1 {
-		return
+		return nil
 	}
 
 	fragNode := vNode.NamedChild(0)
 	if fragNode.Type() != "string_fragment" {
-		return
+		return nil
 	}
 
 	relativePath := fragNode.Content(content)
 	if relativePath == "" {
-		return
+		return nil
 	}
 
 	controllerDirectory := utils.PathDir(class.Snapshot().File.Filename())
 
 	templateFilePath, err := filepath.Abs(path.Join(controllerDirectory, relativePath))
 	if err != nil {
-		return
+		return err
 	}
 
 	if !utils.FileExists(templateFilePath) {
-		return
+		return nil
 	}
 
 	class.Update(func(data *classState) {
 		data.Angular.Component.TemplateUrl = templateFilePath
 	})
+
+	return nil
 }
 
-func walkComponentDecoratorParams(class *Class, node *sitter.Node, content []byte) {
+func walkComponentDecoratorParams(class *Class, node *sitter.Node, content []byte) error {
 	funcMap := walk.NewVisitorFuncsMap[any]()
 
-	funcMap["pair"] = func(node *sitter.Node, _ any, indexInParent int, funcMap walk.VisitorFuncMap[any]) any {
+	funcMap["pair"] = func(node *sitter.Node, _ any, indexInParent int, funcMap walk.VisitorFuncMap[any]) (any, error) {
 		keyNode := node.ChildByFieldName("key")
 		if keyNode == nil {
-			return nil
+			return nil, nil
 		}
 
 		keyName := keyNode.Content(content)
 		valueNode := node.ChildByFieldName("value")
 		if valueNode == nil {
-			return nil
+			return nil, nil
 		}
 
-		handleComponentKv(class, valueNode, content, keyName)
+		err := handleComponentKv(class, valueNode, content, keyName)
 
-		return nil
+		return nil, err
 	}
 
-	walk.WalkTypeScript(node, nil, funcMap)
+	_, err := walk.WalkTypeScript(node, nil, funcMap)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func walkDirectiveDecoratorParams(class *Class, node *sitter.Node, content []byte) {
+func walkDirectiveDecoratorParams(class *Class, node *sitter.Node, content []byte) error {
 	funcMap := walk.NewVisitorFuncsMap[any]()
 
-	funcMap["pair"] = func(node *sitter.Node, _ any, indexInParent int, funcMap walk.VisitorFuncMap[any]) any {
+	funcMap["pair"] = func(node *sitter.Node, _ any, indexInParent int, funcMap walk.VisitorFuncMap[any]) (any, error) {
 		keyNode := node.ChildByFieldName("key")
 		if keyNode == nil {
-			return nil
+			return nil, nil
 		}
 
 		keyName := keyNode.Content(content)
 		valueNode := node.ChildByFieldName("value")
 		if valueNode == nil {
-			return nil
+			return nil, nil
 		}
 
 		handleDirectiveKv(class, valueNode, content, keyName)
 
-		return nil
+		return nil, nil
 	}
 
-	walk.WalkTypeScript(node, nil, funcMap)
+	_, err := walk.WalkTypeScript(node, nil, funcMap)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func walkModuleDecoratorParams(class *Class, node *sitter.Node, content []byte) {
+func walkModuleDecoratorParams(class *Class, node *sitter.Node, content []byte) error {
 	funcMap := walk.NewVisitorFuncsMap[any]()
 
-	funcMap["pair"] = func(node *sitter.Node, _ any, indexInParent int, funcMap walk.VisitorFuncMap[any]) any {
+	funcMap["pair"] = func(node *sitter.Node, _ any, indexInParent int, funcMap walk.VisitorFuncMap[any]) (any, error) {
 		keyNode := node.ChildByFieldName("key")
 		if keyNode == nil {
-			return nil
+			return nil, nil
 		}
 
 		keyName := keyNode.Content(content)
 		valueNode := node.ChildByFieldName("value")
 		if valueNode == nil {
-			return nil
+			return nil, nil
 		}
 
 		handleModuleKv(class, valueNode, content, keyName)
 
-		return nil
+		return nil, nil
 	}
 
-	walk.WalkTypeScript(node, nil, funcMap)
+	_, err := walk.WalkTypeScript(node, nil, funcMap)
+	return err
 }
 
-func walkPipeDecoratorParams(class *Class, node *sitter.Node, content []byte) {
+func walkPipeDecoratorParams(class *Class, node *sitter.Node, content []byte) error {
 	funcMap := walk.NewVisitorFuncsMap[any]()
 
-	funcMap["pair"] = func(node *sitter.Node, _ any, indexInParent int, funcMap walk.VisitorFuncMap[any]) any {
+	funcMap["pair"] = func(node *sitter.Node, _ any, indexInParent int, funcMap walk.VisitorFuncMap[any]) (any, error) {
 		keyNode := node.ChildByFieldName("key")
 		if keyNode == nil {
-			return nil
+			return nil, nil
 		}
 
 		keyName := keyNode.Content(content)
 		valueNode := node.ChildByFieldName("value")
 		if valueNode == nil {
-			return nil
+			return nil, nil
 		}
 
 		handlePipeKv(class, valueNode, content, keyName)
 
-		return nil
+		return nil, nil
 	}
 
-	walk.WalkTypeScript(node, nil, funcMap)
+	_, err := walk.WalkTypeScript(node, nil, funcMap)
+	return err
 }

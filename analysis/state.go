@@ -68,7 +68,9 @@ func NewDiagnosticNotification(uri string, version int, diagnostics []interfaces
 func GenerateDiagnosticsForFile(state *parser.State, file *parser.File, runExpensive bool) interfaces.PublishDiagnosticsNotification {
 	f := file.Snapshot()
 
-	return NewDiagnosticNotification(f.URI, f.Version, DiagnosticsFromAnalyses(Analyse(state, file, runExpensive)))
+	analyses := Analyse(state, file, runExpensive)
+
+	return NewDiagnosticNotification(f.URI, f.Version, DiagnosticsFromAnalyses(analyses))
 }
 
 func NewDiagnostic(node *sitter.Node, severity int, source string, message string) interfaces.Diagnostic {

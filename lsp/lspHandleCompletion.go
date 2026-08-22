@@ -16,9 +16,14 @@ func send(writer *utils.Writer, items []interfaces.CompletionItem, id *int) {
 }
 
 func lspHandleCompletion(writer *utils.Writer, logger *log.Logger, state *parser.State, request interfaces.CompletionRequest) {
-	file, _ := state.GetFile(parser.FilenameFromUri(request.Params.TextDocument.Uri))
-
 	items := make([]interfaces.CompletionItem, 0)
+
+	file, found := state.GetFile(parser.FilenameFromUri(request.Params.TextDocument.Uri))
+	if !found {
+		send(writer, items, &request.ID)
+		return
+	}
+
 	if file.Snapshot().Filetype != "pug" {
 		send(writer, items, &request.ID)
 
@@ -31,6 +36,11 @@ func lspHandleCompletion(writer *utils.Writer, logger *log.Logger, state *parser
 	node := ast.GetNamedNodeAtPosition(root, offset)
 
 	if err != nil || node == nil {
+		send(writer, items, &request.ID)
+		notification := interfaces.BuildMessageNotification(err.Error(), interfaces.MessageType.Error)
+		utils.WriteResponse(writer, notification)
+
+		logger.Println(err)
 		return
 	}
 
@@ -56,7 +66,17 @@ func lspHandleCompletion(writer *utils.Writer, logger *log.Logger, state *parser
 			}
 		case "attributes":
 			{
-				items = append(items, getAttrCompletions(state, file, c, offset)...)
+				is, err := getAttrCompletions(state, file, c, offset)
+				if err != nil {
+					send(writer, items, &request.ID)
+					notification := interfaces.BuildMessageNotification(err.Error(), interfaces.MessageType.Error)
+					utils.WriteResponse(writer, notification)
+
+					logger.Println(err)
+					return
+				}
+
+				items = append(items, is...)
 			}
 		}
 	}
@@ -64,22 +84,27 @@ func lspHandleCompletion(writer *utils.Writer, logger *log.Logger, state *parser
 	send(writer, items, &request.ID)
 }
 
-func getAttrCompletions(state *parser.State, file *parser.File, class *parser.Class, cursorOffset uint32) []interfaces.CompletionItem {
+func getAttrCompletions(state *parser.State, file *parser.File, class *parser.Class, cursorOffset uint32) ([]interfaces.CompletionItem, error) {
 	items := make([]interfaces.CompletionItem, 0)
 
 	if !class.HasComponent() {
-		return items
+		return items, nil
 	}
 
 	tag, found := ast.GetTagAtOffset(file.Snapshot().Content, cursorOffset)
 	if !found {
-		return items
+		return items, nil
 	}
+
+	var err error
 
 	things := class.Snapshot().Angular.Component.GetAvailableThings(state)
 	for _, thing := range things {
 		if thing.HasComponent() {
-			items = forComponentThing(thing, file, cursorOffset, &tag, items)
+			items, err = forComponentThing(thing, file, cursorOffset, &tag, items)
+			if err != nil {
+				return items, err
+			}
 		}
 
 		if thing.HasDirective() {
@@ -87,7 +112,7 @@ func getAttrCompletions(state *parser.State, file *parser.File, class *parser.Cl
 		}
 	}
 
-	return items
+	return items, nil
 }
 
 func getPropertyCompletions(class *parser.Class) []interfaces.CompletionItem {
@@ -229,10 +254,13 @@ func build(definition parser.ClassedDefinition, cursorRange utils.Range, openCha
 	return item
 }
 
-func forComponentThing(thing *parser.Class, file *parser.File, cursorOffset uint32, tagName *ast.Tag, items []interfaces.CompletionItem) []interfaces.CompletionItem {
+func forComponentThing(thing *parser.Class, file *parser.File, cursorOffset uint32, tagName *ast.Tag, items []interfaces.CompletionItem) ([]interfaces.CompletionItem, error) {
 	matches := false
 	for _, s := range thing.Snapshot().Angular.Component.Selectors {
-		m, _ := tagName.MatchesSelector(s)
+		m, _, err := tagName.MatchesSelector(s)
+		if err != nil {
+			return items, err
+		}
 		if m {
 			matches = m
 			break
@@ -240,7 +268,7 @@ func forComponentThing(thing *parser.Class, file *parser.File, cursorOffset uint
 	}
 
 	if !matches {
-		return items
+		return items, nil
 	}
 
 	cursorPosition := utils.GetPositionForOffset(file.Snapshot().Content, cursorOffset)
@@ -254,7 +282,7 @@ func forComponentThing(thing *parser.Class, file *parser.File, cursorOffset uint
 		items = append(items, build(i, cursorRange, "(", ")", false, true))
 	}
 
-	return items
+	return items, nil
 }
 
 func forDirectiveThing(thing *parser.Class, file *parser.File, cursorOffset uint32, tag *ast.Tag, items []interfaces.CompletionItem) []interfaces.CompletionItem {

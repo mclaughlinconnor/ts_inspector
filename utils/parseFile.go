@@ -6,8 +6,6 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
-type parseCallback[V any] func(root *sitter.Node, content []byte, v V) (V, error)
-
 func ParseTextFromPath(path string, language string) (*sitter.Node, []byte, error) {
 	content, err := ReadFile(path)
 	if err != nil {

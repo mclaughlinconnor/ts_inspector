@@ -12,7 +12,7 @@ func AddImport(_ *utils.Writer, state *parser.State, args *any) (map[string]util
 	slice, ok := (*args).([]any)
 
 	if !ok {
-		return changes, errors.New("The args aren't an array")
+		return changes, errors.New("the args aren't an array")
 	}
 
 	if len(slice) != 4 {
@@ -44,7 +44,10 @@ func AddImport(_ *utils.Writer, state *parser.State, args *any) (map[string]util
 		}
 	}
 
-	file, _ := state.GetFile(parser.FilenameFromUri(uri))
+	file, found := state.GetFile(parser.FilenameFromUri(uri))
+	if !found {
+		return changes, nil
+	}
 
 	edits, err := ast.AddImportToFile([]byte(file.Snapshot().Content), packageName, imports, typeImports)
 	if err != nil {

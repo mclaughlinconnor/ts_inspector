@@ -35,13 +35,13 @@ func MakeAsync(
 	moved := false
 	start, end := file.GetOffsetsForRange(editRange)
 
-	for true {
+	for {
 		if currentNode.StartByte() <= start && currentNode.EndByte() >= end { // if before start, keep going. If after end, stop (backtrack?)
 			moved = cursor.GoToFirstChild()
 			currentNode = cursor.CurrentNode()
 		} else if currentNode.StartByte() > start {
 			cursor.GoToParent() // reached a terminal node that is past the cursor, go back to the parent
-			currentNode = cursor.CurrentNode()
+			cursor.CurrentNode()
 			break
 		} else {
 			moved = cursor.GoToNextSibling()
@@ -53,7 +53,7 @@ func MakeAsync(
 		}
 	}
 
-	for true {
+	for {
 		currentNode = cursor.CurrentNode()
 		if currentNode.Type() == "method_definition" || currentNode.Type() == "function_declaration" || currentNode.Type() == "arrow_function" {
 			break
@@ -112,7 +112,6 @@ func MakeAsync(
 
 		for cursor.GoToNextSibling() {
 			fieldName := cursor.CurrentFieldName()
-			currentNode = cursor.CurrentNode()
 			if fieldName == "return_type" {
 				break
 			}

@@ -303,7 +303,7 @@ func (c *Class) FilterAllDefinitions(cond func(d ClassedDefinition) bool) []Clas
 		ds := e.Class.FilterAllDefinitions(cond)
 		for _, d := range ds {
 			// Don't allow duplicates. Also, prepare for doing stuff with overridden props
-			found, _ := definitionsMap[d.Name]
+			found := definitionsMap[d.Name]
 			if !found {
 				definitionsMap[d.Name] = true
 				definitions = append(definitions, d)
@@ -475,7 +475,7 @@ func (c *Class) GetAllPublicDefinitions() []ClassedDefinition {
 		ds := e.Class.GetAllPublicDefinitions()
 		for _, d := range ds {
 			// Don't allow duplicates. Also, prepare for doing stuff with overridden props
-			found, _ := definitionsMap[d.Name]
+			found := definitionsMap[d.Name]
 			if !found {
 				definitionsMap[d.Name] = true
 				definitions = append(definitions, d)
@@ -717,8 +717,10 @@ func (c *Class) removeUsagesFromClassUpwards(class *Class) {
 				d.UsageAccess = CalculateNewAccessType(d.UsageAccess, instance.Access)
 			}
 
-			definition, _ := e.Class.Snapshot().Definitions.Get(name)
-			definition.Usages = newUsageInstances
+			definition, found := e.Class.Snapshot().Definitions.Get(name)
+			if found {
+				definition.Usages = newUsageInstances
+			}
 
 			e.Class.Update(func(data *classState) {
 				data.Definitions.Set(name, definition)

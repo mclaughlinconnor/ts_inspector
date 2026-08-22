@@ -39,8 +39,14 @@ func lspHandleTcb(writer *utils.Writer, logger *log.Logger, state *parser.State,
 		return
 	}
 
-	tcb := tcb.GenerateTcb(state, file.Snapshot().Classes[0], root, content)
-	tcbBlock := tcb.ToString()
+	tcb, err := tcb.GenerateTcb(state, file.Snapshot().Classes[0], root, content)
+
+	var tcbBlock string
+	if err != nil {
+		tcbBlock = err.Error()
+	} else {
+		tcbBlock = tcb.ToString()
+	}
 
 	response := interfaces.TcbRequestResponse{
 		ResponseMessage: interfaces.ResponseMessage{RPC: "2.0", ID: &request.ID},

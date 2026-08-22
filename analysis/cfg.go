@@ -13,23 +13,23 @@ import (
 
 const unreachableCode = "unreachable"
 
-func cfgUnreachableBlock(state *parser.State, file *parser.File) []Analysis {
+func cfgUnreachableBlock(state *parser.State, file *parser.File) ([]Analysis, error) {
 	analyses := []Analysis{}
 
 	if file.Snapshot().Filetype == "typescript" {
 		cfg, err := cfg.BuildGraphFromFile(file)
 		if err != nil {
-			return analyses
+			return analyses, err
 		}
 
 		return analyseCfg(file.Snapshot().Content, cfg, analyses, func(m string, n *sitter.Node, s int) *Analysis {
 			a := newAnalysisFromFileNode(file, unreachableCode, n, s, m, nil)
 			return &a
-		})
+		}), nil
 	}
 
 	if file.Snapshot().Filetype != "pug" {
-		return analyses
+		return analyses, nil
 	}
 
 	content := []byte(file.Snapshot().Content)
@@ -53,18 +53,22 @@ func cfgUnreachableBlock(state *parser.State, file *parser.File) []Analysis {
 			continue
 		}
 
-		tcb := tcb.GenerateTcb(state, class, root, content)
+		tcb, err := tcb.GenerateTcb(state, class, root, content)
+		if err != nil {
+			return nil, err
+		}
+
 		tcbBlock := tcb.ToString()
 
 		cfg, err := cfg.BuildGraphFromContent(tcbBlock)
 		if err != nil {
-			return analyses
+			return analyses, err
 		}
 
 		analyses = analyseCfg(tcbBlock, cfg, analyses, buildPugAnalysis(tcb))
 	}
 
-	return analyses
+	return analyses, nil
 }
 
 func analyseCfg(content string, cfgState *cfg.State, analyses []Analysis, buildAnalysis func(string, *sitter.Node, int) *Analysis) []Analysis {

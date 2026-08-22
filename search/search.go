@@ -78,7 +78,11 @@ func IndexState(state *parser.State) {
 func InitSearch() {
 	initEmbedding()
 	initFAISS()
-	initSqlite()
+
+	err := initSqlite()
+	if err != nil {
+		panic(err)
+	}
 }
 
 func FindInterestingPoints(logger *log.Logger, text string) ([]parser.InterestingPoint, error) {

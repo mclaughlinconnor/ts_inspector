@@ -5,8 +5,8 @@ import (
 	"ts_inspector/parser"
 )
 
-func nonPublicAngular(_ *parser.State, file *parser.File) []Analysis {
-	return analyseClasses(file, func(class *parser.Class) []Analysis {
+func nonPublicAngular(_ *parser.State, file *parser.File) ([]Analysis, error) {
+	return analyseClasses(file, func(class *parser.Class) ([]Analysis, error) {
 		analyses := []Analysis{}
 
 		for _, definition := range class.Snapshot().Definitions.All() {
@@ -16,6 +16,6 @@ func nonPublicAngular(_ *parser.State, file *parser.File) []Analysis {
 			}
 		}
 
-		return analyses
-	})
+		return analyses, nil
+	}), nil
 }

@@ -19,8 +19,6 @@ func GetPositionForOffset(content string, offset uint32) Position {
 
 	if offset >= uint32(len(content)) {
 		return Position{Line: uint32(len(lineOffsets)) - 1, Character: 0}
-	} else if offset < 0 {
-		return Position{Line: 0, Character: 0}
 	}
 
 	var line uint32
@@ -53,7 +51,6 @@ func GetLineOffsets(text string) []uint32 {
 	for i < textLength {
 		if isLineStart {
 			offsets = append(offsets, i)
-			isLineStart = false
 		}
 
 		ch := text[i]

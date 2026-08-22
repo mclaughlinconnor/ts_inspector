@@ -9,13 +9,12 @@ func HasNodeInHierarchy(root *sitter.Node, nodeType string, startByte uint32, en
 	node := cursor.CurrentNode()
 	moved := false
 
-	for true {
+	for {
 		if node.StartByte() <= startByte && node.EndByte() > endByte { // if before startByte, keep going. If after endByte, stop (backtrack?)
 			moved = cursor.GoToFirstChild()
 			node = cursor.CurrentNode()
 		} else if node.StartByte() > startByte {
 			cursor.GoToParent() // reached a terminal node that is past the cursor, go back to the parent
-			node = cursor.CurrentNode()
 			break
 		} else {
 			moved = cursor.GoToNextSibling()
@@ -27,7 +26,7 @@ func HasNodeInHierarchy(root *sitter.Node, nodeType string, startByte uint32, en
 		}
 	}
 
-	for true {
+	for {
 		node = cursor.CurrentNode()
 		if node.Type() == nodeType {
 			return node

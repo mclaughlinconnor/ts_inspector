@@ -19,14 +19,13 @@ type Responses struct {
 }
 
 type TsGo struct {
-	logger          *log.Logger
-	opLock          sync.Mutex
-	projectHandle   ProjectID
-	requestHandlers map[string]func(request TsGoRequest) any
-	responses       *Responses
-	rootFiles       map[string]bool
-	snapshotHandle  SnapshotID
-	state           *State
+	logger         *log.Logger
+	opLock         sync.Mutex
+	projectHandle  ProjectID
+	responses      *Responses
+	rootFiles      map[string]bool
+	snapshotHandle SnapshotID
+	state          *State
 
 	stderr *io.ReadCloser
 	stdin  *utils.Writer

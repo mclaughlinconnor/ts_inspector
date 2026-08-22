@@ -33,8 +33,13 @@ func tsgoHandleReadFile(tsgo *TsGo, request ReadFileRequest) {
 	parsedUrl.Path = strings.TrimSuffix(parsedUrl.Path, interfaces.TCB_FILENAME_SUFFIX) + ".pug"
 	fileUrl := parsedUrl.String()
 
-	file, _ := tsgo.state.GetFile(FilenameFromUri(fileUrl))
-	if file == nil || file.Snapshot().Filetype != "pug" {
+	file, found := tsgo.state.GetFile(FilenameFromUri(fileUrl))
+	if !found {
+		tsgoHandleReadFileResponse(tsgo, request, &Content{Content: ""})
+		return
+	}
+
+	if file.Snapshot().Filetype != "pug" {
 		tsgoHandleReadFileResponse(tsgo, request, &Content{Content: file.Snapshot().Content})
 		return
 	}
@@ -58,7 +63,13 @@ func tsgoHandleReadFile(tsgo *TsGo, request ReadFileRequest) {
 		return
 	}
 
-	tcbBlock := generateTcb(tsgo.state, classes[0], root, content)
+	tcbBlock, err := generateTcb(tsgo.state, classes[0], root, content)
+	if err != nil {
+		tsgo.logger.Println(err)
+		tsgoHandleReadFileResponse(tsgo, request, &Content{Content: ""})
+
+		return
+	}
 
 	tsgoHandleReadFileResponse(tsgo, request, &Content{Content: tcbBlock})
 }

@@ -14,7 +14,7 @@ func ViewTcb(writer *utils.Writer, state *parser.State, args *any) (map[string]u
 	changes := map[string]utils.TextEdits{}
 	slice, ok := (*args).([]any)
 	if !ok {
-		return changes, errors.New("The args aren't an array")
+		return changes, errors.New("the args aren't an array")
 	}
 	if len(slice) != 1 {
 		return changes, errors.New("the slice does not contain exactly one element")
@@ -22,7 +22,7 @@ func ViewTcb(writer *utils.Writer, state *parser.State, args *any) (map[string]u
 
 	uri, ok := slice[0].(string)
 	if !ok {
-		return changes, errors.New("The URI is not a string")
+		return changes, errors.New("the URI is not a string")
 	}
 
 	parsedUrl, err := url.Parse(uri)

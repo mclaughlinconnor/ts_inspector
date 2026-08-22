@@ -11,7 +11,7 @@ import (
 )
 
 // Hacky "fix" because of my badly structured packages
-type TcbGeneratorFunc func(state *State, class *Class, root *sitter.Node, content []byte) string
+type TcbGeneratorFunc func(state *State, class *Class, root *sitter.Node, content []byte) (string, error)
 
 type State struct {
 	sync.RWMutex
@@ -36,10 +36,16 @@ func CreateState() State {
 
 func (s *State) GetFile(filename string) (*File, bool) {
 	s.RLock()
-	file, found := s.files[filename]
+	file := s.files[filename]
 	s.RUnlock()
 
-	return file, found
+	// Weird checking needed to satisfy nilaway
+
+	if file == nil {
+		return nil, false
+	}
+
+	return file, true
 }
 
 func (s *State) GetFiles() map[string]*File {

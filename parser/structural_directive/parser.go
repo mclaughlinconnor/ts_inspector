@@ -53,7 +53,7 @@ func (shv *ShorthandValue) GetExpression() *Expression {
 	return shv.Statements.Elements[0].Expression
 }
 
-func (shv *ShorthandValue) GetKeyExprWithKey(queryKey string) (bool, *KeyExp) {
+func (shv *ShorthandValue) GetKeyExprWithKey(queryKey string) *KeyExp {
 	for _, s := range shv.Statements.Elements {
 		if !s.HasKeyExp() {
 			continue
@@ -62,11 +62,11 @@ func (shv *ShorthandValue) GetKeyExprWithKey(queryKey string) (bool, *KeyExp) {
 		keyExp := s.KeyExp
 
 		if keyExp.Matches(shv, queryKey) {
-			return true, s.KeyExp
+			return s.KeyExp
 		}
 	}
 
-	return false, nil
+	return nil
 }
 
 func (s *Statement) HasExpression() bool {
@@ -180,6 +180,10 @@ LOOP:
 				}
 
 				endIndex, err = ParseExpression(j, runeText)
+				if err != nil {
+					return nil, err
+				}
+
 				expressionText = string(runeText[j:endIndex])
 
 				if expressionText == "as" {
@@ -406,7 +410,7 @@ func consumeOptionalUnaryOperator(i *int, runeText []rune) (string, error) {
 	howMany := 0
 
 LOOP:
-	for true {
+	for {
 
 		switch c {
 		case '!':
@@ -530,16 +534,6 @@ func expectNotEof(i *int, runeText []rune) error {
 
 func isHtmlIdentifierChar(c rune) bool {
 	return unicode.IsLetter(c) || unicode.IsNumber(c) || c == '_' || c == '-'
-}
-
-func isHtmlIdentifierString(s string) bool {
-	for _, c := range s {
-		if !isHtmlIdentifierChar(c) {
-			return false
-		}
-	}
-
-	return true
 }
 
 func isJsIdentifierChar(c rune) bool {

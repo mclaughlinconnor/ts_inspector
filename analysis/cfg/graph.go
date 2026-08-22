@@ -1,6 +1,7 @@
 package cfg
 
 import (
+	"errors"
 	"fmt"
 	"maps"
 	"slices"
@@ -71,7 +72,7 @@ func (b *Block) countDownwardEdges(seen map[*Block]bool) int {
 	count := len(b.After)
 
 	for _, a := range b.After {
-		if seen[a] == true {
+		if seen[a] {
 			continue
 		}
 
@@ -85,7 +86,7 @@ func (b *Block) getDownwardNodes(blocks map[*Block]bool) {
 	blocks[b] = true
 
 	for _, a := range b.After {
-		if blocks[a] == true {
+		if blocks[a] {
 			continue
 		}
 
@@ -110,6 +111,7 @@ func (b *Block) getExpressionNode() *sitter.Node {
 	return node
 }
 
+//nolint:unused
 func (b *Block) hasConstantExpression(content []byte) bool {
 	node := b.getExpressionNode()
 	if node == nil {
@@ -186,16 +188,6 @@ func (s *State) popLoopBlocks() {
 	s.breakStack.Pop()
 }
 
-func (s *State) popBreakBlock() *Block {
-	s.continueStack.Pop()
-	return *s.breakStack.Pop()
-}
-
-func (s *State) popContinueBlock() *Block {
-	s.breakStack.Pop()
-	return *s.continueStack.Pop()
-}
-
 func (cfg *FunctionCFG) AddEdge(from *Block, to *Block) {
 	from.After = append(from.After, to)
 	to.Before = append(to.Before, from)
@@ -230,7 +222,7 @@ func (state *State) AddInstruction(kind InstructionKind, left string, node *sitt
 	state.current.Instructions = append(state.current.Instructions, &instruction)
 }
 
-type visitorFunction = func(state *State, node *sitter.Node, content []byte)
+type visitorFunction = func(state *State, node *sitter.Node, content []byte) error
 
 var visitMap = map[string]visitorFunction{
 	"arguments":            handleNamedChildren,
@@ -261,22 +253,26 @@ var funcMap = walk.NewVisitorFuncsMap[*State]()
 
 func InitBuilder() {
 	for k, v := range visitMap {
-		funcMap[k] = func(node *sitter.Node, state *State, indexInParent int, funcMap walk.VisitorFuncMap[*State]) *State {
-			v(state, node, state.content)
+		funcMap[k] = func(node *sitter.Node, state *State, indexInParent int, funcMap walk.VisitorFuncMap[*State]) (*State, error) {
+			err := v(state, node, state.content)
+			if err != nil {
+				return nil, err
+			}
 
-			return state
+			return state, nil
 		}
 	}
 }
 
-func build(state *State, root *sitter.Node, content []byte) {
-	walk.WalkTypeScriptShallow(root, state, funcMap)
+func build(state *State, root *sitter.Node, _ []byte) error {
+	_, err := walk.WalkTypeScriptShallow(root, state, funcMap)
+	return err
 }
 
-func handleClass(state *State, node *sitter.Node, content []byte) {
+func handleClass(state *State, node *sitter.Node, content []byte) error {
 	body := node.ChildByFieldName("body")
 	if body == nil {
-		return
+		return nil
 	}
 
 	for i := range body.NamedChildCount() {
@@ -285,21 +281,31 @@ func handleClass(state *State, node *sitter.Node, content []byte) {
 			continue
 		}
 
-		build(state, child, content)
+		err := build(state, child, content)
+		if err != nil {
+			return err
+		}
 	}
+
+	return nil
 }
 
-func handleNamedChildren(state *State, node *sitter.Node, content []byte) {
+func handleNamedChildren(state *State, node *sitter.Node, content []byte) error {
 	if node.NamedChildCount() <= 0 {
-		return
+		return nil
 	}
 
 	for i := range node.NamedChildCount() {
-		build(state, node.NamedChild(int(i)), content)
+		err := build(state, node.NamedChild(int(i)), content)
+		if err != nil {
+			return err
+		}
 	}
+
+	return nil
 }
 
-func handleProgram(state *State, node *sitter.Node, content []byte) {
+func handleProgram(state *State, node *sitter.Node, content []byte) error {
 	cfg := &FunctionCFG{Blocks: []*Block{}, Node: node, Type: "program"}
 	state.AllCfg = append(state.AllCfg, cfg)
 	state.cfgStack.Push(cfg)
@@ -313,13 +319,18 @@ func handleProgram(state *State, node *sitter.Node, content []byte) {
 	state.current = start
 
 	for i := range node.NamedChildCount() {
-		build(state, node.NamedChild(int(i)), content)
+		err := build(state, node.NamedChild(int(i)), content)
+		if err != nil {
+			return err
+		}
 	}
 
 	state.cfg().AddEdge(state.current, end)
+
+	return nil
 }
 
-func handleReturn(state *State, node *sitter.Node, content []byte) {
+func handleReturn(state *State, node *sitter.Node, content []byte) error {
 	prevBlock := state.current
 	returnBlock := state.cfg().AddBlock("Return block")
 	afterReturnBlock := state.cfg().AddBlock("After return block")
@@ -332,9 +343,11 @@ func handleReturn(state *State, node *sitter.Node, content []byte) {
 	state.cfg().AddEdge(returnBlock, state.cfg().End)
 
 	state.current = afterReturnBlock
+
+	return nil
 }
 
-func handleBreak(state *State, node *sitter.Node, content []byte) {
+func handleBreak(state *State, node *sitter.Node, content []byte) error {
 	prevBlock := state.current
 	afterBlock := state.peekBreakBlock()
 	breakBlock := state.cfg().AddBlock("Break block")
@@ -345,9 +358,11 @@ func handleBreak(state *State, node *sitter.Node, content []byte) {
 
 	state.cfg().AddEdge(prevBlock, breakBlock)
 	state.cfg().AddEdge(breakBlock, afterBlock)
+
+	return nil
 }
 
-func handleContinue(state *State, node *sitter.Node, content []byte) {
+func handleContinue(state *State, node *sitter.Node, content []byte) error {
 	prevBlock := state.current
 	afterBlock := state.peekContinueBlock()
 	breakBlock := state.cfg().AddBlock("Continue block")
@@ -358,14 +373,21 @@ func handleContinue(state *State, node *sitter.Node, content []byte) {
 
 	state.cfg().AddEdge(prevBlock, breakBlock)
 	state.cfg().AddEdge(breakBlock, afterBlock)
+
+	return nil
 }
 
-func handleCall(state *State, node *sitter.Node, content []byte) {
+func handleCall(state *State, node *sitter.Node, content []byte) error {
 	state.AddInstruction(InstructionCall, "", node, "", content)
-	handleNamedChildren(state, node, content)
+	err := handleNamedChildren(state, node, content)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func handleFunction(state *State, node *sitter.Node, content []byte) {
+func handleFunction(state *State, node *sitter.Node, content []byte) error {
 	blockName := "Function"
 
 	nameContent := "function"
@@ -389,21 +411,26 @@ func handleFunction(state *State, node *sitter.Node, content []byte) {
 
 	body := node.ChildByFieldName("body")
 	if body == nil {
-		return
+		return nil
 	}
 
 	prevCurrent := state.current
 	state.current = start
 
-	build(state, body, content)
+	err := build(state, body, content)
+	if err != nil {
+		return err
+	}
 
 	state.cfg().AddEdge(state.current, end)
 
 	state.cfgStack.Pop()
 	state.current = prevCurrent
+
+	return nil
 }
 
-func handleIf(state *State, node *sitter.Node, content []byte) {
+func handleIf(state *State, node *sitter.Node, content []byte) error {
 	condBlock := state.cfg().AddBlock("If condition block")
 	thenBlock := state.cfg().AddBlock("If then block")
 	elseBlock := state.cfg().AddBlock("If else block")
@@ -411,7 +438,7 @@ func handleIf(state *State, node *sitter.Node, content []byte) {
 
 	conditionNode := node.ChildByFieldName("condition")
 	if conditionNode == nil {
-		return
+		return errors.New("conditionNode unexpectedly nil")
 	}
 
 	state.AddInstruction(InstructionBranch, "", node, "", content)
@@ -428,7 +455,7 @@ func handleIf(state *State, node *sitter.Node, content []byte) {
 
 	thenNode := node.ChildByFieldName("consequence")
 	if thenNode == nil {
-		return // grammar guarantees that it exists
+		return errors.New("thenNode unexpectedly nil")
 	}
 
 	thenBlock.Node = thenNode
@@ -447,14 +474,21 @@ func handleIf(state *State, node *sitter.Node, content []byte) {
 	state.current = thenBlock
 	state.AddInstruction(InstructionBranch, "", thenBlock.Node, "", content)
 
-	build(state, thenNode, content)
+	err := build(state, thenNode, content)
+	if err != nil {
+		return err
+	}
+
 	if len(state.current.After) == 0 {
 		state.cfg().AddEdge(state.current, afterBlock)
 	}
 
 	if elseNode != nil {
 		state.current = elseBlock
-		build(state, elseNode, content)
+		err := build(state, elseNode, content)
+		if err != nil {
+			return err
+		}
 
 		if len(state.current.After) == 0 {
 			state.cfg().AddEdge(state.current, afterBlock)
@@ -462,9 +496,11 @@ func handleIf(state *State, node *sitter.Node, content []byte) {
 	}
 
 	state.current = afterBlock
+
+	return nil
 }
 
-func handleWhile(state *State, node *sitter.Node, content []byte) {
+func handleWhile(state *State, node *sitter.Node, content []byte) error {
 	condBlock := state.cfg().AddBlock("While condition block")
 	bodyBlock := state.cfg().AddBlock("While body block")
 	afterBlock := state.cfg().AddBlock("While after block")
@@ -473,7 +509,7 @@ func handleWhile(state *State, node *sitter.Node, content []byte) {
 
 	conditiondNode := node.ChildByFieldName("condition")
 	if conditiondNode == nil {
-		return
+		return errors.New("conditiondNode unexpectedly nil")
 	}
 
 	state.AddInstruction(InstructionBranch, "", node, "", content)
@@ -494,12 +530,16 @@ func handleWhile(state *State, node *sitter.Node, content []byte) {
 
 	bodyNode := node.ChildByFieldName("body")
 	if bodyNode == nil {
-		return // grammar guarantees that it exists
+		return errors.New("bodyNode unexpectedly nil")
 	}
 
 	bodyBlock.Node = bodyNode
 	state.current = bodyBlock
-	build(state, bodyNode, content)
+	err := build(state, bodyNode, content)
+	if err != nil {
+		return err
+	}
+
 	if len(state.current.After) == 0 {
 		state.cfg().AddEdge(state.current, condBlock)
 	}
@@ -507,9 +547,11 @@ func handleWhile(state *State, node *sitter.Node, content []byte) {
 	state.current = afterBlock
 
 	state.popLoopBlocks()
+
+	return nil
 }
 
-func handleForIn(state *State, node *sitter.Node, content []byte) {
+func handleForIn(state *State, node *sitter.Node, content []byte) error {
 	state.AddInstruction(InstructionBranch, "", node, "", content)
 
 	initialiseBlock := state.cfg().AddBlock("For-in initialisation block")
@@ -523,7 +565,7 @@ func handleForIn(state *State, node *sitter.Node, content []byte) {
 	leftNode := node.ChildByFieldName("left")
 	rightNode := node.ChildByFieldName("right")
 	if leftNode == nil || rightNode == nil {
-		return
+		return errors.New("leftNode or rightNode unexpectedly nil")
 	}
 
 	state.cfg().AddEdge(state.current, initialiseBlock)
@@ -541,13 +583,16 @@ func handleForIn(state *State, node *sitter.Node, content []byte) {
 
 	bodyNode := node.ChildByFieldName("body")
 	if bodyNode == nil {
-		return
+		return errors.New("bodyNode unexpectedly nil")
 	}
 
 	bodyBlock.Node = bodyNode
 	state.current = bodyBlock
 
-	build(state, bodyNode, content)
+	err := build(state, bodyNode, content)
+	if err != nil {
+		return err
+	}
 
 	if len(state.current.After) == 0 {
 		// If the loop doesn't break/return
@@ -557,48 +602,34 @@ func handleForIn(state *State, node *sitter.Node, content []byte) {
 	state.current = afterBlock
 
 	state.popLoopBlocks()
+
+	return nil
 }
 
-func handleVariableDeclaration(state *State, node *sitter.Node, content []byte) {
+func handleVariableDeclaration(state *State, node *sitter.Node, content []byte) error {
 	declarator := node.NamedChild(0)
 	if declarator == nil || declarator.Type() != "variable_declarator" {
-		return
+		return errors.New("declarator unexpectedly nil")
 	}
 
 	nameNode := declarator.ChildByFieldName("name")
 	valueNode := declarator.ChildByFieldName("value")
 
 	if valueNode == nil || nameNode == nil {
-		return
+		return errors.New("valueNode or nameNode unexpectedly nil")
 	}
 
 	name := nameNode.Content(content)
 	value := valueNode.Content(content)
 
-	build(state, valueNode, content)
+	err := build(state, valueNode, content)
+	if err != nil {
+		return err
+	}
 
 	state.AddInstruction(InstructionAssign, name, node, value, content)
-}
 
-func Run() {
-	content := []byte("function hello() { for (const x of xs) { break } op(); } function hello() { for (const x of xs) { continue } op(); } function hello() { for (const x of xs) { return } op(); }")
-
-	state := newState([]byte(content))
-
-	root, err := utils.ParseText(content, utils.TypeScript)
-	if err != nil {
-		panic(err)
-	}
-
-	for i := range root.NamedChildCount() { // the root it a `(program)`
-		build(state, root.NamedChild(int(i)), content)
-	}
-
-	sb := strings.Builder{}
-	visited := map[*Block]any{}
-	state.PrintFromState(&sb, &visited)
-
-	println(sb.String())
+	return nil
 }
 
 func BuildGraphFromContent(content string) (*State, error) {
@@ -610,7 +641,10 @@ func BuildGraphFromContent(content string) (*State, error) {
 		return nil, err
 	}
 
-	build(state, root, c)
+	err = build(state, root, c)
+	if err != nil {
+		return nil, err
+	}
 
 	return state, nil
 }
@@ -657,7 +691,7 @@ func printFromBlock(sb *strings.Builder, visited *map[*Block]any, parent *Block,
 }
 
 func checkBinaryExpression(node *sitter.Node, content []byte, check func(*sitter.Node, []byte) bool) bool {
-	if node.Type() != "binary_expression" {
+	if node == nil || node.Type() != "binary_expression" {
 		return false
 	}
 
@@ -699,8 +733,13 @@ func getExpressionNode(node *sitter.Node) *sitter.Node {
 	return node
 }
 
+//nolint:unused
 func hasConstantExpression(node *sitter.Node, content []byte) bool {
 	n := getExpressionNode(node)
+
+	if n == nil {
+		return false
+	}
 
 	if n.Type() == "true" || n.Type() == "false" {
 		return true
@@ -716,6 +755,10 @@ func hasConstantExpression(node *sitter.Node, content []byte) bool {
 func hasConstantFalse(node *sitter.Node, content []byte) bool {
 	n := getExpressionNode(node)
 
+	if n == nil {
+		return false
+	}
+
 	if n.Type() == "false" {
 		return true
 	}
@@ -729,6 +772,10 @@ func hasConstantFalse(node *sitter.Node, content []byte) bool {
 
 func hasConstantTrue(node *sitter.Node, content []byte) bool {
 	n := getExpressionNode(node)
+
+	if n == nil {
+		return false
+	}
 
 	if n.Type() == "true" {
 		return true

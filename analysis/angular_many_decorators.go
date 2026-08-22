@@ -4,8 +4,8 @@ import (
 	"ts_inspector/parser"
 )
 
-func angularManyDecorators(state *parser.State, file *parser.File) []Analysis {
-	return analyseClasses(file, func(class *parser.Class) []Analysis {
+func angularManyDecorators(state *parser.State, file *parser.File) ([]Analysis, error) {
+	return analyseClasses(file, func(class *parser.Class) ([]Analysis, error) {
 		analyses := []Analysis{}
 
 		if class.Snapshot().Angular != nil && class.Snapshot().Angular.Component != nil && class.Snapshot().Angular.Module != nil {
@@ -13,6 +13,6 @@ func angularManyDecorators(state *parser.State, file *parser.File) []Analysis {
 			analyses = append(analyses, newAnalysisHighlightName(class.Snapshot().NameNode, class, AnalysisSeverity.Error, "angular-method-no-many-decorators", message))
 		}
 
-		return analyses
-	})
+		return analyses, nil
+	}), nil
 }

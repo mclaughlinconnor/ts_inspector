@@ -1,6 +1,7 @@
 package tcb
 
 import (
+	"errors"
 	"slices"
 	"strings"
 	"ts_inspector/ast/walk"
@@ -12,7 +13,6 @@ import (
 type Ast struct {
 	Content []byte
 	Current utils.Stack[*Node]
-	Errors  []error
 	Root    *Node
 	Tcb     *Tcb
 }
@@ -111,15 +111,18 @@ func initAstParser() {
 	astOptimisedMap = walk.GenerateSymbolMap(pug, astVisitorFuncMap)
 }
 
-func Parse(root *sitter.Node, content []byte, tcb *Tcb) *Ast {
+func Parse(root *sitter.Node, content []byte, tcb *Tcb) (*Ast, error) {
 	rootAstNode := &Node{Kind: KindRoot, Root: &Root{}}
 	state := &Ast{Content: content, Root: rootAstNode, Tcb: tcb}
 	tcb.Ast = state
 	state.Current.Push(rootAstNode)
 
-	walk.VisitNode(root, state, 0, astOptimisedMap, true)
+	_, err := walk.VisitNode(root, state, 0, astOptimisedMap, true)
+	if err != nil {
+		return nil, err
+	}
 
-	return state
+	return state, err
 }
 
 func (a *Ast) AddChildToCurrent(n *Node) {
@@ -146,8 +149,8 @@ func (a *Ast) AddChildToCurrent(n *Node) {
 	c.Add(n)
 }
 
-func (n *Ast) Render() {
-	n.Root.Render()
+func (n *Ast) Render() error {
+	return n.Root.Render()
 }
 
 func (n *Node) GetChildren() utils.HelpfulArray[*Node] {
@@ -163,66 +166,79 @@ func (n *Node) GetChildren() utils.HelpfulArray[*Node] {
 	return utils.HelpfulArray[*Node]{}
 }
 
-func (n *Node) Render() {
+func (n *Node) Render() error {
+	var err error
+
 	switch n.Kind {
 	case KindMixin:
-		n.Mixin.Render()
+		err = n.Mixin.Render()
 	case KindRoot:
 		for _, c := range n.Root.Children.Elements {
-			c.Render()
+			err = c.Render()
+			if err != nil {
+				continue
+			}
 		}
 	case KindTag:
-		n.Tag.Render()
+		err = n.Tag.Render()
 	case KindAttribute:
 		n.Attribute.Render()
 	}
+
+	return err
 }
 
-func handleAttribute(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) *Ast {
+func handleAttribute(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) (*Ast, error) {
 	attribute := Attribute{Name: "", Node: node, Tag: (*state.Current.Peek()).Tag, tcb: state.Tcb, value: ""}
 
 	a := &attribute
 	state.Current.Push((*state.Current.Peek()).Tag.addAttribute(a))
 
 	for i := range node.NamedChildCount() {
-		parse(state, node.NamedChild(int(i)))
+		err := parse(state, node.NamedChild(int(i)))
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	state.Current.Pop()
 
-	return state
+	return state, nil
 }
 
-func handleAttributeName(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) *Ast {
+func handleAttributeName(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) (*Ast, error) {
 	(*state.Current.Peek()).Attribute.Name = node.Content(state.Content)
 	(*state.Current.Peek()).Attribute.NameNode = node
 
-	return state
+	return state, nil
 }
 
-func handleAttributeValue(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) *Ast {
+func handleAttributeValue(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) (*Ast, error) {
 	attributeValueNode := node.NamedChild(0)
 	if attributeValueNode != nil {
 		(*state.Current.Peek()).Attribute.value = attributeValueNode.Content(state.Content)
 		(*state.Current.Peek()).Attribute.ValueNode = attributeValueNode
 	}
 
-	return state
+	return state, nil
 }
 
-func handleChildNodes(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) *Ast {
+func handleChildNodes(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) (*Ast, error) {
 	prev := state.Current
 
 	for i := range node.NamedChildCount() {
-		parse(state, node.NamedChild(int(i)))
+		err := parse(state, node.NamedChild(int(i)))
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	state.Current = prev
 
-	return state
+	return state, nil
 }
 
-func handleMixin(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) *Ast {
+func handleMixin(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) (*Ast, error) {
 	mixin := Mixin{Children: utils.HelpfulArray[*Node]{}, Name: "", Node: node, tcb: state.Tcb}
 	mixinNode := newMixinNode(&mixin)
 
@@ -230,15 +246,18 @@ func handleMixin(node *sitter.Node, state *Ast, indexInParent int, internalFuncM
 	state.Current.Push(mixinNode)
 
 	for i := range node.NamedChildCount() {
-		parse(state, node.NamedChild(int(i)))
+		err := parse(state, node.NamedChild(int(i)))
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	state.Current.Pop()
 
-	return state
+	return state, nil
 }
 
-func handleMixinAttributes(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) *Ast {
+func handleMixinAttributes(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) (*Ast, error) {
 	prev := state.Current
 
 	for i := range node.NamedChildCount() {
@@ -247,7 +266,7 @@ func handleMixinAttributes(node *sitter.Node, state *Ast, indexInParent int, int
 
 	state.Current = prev
 
-	return state
+	return state, nil
 }
 
 func handleMixinAttributeName(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) *Ast {
@@ -264,16 +283,16 @@ func handleMixinAttributeName(node *sitter.Node, state *Ast, indexInParent int, 
 	return state
 }
 
-func handleMixinName(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) *Ast {
+func handleMixinName(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) (*Ast, error) {
 	if p := state.Current.Peek(); p != nil {
 		(*p).Mixin.Name = node.Content(state.Content)
 		(*p).Mixin.NameNode = node
 	}
 
-	return state
+	return state, nil
 }
 
-func handleTag(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) *Ast {
+func handleTag(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) (*Ast, error) {
 	tag := Tag{Children: utils.HelpfulArray[*Node]{}, Name: "", Node: node, tcb: state.Tcb}
 	tagNode := newTagNode(&tag)
 
@@ -281,16 +300,23 @@ func handleTag(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap
 	state.Current.Push(tagNode)
 
 	for i := range node.NamedChildCount() {
-		parse(state, node.NamedChild(int(i)))
+		err := parse(state, node.NamedChild(int(i)))
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	for _, attr := range tag.Attributes.Elements {
 		if strings.HasPrefix(attr.Attribute.Name, "#") {
 			valueExpr, err := attr.Attribute.GetExpression()
 			if err != nil {
-				state.Errors = append(state.Errors, err)
-				return state
+				return state, err
 			}
+
+			if valueExpr == nil {
+				return state, errors.New("no attribute expression")
+			}
+
 			ref := TemplateRef{Attribute: attr, Name: attr.Attribute.Name, Tag: &tag, Value: valueExpr.Expression}
 			tag.TemplateRefs.Add(ref)
 		}
@@ -298,25 +324,24 @@ func handleTag(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap
 
 	state.Current.Pop()
 
-	return state
+	return state, nil
 }
 
-func handleTagClass(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) *Ast {
+func handleTagClass(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) (*Ast, error) {
 	if p := state.Current.Peek(); p != nil && (*p).Tag.Name == "" {
 		(*p).Tag.Name = "div"
 		(*p).Tag.NameNode = node
 	}
 
-	return state
+	return state, nil
 }
 
-func handleTagContent(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) *Ast {
+func handleTagContent(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) (*Ast, error) {
 	content := []byte(node.Content(state.Content))
 	root, err := utils.ParseText([]byte(node.Content(state.Content)), utils.AngularContent)
 
 	if err != nil {
-		state.Errors = append(state.Errors, err)
-		return state
+		return state, err
 	}
 
 	for i := range root.ChildCount() {
@@ -339,25 +364,25 @@ func handleTagContent(node *sitter.Node, state *Ast, indexInParent int, internal
 		(*state.Current.Peek()).Tag.Content.Add(&tagContent)
 	}
 
-	return state
+	return state, nil
 }
 
-func handleTagId(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) *Ast {
+func handleTagId(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) (*Ast, error) {
 	if p := state.Current.Peek(); p != nil && (*p).Tag.Name == "" {
 		(*p).Tag.Name = "div"
 		(*p).Tag.NameNode = node
 	}
 
-	return state
+	return state, nil
 }
 
-func handleTagName(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) *Ast {
+func handleTagName(node *sitter.Node, state *Ast, indexInParent int, internalFuncMap walk.VisitorFuncMap[*Ast]) (*Ast, error) {
 	if p := state.Current.Peek(); p != nil {
 		(*p).Tag.Name = node.Content(state.Content)
 		(*p).Tag.NameNode = node
 	}
 
-	return state
+	return state, nil
 }
 
 func newAttributeNode(attribute *Attribute) *Node {
@@ -372,6 +397,11 @@ func newTagNode(tag *Tag) *Node {
 	return &Node{Kind: KindTag, Tag: tag}
 }
 
-func parse(state *Ast, root *sitter.Node) {
-	walk.VisitNode(root, state, 0, astOptimisedMap, true)
+func parse(state *Ast, root *sitter.Node) error {
+	_, err := walk.VisitNode(root, state, 0, astOptimisedMap, true)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

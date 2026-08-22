@@ -7,10 +7,10 @@ import (
 	"ts_inspector/utils"
 )
 
-func debug(_ *parser.State, file *parser.File) []Analysis {
+func debug(_ *parser.State, file *parser.File) ([]Analysis, error) {
 	analyses := []Analysis{}
 
-	analyses = append(analyses, analyseClasses(file, func(class *parser.Class) []Analysis {
+	analyses = append(analyses, analyseClasses(file, func(class *parser.Class) ([]Analysis, error) {
 		analyses := []Analysis{}
 
 		for _, definition := range class.Snapshot().Definitions.All() {
@@ -18,7 +18,7 @@ func debug(_ *parser.State, file *parser.File) []Analysis {
 			analyses = append(analyses, newAnalysisHighlightName(definition.Node, class, AnalysisSeverity.Hint, "", message))
 		}
 
-		return analyses
+		return analyses, nil
 	})...)
 
 	for _, variable := range file.Snapshot().Variables {
@@ -52,7 +52,11 @@ func debug(_ *parser.State, file *parser.File) []Analysis {
 	}
 
 	if file.Snapshot().Filetype == "typescript" {
-		cfgState, _ := cfg.BuildGraphFromFile(file)
+		cfgState, err := cfg.BuildGraphFromFile(file)
+		if err != nil {
+			return analyses, err
+		}
+
 		for _, cfg := range cfgState.AllCfg {
 			if cfg.Type == "program" {
 				continue
@@ -67,7 +71,7 @@ func debug(_ *parser.State, file *parser.File) []Analysis {
 	}
 
 	if file.Snapshot().Filetype != "pug" {
-		return analyses
+		return analyses, nil
 	}
 
 	zero := utils.Position{Line: 0, Character: 0}
@@ -90,5 +94,5 @@ func debug(_ *parser.State, file *parser.File) []Analysis {
 		}
 	}
 
-	return analyses
+	return analyses, nil
 }

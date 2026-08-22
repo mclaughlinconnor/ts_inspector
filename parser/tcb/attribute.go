@@ -361,7 +361,10 @@ func buildDirectiveAssignment(tcb *Tcb, thing *parser.Class, attribute *Attribut
 		assIdent = ai
 	}
 
-	buildNonGenericDirectiveAssignment(tcb, attribute, thing, assIdent, attachedInputs)
+	err := buildNonGenericDirectiveAssignment(tcb, attribute, thing, assIdent, attachedInputs)
+	if err != nil {
+		return "", err
+	}
 
 	return assIdent, nil
 }
@@ -522,8 +525,8 @@ func buildGenericDirectiveAssignment(tcb *Tcb, attribute *Attribute, thing *pars
 			return "", err
 		}
 
-		hasKeyExp, keyExp := valueShv.GetKeyExprWithKey(inputName)
-		if !hasKeyExp {
+		keyExp := valueShv.GetKeyExprWithKey(inputName)
+		if keyExp == nil {
 			// Don't overwrite the existing value
 			if values[inputName] == nil {
 				values[inputName] = nil
@@ -617,8 +620,8 @@ func buildNonGenericDirectiveAssignment(tcb *Tcb, attribute *Attribute, thing *p
 			return err
 		}
 
-		hasKeyExp, keyExp := valueShv.GetKeyExprWithKey(inputName)
-		if !hasKeyExp {
+		keyExp := valueShv.GetKeyExprWithKey(inputName)
+		if keyExp == nil {
 			continue
 		}
 

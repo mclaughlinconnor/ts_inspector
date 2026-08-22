@@ -50,11 +50,17 @@ func extractEmbeddedModel() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer f.Close()
 
 	reader := bufio.NewReader(f)
 
-	makeFile(reader, path, 0755)
+	err = makeFile(reader, path, 0755)
+	if err != nil {
+		return "", err
+	}
+
+	if err := f.Close(); err != nil {
+		return "", err
+	}
 
 	return path, nil
 }
@@ -69,13 +75,11 @@ func extractEmbeddedLibs() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer f.Close()
 
 	gzReader, err := gzip.NewReader(f)
 	if err != nil {
 		return "", err
 	}
-	defer gzReader.Close()
 
 	tarReader := tar.NewReader(gzReader)
 
@@ -109,6 +113,14 @@ func extractEmbeddedLibs() (string, error) {
 		}
 	}
 
+	if err := f.Close(); err != nil {
+		return "", err
+	}
+
+	if err := gzReader.Close(); err != nil {
+		return "", err
+	}
+
 	return filepath.Join(tempDir, "lib"), nil
 }
 
@@ -128,9 +140,13 @@ func makeFile(reader io.Reader, path string, mode int64) error {
 		return err
 	}
 
-	defer f.Close()
-
 	_, err = io.Copy(f, reader)
+	if err != nil {
+		return err
+	}
+
+	err = f.Close()
+
 	return err
 }
 

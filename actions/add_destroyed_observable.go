@@ -13,7 +13,7 @@ func AddDestroyedObservable(_ *utils.Writer, state *parser.State, file *parser.F
 	}
 
 	ret := func(action actionEditHolder, err error) (*utils.TextEdits, *interfaces.Command, bool, error) {
-		return &action.Edits, nil, action.IsAllowed, nil
+		return &action.Edits, nil, action.IsAllowed, err
 	}
 
 	retErr := func(err error) (*utils.TextEdits, *interfaces.Command, bool, error) {
@@ -23,7 +23,11 @@ func AddDestroyedObservable(_ *utils.Writer, state *parser.State, file *parser.F
 	action := actionEditHolder{[]utils.TextEdit{}, true}
 	content := []byte(file.Snapshot().Content)
 
-	definitionResults := ast.ExtractDefinitions(content)
+	definitionResults, err := ast.ExtractDefinitions(content)
+	if err != nil {
+		return retErr(err)
+	}
+
 	definitionResult, err := ast.FindDefinition(&definitionResults, "_destroyed$")
 	if err != nil || definitionResult != nil {
 		return retErr(err)
@@ -111,7 +115,10 @@ func addNgOnDestroy(content []byte) (utils.TextEdits, error) {
 func addOrPrependMethod(content []byte, methodName string, toPrepend string) (utils.TextEdits, error) {
 	var edits = utils.TextEdits{}
 
-	definitionResults := ast.ExtractDefinitions(content)
+	definitionResults, err := ast.ExtractDefinitions(content)
+	if err != nil {
+		return edits, err
+	}
 
 	definitionResult, err := ast.FindDefinition(&definitionResults, methodName)
 	if err != nil {

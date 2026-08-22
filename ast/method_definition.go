@@ -61,11 +61,12 @@ func calculateSortScore(node *sitter.Node, content []byte) int {
 	for child != nil {
 		if child.Type() == "accessibility_modifier" {
 			modifier := child.Content(content)
-			if modifier == "public" {
+			switch modifier {
+			case "public":
 				score = score + 2
-			} else if modifier == "protected" {
+			case "protected":
 				score = score + 1
-			} else if modifier == "private" {
+			case "private":
 				score = score + 0
 			}
 		}
@@ -84,12 +85,15 @@ func calculateSortScore(node *sitter.Node, content []byte) int {
 	return score
 }
 
-func ExtractDefinitions(content []byte) []MethodDefinitionParseResult {
-	node, _ := utils.ParseText(content, utils.TypeScript)
+func ExtractDefinitions(content []byte) ([]MethodDefinitionParseResult, error) {
+	node, err := utils.ParseText(content, utils.TypeScript)
+	if err != nil {
+		return []MethodDefinitionParseResult{}, err
+	}
 
 	funcMap := walk.NewVisitorFuncsMap[[]MethodDefinitionParseResult]()
 
-	methodHandler := func(node *sitter.Node, state []MethodDefinitionParseResult, indexInParent int, _ walk.VisitorFuncMap[[]MethodDefinitionParseResult]) []MethodDefinitionParseResult {
+	methodHandler := func(node *sitter.Node, state []MethodDefinitionParseResult, indexInParent int, _ walk.VisitorFuncMap[[]MethodDefinitionParseResult]) ([]MethodDefinitionParseResult, error) {
 		result := MethodDefinitionParseResult{}
 
 		result.Range = utils.Range{Start: utils.PositionFromPoint(node.StartPoint()), End: utils.PositionFromPoint(node.EndPoint())}
@@ -129,7 +133,7 @@ func ExtractDefinitions(content []byte) []MethodDefinitionParseResult {
 
 		result.Score = calculateSortScore(node, content)
 
-		return append(state, result)
+		return append(state, result), nil
 	}
 
 	funcMap["public_field_definition"] = methodHandler
@@ -257,7 +261,10 @@ func AddToMethodDefinition(methodResults *[]MethodDefinitionParseResult, classBo
 func AddMethodDefinitionToFile(content []byte, toAdd string, name string, score int) (utils.TextEdits, error) {
 	edits := utils.TextEdits{}
 
-	definitionResults := ExtractDefinitions(content)
+	definitionResults, err := ExtractDefinitions(content)
+	if err != nil {
+		return edits, err
+	}
 
 	definitionResult, err := FindDefinition(&definitionResults, toAdd)
 	if err != nil || definitionResult != nil {

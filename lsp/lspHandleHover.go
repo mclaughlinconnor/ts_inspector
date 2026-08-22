@@ -32,6 +32,7 @@ func lspHandleHover(writer *utils.Writer, logger *log.Logger, state *parser.Stat
 
 	sb := []string{}
 
+LOOP:
 	for _, c := range file.Snapshot().Classes {
 		if !c.HasComponent() {
 			continue
@@ -55,7 +56,15 @@ func lspHandleHover(writer *utils.Writer, logger *log.Logger, state *parser.Stat
 				}
 
 				if cursorOnAttributeName {
-					matches, parsed := tagUnderCursor.MatchesSelector(selector)
+					matches, parsed, err := tagUnderCursor.MatchesSelector(selector)
+					if err != nil {
+						notification := interfaces.BuildMessageNotification(err.Error(), interfaces.MessageType.Error)
+						utils.WriteResponse(writer, notification)
+
+						logger.Println(err)
+						break LOOP
+					}
+
 					if !matches {
 						continue
 					}
@@ -117,7 +126,14 @@ func handleTsGoHover(sb []string, state *parser.State, file *parser.File, cursor
 	offset := *part.TsStartOffset + cursorOffsetFromStartOfPart
 
 	ttype := state.GetTsGo().GetTypeAtPosition(file.GetTcbUri(), uint32(offset))
+	if ttype == nil {
+		return sb
+	}
+
 	text := state.GetTsGo().TypeToString(ttype.Result.Id)
+	if text == nil {
+		return sb
+	}
 
 	return append(sb, text.Result)
 }

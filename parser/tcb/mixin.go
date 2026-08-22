@@ -27,8 +27,13 @@ func (m *Mixin) addAttribute(attribute *Attribute) *Node {
 	return node
 }
 
-func (m *Mixin) Render() {
+func (m *Mixin) Render() error {
 	for _, c := range m.Children.Elements {
-		c.Render()
+		err := c.Render()
+		if err != nil {
+			return err
+		}
 	}
+
+	return nil
 }

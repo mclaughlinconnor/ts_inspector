@@ -7,12 +7,12 @@ import (
 
 var projectRootWalking = false
 
-func Index(rootUri string) ([]string, []string) {
+func Index(rootUri string) ([]string, []string, error) {
 	roots, tsconfigFiles := findProjectRoots(rootUri)
 
 	files := []string{}
 
-	if projectRootWalking == true {
+	if projectRootWalking {
 		for _, root := range roots {
 			i, e := recursivelyRetrieveImports(root, 0, 1)
 			if e == nil {
@@ -21,7 +21,7 @@ func Index(rootUri string) ([]string, []string) {
 		}
 	}
 
-	filepath.WalkDir(rootUri, func(path string, d fs.DirEntry, err error) error {
+	err := filepath.WalkDir(rootUri, func(path string, d fs.DirEntry, err error) error {
 		if !d.Type().IsDir() {
 			ext := filepath.Ext(path)
 			if ext != ".ts" && ext != ".pug" {
@@ -39,5 +39,9 @@ func Index(rootUri string) ([]string, []string) {
 		return fs.SkipDir
 	})
 
-	return files, tsconfigFiles
+	if err != nil {
+		return []string{}, []string{}, err
+	}
+
+	return files, tsconfigFiles, nil
 }

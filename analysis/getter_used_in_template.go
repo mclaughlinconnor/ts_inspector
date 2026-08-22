@@ -5,12 +5,12 @@ import (
 	"ts_inspector/parser"
 )
 
-func getterUsedInTemplate(_ *parser.State, file *parser.File) []Analysis {
-	return analyseClasses(file, func(class *parser.Class) []Analysis {
+func getterUsedInTemplate(_ *parser.State, file *parser.File) ([]Analysis, error) {
+	return analyseClasses(file, func(class *parser.Class) ([]Analysis, error) {
 		analyses := []Analysis{}
 
 		if class.GetTemplateFile() == nil {
-			return analyses
+			return analyses, nil
 		}
 
 		for _, definition := range class.GetGetters() {
@@ -21,6 +21,6 @@ func getterUsedInTemplate(_ *parser.State, file *parser.File) []Analysis {
 			}
 		}
 
-		return analyses
-	})
+		return analyses, nil
+	}), nil
 }

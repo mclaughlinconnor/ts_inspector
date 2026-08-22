@@ -9,7 +9,7 @@ import (
 func BuildTcbBlock(state *parser.State, file *parser.File) (*Statement, error) {
 	classes := file.Snapshot().Classes
 	if len(classes) == 0 {
-		return nil, fmt.Errorf("No resolved classes on file %v", file.Filename())
+		return nil, fmt.Errorf("no resolved classes on file %v", file.Filename())
 	}
 
 	class := classes[0]
@@ -20,7 +20,10 @@ func BuildTcbBlock(state *parser.State, file *parser.File) (*Statement, error) {
 		return nil, err
 	}
 
-	tcb := GenerateTcb(state, class, root, content)
+	tcb, err := GenerateTcb(state, class, root, content)
+	if err != nil {
+		return nil, err
+	}
 
 	return tcb, nil
 }

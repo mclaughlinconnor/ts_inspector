@@ -34,21 +34,21 @@ func extractImportsFromFile(filename string) ([]string, error) {
 	}
 
 	funcMap := walk.NewVisitorFuncsMap[[]string]()
-	funcMap["import_statement"] = func(node *sitter.Node, state []string, indexInParent int, _ walk.VisitorFuncMap[[]string]) []string {
+	funcMap["import_statement"] = func(node *sitter.Node, state []string, indexInParent int, _ walk.VisitorFuncMap[[]string]) ([]string, error) {
 		source := node.ChildByFieldName("source")
 		if source == nil {
-			return state
+			return state, nil
 		}
 
 		path := source.NamedChild(0)
 		if path == nil {
-			return state
+			return state, nil
 		}
 
 		// TODO: only supports relative imports
 		pathString := path.Content(content)
 		if !strings.HasPrefix(pathString, ".") {
-			return state
+			return state, nil
 		}
 
 		resolvedFilename, found := DetermineFilename(filepath.Join(utils.PathDir(filename), pathString))
@@ -56,12 +56,10 @@ func extractImportsFromFile(filename string) ([]string, error) {
 			state = append(state, resolvedFilename)
 		}
 
-		return state
+		return state, nil
 	}
 
-	imports := walk.WalkTypeScript(root, []string{}, funcMap)
-
-	return imports, nil
+	return walk.WalkTypeScript(root, []string{}, funcMap)
 }
 
 func recursivelyRetrieveImports(filename string, depth int, maxDepth int) ([]string, error) {

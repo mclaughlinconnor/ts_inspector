@@ -140,9 +140,7 @@ func (d *Definition) GetDocumentation(includeDefinitionName bool) string {
 			if len(dec.Arguments) > 0 {
 				str += "("
 				sb := make([]string, 0)
-				for _, arg := range dec.Arguments {
-					sb = append(sb, arg)
-				}
+				sb = append(sb, dec.Arguments...)
 				str += strings.Join(sb, ", ") + ")"
 			} else {
 				str += "()"
@@ -174,7 +172,6 @@ func (d *Definition) GetDocumentation(includeDefinitionName bool) string {
 
 		if !firstLine {
 			documentation = append(documentation, "")
-			firstLine = true
 		}
 
 		documentation = append(documentation, "**Is Angular Method:** "+angular)
@@ -262,7 +259,7 @@ func CalculateAccessibilityFromString(a string) (accessibility, error) {
 	case "protected":
 		return ProtectedAccessibility, nil
 	}
-	return PublicAccessibility, fmt.Errorf("Unhandled accessibility: %s", a)
+	return PublicAccessibility, fmt.Errorf("unhandled accessibility: %s", a)
 }
 
 func CalculateNewAccessType(new access, old access) access {
@@ -288,7 +285,7 @@ func (d *Definition) getDefinitionNameByDecoratorArg(decoratorName string) strin
 		arg := decorator.Arguments[0]
 		hasDoubleQuote := strings.HasPrefix(arg, "\"") && strings.HasSuffix(arg, "\"")
 		hasSingleQuote := strings.HasPrefix(arg, "'") && strings.HasSuffix(arg, "'")
-		if !(hasDoubleQuote || hasSingleQuote) {
+		if !hasDoubleQuote && !hasSingleQuote {
 			return d.Name
 		}
 

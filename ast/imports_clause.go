@@ -13,7 +13,7 @@ import (
 
 func doExtractImports(node *sitter.Node, content []byte) ([]*ImportParseResult, error) {
 	funcMap := walk.NewVisitorFuncsMap[[]*ImportParseResult]()
-	funcMap["import_statement"] = func(node *sitter.Node, state []*ImportParseResult, indexInParent int, funcMap walk.VisitorFuncMap[[]*ImportParseResult]) []*ImportParseResult {
+	funcMap["import_statement"] = func(node *sitter.Node, state []*ImportParseResult, indexInParent int, funcMap walk.VisitorFuncMap[[]*ImportParseResult]) ([]*ImportParseResult, error) {
 		isType := false
 
 		importNode := node
@@ -27,7 +27,7 @@ func doExtractImports(node *sitter.Node, content []byte) ([]*ImportParseResult, 
 		}
 
 		internalFuncMap := walk.NewVisitorFuncsMap[*ImportParseResult]()
-		internalFuncMap["import_clause"] = func(node *sitter.Node, state *ImportParseResult, indexInParent int, internalFuncMap walk.VisitorFuncMap[*ImportParseResult]) *ImportParseResult {
+		internalFuncMap["import_clause"] = func(node *sitter.Node, state *ImportParseResult, indexInParent int, internalFuncMap walk.VisitorFuncMap[*ImportParseResult]) (*ImportParseResult, error) {
 			state.Clause = node
 
 			for i := range node.ChildCount() {
@@ -42,14 +42,17 @@ func doExtractImports(node *sitter.Node, content []byte) ([]*ImportParseResult, 
 					state.Imports = append(state.Imports, imp)
 					state.Import = importNode
 				} else {
-					walk.VisitNode(node.Child(int(i)), state, int(i), internalFuncMap, false)
+					_, err := walk.VisitNode(node.Child(int(i)), state, int(i), internalFuncMap, false)
+					if err != nil {
+						return nil, err
+					}
 				}
 			}
 
-			return state
+			return state, nil
 		}
 
-		internalFuncMap["import_specifier"] = func(node *sitter.Node, state *ImportParseResult, indexInParent int, internalFuncMap walk.VisitorFuncMap[*ImportParseResult]) *ImportParseResult {
+		internalFuncMap["import_specifier"] = func(node *sitter.Node, state *ImportParseResult, indexInParent int, internalFuncMap walk.VisitorFuncMap[*ImportParseResult]) (*ImportParseResult, error) {
 			state.Import = importNode
 
 			localIsType := isType
@@ -72,7 +75,7 @@ func doExtractImports(node *sitter.Node, content []byte) ([]*ImportParseResult, 
 			}
 
 			if nameNode == nil {
-				return state
+				return state, nil
 			}
 
 			if aliasNode == nil {
@@ -89,15 +92,15 @@ func doExtractImports(node *sitter.Node, content []byte) ([]*ImportParseResult, 
 			}
 			state.Imports = append(state.Imports, imp)
 
-			return state
+			return state, nil
 		}
 
-		internalFuncMap["namespace_import"] = func(node *sitter.Node, state *ImportParseResult, indexInParent int, internalFuncMap walk.VisitorFuncMap[*ImportParseResult]) *ImportParseResult {
+		internalFuncMap["namespace_import"] = func(node *sitter.Node, state *ImportParseResult, indexInParent int, internalFuncMap walk.VisitorFuncMap[*ImportParseResult]) (*ImportParseResult, error) {
 			state.Import = importNode
 
 			aliasNode := importNode.NamedChild(0)
 			if aliasNode == nil {
-				return state
+				return state, nil
 			}
 
 			alias := aliasNode.Content(content)
@@ -109,7 +112,7 @@ func doExtractImports(node *sitter.Node, content []byte) ([]*ImportParseResult, 
 			}
 			state.Imports = append(state.Imports, imp)
 
-			return state
+			return state, nil
 		}
 
 		importParseResult := ImportParseResult{IsType: isType}
@@ -122,42 +125,45 @@ func doExtractImports(node *sitter.Node, content []byte) ([]*ImportParseResult, 
 			}
 		}
 
-		walk.WalkTypeScript(node, &importParseResult, internalFuncMap)
+		_, err := walk.WalkTypeScript(node, &importParseResult, internalFuncMap)
+		if err != nil {
+			return state, err
+		}
 
-		return append(state, &importParseResult)
+		return append(state, &importParseResult), nil
 	}
 
-	return walk.WalkTypeScript(node, []*ImportParseResult{}, funcMap), nil
+	return walk.WalkTypeScript(node, []*ImportParseResult{}, funcMap)
 }
 
 func doExtractDynamicImports(node *sitter.Node, content []byte) ([]string, error) {
 	funcMap := walk.NewVisitorFuncsMap[[]string]()
 	// Do I need to do `require()` too? Require is just an `(identifier)` so there will likely be a performance hit
-	funcMap["import"] = func(node *sitter.Node, state []string, indexInParent int, funcMap walk.VisitorFuncMap[[]string]) []string {
+	funcMap["import"] = func(node *sitter.Node, state []string, indexInParent int, funcMap walk.VisitorFuncMap[[]string]) ([]string, error) {
 		call := node.Parent()
 		if call == nil || call.Type() != "call_expression" {
-			return state
+			return state, nil
 		}
 
 		arguments := call.ChildByFieldName("arguments")
 		if arguments == nil || arguments.NamedChildCount() != 1 {
-			return state
+			return state, nil
 		}
 
 		string := arguments.NamedChild(0)
 		if string == nil {
-			return state
+			return state, nil
 		}
 
 		fragment := string.NamedChild(0)
 		if fragment == nil || fragment.Type() != "string_fragment" {
-			return state
+			return state, nil
 		}
 
-		return append(state, fragment.Content(content))
+		return append(state, fragment.Content(content)), nil
 	}
 
-	return walk.WalkTypeScript(node, []string{}, funcMap), nil
+	return walk.WalkTypeScript(node, []string{}, funcMap)
 }
 
 func ExtractDynamicImports(node *sitter.Node, content []byte) ([]string, error) {
@@ -305,9 +311,7 @@ func AddImportToFile(content []byte, packageName string, toAdd []string, toAddTy
 	}
 
 	importEdits := AddToImport(importResults, packageName, toAdd, false)
-	for _, edit := range AddToImport(importResults, packageName, toAddTypes, true) {
-		importEdits = append(importEdits, edit)
-	}
+	importEdits = append(importEdits, AddToImport(importResults, packageName, toAddTypes, true)...)
 
 	return importEdits, nil
 }

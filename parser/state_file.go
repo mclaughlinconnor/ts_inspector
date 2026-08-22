@@ -219,8 +219,6 @@ func (f *File) GetOffsetForPosition(p utils.Position) uint32 {
 
 	if p.Line >= lines {
 		return uint32(len(file.Content))
-	} else if p.Line < 0 {
-		return 0
 	}
 
 	lineOffset := file.LineOffsets[p.Line]
@@ -262,7 +260,11 @@ func (f *File) GetTcbUri() string {
 		return ""
 	}
 
-	parsedUrl, _ := url.Parse(file.URI)
+	parsedUrl, err := url.Parse(file.URI)
+	if err != nil {
+		panic(err)
+	}
+
 	parsedUrl.Path = strings.TrimSuffix(parsedUrl.Path, path.Ext(parsedUrl.Path)) + interfaces.TCB_FILENAME_SUFFIX
 
 	return parsedUrl.String()
@@ -320,7 +322,12 @@ func (f *File) ResolveDynamicallyImportedFiles(state *State) {
 				return
 			}
 
-			resolvedFile := getFileByPath(state, absolutePath)
+			resolvedFile, err := getFileByPath(state, absolutePath)
+			if err != nil {
+				logger.Println(err)
+				return
+			}
+
 			if resolvedFile == nil {
 				return
 			}
@@ -387,7 +394,7 @@ func FiletypeFromFilename(filename string) (string, error) {
 		return "html", nil
 	}
 
-	return "", fmt.Errorf("Couldn't determine filetype from filename: %s", filename)
+	return "", fmt.Errorf("couldn't determine filetype from filename: %s", filename)
 }
 
 func IndexFileFromIndexer(state *State, filename string, postprocess bool) error {
@@ -505,45 +512,52 @@ func createFileIfNotExists(state *State, filename string, content string, versio
 	return file, nil
 }
 
-func getFileByPath(state *State, path string) *File {
+func getFileByPath(state *State, path string) (*File, error) {
 	file, found := state.GetFile(path)
 	if found {
-		return file
+		return file, nil
 	}
 
 	extensionedPath, found := indexing.DetermineFilename(path)
 	if !found {
-		return nil
+		return nil, nil
 	}
 
 	file, found = state.GetFile(extensionedPath)
 	if found {
-		return file
+		return file, nil
 	}
 
-	IndexFileFromIndexer(state, extensionedPath, true)
+	err := IndexFileFromIndexer(state, extensionedPath, true)
+	if err != nil {
+		return nil, err
+	}
+
 	file, found = state.GetFile(extensionedPath)
 	if found {
-		return file
+		return file, nil
 	}
 
-	return nil
+	return nil, nil
 }
 
-func resolveProjectImportPath(state *State, currentFile *File, importPath string) *File {
+func resolveProjectImportPath(state *State, currentFile *File, importPath string) (*File, error) {
 	absolutePath, err := filepath.Abs(path.Join(utils.PathDir(FilenameFromUri(currentFile.Snapshot().URI)), importPath))
 
 	if err != nil {
-		logger.Println(err)
-		return nil
+		return nil, err
 	}
 
-	resolvedFile := getFileByPath(state, absolutePath)
+	resolvedFile, err := getFileByPath(state, absolutePath)
+	if err != nil {
+		return nil, err
+	}
+
 	if resolvedFile != nil {
-		return resolvedFile
+		return resolvedFile, nil
 	}
 
-	return nil
+	return nil, nil
 }
 
 func versionFallback(version int, uri string) int {

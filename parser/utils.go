@@ -75,7 +75,7 @@ func UriFromFilename(filename string) string {
 	return `file://` + filename
 }
 
-func FindDefinition(state *State, file *File, cursorOffset uint32) []interfaces.Location {
+func FindDefinition(state *State, file *File, cursorOffset uint32) ([]interfaces.Location, error) {
 	locations := make([]interfaces.Location, 0)
 
 	tagName, cursorOnTagName := ast.GetTagNameAtOffset(file.Snapshot().Content, cursorOffset)
@@ -108,7 +108,11 @@ func FindDefinition(state *State, file *File, cursorOffset uint32) []interfaces.
 				}
 
 				if cursorOnAttributeName {
-					matches, parsed := tagUnderCursor.MatchesSelector(selector)
+					matches, parsed, err := tagUnderCursor.MatchesSelector(selector)
+					if err != nil {
+						return locations, err
+					}
+
 					if !matches {
 						continue
 					}
@@ -123,7 +127,7 @@ func FindDefinition(state *State, file *File, cursorOffset uint32) []interfaces.
 		}
 	}
 
-	return locations
+	return locations, nil
 }
 
 func handleAttributeOfTag(locations []interfaces.Location, class *Class, attributeName string, selector string) []interfaces.Location {

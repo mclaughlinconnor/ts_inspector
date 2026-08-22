@@ -9,20 +9,15 @@ import (
 	"ts_inspector/utils"
 )
 
-func structuralDirectiveUnfoundKeyExprKey(state *parser.State, file *parser.File) []Analysis {
+func structuralDirectiveUnfoundKeyExprKey(state *parser.State, file *parser.File) ([]Analysis, error) {
 	analyses := []Analysis{}
 
 	if file.Snapshot().Filetype != "pug" {
-		return analyses
+		return analyses, nil
 	}
 
 	if len(file.Snapshot().Classes) == 0 {
-		return analyses
-	}
-
-	throwGeneric := func(err error) []Analysis {
-		analyses = append(analyses, newAnalysis("structuralDirectiveUnfoundKeyExprKey", utils.ZeroRange(), AnalysisSeverity.Error, err.Error(), nil))
-		return analyses
+		return analyses, nil
 	}
 
 	strContent := file.Snapshot().Content
@@ -30,12 +25,12 @@ func structuralDirectiveUnfoundKeyExprKey(state *parser.State, file *parser.File
 
 	root, err := utils.ParseText(byteContent, utils.Pug)
 	if err != nil {
-		return throwGeneric(err)
+		return analyses, err
 	}
 
-	ast, err := tcb.Parse(root, byteContent, &tcb.Tcb{}), nil
+	ast, err := tcb.Parse(root, byteContent, &tcb.Tcb{})
 	if err != nil {
-		return throwGeneric(err)
+		return analyses, err
 	}
 
 	analyseClass := func(class *parser.Class, attribute *tcb.Attribute) {
@@ -134,7 +129,7 @@ func structuralDirectiveUnfoundKeyExprKey(state *parser.State, file *parser.File
 
 	visit(ast.Root, &analyses, analyse)
 
-	return analyses
+	return analyses, nil
 }
 
 func visit(node *tcb.Node, analyses *[]Analysis, analyse func(*tcb.Attribute)) {

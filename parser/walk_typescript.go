@@ -45,9 +45,20 @@ func Index(state *State, file *File) error {
 		return err
 	}
 
-	parseClasses(state, root, file)
-	parseRootFunctions(state, root, file)
-	parseRootVariables(state, root, file)
+	err = parseClasses(state, root, file)
+	if err != nil {
+		return err
+	}
+
+	err = parseRootFunctions(state, root, file)
+	if err != nil {
+		return err
+	}
+
+	err = parseRootVariables(state, root, file)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -83,7 +94,7 @@ func addUsage(class *Class, name string, node *sitter.Node, content []byte) {
 	class.AppendDefinitionUsage(name, &usageInstance)
 }
 
-func extractClassName(root *sitter.Node, content []byte) (string, *sitter.Node) {
+func extractClassName(root *sitter.Node, content []byte) (string, *sitter.Node, error) {
 	type ret struct {
 		text string
 		node *sitter.Node
@@ -91,22 +102,22 @@ func extractClassName(root *sitter.Node, content []byte) (string, *sitter.Node) 
 
 	funcMap := walk.NewVisitorFuncsMap[ret]()
 
-	classVisitor := func(node *sitter.Node, state ret, indexInParent int, funcMap walk.VisitorFuncMap[ret]) ret {
+	classVisitor := func(node *sitter.Node, state ret, indexInParent int, funcMap walk.VisitorFuncMap[ret]) (ret, error) {
 		nameNode := node.ChildByFieldName("name")
 		if nameNode == nil {
-			return ret{}
+			return ret{}, nil
 		}
 
-		return ret{text: nameNode.Content(content), node: nameNode}
+		return ret{text: nameNode.Content(content), node: nameNode}, nil
 	}
 
 	funcMap["abstract_class_declaration"] = classVisitor
 	funcMap["class_declaration"] = classVisitor
 	funcMap["interface_declaration"] = classVisitor
 
-	r := walk.WalkTypeScript(root, ret{}, funcMap)
+	r, err := walk.WalkTypeScript(root, ret{}, funcMap)
 
-	return r.text, r.node
+	return r.text, r.node, err
 }
 
 func extractFileImports(root *sitter.Node, file *File) error {
@@ -131,10 +142,10 @@ func extractFileImports(root *sitter.Node, file *File) error {
 	return nil
 }
 
-func extractMetadata(class *Class, root *sitter.Node, content []byte) {
+func extractMetadata(class *Class, root *sitter.Node, content []byte) error {
 	funcMap := walk.NewVisitorFuncsMap[*Class]()
 
-	classVisitor := func(node *sitter.Node, state *Class, indexInParent int, funcMap walk.VisitorFuncMap[*Class]) *Class {
+	classVisitor := func(node *sitter.Node, state *Class, indexInParent int, funcMap walk.VisitorFuncMap[*Class]) (*Class, error) {
 		for i := range node.NamedChildCount() {
 			child := node.NamedChild(int(i))
 			t := child.Type()
@@ -162,7 +173,8 @@ func extractMetadata(class *Class, root *sitter.Node, content []byte) {
 				clause := child.NamedChild(int(i))
 				jt := clause.Type()
 
-				if jt == "extends_clause" {
+				switch jt {
+				case "extends_clause":
 					extendsClause := clause
 					identCount := int(extendsClause.NamedChildCount())
 					extendsIdentifiers := make([]string, identCount)
@@ -174,7 +186,7 @@ func extractMetadata(class *Class, root *sitter.Node, content []byte) {
 					state.Update(func(data *classState) {
 						data.ExtendsIdentNames = extendsIdentifiers
 					})
-				} else if jt == "implements_clause" {
+				case "implements_clause":
 					implementsClause := clause
 					identCount := int(implementsClause.NamedChildCount())
 					implementsIdentifiers := make([]string, identCount)
@@ -191,14 +203,15 @@ func extractMetadata(class *Class, root *sitter.Node, content []byte) {
 
 		}
 
-		return nil
+		return nil, nil
 	}
 
 	funcMap["abstract_class_declaration"] = classVisitor
 	funcMap["class_declaration"] = classVisitor
 	funcMap["interface_declaration"] = classVisitor
 
-	walk.WalkTypeScript(root, class, funcMap)
+	_, err := walk.WalkTypeScript(root, class, funcMap)
+	return err
 }
 
 func extractType(node *sitter.Node, content []byte) string {
@@ -226,106 +239,106 @@ func extractTypeScriptDefinitions(class *Class, root *sitter.Node, content []byt
 	funcMap["public_field_definition"] = visitDefinition(content)
 	funcMap["required_parameter"] = visitDefinition(content)
 
-	funcMap["decorator"] = func(node *sitter.Node, state typescriptWalkState, indexInParent int, funcMap walk.VisitorFuncMap[typescriptWalkState]) typescriptWalkState {
+	funcMap["decorator"] = func(node *sitter.Node, state typescriptWalkState, indexInParent int, funcMap walk.VisitorFuncMap[typescriptWalkState]) (typescriptWalkState, error) {
 		if state.DefinitionStack.IsEmpty() {
-			return state
+			return state, nil
 		}
 
 		state.DefinitionStack.Peek().Decorators = append(state.DefinitionStack.Peek().Decorators, handleDecorator(node, content))
 
-		return state
+		return state, nil
 	}
-	funcMap["accessibility_modifier"] = func(node *sitter.Node, state typescriptWalkState, indexInParent int, funcMap walk.VisitorFuncMap[typescriptWalkState]) typescriptWalkState {
+	funcMap["accessibility_modifier"] = func(node *sitter.Node, state typescriptWalkState, indexInParent int, funcMap walk.VisitorFuncMap[typescriptWalkState]) (typescriptWalkState, error) {
 		if state.DefinitionStack.IsEmpty() {
-			return state
+			return state, nil
 		}
 
 		a, err := CalculateAccessibilityFromString(node.Content(content))
 		if err != nil {
-			return state
+			return state, nil
 		}
 
 		state.DefinitionStack.Peek().AccessModifier = a
 
-		return state
+		return state, nil
 	}
 
-	funcMap["static"] = func(node *sitter.Node, state typescriptWalkState, indexInParent int, funcMap walk.VisitorFuncMap[typescriptWalkState]) typescriptWalkState {
+	funcMap["static"] = func(node *sitter.Node, state typescriptWalkState, indexInParent int, funcMap walk.VisitorFuncMap[typescriptWalkState]) (typescriptWalkState, error) {
 		if state.DefinitionStack.IsEmpty() {
-			return state
+			return state, nil
 		}
 
 		state.DefinitionStack.Peek().Static = true
 
-		return state
+		return state, nil
 	}
 
-	funcMap["override_modifier"] = func(node *sitter.Node, state typescriptWalkState, indexInParent int, funcMap walk.VisitorFuncMap[typescriptWalkState]) typescriptWalkState {
+	funcMap["override_modifier"] = func(node *sitter.Node, state typescriptWalkState, indexInParent int, funcMap walk.VisitorFuncMap[typescriptWalkState]) (typescriptWalkState, error) {
 		if state.DefinitionStack.IsEmpty() {
-			return state
+			return state, nil
 		}
 
 		state.DefinitionStack.Peek().Override = true
 
-		return state
+		return state, nil
 	}
 
-	funcMap["readonly"] = func(node *sitter.Node, state typescriptWalkState, indexInParent int, funcMap walk.VisitorFuncMap[typescriptWalkState]) typescriptWalkState {
+	funcMap["readonly"] = func(node *sitter.Node, state typescriptWalkState, indexInParent int, funcMap walk.VisitorFuncMap[typescriptWalkState]) (typescriptWalkState, error) {
 		if state.DefinitionStack.IsEmpty() {
-			return state
+			return state, nil
 		}
 
 		state.DefinitionStack.Peek().Readonly = true
 
-		return state
+		return state, nil
 	}
 
-	funcMap["async"] = func(node *sitter.Node, state typescriptWalkState, indexInParent int, funcMap walk.VisitorFuncMap[typescriptWalkState]) typescriptWalkState {
+	funcMap["async"] = func(node *sitter.Node, state typescriptWalkState, indexInParent int, funcMap walk.VisitorFuncMap[typescriptWalkState]) (typescriptWalkState, error) {
 		if state.DefinitionStack.IsEmpty() {
-			return state
+			return state, nil
 		}
 
 		state.DefinitionStack.Peek().Async = true
 
-		return state
+		return state, nil
 	}
 
-	funcMap["generator"] = func(node *sitter.Node, state typescriptWalkState, indexInParent int, funcMap walk.VisitorFuncMap[typescriptWalkState]) typescriptWalkState {
+	funcMap["generator"] = func(node *sitter.Node, state typescriptWalkState, indexInParent int, funcMap walk.VisitorFuncMap[typescriptWalkState]) (typescriptWalkState, error) {
 		if state.DefinitionStack.IsEmpty() {
-			return state
+			return state, nil
 		}
 
 		state.DefinitionStack.Peek().Generator = true
 
-		return state
+		return state, nil
 
 	}
 
-	funcMap["set"] = func(node *sitter.Node, state typescriptWalkState, indexInParent int, funcMap walk.VisitorFuncMap[typescriptWalkState]) typescriptWalkState {
+	funcMap["set"] = func(node *sitter.Node, state typescriptWalkState, indexInParent int, funcMap walk.VisitorFuncMap[typescriptWalkState]) (typescriptWalkState, error) {
 		if state.DefinitionStack.IsEmpty() {
-			return state
+			return state, nil
 		}
 
 		state.DefinitionStack.Peek().Setter = true
 
-		return state
+		return state, nil
 
 	}
 
-	funcMap["get"] = func(node *sitter.Node, state typescriptWalkState, indexInParent int, funcMap walk.VisitorFuncMap[typescriptWalkState]) typescriptWalkState {
+	funcMap["get"] = func(node *sitter.Node, state typescriptWalkState, indexInParent int, funcMap walk.VisitorFuncMap[typescriptWalkState]) (typescriptWalkState, error) {
 		if state.DefinitionStack.IsEmpty() {
-			return state
+			return state, nil
 		}
 
 		state.DefinitionStack.Peek().Getter = true
 
-		return state
+		return state, nil
 	}
 
 	s := typescriptWalkState{Class: class}
-	s = walk.WalkTypeScript(root, s, funcMap)
+	_, err := walk.WalkTypeScript(root, s, funcMap)
 
-	return nil
+	return err
 }
 
 func extractTypeScriptUsages(class *Class, root *sitter.Node, content []byte) error {
@@ -335,9 +348,9 @@ func extractTypeScriptUsages(class *Class, root *sitter.Node, content []byte) er
 	funcMap["subscript_expression"] = visitUsageExpression(content)
 
 	s := typescriptWalkState{Class: class}
-	walk.WalkTypeScript(root, s, funcMap)
+	_, err := walk.WalkTypeScript(root, s, funcMap)
 
-	return nil
+	return err
 }
 
 func handleDecorator(node *sitter.Node, content []byte) Decorator {
@@ -390,10 +403,10 @@ func isInConstructor(node *sitter.Node, content []byte) bool {
 	return false
 }
 
-func parseClasses(state *State, root *sitter.Node, file *File) {
+func parseClasses(state *State, root *sitter.Node, file *File) error {
 	funcMap := walk.NewVisitorFuncsMap[classWalkState]()
 
-	funcMap["export_statement"] = func(node *sitter.Node, classWalkState classWalkState, indexInParent int, funcMap walk.VisitorFuncMap[classWalkState]) classWalkState {
+	funcMap["export_statement"] = func(node *sitter.Node, classWalkState classWalkState, indexInParent int, funcMap walk.VisitorFuncMap[classWalkState]) (classWalkState, error) {
 		classWalkState.IsExport = true
 
 		decorator := node.ChildByFieldName("decorator")
@@ -401,25 +414,37 @@ func parseClasses(state *State, root *sitter.Node, file *File) {
 			classWalkState.Decorator = decorator
 		}
 
-		classWalkState = walk.VisitNamedChildren(node, classWalkState, funcMap, false)
+		classWalkState, err := walk.VisitNamedChildren(node, classWalkState, funcMap, false)
+		if err != nil {
+			return classWalkState, err
+		}
+
 		classWalkState.IsExport = false
 		classWalkState.Decorator = nil
 
-		return classWalkState
+		return classWalkState, nil
 	}
 
-	classVisitor := func(node *sitter.Node, classWalkState classWalkState, indexInParent int, funcMap walk.VisitorFuncMap[classWalkState]) classWalkState {
+	classVisitor := func(node *sitter.Node, classWalkState classWalkState, indexInParent int, funcMap walk.VisitorFuncMap[classWalkState]) (classWalkState, error) {
 		classContentS := node.Content([]byte(file.Snapshot().Content))
 		classContentW := []byte(classContentS)
 
 		var class *Class
 		classRoot, err := utils.ParseText(classContentW, utils.TypeScript)
+		if err != nil {
+			return classWalkState, err
+		}
+
 		uri := file.Snapshot().URI
 
 		// TODO: it's valid to have an interface with the same name as a class in a file, but this will count them both as the same thing
-		className, classNameNode := extractClassName(classRoot, classContentW)
+		className, classNameNode, err := extractClassName(classRoot, classContentW)
+		if err != nil {
+			return classWalkState, err
+		}
+
 		if className == "" || classNameNode == nil {
-			return classWalkState
+			return classWalkState, err
 		}
 
 		var found bool
@@ -443,20 +468,26 @@ func parseClasses(state *State, root *sitter.Node, file *File) {
 			})
 		}
 
-		extractMetadata(class, classRoot, classContentW)
+		err = extractMetadata(class, classRoot, classContentW)
+		if err != nil {
+			return classWalkState, err
+		}
 
 		err = extractTypeScriptDefinitions(class, classRoot, []byte(class.Snapshot().Content))
 		if err != nil {
-			return classWalkState
+			return classWalkState, err
 		}
 
 		err = extractTypeScriptUsages(class, classRoot, classContentW)
 		if err != nil {
-			return classWalkState
+			return classWalkState, err
 		}
 
 		if classWalkState.Decorator != nil {
-			ExtractComponentData(class, classWalkState.Decorator, []byte(file.Snapshot().Content))
+			err := ExtractComponentData(class, classWalkState.Decorator, []byte(file.Snapshot().Content))
+			if err != nil {
+				return classWalkState, err
+			}
 
 			for classWalkState.Decorator.NextSibling() != nil {
 				if classWalkState.Decorator.NextSibling().Type() != "decorator" {
@@ -465,21 +496,27 @@ func parseClasses(state *State, root *sitter.Node, file *File) {
 
 				classWalkState.Decorator = classWalkState.Decorator.NextSibling()
 
-				ExtractComponentData(class, classWalkState.Decorator, []byte(file.Snapshot().Content))
+				err := ExtractComponentData(class, classWalkState.Decorator, []byte(file.Snapshot().Content))
+				if err != nil {
+					return classWalkState, err
+				}
 			}
 		} else {
-			ExtractComponentData(class, node, []byte(file.Snapshot().Content))
+			err := ExtractComponentData(class, node, []byte(file.Snapshot().Content))
+			if err != nil {
+				return classWalkState, err
+			}
 		}
 
 		if class.Snapshot().Angular != nil && class.Snapshot().Angular.Component != nil && class.Snapshot().Angular.Component.TemplateUrl != "" {
 			err = handleTemplate(state, class, class.Snapshot().Angular.Component.TemplateUrl)
 			if err != nil {
-				return classWalkState
+				return classWalkState, err
 			}
 		}
 
 		if err != nil || class == nil {
-			return classWalkState
+			return classWalkState, err
 		}
 
 		file.Update(func(data *fileState) {
@@ -490,7 +527,7 @@ func parseClasses(state *State, root *sitter.Node, file *File) {
 			}
 		})
 
-		return classWalkState
+		return classWalkState, nil
 	}
 
 	funcMap["abstract_class_declaration"] = classVisitor
@@ -498,23 +535,29 @@ func parseClasses(state *State, root *sitter.Node, file *File) {
 	funcMap["interface_declaration"] = classVisitor
 
 	classWalkState := classWalkState{}
-	walk.WalkTypeScript(root, classWalkState, funcMap)
+	_, err := walk.WalkTypeScript(root, classWalkState, funcMap)
+
+	return err
 }
 
-func parseRootFunctions(state *State, root *sitter.Node, file *File) {
+func parseRootFunctions(state *State, root *sitter.Node, file *File) error {
 	fileContent := []byte(file.Snapshot().Content)
 
 	funcMap := walk.NewVisitorFuncsMap[funcWalkState]()
 
-	funcMap["export_statement"] = func(node *sitter.Node, funcWalkState funcWalkState, indexInParent int, funcMap walk.VisitorFuncMap[funcWalkState]) funcWalkState {
+	funcMap["export_statement"] = func(node *sitter.Node, funcWalkState funcWalkState, indexInParent int, funcMap walk.VisitorFuncMap[funcWalkState]) (funcWalkState, error) {
 		funcWalkState.IsExport = true
-		walk.VisitNamedChildren(node, funcWalkState, funcMap, true)
+		_, err := walk.VisitNamedChildren(node, funcWalkState, funcMap, true)
+		if err != nil {
+			return funcWalkState, err
+		}
+
 		funcWalkState.IsExport = false
 
-		return funcWalkState
+		return funcWalkState, nil
 	}
 
-	funcVisitor := func(node *sitter.Node, funcWalkState funcWalkState, indexInParent int, _funcMap walk.VisitorFuncMap[funcWalkState]) funcWalkState {
+	funcVisitor := func(node *sitter.Node, funcWalkState funcWalkState, indexInParent int, _funcMap walk.VisitorFuncMap[funcWalkState]) (funcWalkState, error) {
 		nameNode := node.ChildByFieldName("name")
 		parametersNode := node.ChildByFieldName("parameters")
 		bodyNode := node.ChildByFieldName("body")
@@ -532,36 +575,44 @@ func parseRootFunctions(state *State, root *sitter.Node, file *File) {
 			data.Functions = append(data.Functions, &function)
 		})
 
-		return funcWalkState
+		return funcWalkState, nil
 	}
 
 	funcMap["function_declaration"] = funcVisitor
 	funcMap["function_signature"] = funcVisitor
 
-	funcMap["program"] = func(node *sitter.Node, funcWalkState funcWalkState, indexInParent int, funcMap walk.VisitorFuncMap[funcWalkState]) funcWalkState {
-		walk.VisitNamedChildren(node, funcWalkState, funcMap, true)
+	funcMap["program"] = func(node *sitter.Node, funcWalkState funcWalkState, indexInParent int, funcMap walk.VisitorFuncMap[funcWalkState]) (funcWalkState, error) {
+		_, err := walk.VisitNamedChildren(node, funcWalkState, funcMap, true)
+		if err != nil {
+			return funcWalkState, err
+		}
 
-		return funcWalkState
+		return funcWalkState, nil
 	}
 
 	funcWalkState := funcWalkState{}
-	walk.WalkTypeScriptShallow(root, funcWalkState, funcMap)
+	_, err := walk.WalkTypeScriptShallow(root, funcWalkState, funcMap)
+	return err
 }
 
-func parseRootVariables(state *State, root *sitter.Node, file *File) {
+func parseRootVariables(state *State, root *sitter.Node, file *File) error {
 	fileContent := []byte(file.Snapshot().Content)
 
 	funcMap := walk.NewVisitorFuncsMap[varWalkState]()
 
-	funcMap["export_statement"] = func(node *sitter.Node, varWalkState varWalkState, indexInParent int, funcMap walk.VisitorFuncMap[varWalkState]) varWalkState {
+	funcMap["export_statement"] = func(node *sitter.Node, varWalkState varWalkState, indexInParent int, funcMap walk.VisitorFuncMap[varWalkState]) (varWalkState, error) {
 		varWalkState.IsExport = true
-		walk.VisitNamedChildren(node, varWalkState, funcMap, true)
+		_, err := walk.VisitNamedChildren(node, varWalkState, funcMap, true)
+		if err != nil {
+			return varWalkState, err
+		}
+
 		varWalkState.IsExport = false
 
-		return varWalkState
+		return varWalkState, nil
 	}
 
-	declarationVisitor := func(node *sitter.Node, varWalkState varWalkState, indexInParent int, funcMap walk.VisitorFuncMap[varWalkState]) varWalkState {
+	declarationVisitor := func(node *sitter.Node, varWalkState varWalkState, indexInParent int, funcMap walk.VisitorFuncMap[varWalkState]) (varWalkState, error) {
 		var kindNode *sitter.Node
 
 		kindNode = node.ChildByFieldName("kind")
@@ -575,16 +626,20 @@ func parseRootVariables(state *State, root *sitter.Node, file *File) {
 		kind := kindNode.Content(fileContent)
 
 		varWalkState.Kind = kind
-		walk.VisitNamedChildren(node, varWalkState, funcMap, true)
+		_, err := walk.VisitNamedChildren(node, varWalkState, funcMap, true)
+		if err != nil {
+			return varWalkState, err
+		}
+
 		varWalkState.Kind = ""
 
-		return varWalkState
+		return varWalkState, nil
 	}
 
 	funcMap["lexical_declaration"] = declarationVisitor
 	funcMap["variable_declaration"] = declarationVisitor
 
-	funcMap["variable_declarator"] = func(node *sitter.Node, varWalkState varWalkState, indexInParent int, _funcMap walk.VisitorFuncMap[varWalkState]) varWalkState {
+	funcMap["variable_declarator"] = func(node *sitter.Node, varWalkState varWalkState, indexInParent int, _funcMap walk.VisitorFuncMap[varWalkState]) (varWalkState, error) {
 		nameNode := node.ChildByFieldName("name")
 		valueNode := node.ChildByFieldName("value")
 
@@ -611,21 +666,22 @@ func parseRootVariables(state *State, root *sitter.Node, file *File) {
 			data.Variables = append(data.Variables, &variable)
 		})
 
-		return varWalkState
+		return varWalkState, nil
 	}
 
-	funcMap["program"] = func(node *sitter.Node, varWalkState varWalkState, indexInParent int, funcMap walk.VisitorFuncMap[varWalkState]) varWalkState {
-		walk.VisitNamedChildren(node, varWalkState, funcMap, true)
+	funcMap["program"] = func(node *sitter.Node, varWalkState varWalkState, indexInParent int, funcMap walk.VisitorFuncMap[varWalkState]) (varWalkState, error) {
+		_, err := walk.VisitNamedChildren(node, varWalkState, funcMap, true)
 
-		return varWalkState
+		return varWalkState, err
 	}
 
 	varWalkState := varWalkState{}
-	walk.WalkTypeScriptShallow(root, varWalkState, funcMap)
+	_, err := walk.WalkTypeScriptShallow(root, varWalkState, funcMap)
+	return err
 }
 
 func visitDefinition(content []byte) walk.VisitorFunction[typescriptWalkState] {
-	return func(node *sitter.Node, state typescriptWalkState, indexInParent int, funcMap walk.VisitorFuncMap[typescriptWalkState]) typescriptWalkState {
+	return func(node *sitter.Node, state typescriptWalkState, indexInParent int, funcMap walk.VisitorFuncMap[typescriptWalkState]) (typescriptWalkState, error) {
 		parentDefinition := state.DefinitionStack.Peek()
 		var parentName string
 		if parentDefinition != nil {
@@ -654,42 +710,53 @@ func visitDefinition(content []byte) walk.VisitorFunction[typescriptWalkState] {
 		}
 
 		if state.DefinitionStack.Peek().Name == "" {
-			return state
+			return state, nil
 		}
 
 		state.DefinitionStack.Peek().Type = extractType(node, content)
 
+		var err error
 		for i := range node.ChildCount() {
 			index := int(i)
-			state = walk.VisitNode(node.Child(index), state, index, funcMap, false)
+			state, err = walk.VisitNode(node.Child(index), state, index, funcMap, false)
+
+			if err != nil {
+				return state, err
+			}
 		}
 
 		finalDefinition := state.DefinitionStack.Pop()
 
 		if node.Type() == "required_parameter" && finalDefinition.OriginFunctionName != "constuctor" && finalDefinition.IsLocalParam() {
-			return state
+			return state, nil
 		}
 
-		state.Class.AddDefinition(*finalDefinition)
+		state.AddDefinition(*finalDefinition)
 
-		return state
+		return state, nil
 	}
 }
 
 func visitUsageExpression(content []byte) walk.VisitorFunction[typescriptWalkState] {
-	return func(node *sitter.Node, state typescriptWalkState, indexInParent int, funcMap walk.VisitorFuncMap[typescriptWalkState]) typescriptWalkState {
+	return func(node *sitter.Node, state typescriptWalkState, indexInParent int, funcMap walk.VisitorFuncMap[typescriptWalkState]) (typescriptWalkState, error) {
 		objectNode := node.ChildByFieldName("object")
 
 		// Only keep going if it's a this.abc or a Class.prototype.abc
 		if objectNode.Type() != "this" {
 			prototypeNode := objectNode.ChildByFieldName("property")
 			if prototypeNode == nil || prototypeNode.Content(content) != "prototype" {
+
+				var err error
 				for i := range node.NamedChildCount() {
 					index := int(i)
-					state = walk.VisitNode(node.NamedChild(index), state, index, funcMap, false)
+
+					state, err = walk.VisitNode(node.NamedChild(index), state, index, funcMap, false)
+					if err != nil {
+						return state, err
+					}
 				}
 
-				return state
+				return state, nil
 			}
 		}
 
@@ -699,23 +766,34 @@ func visitUsageExpression(content []byte) walk.VisitorFunction[typescriptWalkSta
 			varNode = varNode.NamedChild(0)
 
 			if varNode == nil || varNode.Type() != "string_fragment" {
+
+				var err error
 				for i := range node.NamedChildCount() {
 					index := int(i)
-					state = walk.VisitNode(node.NamedChild(index), state, index, funcMap, false)
+
+					state, err = walk.VisitNode(node.NamedChild(index), state, index, funcMap, false)
+					if err != nil {
+						return state, err
+					}
 				}
 
-				return state
+				return state, nil
 			}
 		}
 
 		varName := varNode.Content(content)
 		addUsage(state.Class, varName, node, content)
 
+		var err error
 		for i := range node.NamedChildCount() {
 			index := int(i)
-			state = walk.VisitNode(node.NamedChild(index), state, index, funcMap, false)
+
+			state, err = walk.VisitNode(node.NamedChild(index), state, index, funcMap, false)
+			if err != nil {
+				return state, err
+			}
 		}
 
-		return state
+		return state, nil
 	}
 }

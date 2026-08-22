@@ -146,7 +146,7 @@ func GetEmbeddingsFromSqlite(texts []string) (map[string][]float32, error) {
 
 		for rows.Next() {
 			var text string
-			var embedding []byte
+			var embedding = []byte{}
 
 			if err := rows.Scan(&text, &embedding); err != nil {
 				return nil, err
@@ -166,16 +166,17 @@ func GetEmbeddingsFromTokens(allTokens [][]llama.Token) [][]float32 {
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	mem, _ := llama.GetMemory(context)
-	llama.MemoryClear(mem, true)
-
 	ntokens := 0
 	for _, tokens := range allTokens {
 		ntokens += len(tokens)
 	}
 
 	batch := llama.BatchInit(int32(ntokens), 0, int32(len(allTokens)))
-	defer llama.BatchFree(batch)
+	defer func() {
+		if err := llama.BatchFree(batch); err != nil {
+			panic(err)
+		}
+	}()
 
 	for id, tokens := range allTokens {
 		for i, token := range tokens {
@@ -280,7 +281,10 @@ func indexEmbeddingsSqlite(interestingPoints []parser.InterestingPoint, ids []in
 		return err
 	}
 
-	DeleteInterestingFromUri(rootPath)
+	err = DeleteInterestingFromUri(rootPath)
+	if err != nil {
+		return err
+	}
 
 	return AddToSqlite("vec_interesting_points", rows, []string{"id", "embedding", "text", "rootPath"}, []string{}, func(args []any, r row) []any {
 		vector, err := sqlite_vec.SerializeFloat32(r.embedding)

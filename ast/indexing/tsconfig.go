@@ -48,6 +48,9 @@ func parseTsConfig(filename string) TsConfigFile {
 	}
 
 	err = json.Unmarshal(content, &config)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	return config
 }

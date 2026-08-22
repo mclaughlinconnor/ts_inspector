@@ -31,6 +31,7 @@ type TagContent struct {
 }
 
 type TagContentArray struct {
+	//nolint:unused
 	elems []*TagContent
 }
 
@@ -107,8 +108,7 @@ func (t *Tag) HasAttribute(attribute string) bool {
 				return false
 			}
 
-			found, _ := shv.GetKeyExprWithKey(strippedAttr)
-			return found
+			return shv.GetKeyExprWithKey(strippedAttr) != nil
 		} else {
 			sa, _ := utils.StripAngularFromAttribute(attr.Name)
 			return sa == strippedAttr
@@ -167,22 +167,27 @@ func (t *Tag) NotHasAttributes(attributes []string) bool {
 	return !slices.ContainsFunc(attributes, t.HasAttribute)
 }
 
-func (t *Tag) Render() {
+func (t *Tag) Render() error {
 	tcb := t.Tcb()
 
 	if len(tcb.CurrentScope.Parts.Parts) > 0 {
 		tcb.TagBoundaryPartStack.Push(tcb.CurrentScope.Parts.Parts[len(tcb.CurrentScope.Parts.Parts)-1])
 	}
 
-	// TODO: needs to return errors
-	t.renderAttributes()
+	err := t.renderAttributes()
+	if err != nil {
+		return err
+	}
 
 	if t.Identifier == "" {
 		t.AddDeclaration(true, false)
 	}
 
 	for _, c := range t.Children.Elements {
-		c.Render()
+		err := c.Render()
+		if err != nil {
+			return err
+		}
 	}
 
 	if t.closeScope {
@@ -190,6 +195,8 @@ func (t *Tag) Render() {
 	}
 
 	tcb.TagBoundaryPartStack.Pop()
+
+	return nil
 }
 
 func (t *Tag) Tcb() *Tcb {
@@ -232,7 +239,7 @@ func (t *Tag) insertValue(value *Statement, insertBeforeCurrentTag bool, shouldA
 		t.Identifier = tcb.CreateVarInCurrentScope(value, "")
 		if shouldAddReferenceVar {
 			value = StatementFromString(t.Identifier)
-			tcb.CreateVarInCurrentScope(StatementFromString(t.Identifier), "")
+			tcb.CreateVarInCurrentScope(value, "")
 		}
 	}
 }

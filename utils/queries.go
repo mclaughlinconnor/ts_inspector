@@ -53,7 +53,7 @@ func registerQuery(name string, lang string, queryString []byte) {
 func GetQuery(name string, lang string) (*sitter.QueryCursor, *sitter.Query, error) {
 	query, ok := queries[lang][name]
 	if !ok {
-		return nil, nil, fmt.Errorf("No query for '%s' found", name)
+		return nil, nil, fmt.Errorf("no query for '%s' found", name)
 	}
 
 	return sitter.NewQueryCursor(), query, nil

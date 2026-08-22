@@ -18,8 +18,6 @@ const (
 	JavaScript     = "javascript"
 )
 
-var languageConsts = []string{AngularContent, JavaScript, Pug, TypeScript}
-
 var languages = map[string]*sitter.Language{
 	AngularContent: angular_content.GetLanguage(),
 	AngularExpr:    angular_expr.GetLanguage(),

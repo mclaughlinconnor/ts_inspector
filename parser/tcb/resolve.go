@@ -10,6 +10,9 @@ func (t *Tag) ResolveSourceClassOfAttribute(state *parser.State, attribute *Attr
 	}
 
 	tagSourceClass := t.ResolveSourceClassOfTag(state, currentClass)
+	if tagSourceClass == nil {
+		return nil
+	}
 
 	for _, definition := range tagSourceClass.FilterAllDefinitions(func(def parser.ClassedDefinition) bool { return def.NameMatchesString(attribute.Name) }) {
 		attribute.SetSourceClass(definition.Class)
