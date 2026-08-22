@@ -123,7 +123,7 @@ func ParseSelector(text string) (*Selector, error) {
 			}
 		case LexStateAttr:
 			{
-				if isIdentifierChar(c) {
+				if isIdentifierChar(c) || c == '=' {
 					buf.WriteRune(c)
 					i++
 					continue
