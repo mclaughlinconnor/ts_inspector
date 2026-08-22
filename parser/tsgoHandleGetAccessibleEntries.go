@@ -14,7 +14,7 @@ func tsgoHandleGetAccessibleEntriesResponse(t *TsGo, request GetAccessibleEntrie
 		Result:       entries,
 	}
 
-	utils.WriteResponse(*t.stdin, response)
+	utils.WriteResponse(t.stdin, response)
 }
 
 func tsgoHandleGetAccessibleEntries(tsgo *TsGo, request GetAccessibleEntriesRequest) {

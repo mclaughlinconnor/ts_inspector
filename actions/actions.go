@@ -1,7 +1,6 @@
 package actions
 
 import (
-	"io"
 	"ts_inspector/config"
 	"ts_inspector/interfaces"
 	"ts_inspector/parser"
@@ -16,7 +15,7 @@ type actionEditHolder struct {
 }
 
 type Action struct {
-	Perform func(io.Writer, *parser.State, *parser.File, utils.Range) (actionEdits *[]utils.TextEdit, command *interfaces.Command, allowed bool, err error)
+	Perform func(*utils.Writer, *parser.State, *parser.File, utils.Range) (actionEdits *[]utils.TextEdit, command *interfaces.Command, allowed bool, err error)
 	Title   string
 }
 

@@ -2,13 +2,12 @@ package commands
 
 import (
 	"errors"
-	"io"
 	"ts_inspector/interfaces"
 	"ts_inspector/parser"
 	"ts_inspector/utils"
 )
 
-func GoToDeclaringModule(writer io.Writer, state *parser.State, args *any) (map[string]utils.TextEdits, error) {
+func GoToDeclaringModule(writer *utils.Writer, state *parser.State, args *any) (map[string]utils.TextEdits, error) {
 	changes := map[string]utils.TextEdits{}
 	slice, ok := (*args).([]any)
 

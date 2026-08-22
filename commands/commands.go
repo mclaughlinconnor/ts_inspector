@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"io"
 	"ts_inspector/interfaces"
 	"ts_inspector/parser"
 	"ts_inspector/utils"
@@ -9,7 +8,7 @@ import (
 
 type Command struct {
 	interfaces.Command
-	Perform func(io.Writer, *parser.State, *any) (commandEdits map[string]utils.TextEdits, err error)
+	Perform func(*utils.Writer, *parser.State, *any) (commandEdits map[string]utils.TextEdits, err error)
 }
 
 var Commands []Command
@@ -18,7 +17,7 @@ var CommandNames []string
 var CommandMap = map[string]Command{}
 
 type Action struct {
-	Perform func(io.Writer, parser.State, parser.File, utils.Range) (actionEdits []utils.TextEdit, allowed bool, err error)
+	Perform func(*utils.Writer, parser.State, parser.File, utils.Range) (actionEdits []utils.TextEdit, allowed bool, err error)
 	Title   string
 }
 

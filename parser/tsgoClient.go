@@ -29,7 +29,7 @@ type TsGo struct {
 	state           *State
 
 	stderr *io.ReadCloser
-	stdin  *io.WriteCloser
+	stdin  *utils.Writer
 	stdout *io.ReadCloser
 
 	ctx    context.Context
@@ -66,6 +66,8 @@ func StartTsGo(state *State) (*TsGo, error) {
 		return nil, err
 	}
 
+	stdinWriter := utils.NewWriter(stdin)
+
 	ctx, cancel := context.WithCancel(context.Background())
 
 	tsgo := &TsGo{
@@ -75,7 +77,7 @@ func StartTsGo(state *State) (*TsGo, error) {
 		state:     state,
 
 		stderr: &stderr,
-		stdin:  &stdin,
+		stdin:  stdinWriter,
 		stdout: &stdout,
 
 		cancel: cancel,
@@ -155,7 +157,7 @@ func (t *TsGo) GetSemanticDiagnostics(uri string) *DiagnosticResponse {
 		},
 	}
 
-	utils.WriteResponse(*t.stdin, request)
+	utils.WriteResponse(t.stdin, request)
 
 	c := make(chan []byte, 1)
 	t.responses.AddHandler(id, c)
@@ -186,7 +188,7 @@ func (t *TsGo) GetSymbolAtPosition(uri string, offset uint32) *SymbolResponse {
 		},
 	}
 
-	utils.WriteResponse(*t.stdin, request)
+	utils.WriteResponse(t.stdin, request)
 
 	c := make(chan []byte, 1)
 	t.responses.AddHandler(id, c)
@@ -213,7 +215,7 @@ func (t *TsGo) GetTypeOfSymbol(symbol SymbolID) *TypeResponse {
 		},
 	}
 
-	utils.WriteResponse(*t.stdin, request)
+	utils.WriteResponse(t.stdin, request)
 
 	c := make(chan []byte, 1)
 	t.responses.AddHandler(id, c)
@@ -242,7 +244,7 @@ func (t *TsGo) GetTypeAtPosition(uri string, offset uint32) *TypeResponse {
 		},
 	}
 
-	utils.WriteResponse(*t.stdin, request)
+	utils.WriteResponse(t.stdin, request)
 
 	c := make(chan []byte, 1)
 	t.responses.AddHandler(id, c)
@@ -263,7 +265,7 @@ func (t *TsGo) Initialize() *InitializeResponse {
 	id := utils.GetNextStringId()
 	request := TsGoRequest{RPC: "2.0", ID: id, Method: "initialize"}
 
-	utils.WriteResponse(*t.stdin, request)
+	utils.WriteResponse(t.stdin, request)
 
 	c := make(chan []byte, 1)
 	t.responses.AddHandler(id, c)
@@ -291,7 +293,7 @@ func (t *TsGo) TypeToString(ttype TypeID) *TypeToStringResponse {
 		},
 	}
 
-	utils.WriteResponse(*t.stdin, request)
+	utils.WriteResponse(t.stdin, request)
 
 	c := make(chan []byte, 1)
 	t.responses.AddHandler(id, c)
@@ -347,7 +349,7 @@ func (t *TsGo) updateSnapshotLocked(tsconfig *string, changes []DocumentIdentifi
 		},
 	}
 
-	utils.WriteResponse(*t.stdin, request)
+	utils.WriteResponse(t.stdin, request)
 
 	c := make(chan []byte, 1)
 	t.responses.AddHandler(id, c)
@@ -375,17 +377,29 @@ func (t *TsGo) handleRequest(method string, contents []byte) {
 	case "readFile":
 		{
 			r := utils.TryParseRequest[ReadFileRequest](t.logger, contents)
-			tsgoHandleReadFile(t, r)
+			if config.TsGoExperimentalConcurrentRequestHandling {
+				go tsgoHandleReadFile(t, r)
+			} else {
+				tsgoHandleReadFile(t, r)
+			}
 		}
 	case "fileExists":
 		{
 			r := utils.TryParseRequest[FileExistsRequest](t.logger, contents)
-			tsgoHandleFileExists(t, r)
+			if config.TsGoExperimentalConcurrentRequestHandling {
+				go tsgoHandleFileExists(t, r)
+			} else {
+				tsgoHandleFileExists(t, r)
+			}
 		}
 	case "getAccessibleEntries":
 		{
 			r := utils.TryParseRequest[GetAccessibleEntriesRequest](t.logger, contents)
-			tsgoHandleGetAccessibleEntries(t, r)
+			if config.TsGoExperimentalConcurrentRequestHandling {
+				go tsgoHandleGetAccessibleEntries(t, r)
+			} else {
+				tsgoHandleGetAccessibleEntries(t, r)
+			}
 		}
 	}
 }

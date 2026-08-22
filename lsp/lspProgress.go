@@ -2,7 +2,6 @@ package lsp
 
 import (
 	"fmt"
-	"io"
 	"log"
 	"ts_inspector/interfaces"
 	"ts_inspector/utils"
@@ -10,7 +9,7 @@ import (
 
 var progressResponses map[int]chan bool = map[int]chan bool{}
 
-func lspCreateProgressToken(writer io.Writer) (*interfaces.ProgressToken, bool) {
+func lspCreateProgressToken(writer *utils.Writer) (*interfaces.ProgressToken, bool) {
 	id := utils.GetNextId()
 	token := utils.GetNextId()
 
@@ -25,7 +24,7 @@ func lspCreateProgressToken(writer io.Writer) (*interfaces.ProgressToken, bool) 
 		},
 	}
 
-	lspIdHandler[id] = func(writer io.Writer, logger *log.Logger, contents []byte) {
+	lspIdHandler[id] = func(writer *utils.Writer, logger *log.Logger, contents []byte) {
 		lspHandleTokenCreateResponse(writer, logger, contents)
 		lspIdHandler[id] = nil
 	}
@@ -47,7 +46,7 @@ func lspCreateProgressToken(writer io.Writer) (*interfaces.ProgressToken, bool) 
 	}
 }
 
-func lspHandleTokenCreateResponse(writer io.Writer, logger *log.Logger, contents []byte) {
+func lspHandleTokenCreateResponse(writer *utils.Writer, logger *log.Logger, contents []byte) {
 	response := utils.TryParseRequest[interfaces.ResponseMessage](logger, contents)
 
 	id := response.ID
@@ -70,7 +69,7 @@ func lspHandleTokenCreateResponse(writer io.Writer, logger *log.Logger, contents
 	c <- true
 }
 
-func lspBeginProgress(writer io.Writer, progressToken *interfaces.ProgressToken, title string, message string, percentage int) {
+func lspBeginProgress(writer *utils.Writer, progressToken *interfaces.ProgressToken, title string, message string, percentage int) {
 	if progressToken == nil {
 		return
 	}
@@ -95,7 +94,7 @@ func lspBeginProgress(writer io.Writer, progressToken *interfaces.ProgressToken,
 	sendProgressNotification(writer, *progressToken, progress)
 }
 
-func lspReportProgress(writer io.Writer, progressToken *interfaces.ProgressToken, message string, percentage int) {
+func lspReportProgress(writer *utils.Writer, progressToken *interfaces.ProgressToken, message string, percentage int) {
 	if progressToken == nil {
 		return
 	}
@@ -119,7 +118,7 @@ func lspReportProgress(writer io.Writer, progressToken *interfaces.ProgressToken
 	sendProgressNotification(writer, *progressToken, progress)
 }
 
-func lspEndProgress(writer io.Writer, progressToken *interfaces.ProgressToken, message string) {
+func lspEndProgress(writer *utils.Writer, progressToken *interfaces.ProgressToken, message string) {
 	if progressToken == nil {
 		return
 	}
@@ -137,7 +136,7 @@ func lspEndProgress(writer io.Writer, progressToken *interfaces.ProgressToken, m
 	sendProgressNotification(writer, *progressToken, progress)
 }
 
-func sendProgressNotification(writer io.Writer, progressToken interfaces.ProgressToken, progress interfaces.WorkDoneProgress) {
+func sendProgressNotification(writer *utils.Writer, progressToken interfaces.ProgressToken, progress interfaces.WorkDoneProgress) {
 	notification := interfaces.ProgressNotification{
 		Notification: interfaces.Notification{RPC: "2.0", Method: "$/progress"},
 		Params:       interfaces.ProgressParams{Token: progressToken, Value: progress},

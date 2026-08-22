@@ -1,7 +1,6 @@
 package lsp
 
 import (
-	"io"
 	"log"
 	"net/url"
 	"strings"
@@ -11,7 +10,7 @@ import (
 	"ts_inspector/utils"
 )
 
-func lspHandleTcb(writer io.Writer, logger *log.Logger, state *parser.State, request interfaces.TcbRequest) {
+func lspHandleTcb(writer *utils.Writer, logger *log.Logger, state *parser.State, request interfaces.TcbRequest) {
 	throwErr := func(err error) {
 		response := interfaces.TcbRequestResponse{ResponseMessage: interfaces.ResponseMessage{RPC: "2.0", ID: &request.ID}, Result: err.Error()}
 		utils.WriteResponse(writer, response)

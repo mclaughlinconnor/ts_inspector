@@ -2,14 +2,13 @@ package commands
 
 import (
 	"errors"
-	"io"
 	"strings"
 	"ts_inspector/interfaces"
 	"ts_inspector/parser"
 	"ts_inspector/utils"
 )
 
-func PrintProviders(writer io.Writer, state *parser.State, args *any) (map[string]utils.TextEdits, error) {
+func PrintProviders(writer *utils.Writer, state *parser.State, args *any) (map[string]utils.TextEdits, error) {
 	changes := map[string]utils.TextEdits{}
 	uri, ok := (*args).(string)
 

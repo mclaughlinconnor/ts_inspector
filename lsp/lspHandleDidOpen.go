@@ -1,7 +1,6 @@
 package lsp
 
 import (
-	"io"
 	"log"
 	"ts_inspector/analysis"
 	"ts_inspector/config"
@@ -10,7 +9,7 @@ import (
 	"ts_inspector/utils"
 )
 
-func lspHandleDidOpen(writer io.Writer, logger *log.Logger, state *parser.State, request interfaces.DidOpenTextDocumentNotification) {
+func lspHandleDidOpen(writer *utils.Writer, logger *log.Logger, state *parser.State, request interfaces.DidOpenTextDocumentNotification) {
 	err := parser.IndexFileFromLsp(
 		state,
 		request.Params.TextDocument.Uri,

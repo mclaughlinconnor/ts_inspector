@@ -1,7 +1,6 @@
 package lsp
 
 import (
-	"io"
 	"log"
 	"slices"
 	"strconv"
@@ -12,11 +11,11 @@ import (
 	"ts_inspector/utils"
 )
 
-func send(writer io.Writer, items []interfaces.CompletionItem, id *int) {
+func send(writer *utils.Writer, items []interfaces.CompletionItem, id *int) {
 	utils.WriteResponse(writer, interfaces.CompletionResponse{Result: items, ResponseMessage: interfaces.ResponseMessage{ID: id, RPC: "2.0"}})
 }
 
-func lspHandleCompletion(writer io.Writer, logger *log.Logger, state *parser.State, request interfaces.CompletionRequest) {
+func lspHandleCompletion(writer *utils.Writer, logger *log.Logger, state *parser.State, request interfaces.CompletionRequest) {
 	file, _ := state.GetFile(parser.FilenameFromUri(request.Params.TextDocument.Uri))
 
 	items := make([]interfaces.CompletionItem, 0)

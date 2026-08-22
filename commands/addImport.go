@@ -2,13 +2,12 @@ package commands
 
 import (
 	"errors"
-	"io"
 	"ts_inspector/ast"
 	"ts_inspector/parser"
 	"ts_inspector/utils"
 )
 
-func AddImport(_ io.Writer, state *parser.State, args *any) (map[string]utils.TextEdits, error) {
+func AddImport(_ *utils.Writer, state *parser.State, args *any) (map[string]utils.TextEdits, error) {
 	changes := map[string]utils.TextEdits{}
 	slice, ok := (*args).([]any)
 

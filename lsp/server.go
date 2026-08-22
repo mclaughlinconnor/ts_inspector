@@ -2,7 +2,6 @@ package lsp
 
 import (
 	"bufio"
-	"io"
 	"log"
 	"os"
 	"runtime/debug"
@@ -19,7 +18,7 @@ import (
 var Shutdown = make(chan int, 1)
 
 var lspReady = true
-var lspIdHandler map[int]func(io.Writer, *log.Logger, []byte) = map[int]func(io.Writer, *log.Logger, []byte){}
+var lspIdHandler map[int]func(*utils.Writer, *log.Logger, []byte) = map[int]func(*utils.Writer, *log.Logger, []byte){}
 var lspPendingMessages [][]byte = [][]byte{}
 
 func Start() {
@@ -37,7 +36,7 @@ func Start() {
 	buf := make([]byte, big)
 	scanner.Buffer(buf, big)
 
-	writer := os.Stdout
+	writer := utils.NewWriter(os.Stdout)
 
 	handleBytes := func(msg []byte) {
 		method, contents, err := rpc.DecodeMessage(msg)
@@ -78,7 +77,7 @@ func Start() {
 	}
 }
 
-func handleMessage(logger *log.Logger, writer io.Writer, state *parser.State, method string, contents []byte) {
+func handleMessage(logger *log.Logger, writer *utils.Writer, state *parser.State, method string, contents []byte) {
 	defer func() {
 		if r := recover(); r != nil {
 			logger.Println("Panicked with: ", r, "responding with empty response")

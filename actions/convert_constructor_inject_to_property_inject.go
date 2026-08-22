@@ -1,7 +1,6 @@
 package actions
 
 import (
-	"io"
 	"strings"
 	"ts_inspector/ast"
 	"ts_inspector/interfaces"
@@ -9,7 +8,7 @@ import (
 	"ts_inspector/utils"
 )
 
-func ConvertInjectToProperty(_ io.Writer, state *parser.State, file *parser.File, r utils.Range) (actionEdits *utils.TextEdits, command *interfaces.Command, allowed bool, err error) {
+func ConvertInjectToProperty(_ *utils.Writer, state *parser.State, file *parser.File, r utils.Range) (actionEdits *utils.TextEdits, command *interfaces.Command, allowed bool, err error) {
 	if file.Snapshot().Filetype != "typescript" {
 		return nil, nil, false, nil
 	}

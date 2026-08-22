@@ -13,7 +13,7 @@ func tsgoHandleFileExistsResponse(tsgo *TsGo, request FileExistsRequest, found *
 		Result:       found,
 	}
 
-	utils.WriteResponse(*tsgo.stdin, response)
+	utils.WriteResponse(tsgo.stdin, response)
 }
 
 func tsgoHandleFileExists(tsgo *TsGo, request FileExistsRequest) {

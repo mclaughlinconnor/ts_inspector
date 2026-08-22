@@ -13,7 +13,7 @@ func tsgoHandleReadFileResponse(tsgo *TsGo, request ReadFileRequest, content *Co
 		Result:       content,
 	}
 
-	utils.WriteResponse(*tsgo.stdin, response)
+	utils.WriteResponse(tsgo.stdin, response)
 }
 
 func tsgoHandleReadFile(tsgo *TsGo, request ReadFileRequest) {

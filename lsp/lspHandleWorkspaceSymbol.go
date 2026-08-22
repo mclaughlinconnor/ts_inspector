@@ -1,7 +1,6 @@
 package lsp
 
 import (
-	"io"
 	"log"
 	"ts_inspector/interfaces"
 	"ts_inspector/parser"
@@ -19,7 +18,7 @@ func newWorkspaceSymbolResponse(id int, symbols []interfaces.WorkspaceSymbol) in
 	}
 }
 
-func lspHandleWorkspaceSymbol(writer io.Writer, logger *log.Logger, state *parser.State, request interfaces.WorkspaceSymbolRequest) {
+func lspHandleWorkspaceSymbol(writer *utils.Writer, logger *log.Logger, state *parser.State, request interfaces.WorkspaceSymbolRequest) {
 	params := request.Params
 
 	interestingPoints, err := search.FindInterestingPoints(logger, params.Query)

@@ -2,7 +2,6 @@ package commands
 
 import (
 	"errors"
-	"io"
 	"net/url"
 	"path"
 	"strings"
@@ -11,7 +10,7 @@ import (
 	"ts_inspector/utils"
 )
 
-func ViewTcb(writer io.Writer, state *parser.State, args *any) (map[string]utils.TextEdits, error) {
+func ViewTcb(writer *utils.Writer, state *parser.State, args *any) (map[string]utils.TextEdits, error) {
 	changes := map[string]utils.TextEdits{}
 	slice, ok := (*args).([]any)
 	if !ok {

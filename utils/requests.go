@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io"
 	"log"
+	"sync"
 	"ts_inspector/rpc"
 )
 
@@ -16,9 +17,22 @@ func TryParseRequest[T any](logger *log.Logger, contents []byte) T {
 	return request
 }
 
-func WriteResponse(writer io.Writer, msg any) {
+type Writer struct {
+	sync.Mutex
+	writer io.Writer
+}
+
+func NewWriter(writer io.Writer) *Writer {
+	return &Writer{sync.Mutex{}, writer}
+}
+
+func WriteResponse(writer *Writer, msg any) {
 	reply := rpc.EncodeMessage(msg)
-	_, e := writer.Write([]byte(reply))
+
+	writer.Lock()
+	defer writer.Unlock()
+
+	_, e := writer.writer.Write([]byte(reply))
 	if e != nil {
 		panic(e)
 	}

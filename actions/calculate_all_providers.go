@@ -1,14 +1,13 @@
 package actions
 
 import (
-	"io"
 	"ts_inspector/interfaces"
 	"ts_inspector/parser"
 	"ts_inspector/utils"
 )
 
 func CalculateAllProviders(
-	writer io.Writer,
+	writer *utils.Writer,
 	state *parser.State,
 	file *parser.File,
 	editRange utils.Range,

@@ -2,7 +2,6 @@ package commands
 
 import (
 	"errors"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -12,7 +11,7 @@ import (
 	"ts_inspector/utils"
 )
 
-func SaveDotForCfg(writer io.Writer, state *parser.State, args *any) (map[string]utils.TextEdits, error) {
+func SaveDotForCfg(writer *utils.Writer, state *parser.State, args *any) (map[string]utils.TextEdits, error) {
 	changes := map[string]utils.TextEdits{}
 	uri, ok := (*args).(string)
 

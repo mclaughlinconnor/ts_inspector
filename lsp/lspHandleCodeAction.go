@@ -1,7 +1,6 @@
 package lsp
 
 import (
-	"io"
 	"log"
 	"ts_inspector/actions"
 	"ts_inspector/interfaces"
@@ -28,7 +27,7 @@ func WorkspaceEditFromEdits(file *parser.File, edits utils.TextEdits) interfaces
 	}
 }
 
-func lspHandleCodeAction(writer io.Writer, logger *log.Logger, state *parser.State, request interfaces.CodeActionRequest) {
+func lspHandleCodeAction(writer *utils.Writer, logger *log.Logger, state *parser.State, request interfaces.CodeActionRequest) {
 	file, _ := state.GetFile(parser.FilenameFromUri(request.Params.TextDocument.Uri))
 
 	codeActions := GenerateActions(writer, logger, state, file, request.Params.Range)
@@ -36,7 +35,7 @@ func lspHandleCodeAction(writer io.Writer, logger *log.Logger, state *parser.Sta
 	utils.WriteResponse(writer, newCodeActionResponse(request.ID, codeActions))
 }
 
-func GenerateActions(writer io.Writer, logger *log.Logger, state *parser.State, file *parser.File, editRange utils.Range) []interfaces.CodeAction {
+func GenerateActions(writer *utils.Writer, logger *log.Logger, state *parser.State, file *parser.File, editRange utils.Range) []interfaces.CodeAction {
 	codeActions := []interfaces.CodeAction{}
 
 	for _, action := range actions.Actions {

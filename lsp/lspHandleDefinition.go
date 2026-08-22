@@ -1,7 +1,6 @@
 package lsp
 
 import (
-	"io"
 	"log"
 	"strings"
 	"ts_inspector/config"
@@ -11,7 +10,7 @@ import (
 	"ts_inspector/utils"
 )
 
-func lspHandleDefinition(writer io.Writer, logger *log.Logger, state *parser.State, request interfaces.DefinitionRequest) {
+func lspHandleDefinition(writer *utils.Writer, logger *log.Logger, state *parser.State, request interfaces.DefinitionRequest) {
 	file, _ := state.GetFile(parser.FilenameFromUri(request.Params.TextDocument.Uri))
 
 	locations := make([]interfaces.Location, 0)

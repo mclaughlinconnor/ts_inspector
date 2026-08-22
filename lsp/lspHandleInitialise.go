@@ -1,7 +1,6 @@
 package lsp
 
 import (
-	"io"
 	"log"
 	traversetypescriptfiles "ts_inspector/ast/indexing"
 	"ts_inspector/commands"
@@ -53,7 +52,7 @@ func newInitializeResponse(id int) interfaces.InitializeResponse {
 	}
 }
 
-func lspHandleInitialise(writer io.Writer, logger *log.Logger, state *parser.State, request interfaces.InitializeRequest) {
+func lspHandleInitialise(writer *utils.Writer, logger *log.Logger, state *parser.State, request interfaces.InitializeRequest) {
 	response := newInitializeResponse(request.ID)
 	progressToken, _ := lspCreateProgressToken(writer)
 	utils.WriteResponse(writer, response)
@@ -101,7 +100,7 @@ func lspHandleInitialise(writer io.Writer, logger *log.Logger, state *parser.Sta
 	lspReady = true
 }
 
-func initTsGo(state *parser.State, writer io.Writer, progressToken *interfaces.ProgressToken) {
+func initTsGo(state *parser.State, writer *utils.Writer, progressToken *interfaces.ProgressToken) {
 	if !config.TsGo {
 		return
 	}
