@@ -80,7 +80,14 @@ LOOP:
 	}
 
 	if config.GetConfig().TsGo.Enable {
-		sb = handleTsGoHover(sb, state, file, int(cursorOffset))
+		var err error
+		sb, err = handleTsGoHover(sb, state, file, int(cursorOffset))
+		if err != nil {
+			notification := interfaces.BuildMessageNotification(err.Error(), interfaces.MessageType.Error)
+			utils.WriteResponse(writer, notification)
+
+			logger.Println(err)
+		}
 	}
 
 	if len(sb) == 0 {
@@ -111,29 +118,34 @@ func handleTagHover(sb []string, class *parser.Class) []string {
 	return append(sb, (class.GetDocumentation(true)))
 }
 
-func handleTsGoHover(sb []string, state *parser.State, file *parser.File, cursorOffset int) []string {
+func handleTsGoHover(sb []string, state *parser.State, file *parser.File, cursorOffset int) ([]string, error) {
 	tcb, err := tcb.BuildTcbBlock(state, file)
-	if tcb == nil || err != nil {
-		return sb
+	if err != nil {
+		return sb, err
 	}
 
 	part := tcb.PugToTsLocation(int(cursorOffset), int(cursorOffset))
 	if part == nil {
-		return sb
+		return sb, nil
 	}
 
 	cursorOffsetFromStartOfPart := int(cursorOffset) - *part.PugStartOffset
 	offset := *part.TsStartOffset + cursorOffsetFromStartOfPart
 
-	ttype := state.GetTsGo().GetTypeAtPosition(file.GetTcbUri(), uint32(offset))
+	tcbUri, err := file.GetTcbUri()
+	if err != nil {
+		return sb, err
+	}
+
+	ttype := state.GetTsGo().GetTypeAtPosition(tcbUri, uint32(offset))
 	if ttype == nil {
-		return sb
+		return sb, nil
 	}
 
 	text := state.GetTsGo().TypeToString(ttype.Result.Id)
 	if text == nil {
-		return sb
+		return sb, nil
 	}
 
-	return append(sb, text.Result)
+	return append(sb, text.Result), nil
 }

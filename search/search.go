@@ -65,6 +65,8 @@ func IndexState(state *parser.State) {
 	}
 
 	go func() {
+		defer utils.PanicLogger(state.Logger)
+
 		err := indexEmbeddings(ips, ids, state.GetRootPath())
 		if err != nil {
 			state.Logger.Println(err)
@@ -75,14 +77,20 @@ func IndexState(state *parser.State) {
 	setSearchReady()
 }
 
-func InitSearch() {
-	initEmbedding()
+func InitSearch() error {
+	err := initEmbedding()
+	if err != nil {
+		return err
+	}
+
 	initFAISS()
 
-	err := initSqlite()
+	err = initSqlite()
 	if err != nil {
-		panic(err)
+		return err
 	}
+
+	return nil
 }
 
 func FindInterestingPoints(logger *log.Logger, text string) ([]parser.InterestingPoint, error) {

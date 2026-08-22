@@ -24,15 +24,6 @@ var modelFs embed.FS
 
 var modelName = "granite-embedding-30m-english-Q4_K_S.gguf"
 
-func getCacheDir() (string, error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
-	}
-
-	return filepath.Join(home, ".cache", "ts_inspector"), nil
-}
-
 func extractEmbeddedModel() (string, error) {
 	dir, err := config.GetCacheDir("models")
 	if err != nil {

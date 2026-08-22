@@ -27,7 +27,10 @@ import (
 )
 
 func main() {
-	config.InitConfig()
+	err := config.InitConfig()
+	if err != nil {
+		panic(err)
+	}
 
 	var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
 
@@ -103,7 +106,11 @@ func main() {
 
 	state.Postprocess()
 
-	search.InitSearch()
+	err = search.InitSearch()
+	if err != nil {
+		state.Logger.Fatal(err)
+	}
+
 	search.IndexState(&state)
 
 	state.Logger.Println("Done")

@@ -88,7 +88,12 @@ func SearchSqlite(queryText string, resultsCount int64) ([]Result, error) {
 		return []Result{}, nil
 	}
 
-	queryVector, err := sqlite_vec.SerializeFloat32(GetEmbedding(queryText))
+	embedding, err := GetEmbedding(queryText)
+	if err != nil {
+		return []Result{}, err
+	}
+
+	queryVector, err := sqlite_vec.SerializeFloat32(embedding)
 	if err != nil {
 		return []Result{}, err
 	}

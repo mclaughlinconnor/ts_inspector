@@ -40,7 +40,19 @@ func lspHandleDefinition(writer *utils.Writer, logger *log.Logger, state *parser
 		part := tcb.PugToTsLocation(state, file, int(offset), int(offset))
 
 		if part != nil {
-			v := state.GetTsGo().GetSymbolAtPosition(file.GetTcbUri(), uint32(*part.TsStartOffset))
+			tcbUri, err := file.GetTcbUri()
+			if err != nil {
+				utils.WriteResponse(writer, interfaces.DefinitionResponse{Result: locations, ResponseMessage: interfaces.ResponseMessage{ID: &request.ID, RPC: "2.0"}})
+
+				notification := interfaces.BuildMessageNotification(err.Error(), interfaces.MessageType.Error)
+				utils.WriteResponse(writer, notification)
+
+				logger.Println(err)
+
+				return
+			}
+
+			v := state.GetTsGo().GetSymbolAtPosition(tcbUri, uint32(*part.TsStartOffset))
 			if v == nil {
 				utils.WriteResponse(writer, interfaces.DefinitionResponse{Result: locations, ResponseMessage: interfaces.ResponseMessage{ID: &request.ID, RPC: "2.0"}})
 

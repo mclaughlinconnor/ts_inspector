@@ -94,7 +94,11 @@ func lspHandleInitialise(writer *utils.Writer, logger *log.Logger, state *parser
 
 	if config.GetConfig().SemanticSearch.Enable {
 		lspReportProgress(writer, progressToken, "Building search indexes", -1)
-		search.InitSearch()
+		err := search.InitSearch()
+		if err != nil {
+			logger.Fatal(err)
+		}
+
 		search.IndexState(state)
 	}
 

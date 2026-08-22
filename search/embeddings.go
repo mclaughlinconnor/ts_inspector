@@ -20,7 +20,7 @@ var mutex sync.Mutex
 const EMBEDDING_BATCH_SIZE = 64
 const EMBEDDING_BATCH_TOKENS = EMBEDDING_BATCH_SIZE * 128 // I'll always have less than 128 tokens in my embeddings
 
-func GetEmbedding(text string) []float32 {
+func GetEmbedding(text string) ([]float32, error) {
 	mutex.Lock()
 
 	vocab := llama.ModelGetVocab(model)
@@ -29,13 +29,13 @@ func GetEmbedding(text string) []float32 {
 	batch := llama.BatchGetOne(tokens)
 	_, err := llama.Decode(context, batch)
 	if err != nil {
-		panic(err)
+		return []float32{}, err
 	}
 
 	embeddingDimensions := llama.ModelNEmbd(model)
 	embedding, err := llama.GetEmbeddingsSeq(context, 0, embeddingDimensions)
 	if err != nil {
-		panic(err)
+		return []float32{}, err
 	}
 
 	normalisedEmbedding := make([]float32, embeddingDimensions)
@@ -53,10 +53,10 @@ func GetEmbedding(text string) []float32 {
 
 	mutex.Unlock()
 
-	return normalisedEmbedding
+	return normalisedEmbedding, nil
 }
 
-func GetEmbeddingBatch(texts []string) [][]float32 {
+func GetEmbeddingBatch(texts []string) ([][]float32, error) {
 	embeddings := make([][]float32, len(texts))
 
 	precalculatedEmbeddings, err := GetEmbeddingsFromSqlite(texts)
@@ -101,7 +101,12 @@ func GetEmbeddingBatch(texts []string) [][]float32 {
 			embeddingIndex++
 		}
 
-		for _, calculatedEmbedding := range GetEmbeddingsFromTokens(allTokens[i:end]) {
+		embeddingsFromTokens, err := GetEmbeddingsFromTokens(allTokens[i:end])
+		if err != nil {
+			return [][]float32{}, err
+		}
+
+		for _, calculatedEmbedding := range embeddingsFromTokens {
 			for embeddings[embeddingIndex] != nil {
 				embeddingIndex++
 			}
@@ -110,7 +115,7 @@ func GetEmbeddingBatch(texts []string) [][]float32 {
 		}
 	}
 
-	return embeddings
+	return embeddings, nil
 }
 
 func GetEmbeddingsFromSqlite(texts []string) (map[string][]float32, error) {
@@ -162,7 +167,7 @@ func GetEmbeddingsFromSqlite(texts []string) (map[string][]float32, error) {
 	return embeddings, nil
 }
 
-func GetEmbeddingsFromTokens(allTokens [][]llama.Token) [][]float32 {
+func GetEmbeddingsFromTokens(allTokens [][]llama.Token) ([][]float32, error) {
 	mutex.Lock()
 	defer mutex.Unlock()
 
@@ -172,11 +177,6 @@ func GetEmbeddingsFromTokens(allTokens [][]llama.Token) [][]float32 {
 	}
 
 	batch := llama.BatchInit(int32(ntokens), 0, int32(len(allTokens)))
-	defer func() {
-		if err := llama.BatchFree(batch); err != nil {
-			panic(err)
-		}
-	}()
 
 	for id, tokens := range allTokens {
 		for i, token := range tokens {
@@ -191,7 +191,7 @@ func GetEmbeddingsFromTokens(allTokens [][]llama.Token) [][]float32 {
 
 	_, err := llama.Decode(context, batch)
 	if err != nil {
-		panic(err)
+		return [][]float32{}, err
 	}
 
 	embeddings := make([][]float32, len(allTokens))
@@ -200,7 +200,7 @@ func GetEmbeddingsFromTokens(allTokens [][]llama.Token) [][]float32 {
 	for i := 0; i < len(allTokens); i++ {
 		embedding, err := llama.GetEmbeddingsSeq(context, llama.SeqId(i), embeddingDimensions)
 		if err != nil {
-			panic(err)
+			return [][]float32{}, err
 		}
 
 		normalisedEmbedding := make([]float32, embeddingDimensions)
@@ -219,12 +219,21 @@ func GetEmbeddingsFromTokens(allTokens [][]llama.Token) [][]float32 {
 		embeddings[i] = normalisedEmbedding
 	}
 
-	return embeddings
+	err = llama.BatchFree(batch)
+	if err != nil {
+		return [][]float32{}, err
+	}
+
+	return embeddings, nil
 }
 
 func indexEmbeddings(interestingPoints []parser.InterestingPoint, ids []int64, rootPath string) error {
-	indexEmbeddingsFaiss(interestingPoints, ids)
-	err := indexEmbeddingsSqlite(interestingPoints, ids, rootPath)
+	err := indexEmbeddingsFaiss(interestingPoints, ids)
+	if err != nil {
+		return err
+	}
+
+	err = indexEmbeddingsSqlite(interestingPoints, ids, rootPath)
 	if err != nil {
 		return err
 	}
@@ -234,9 +243,9 @@ func indexEmbeddings(interestingPoints []parser.InterestingPoint, ids []int64, r
 	return nil
 }
 
-func indexEmbeddingsFaiss(interestingPoints []parser.InterestingPoint, ids []int64) {
+func indexEmbeddingsFaiss(interestingPoints []parser.InterestingPoint, ids []int64) error {
 	if len(interestingPoints) == 0 || !config.GetConfig().SemanticSearch.EnableFaiss {
-		return
+		return nil
 	}
 
 	vectors := make([]Vector, len(interestingPoints))
@@ -244,11 +253,17 @@ func indexEmbeddingsFaiss(interestingPoints []parser.InterestingPoint, ids []int
 	for i, interestingPoint := range interestingPoints {
 		ppText := preprocessText(interestingPoint.Text)
 
-		vector := GetEmbedding(ppText)
+		vector, err := GetEmbedding(ppText)
+		if err != nil {
+			return err
+		}
+
 		vectors[i] = Vector{ids[i], vector}
 	}
 
 	AddToFAISS(vectors)
+
+	return nil
 }
 
 func indexEmbeddingsSqlite(interestingPoints []parser.InterestingPoint, ids []int64, rootPath string) error {
@@ -266,12 +281,16 @@ func indexEmbeddingsSqlite(interestingPoints []parser.InterestingPoint, ids []in
 		rows[i] = row{id: ids[i], text: ppText}
 	}
 
-	embeddings := GetEmbeddingBatch(texts)
+	embeddings, err := GetEmbeddingBatch(texts)
+	if err != nil {
+		return err
+	}
+
 	for i, embedding := range embeddings {
 		rows[i].embedding = embedding
 	}
 
-	err := AddToSqlite("vec_cache", rows, []string{"embedding", "text"}, []string{"text"}, func(args []any, r row) []any {
+	err = AddToSqlite("vec_cache", rows, []string{"embedding", "text"}, []string{"text"}, func(args []any, r row) []any {
 		vector := unsafe.Slice((*byte)(unsafe.Pointer(&r.embedding[0])), len(r.embedding)*4)
 
 		return append(args, vector, r.text)
@@ -296,15 +315,15 @@ func indexEmbeddingsSqlite(interestingPoints []parser.InterestingPoint, ids []in
 	})
 }
 
-func initEmbedding() {
+func initEmbedding() error {
 	libPath, err := extractEmbeddedLibs()
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	err = llama.Load(libPath)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	llama.LogSet(llama.LogNormal)
@@ -312,12 +331,12 @@ func initEmbedding() {
 
 	modelPath, err := extractEmbeddedModel()
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	m, err := llama.ModelLoadFromFile(modelPath, llama.ModelDefaultParams())
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	contextParams := llama.ContextDefaultParams()
@@ -328,9 +347,11 @@ func initEmbedding() {
 
 	mContext, err := llama.InitFromModel(m, contextParams)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	model = m
 	context = mContext
+
+	return nil
 }

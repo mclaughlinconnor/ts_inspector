@@ -25,7 +25,12 @@ func typescript(state *parser.State, file *parser.File) ([]Analysis, error) {
 		return analyses, nil
 	}
 
-	d := state.GetTsGo().GetSemanticDiagnostics(file.GetTcbUri())
+	tcbUri, err := file.GetTcbUri()
+	if err != nil {
+		return analyses, err
+	}
+
+	d := state.GetTsGo().GetSemanticDiagnostics(tcbUri)
 	if d == nil {
 		return analyses, nil
 	}

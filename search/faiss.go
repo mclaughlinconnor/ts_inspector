@@ -50,7 +50,11 @@ func SearchFAISS(queryText string, resultsCount int64) ([]Result, error) {
 		return []Result{}, nil
 	}
 
-	queryVector := GetEmbedding(queryText)
+	queryVector, err := GetEmbedding(queryText)
+	if err != nil {
+		return []Result{}, err
+	}
+
 	distances, labels := indexSearch(queryVector, resultsCount)
 
 	results := make([]Result, resultsCount)

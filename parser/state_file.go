@@ -252,20 +252,20 @@ func (f *File) GetLocationForOffset(startOffset uint32, endOffset uint32) interf
 	return location
 }
 
-func (f *File) GetTcbUri() string {
+func (f *File) GetTcbUri() (string, error) {
 	file := f.Snapshot()
 	if file.Filetype != "pug" {
-		return ""
+		return "", nil
 	}
 
 	parsedUrl, err := url.Parse(file.URI)
 	if err != nil {
-		panic(err)
+		return "", err
 	}
 
 	parsedUrl.Path = strings.TrimSuffix(parsedUrl.Path, path.Ext(parsedUrl.Path)) + interfaces.TCB_FILENAME_SUFFIX
 
-	return parsedUrl.String()
+	return parsedUrl.String(), nil
 }
 
 func (f *File) Postprocess(state *State) {

@@ -90,6 +90,8 @@ func StartTsGo(state *State) (*TsGo, error) {
 }
 
 func run(tsgo *TsGo) {
+	defer utils.PanicLogger(tsgo.logger)
+
 	scanner := bufio.NewScanner(*tsgo.stdout)
 
 	scanner.Split(rpc.Split)
@@ -123,6 +125,11 @@ func stderrLogger(tsgo *TsGo) {
 	for scanner.Scan() {
 		msg := scanner.Bytes()
 		tsgo.logger.Println(string(msg))
+	}
+
+	err := scanner.Err()
+	if err != nil {
+		tsgo.logger.Println(err)
 	}
 }
 
