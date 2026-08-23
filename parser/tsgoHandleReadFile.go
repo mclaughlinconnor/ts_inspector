@@ -7,7 +7,11 @@ import (
 	"ts_inspector/utils"
 )
 
-func tsgoHandleReadFileResponse(tsgo *TsGo, request ReadFileRequest, content *Content) {
+func tsgoHandleReadFileResponse(tsgo *TsGo, request ReadFileRequest, content *Content, err error) {
+	if err != nil {
+		tsgo.logger.Println(err)
+	}
+
 	response := ReadFileResponse{
 		TsGoResponse: TsGoResponse{RPC: "2.0", ID: request.ID},
 		Result:       content,
@@ -22,17 +26,17 @@ func tsgoHandleReadFile(tsgo *TsGo, request ReadFileRequest) {
 	if !strings.HasSuffix(path, interfaces.TCB_FILENAME_SUFFIX) {
 		file, found := tsgo.state.GetFile(FilenameFromUri(path))
 		if !found {
-			tsgoHandleReadFileResponse(tsgo, request, nil)
+			tsgoHandleReadFileResponse(tsgo, request, nil, nil)
 			return
 		}
 
-		tsgoHandleReadFileResponse(tsgo, request, &Content{Content: file.Snapshot().Content})
+		tsgoHandleReadFileResponse(tsgo, request, &Content{Content: file.Snapshot().Content}, nil)
 		return
 	}
 
 	parsedUrl, err := url.Parse(path)
 	if err != nil {
-		tsgoHandleReadFileResponse(tsgo, request, nil)
+		tsgoHandleReadFileResponse(tsgo, request, nil, err)
 		return
 	}
 
@@ -41,41 +45,40 @@ func tsgoHandleReadFile(tsgo *TsGo, request ReadFileRequest) {
 
 	file, found := tsgo.state.GetFile(FilenameFromUri(fileUrl))
 	if !found {
-		tsgoHandleReadFileResponse(tsgo, request, &Content{Content: ""})
+		tsgoHandleReadFileResponse(tsgo, request, &Content{Content: ""}, nil)
 		return
 	}
 
 	if file.Snapshot().Filetype != "pug" {
-		tsgoHandleReadFileResponse(tsgo, request, &Content{Content: file.Snapshot().Content})
+		tsgoHandleReadFileResponse(tsgo, request, &Content{Content: file.Snapshot().Content}, nil)
 		return
 	}
 
 	generateTcb := tsgo.state.GetTcbGenerator()
 	if generateTcb == nil {
-		tsgoHandleReadFileResponse(tsgo, request, nil)
+		tsgoHandleReadFileResponse(tsgo, request, nil, nil)
 		return
 	}
 
 	content := []byte(file.Snapshot().Content)
 	root, err := utils.ParseText(content, utils.Pug)
 	if err != nil {
-		tsgoHandleReadFileResponse(tsgo, request, &Content{Content: err.Error()})
+		tsgoHandleReadFileResponse(tsgo, request, nil, err)
 		return
 	}
 
 	classes := file.Snapshot().Classes
 	if len(classes) == 0 {
-		tsgoHandleReadFileResponse(tsgo, request, nil)
+		tsgoHandleReadFileResponse(tsgo, request, nil, nil)
 		return
 	}
 
 	tcbBlock, err := generateTcb(tsgo.state, classes[0], root, content)
 	if err != nil {
-		tsgo.logger.Println(err)
-		tsgoHandleReadFileResponse(tsgo, request, &Content{Content: ""})
+		tsgoHandleReadFileResponse(tsgo, request, nil, err)
 
 		return
 	}
 
-	tsgoHandleReadFileResponse(tsgo, request, &Content{Content: tcbBlock})
+	tsgoHandleReadFileResponse(tsgo, request, &Content{Content: tcbBlock}, nil)
 }
