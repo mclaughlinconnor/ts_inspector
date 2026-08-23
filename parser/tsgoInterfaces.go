@@ -190,9 +190,10 @@ type GetAcceessibleEntriesResponse struct {
 }
 
 type GetDiagnosticsParams struct {
-	Snapshot SnapshotID          `json:"snapshot"`
-	Project  ProjectID           `json:"project"`
-	File     *DocumentIdentifier `json:"file,omitempty"`
+	Snapshot SnapshotID            `json:"snapshot"`
+	Project  ProjectID             `json:"project"`
+	File     *DocumentIdentifier   `json:"file,omitempty"`
+	Files    *[]DocumentIdentifier `json:"files,omitempty"`
 }
 
 type GetDiagnosticsRequest struct {

@@ -162,7 +162,8 @@ func (t *TsGo) GetSemanticDiagnostics(uri string) *DiagnosticResponse {
 		Params: GetDiagnosticsParams{
 			Snapshot: t.snapshotHandle,
 			Project:  t.projectHandle,
-			File:     &DocumentIdentifier{URI: uri},
+			File:     &DocumentIdentifier{URI: uri},     // old
+			Files:    &[]DocumentIdentifier{{URI: uri}}, // new
 		},
 	}
 
