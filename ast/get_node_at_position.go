@@ -10,17 +10,27 @@ func GetNamedNodeAtPosition(root *sitter.Node, offset uint32) *sitter.Node {
 	moved := false
 
 	for {
-		if node.StartByte() <= offset && node.EndByte() >= offset { // if before startByte, keep going. If after endByte, stop (backtrack?)
-			moved = cursor.GoToFirstChild()
-			node = cursor.CurrentNode()
-		} else if node.StartByte() > offset {
-			cursor.GoToParent() // reached a terminal node that is past the cursor, go back to the parent
+		// reached a terminal node that is past the cursor, go back to the parent
+		if node.StartByte() > offset {
+			cursor.GoToParent()
 			cursor.CurrentNode()
 			break
-		} else {
+		}
+
+		if node.StartByte() > offset || offset >= node.EndByte() {
 			moved = cursor.GoToNextSibling()
 			node = cursor.CurrentNode()
+
+			if moved {
+				continue
+			}
+
+			cursor.GoToParent()
+			break
 		}
+
+		moved = cursor.GoToFirstChild()
+		node = cursor.CurrentNode()
 
 		if !moved {
 			break
