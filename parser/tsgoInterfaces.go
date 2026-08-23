@@ -16,43 +16,36 @@ type (
 )
 
 type Node struct {
-	Pos  int
-	End  int
-	Kind int // no idea what this is yet
-	Path string
+	Index int
+	Kind  int
+	Path  string
 }
 
 func (h NodeHandle) ExtractNode() (*Node, error) {
-	e := func() (*Node, error) {
-		return nil, fmt.Errorf("invalid node handle %q", h)
+	e := func(msg string) (*Node, error) {
+		return nil, fmt.Errorf("invalid node handle %q: %v", h, msg)
 	}
 
-	parts := strings.SplitN(string(h), ".", 4)
-	if len(parts) != 4 {
-		return e()
+	parts := strings.SplitN(string(h), ".", 3)
+	if len(parts) != 3 {
+		return e(fmt.Sprintf("Wrong number of parts: %v expected 3", len(parts)))
 	}
 
 	n := Node{}
 
 	pos, err := strconv.Atoi(parts[0])
 	if err != nil {
-		return e()
+		return e(fmt.Sprintf("Part 0 cannot be converted to int: %v", parts[0]))
 	}
-	n.Pos = pos
+	n.Index = pos
 
 	end, err := strconv.Atoi(parts[1])
 	if err != nil {
-		return e()
+		return e(fmt.Sprintf("Part 1 cannot be converted to int: %v", parts[1]))
 	}
-	n.End = end
+	n.Kind = end
 
-	kind, err := strconv.Atoi(parts[2])
-	if err != nil {
-		return e()
-	}
-	n.Kind = kind
-
-	n.Path = parts[3]
+	n.Path = parts[2]
 
 	return &n, nil
 }
@@ -270,16 +263,18 @@ type GetSymbolAtPositionRequest struct {
 	Params GetSymbolAtPositionParams `json:"params"`
 }
 
+type Symbol struct {
+	Id               SymbolID     `json:"id"`
+	Name             string       `json:"name"`
+	Flags            uint32       `json:"flags"`
+	CheckFlags       uint32       `json:"checkFlags"`
+	Declarations     []NodeHandle `json:"declarations,omitempty"`
+	ValueDeclaration NodeHandle   `json:"valueDeclaration,omitempty"`
+}
+
 type SymbolResponse struct {
 	TsGoResponse
-	Result struct {
-		Id               SymbolID     `json:"id"`
-		Name             string       `json:"name"`
-		Flags            uint32       `json:"flags"`
-		CheckFlags       uint32       `json:"checkFlags"`
-		Declarations     []NodeHandle `json:"declarations,omitempty"`
-		ValueDeclaration NodeHandle   `json:"valueDeclaration,omitempty"`
-	}
+	Result Symbol
 }
 
 type GetTypeOfSymbolRequest struct {
@@ -415,4 +410,24 @@ type TypeToTypeNodeRequest struct {
 type TypeToStringResponse struct {
 	TsGoResponse
 	Result string `json:"result"`
+}
+
+type GetSourceFileParams struct {
+	Snapshot SnapshotID         `json:"snapshot"`
+	Project  ProjectID          `json:"project"`
+	File     DocumentIdentifier `json:"file"`
+}
+
+type GetSourceFileRequest struct {
+	TsGoRequest
+	Params GetSourceFileParams `json:"params"`
+}
+
+type GetSourceFileResult struct {
+	Data []byte `json:"data"`
+}
+
+type GetSourceFileResponse struct {
+	TsGoResponse
+	Result GetSourceFileResult `json:"result"`
 }

@@ -152,11 +152,20 @@ func emptyResponse(writer *utils.Writer, requestId int) {
 	utils.WriteResponse(writer, interfaces.EmptyResponse{Result: nil, ResponseMessage: interfaces.ResponseMessage{ID: &requestId, RPC: "2.0"}})
 }
 
+func emptyArrayResponse(writer *utils.Writer, requestId int) {
+	utils.WriteResponse(writer, interfaces.EmptyArrayResponse{Result: []any{}, ResponseMessage: interfaces.ResponseMessage{ID: &requestId, RPC: "2.0"}})
+}
+
 func logError(writer *utils.Writer, logger *log.Logger, err error) {
 	notification := interfaces.BuildMessageNotification(err.Error(), interfaces.MessageType.Error)
 	utils.WriteResponse(writer, notification)
 
 	logger.Println(err)
+}
+
+func logErrorWithArrayResponse(writer *utils.Writer, logger *log.Logger, err error, requestId int) {
+	logError(writer, logger, err)
+	emptyArrayResponse(writer, requestId)
 }
 
 func logErrorWithResponse(writer *utils.Writer, logger *log.Logger, err error, requestId int) {

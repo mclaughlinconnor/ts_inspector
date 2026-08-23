@@ -263,13 +263,13 @@ func (f *File) GetOffsetsForRange(r utils.Range) (uint32, uint32) {
 	return f.GetOffsetForPosition(r.Start), f.GetOffsetForPosition(r.End)
 }
 
-func (f *File) GetLocationForOffset(startOffset uint32, endOffset uint32) interfaces.Location {
+func (f *File) GetLocationForOffset(startOffset int, endOffset int) interfaces.Location {
 	location := interfaces.Location{}
 
 	content := f.Snapshot().Content
 
-	start := utils.GetPositionForOffset(content, startOffset)
-	end := utils.GetPositionForOffset(content, endOffset)
+	start := utils.GetPositionForOffset2(content, startOffset)
+	end := utils.GetPositionForOffset2(content, endOffset)
 
 	r := utils.Range{Start: start, End: end}
 

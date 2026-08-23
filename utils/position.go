@@ -41,6 +41,33 @@ func GetPositionForOffset(content string, offset uint32) Position {
 	return Position{Line: line, Character: character}
 }
 
+func GetPositionForOffset2(content string, offset int) Position {
+	lineOffsets := GetLineOffsets2(content)
+
+	if offset >= len(content) {
+		return Position{Line: uint32(len(lineOffsets)) - 1, Character: 0}
+	}
+
+	var line int
+	var character int
+
+	for index, lineOffset := range lineOffsets {
+		if lineOffset > offset {
+			if index > 0 {
+				line = index - 1
+				character = offset - lineOffsets[index-1]
+			} else {
+				line = 0
+				character = offset
+			}
+
+			break
+		}
+	}
+
+	return Position{Line: uint32(line), Character: uint32(character)}
+}
+
 func GetLineOffsets(text string) []uint32 {
 	var i uint32 = 0
 
@@ -48,6 +75,35 @@ func GetLineOffsets(text string) []uint32 {
 	isLineStart := true
 
 	textLength := uint32(len(text))
+	for i < textLength {
+		if isLineStart {
+			offsets = append(offsets, i)
+		}
+
+		ch := text[i]
+		isLineStart = ch == '\r' || ch == '\n'
+
+		if ch == '\r' && i+1 < textLength && text[i+1] == '\n' {
+			i++
+		}
+
+		i++
+	}
+
+	if isLineStart && textLength > 0 {
+		offsets = append(offsets, textLength)
+	}
+
+	return offsets
+}
+
+func GetLineOffsets2(text string) []int {
+	var i = 0
+
+	offsets := []int{}
+	isLineStart := true
+
+	textLength := int(len(text))
 	for i < textLength {
 		if isLineStart {
 			offsets = append(offsets, i)

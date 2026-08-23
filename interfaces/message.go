@@ -99,5 +99,10 @@ type Notification struct {
 
 type EmptyResponse struct {
 	ResponseMessage
-	Result *string `json:"result"`
+	Result *any `json:"result"`
+}
+
+type EmptyArrayResponse struct {
+	ResponseMessage
+	Result []any `json:"result"`
 }

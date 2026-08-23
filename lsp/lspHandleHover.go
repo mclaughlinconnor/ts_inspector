@@ -33,7 +33,7 @@ THING:
 		}
 
 		for _, selector := range matchingSelectors {
-			if handleSelector(context, thing, selector) {
+			if handleHoverSelector(context, thing, selector) {
 				continue THING
 			}
 		}
@@ -47,7 +47,7 @@ THING:
 	}
 
 	if len(context.sb) == 0 {
-		utils.WriteResponse(writer, interfaces.EmptyResponse{Result: nil, ResponseMessage: interfaces.ResponseMessage{ID: &request.ID, RPC: "2.0"}})
+		emptyResponse(writer, context.request.ID)
 		return
 	}
 
@@ -60,16 +60,15 @@ func buildAttrHoverDocumentation(context *hoverContext, thing *parser.Class, sel
 	handled := false
 
 	for _, definition := range thing.FilterAllDefinitions(func(def parser.ClassedDefinition) bool { return def.NameMatchesString(attributeName) }) {
-		context.sb = append(context.sb, definition.GetDocumentation(true))
-		handled = true
+		handled = buildDefinitionHoverDocumentation(context, definition) || handled
 	}
 
 	if selector.MatchesAttribute(context.ci.attributeUnderCursor) { // component with `selector: '[formControl]`
-		handled = handled || buildTagHoverDocumentation(context, thing)
+		handled = buildTagHoverDocumentation(context, thing) || handled
 	}
 
 	if !strings.HasPrefix(attributeName, "[") && !strings.HasSuffix(attributeName, "]") { // attribute with *ngIf
-		handled = handled || buildTagHoverDocumentation(context, thing)
+		handled = buildTagHoverDocumentation(context, thing) || handled
 	}
 
 	return handled
@@ -84,6 +83,12 @@ func buildHoverContext(writer *utils.Writer, logger *log.Logger, state *parser.S
 	return &hoverContext{context: context, request: request, sb: []string{}}
 }
 
+func buildDefinitionHoverDocumentation(context *hoverContext, definition parser.ClassedDefinition) bool {
+	context.sb = append(context.sb, definition.GetDocumentation(true))
+
+	return true
+}
+
 func buildTagHoverDocumentation(context *hoverContext, thing *parser.Class) bool {
 	context.sb = append(context.sb, thing.GetDocumentation(true))
 
@@ -91,25 +96,24 @@ func buildTagHoverDocumentation(context *hoverContext, thing *parser.Class) bool
 }
 
 func buildTsGoHoverDocumentation(context *hoverContext) error {
-	tcb, err := tcb.BuildTcbBlock(context.state, context.file)
+	cursorOffset := context.ci.cursorOffset
+
+	part, err := tcb.PugToTsLocation(context.state, context.file, cursorOffset, cursorOffset)
 	if err != nil {
 		return err
 	}
 
-	cursorOffset := context.ci.cursorOffset
-
-	part := tcb.PugToTsLocation(cursorOffset, cursorOffset)
 	if part == nil {
 		return nil
 	}
-
-	cursorOffsetFromStartOfPart := cursorOffset - *part.PugStartOffset
-	offset := *part.TsStartOffset + cursorOffsetFromStartOfPart
 
 	tcbUri, err := context.file.GetTcbUri()
 	if err != nil {
 		return err
 	}
+
+	cursorOffsetFromStartOfPart := cursorOffset - *part.PugStartOffset
+	offset := *part.TsStartOffset + cursorOffsetFromStartOfPart
 
 	ttype := context.state.GetTsGo().GetTypeAtPosition(tcbUri, offset)
 	if ttype == nil {
@@ -126,7 +130,7 @@ func buildTsGoHoverDocumentation(context *hoverContext) error {
 	return nil
 }
 
-func handleSelector(context *hoverContext, thing *parser.Class, selector *ast.Selector) bool {
+func handleHoverSelector(context *hoverContext, thing *parser.Class, selector *ast.Selector) bool {
 	handled := false
 
 	if context.ci.isOnTagName {

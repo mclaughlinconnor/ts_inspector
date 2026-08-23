@@ -177,30 +177,6 @@ func (c *Class) EnsureAngular() {
 	}
 }
 
-type ClassedDefinition struct {
-	*Definition
-	Class *Class
-}
-
-func (c *ClassedDefinition) GetDocumentation(includeDefinitionName bool) string {
-	documentation := ""
-	if includeDefinitionName {
-		documentation += "# " + c.Class.Snapshot().Name + "." + c.Name + "\n\n"
-	}
-
-	return documentation + c.Definition.GetDocumentation(false)
-}
-
-func (c *ClassedDefinition) GetLocation() interfaces.Location {
-	classStart := c.Class.Snapshot().Node.StartByte()
-	node := c.GetNameNode()
-
-	start := node.StartByte() + classStart
-	end := node.EndByte() + classStart
-
-	return c.Class.Snapshot().File.GetLocationForOffset(start, end)
-}
-
 func (c *Class) GetInterestingPoints() []InterestingPoint {
 	interestingPoints := make([]InterestingPoint, 0)
 
@@ -516,6 +492,14 @@ func (c *Class) GetDefinition(name string) *ClassedDefinition {
 	return c.FilterAllDefinitionsOne(func(d ClassedDefinition) bool { return d.Name == name })
 }
 
+func (c *Class) GetDefinitionInRange(startOffset int, endOffset int) *ClassedDefinition {
+	return c.FilterAllDefinitionsOne(func(definition ClassedDefinition) bool {
+		nodeStart, nodeEnd := interfaces.OffsetNodeByNode(definition.Node, definition.Class.Snapshot().Node)
+
+		return startOffset <= int(nodeStart) && int(nodeEnd) <= endOffset
+	})
+}
+
 func (c *Class) GetDocumentation(includeClassName bool) string {
 	documentation := make([]string, 0)
 
@@ -767,6 +751,30 @@ func (c *Class) resolveExtendsImplements(state *State) {
 		data.Extends = extends
 		data.Implements = implements
 	})
+}
+
+type ClassedDefinition struct {
+	*Definition
+	Class *Class
+}
+
+func (c *ClassedDefinition) GetDocumentation(includeDefinitionName bool) string {
+	documentation := ""
+	if includeDefinitionName {
+		documentation += "# " + c.Class.Snapshot().Name + "." + c.Name + "\n\n"
+	}
+
+	return documentation + c.Definition.GetDocumentation(false)
+}
+
+func (c *ClassedDefinition) GetLocation() interfaces.Location {
+	classStart := c.Class.Snapshot().Node.StartByte()
+	node := c.GetNameNode()
+
+	start := node.StartByte() + classStart
+	end := node.EndByte() + classStart
+
+	return c.Class.Snapshot().File.GetLocationForOffset(int(start), int(end))
 }
 
 func ClassId(uri string, className string) string { return uri + "-" + className }

@@ -3,6 +3,9 @@ package parser
 import (
 	"bufio"
 	"context"
+	"encoding/binary"
+	"errors"
+	"fmt"
 	"io"
 	"log"
 	"os/exec"
@@ -177,7 +180,7 @@ func (t *TsGo) GetSemanticDiagnostics(uri string) *DiagnosticResponse {
 	}
 }
 
-func (t *TsGo) GetSymbolAtPosition(uri string, offset uint32) *SymbolResponse {
+func (t *TsGo) GetSymbolAtPosition(uri string, offset int) *Symbol {
 	t.opLock.Lock()
 	defer t.opLock.Unlock()
 
@@ -188,7 +191,7 @@ func (t *TsGo) GetSymbolAtPosition(uri string, offset uint32) *SymbolResponse {
 		TsGoRequest: TsGoRequest{RPC: "2.0", ID: id, Method: "getSymbolAtPosition"},
 		Params: GetSymbolAtPositionParams{
 			File:     DocumentIdentifier{URI: uri},
-			Position: offset,
+			Position: uint32(offset),
 			Project:  t.projectHandle,
 			Snapshot: t.snapshotHandle,
 		},
@@ -204,7 +207,7 @@ func (t *TsGo) GetSymbolAtPosition(uri string, offset uint32) *SymbolResponse {
 		return nil
 	case result := <-c:
 		r := utils.TryParseRequest[SymbolResponse](t.logger, result)
-		return &r
+		return &r.Result
 	}
 }
 
@@ -376,6 +379,63 @@ func (t *TsGo) updateSnapshotLocked(tsconfig *string, changes []DocumentIdentifi
 		}
 		return &r
 	}
+}
+
+// AI generated :(
+// This is surely horribly fragile, but, hopefully, by the time it causes me problems, there'll be a way to
+// convert a handle to a location. TsGo currently offers no such solution.
+func (t *TsGo) GetNodePosition(handle NodeHandle) (pos int, end int, err error) {
+	node, err := handle.ExtractNode()
+	if err != nil {
+		return 0, 0, err
+	}
+
+	t.opLock.Lock()
+
+	id := utils.GetNextStringId()
+	request := GetSourceFileRequest{
+		TsGoRequest: TsGoRequest{RPC: "2.0", ID: id, Method: "getSourceFile"},
+		Params: GetSourceFileParams{
+			Snapshot: t.snapshotHandle,
+			Project:  t.projectHandle,
+			File:     DocumentIdentifier{URI: UriFromFilename(node.Path)},
+		},
+	}
+
+	utils.WriteResponse(t.stdin, request)
+
+	c := make(chan []byte, 1)
+	t.responses.AddHandler(id, c)
+	t.opLock.Unlock()
+
+	var resultBytes []byte
+	select {
+	case <-t.ctx.Done():
+		return 0, 0, errors.New("context done")
+	case res := <-c:
+		resultBytes = res
+	}
+
+	r := utils.TryParseRequest[GetSourceFileResponse](t.logger, resultBytes)
+	if len(r.Result.Data) < 44 {
+		return 0, 0, fmt.Errorf("invalid or missing source file data for %s", node.Path)
+	}
+
+	data := r.Result.Data
+	// HEADER_OFFSET_NODES is at byte 40 (uint32)
+	nodesOffset := binary.LittleEndian.Uint32(data[40:44])
+
+	// NODE_LEN is 28 bytes. Find the specific node offset.
+	nodeOffset := nodesOffset + uint32(node.Index*28)
+	if int(nodeOffset+28) > len(data) {
+		return 0, 0, fmt.Errorf("node index out of bounds")
+	}
+
+	// NODE_OFFSET_POS is 4, NODE_OFFSET_END is 8 (both uint32)
+	pos = int(binary.LittleEndian.Uint32(data[nodeOffset+4 : nodeOffset+8]))
+	end = int(binary.LittleEndian.Uint32(data[nodeOffset+8 : nodeOffset+12]))
+
+	return pos, end, nil
 }
 
 func (t *TsGo) handleRequest(method string, contents []byte) {
