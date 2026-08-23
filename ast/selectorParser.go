@@ -171,11 +171,15 @@ func ParseSelector(text string) (*Selector, error) {
 	return &selector, nil
 }
 
-func ParseSelectors(text string) (*[]*Selector, error) {
+func ParseSelectors(text string) ([]*Selector, error) {
 	splits := strings.Split(text, ",")
 
-	selectors := make([]*Selector, len(splits))
-	for i, s := range splits {
+	return ParseSelectorsArray(splits)
+}
+
+func ParseSelectorsArray(text []string) ([]*Selector, error) {
+	selectors := make([]*Selector, len(text))
+	for i, s := range text {
 		selector, err := ParseSelector(strings.TrimSpace(s))
 		if err != nil {
 			return nil, err
@@ -184,7 +188,7 @@ func ParseSelectors(text string) (*[]*Selector, error) {
 		selectors[i] = selector
 	}
 
-	return &selectors, nil
+	return selectors, nil
 }
 
 func expectAndTake(i *int, c rune, expected rune) error {

@@ -18,7 +18,12 @@ type hoverContext struct {
 }
 
 func lspHandleHover(writer *utils.Writer, logger *log.Logger, state *parser.State, request interfaces.HoverRequest) {
-	context := buildHoverContext(writer, logger, state, &request)
+	context, err := buildHoverContext(writer, logger, state, &request)
+	if err != nil {
+		logErrorWithResponse(writer, logger, err, request.ID)
+		return
+	}
+
 	if context == nil || !context.file.IsPug() {
 		emptyResponse(writer, request.ID)
 		return
@@ -74,13 +79,17 @@ func buildAttrHoverDocumentation(context *hoverContext, thing *parser.Class, sel
 	return handled
 }
 
-func buildHoverContext(writer *utils.Writer, logger *log.Logger, state *parser.State, request *interfaces.HoverRequest) *hoverContext {
-	context := buildContext(writer, logger, state, request.Params.TextDocument, request.Params.Position)
-	if context == nil {
-		return nil
+func buildHoverContext(writer *utils.Writer, logger *log.Logger, state *parser.State, request *interfaces.HoverRequest) (*hoverContext, error) {
+	context, err := buildContext(writer, logger, state, request.Params.TextDocument, request.Params.Position)
+	if err != nil {
+		return nil, err
 	}
 
-	return &hoverContext{context: context, request: request, sb: []string{}}
+	if context == nil {
+		return nil, nil
+	}
+
+	return &hoverContext{context: context, request: request, sb: []string{}}, nil
 }
 
 func buildDefinitionHoverDocumentation(context *hoverContext, definition parser.ClassedDefinition) bool {

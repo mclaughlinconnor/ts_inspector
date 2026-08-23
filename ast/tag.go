@@ -4,6 +4,8 @@ import (
 	"slices"
 	"strings"
 	"ts_inspector/utils"
+
+	sitter "github.com/smacker/go-tree-sitter"
 )
 
 // TODO: Should be combined with parser.tcb.Tag
@@ -68,6 +70,22 @@ func (t *Tag) MatchesSelector(selector string) (bool, *Selector, error) {
 	matches, s := t.MatchesParsedSelector(s)
 
 	return matches, s, nil
+}
+
+func (t *Tag) MatchesSelectorAny(selectors []string) (bool, *Selector, error) {
+	parsedSelectors, err := ParseSelectorsArray(selectors)
+	if err != nil {
+		return false, nil, err
+	}
+
+	for _, s := range parsedSelectors {
+		m, _ := t.MatchesParsedSelector(s)
+		if m {
+			return true, s, nil
+		}
+	}
+
+	return false, nil, nil
 }
 
 // Deprecated: use ast.ParseSelector
@@ -157,13 +175,8 @@ func GetTagAtOffset(content string, offset uint32) (Tag, bool) {
 	return Tag{}, false
 }
 
-func GetTagAtOffset2(content string, offset uint32) (*Tag, bool) {
+func GetTagAtOffset2(root *sitter.Node, content string, offset uint32) (*Tag, bool) {
 	c := []byte(content)
-
-	root, err := utils.ParseText(c, utils.Pug)
-	if err != nil {
-		return nil, false
-	}
 
 	tag := HasNodeInHierarchy(root, "tag", offset, offset)
 	if tag == nil {

@@ -6,6 +6,10 @@ type Range struct {
 	End Position `json:"end"`
 }
 
+func RangeFromStart(start Position) Range {
+	return Range{start, start}
+}
+
 func ZeroRange() Range {
 	return Range{ZeroPosition(), ZeroPosition()}
 }

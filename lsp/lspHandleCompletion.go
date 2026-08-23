@@ -1,6 +1,7 @@
 package lsp
 
 import (
+	"fmt"
 	"log"
 	"slices"
 	"strconv"
@@ -11,49 +12,38 @@ import (
 	"ts_inspector/utils"
 )
 
-func send(writer *utils.Writer, items []interfaces.CompletionItem, id *int) {
-	utils.WriteResponse(writer, interfaces.CompletionResponse{Result: items, ResponseMessage: interfaces.ResponseMessage{ID: id, RPC: "2.0"}})
+type completionContext struct {
+	*context
+	items   []interfaces.CompletionItem
+	request *interfaces.CompletionRequest
 }
 
 func lspHandleCompletion(writer *utils.Writer, logger *log.Logger, state *parser.State, request interfaces.CompletionRequest) {
-	items := make([]interfaces.CompletionItem, 0)
-
-	file, found := state.GetFile(parser.FilenameFromUri(request.Params.TextDocument.Uri))
-	if !found {
-		send(writer, items, &request.ID)
+	context, err := buildCompletionContext(writer, logger, state, &request)
+	if err != nil {
+		logErrorWithResponse(writer, logger, err, request.ID)
 		return
 	}
 
-	if file.Snapshot().Filetype != "pug" {
-		send(writer, items, &request.ID)
-
+	if context == nil || !context.file.IsPug() {
+		emptyResponse(writer, request.ID)
 		return
 	}
 
-	offset := file.GetOffsetForPosition(request.Params.Position)
-
-	root, err := utils.ParseText([]byte(file.Snapshot().Content), utils.Pug)
-	node := ast.GetNamedNodeAtPosition(root, offset)
-
-	if err != nil || node == nil {
-		send(writer, items, &request.ID)
-		notification := interfaces.BuildMessageNotification(err.Error(), interfaces.MessageType.Error)
-		utils.WriteResponse(writer, notification)
-
-		logger.Println(err)
+	if context.ci.namedNodeUnderCursor == nil {
+		emptyResponse(writer, request.ID)
 		return
 	}
 
-	for _, c := range file.Snapshot().Classes {
-		switch nodeType := node.Type(); nodeType {
+	nodeType := context.ci.namedNodeUnderCursor.Type()
+	for _, thing := range context.file.Components() {
+		switch nodeType {
 		case "interpolation_content":
 			fallthrough
 		case "source_file":
 			fallthrough
 		case "children":
-			{
-				items = append(items, getTagCompletions(state, c)...)
-			}
+			err = buildCompletionTag(context, thing)
 		case "content":
 			fallthrough
 		case "attribute_value":
@@ -61,165 +51,56 @@ func lspHandleCompletion(writer *utils.Writer, logger *log.Logger, state *parser
 		case "quoted_attribute_value":
 			fallthrough
 		case "javascript":
-			{
-				items = append(items, getPropertyCompletions(c)...)
-			}
+			buildCompletionProperty(context, thing)
 		case "attributes":
-			{
-				is, err := getAttrCompletions(state, file, c, offset)
-				if err != nil {
-					send(writer, items, &request.ID)
-					notification := interfaces.BuildMessageNotification(err.Error(), interfaces.MessageType.Error)
-					utils.WriteResponse(writer, notification)
+			err = buildCompletionAttribute(context, thing)
+		default:
+			context.logger.Printf("Tried to trigger completions inside of %v node\n", nodeType)
+		}
 
-					logger.Println(err)
-					return
-				}
-
-				items = append(items, is...)
-			}
+		if err != nil {
+			logErrorWithResponse(writer, logger, err, request.ID)
+			return
 		}
 	}
 
-	send(writer, items, &request.ID)
+	utils.WriteResponse(writer, interfaces.CompletionResponse{Result: context.items, ResponseMessage: interfaces.ResponseMessage{ID: &request.ID, RPC: "2.0"}})
 }
 
-func getAttrCompletions(state *parser.State, file *parser.File, class *parser.Class, cursorOffset uint32) ([]interfaces.CompletionItem, error) {
-	items := make([]interfaces.CompletionItem, 0)
-
-	if !class.HasComponent() {
-		return items, nil
-	}
-
-	tag, found := ast.GetTagAtOffset(file.Snapshot().Content, cursorOffset)
-	if !found {
-		return items, nil
-	}
-
-	var err error
-
-	things := class.Snapshot().Angular.Component.GetAvailableThings(state)
-	for _, thing := range things {
+func buildCompletionAttribute(context *completionContext, class *parser.Class) error {
+	for _, thing := range class.GetAvailableThings(context.state) {
 		if thing.HasComponent() {
-			items, err = forComponentThing(thing, file, cursorOffset, &tag, items)
+			err := buildCompletionComponent(context, thing)
 			if err != nil {
-				return items, err
+				return err
 			}
 		}
 
 		if thing.HasDirective() {
-			items = forDirectiveThing(thing, file, cursorOffset, &tag, items)
-		}
-	}
-
-	return items, nil
-}
-
-func getPropertyCompletions(class *parser.Class) []interfaces.CompletionItem {
-	items := make([]interfaces.CompletionItem, 0)
-	for _, d := range class.GetAllPublicDefinitions() {
-		name := d.Name
-
-		item := interfaces.CompletionItem{}
-
-		switch t := d.Node.Type(); t {
-		case "method_definition":
-			fallthrough
-		case "method_signature":
-			fallthrough
-		case "abstract_method_signature":
-			item.Kind = &interfaces.CompletionItemKind.Method
-			item.Label = name + "()"
-
-			insertText := name + "($0)"
-			item.InsertText = &insertText
-			item.InsertTextFormat = &interfaces.InsertTextFormat.Snippet
-		case "property_definition": // is this even a thing?
-			fallthrough
-		case "public_field_definition":
-			item.Kind = &interfaces.CompletionItemKind.Property
-			item.Label = name
-		default:
-			// Nothing
-		}
-
-		details := interfaces.CompletionItemLabelDetails{
-			Description: d.Class.Snapshot().Name,
-		}
-
-		documentation := interfaces.MarkupContent{Kind: interfaces.MarkupKind.PlainText, Value: item.Label + ": " + d.Type}
-		item.Documentation = &documentation
-
-		item.LabelDetails = &details
-
-		items = append(items, item)
-	}
-
-	return items
-}
-
-func getTagCompletions(state *parser.State, class *parser.Class) []interfaces.CompletionItem {
-	items := make([]interfaces.CompletionItem, 0)
-
-	if !class.HasComponent() {
-		return items
-	}
-
-	things := class.Snapshot().Angular.Component.GetAvailableThings(state)
-	for _, thing := range things {
-		details := interfaces.CompletionItemLabelDetails{
-			Description: thing.Snapshot().Name,
-		}
-
-		if !thing.HasComponent() {
-			continue
-		}
-
-		item := interfaces.CompletionItem{
-			LabelDetails:     &details,
-			Kind:             &interfaces.CompletionItemKind.Class,
-			InsertTextFormat: &interfaces.InsertTextFormat.Snippet,
-		}
-
-		documentation := thing.GetDocumentation(false)
-		item.Documentation = &interfaces.MarkupContent{Kind: interfaces.MarkupKind.Markdown, Value: documentation}
-
-		for _, selector := range thing.Snapshot().Angular.Component.Selectors {
-			ps, err := ast.ParseSelector(selector)
-			if err != nil || len(ps.Tag) == 0 {
-				continue
+			err := buildCompletionDirective(context, thing)
+			if err != nil {
+				return err
 			}
-
-			i := interfaces.CompletionItem(item)
-
-			insertText := strings.Builder{}
-			insertText.WriteString(ps.Tag)
-
-			insertText.WriteRune('(')
-			for i, psa := range ps.Attributes {
-				insertText.WriteRune('[')
-				insertText.WriteString(psa)
-				insertText.WriteString("]='$")
-				insertText.WriteString(strconv.Itoa(i))
-				insertText.WriteRune('\'')
-			}
-			insertText.WriteString("$0)")
-
-			it := insertText.String()
-			i.InsertText = &it
-
-			i.Label = selector
-
-			items = append(items, i)
 		}
 	}
 
-	return items
+	return nil
 }
 
-func build(definition parser.ClassedDefinition, cursorRange utils.Range, openChar string, closeChar string, input bool, output bool) interfaces.CompletionItem {
-	item := interfaces.CompletionItem{}
+func buildCompletionContext(writer *utils.Writer, logger *log.Logger, state *parser.State, request *interfaces.CompletionRequest) (*completionContext, error) {
+	context, err := buildContext(writer, logger, state, request.Params.TextDocument, request.Params.Position)
+	if context == nil || err != nil {
+		return nil, err
+	}
 
+	return &completionContext{
+		context: context,
+		items:   []interfaces.CompletionItem{},
+		request: request,
+	}, nil
+}
+
+func buildCompletionAngularBinding(context *completionContext, definition parser.ClassedDefinition, openChar string, closeChar string, input bool, output bool) interfaces.CompletionItem {
 	name := openChar
 	if input {
 		name += definition.GetInputName()
@@ -230,131 +111,186 @@ func build(definition parser.ClassedDefinition, cursorRange utils.Range, openCha
 	name += closeChar
 
 	insertText := name + "='$0'"
-	item.InsertText = &insertText
-	item.InsertTextFormat = &interfaces.InsertTextFormat.Snippet
 
-	// Can't use insertText because clients can do post-processing on the text, which can lead to tag((output)) losing some brackets
-	textEdit := interfaces.TextEdit{}
-	textEdit.Range = cursorRange
-	textEdit.NewText = name + "='$0'"
-	item.TextEdit = &textEdit
-
-	item.Kind = &interfaces.CompletionItemKind.Property
-	item.Label = name
-
-	documentation := interfaces.MarkupContent{Kind: interfaces.MarkupKind.PlainText, Value: definition.Name + ": " + definition.Type}
-	item.Documentation = &documentation
-
-	details := interfaces.CompletionItemLabelDetails{
-		Description: definition.Class.Snapshot().Name,
+	return interfaces.CompletionItem{
+		InsertText:       &insertText,
+		InsertTextFormat: &interfaces.InsertTextFormat.Snippet,
+		TextEdit:         &interfaces.TextEdit{Range: context.ci.cursorRange, NewText: insertText},
+		Kind:             &interfaces.CompletionItemKind.Property,
+		Label:            name,
+		Documentation:    &interfaces.MarkupContent{Kind: interfaces.MarkupKind.PlainText, Value: definition.Name + ": " + definition.Type},
+		LabelDetails: &interfaces.CompletionItemLabelDetails{
+			Description: definition.Class.Snapshot().Name,
+		},
 	}
-
-	item.LabelDetails = &details
-
-	return item
 }
 
-func forComponentThing(thing *parser.Class, file *parser.File, cursorOffset uint32, tagName *ast.Tag, items []interfaces.CompletionItem) ([]interfaces.CompletionItem, error) {
-	matches := false
-	for _, s := range thing.Snapshot().Angular.Component.Selectors {
-		m, _, err := tagName.MatchesSelector(s)
-		if err != nil {
-			return items, err
-		}
-		if m {
-			matches = m
-			break
-		}
+func buildCompletionComponent(context *completionContext, thing *parser.Class) error {
+	matches, _, err := context.ci.tagUnderCursor.MatchesSelectorAny(thing.GetSelectors())
+	if err != nil {
+		return err
 	}
 
 	if !matches {
-		return items, nil
+		return nil
 	}
 
-	cursorPosition := utils.GetPositionForOffset(file.Snapshot().Content, cursorOffset)
-	cursorRange := utils.Range{Start: cursorPosition, End: cursorPosition}
-
-	for _, i := range thing.GetInputs(true) {
-		items = append(items, build(i, cursorRange, "[", "]", true, false))
+	for _, definition := range thing.GetInputs(true) {
+		context.items = append(context.items, buildCompletionAngularBinding(context, definition, "[", "]", true, false))
 	}
 
-	for _, i := range thing.GetOutputs() {
-		items = append(items, build(i, cursorRange, "(", ")", false, true))
+	for _, definition := range thing.GetOutputs() {
+		context.items = append(context.items, buildCompletionAngularBinding(context, definition, "(", ")", false, true))
 	}
 
-	return items, nil
+	return nil
 }
 
-func forDirectiveThing(thing *parser.Class, file *parser.File, cursorOffset uint32, tag *ast.Tag, items []interfaces.CompletionItem) []interfaces.CompletionItem {
-	cursorPosition := utils.GetPositionForOffset(file.Snapshot().Content, cursorOffset)
-	cursorRange := utils.Range{Start: cursorPosition, End: cursorPosition}
+func buildCompletionDirective(context *completionContext, thing *parser.Class) error {
+	tagUnderCursor := context.ci.tagUnderCursor
 
-	for _, selector := range thing.Snapshot().Angular.Directive.Selectors {
+	for _, selector := range thing.GetSelectors() {
 		parsedSelector, err := ast.ParseSelector(selector)
 		if err != nil {
-			continue
-		}
-
-		matchesSelector, _ := tag.MatchesParsedSelector(parsedSelector.WithoutAttributes())
-		if !matchesSelector {
-			continue
+			return err
 		}
 
 		if len(parsedSelector.Attributes) == 0 {
 			continue
 		}
 
-		item := interfaces.CompletionItem{}
+		matchesSelector, _ := tagUnderCursor.MatchesParsedSelector(parsedSelector.WithoutAttributes())
+		if !matchesSelector {
+			continue
+		}
 
-		itBuilder := strings.Builder{}
+		item := interfaces.CompletionItem{
+			Documentation:    &interfaces.MarkupContent{Kind: interfaces.MarkupKind.Markdown, Value: thing.GetDocumentation(true)},
+			InsertTextFormat: &interfaces.InsertTextFormat.Snippet,
+			Kind:             &interfaces.CompletionItemKind.Property,
+			Label:            selector,
+			LabelDetails:     &interfaces.CompletionItemLabelDetails{Description: thing.Snapshot().Name},
+		}
 
-		pos := 1
-		for _, attr := range parsedSelector.Attributes {
-			matches := func(attribute string) bool {
-				a, _ := utils.StripAngularFromAttribute(attribute)
-				return a == attr
-			}
+		insertTextLines := []string{}
 
-			if slices.ContainsFunc(tag.Attributes, matches) {
+		tabStopIndex := 1
+		for _, selectorAttribute := range parsedSelector.Attributes {
+			if slices.ContainsFunc(tagUnderCursor.Attributes, func(tagAttribute string) bool {
+				return utils.StripAngularFromAttributeNoType(tagAttribute) == selectorAttribute
+			}) {
 				continue
 			}
 
-			if pos > 1 {
-				itBuilder.WriteString(", ")
-			}
-
-			itBuilder.WriteString("[")
-			itBuilder.WriteString(attr)
-			itBuilder.WriteString("]='$" + strconv.Itoa(pos) + "'")
-
-			pos++
+			insertTextLines = append(insertTextLines, fmt.Sprintf("[%v]='$%v'", selectorAttribute, tabStopIndex))
+			tabStopIndex++
 		}
 
-		insertText := itBuilder.String()
+		insertText := strings.Join(insertTextLines, ", ")
 
+		item.TextEdit = &interfaces.TextEdit{Range: context.ci.cursorRange, NewText: insertText}
 		item.InsertText = &insertText
-		item.InsertTextFormat = &interfaces.InsertTextFormat.Snippet
 
-		// Can't use insertText because clients can do post-processing on the text, which can lead to tag((output)) losing some brackets
-		textEdit := interfaces.TextEdit{}
-		textEdit.Range = cursorRange
-		textEdit.NewText = insertText
-		item.TextEdit = &textEdit
-
-		item.Kind = &interfaces.CompletionItemKind.Property
-		item.Label = selector
-
-		documentation := interfaces.MarkupContent{Kind: interfaces.MarkupKind.Markdown, Value: thing.GetDocumentation(true)}
-		item.Documentation = &documentation
-
-		details := interfaces.CompletionItemLabelDetails{
-			Description: thing.Snapshot().Name,
-		}
-
-		item.LabelDetails = &details
-
-		items = append(items, item)
+		context.items = append(context.items, item)
 	}
 
-	return items
+	return nil
+}
+
+func buildCompletionProperty(context *completionContext, class *parser.Class) {
+	for _, d := range class.GetAllPublicDefinitions() {
+		item := interfaces.CompletionItem{
+			LabelDetails: &interfaces.CompletionItemLabelDetails{
+				Description: d.Class.Snapshot().Name,
+			},
+		}
+
+		propertyName := d.Name
+		propertyNodeType := d.Node.Type()
+
+		switch propertyNodeType {
+		case "public_field_definition":
+			item.Kind = &interfaces.CompletionItemKind.Property
+			item.Label = propertyName
+		case "method_definition":
+			fallthrough
+		case "method_signature":
+			fallthrough
+		case "abstract_method_signature":
+			item.Kind = &interfaces.CompletionItemKind.Method
+			item.Label = propertyName + "()"
+
+			insertText := propertyName + "($0)"
+			item.InsertText = &insertText
+			item.InsertTextFormat = &interfaces.InsertTextFormat.Snippet
+		}
+
+		item.Documentation = &interfaces.MarkupContent{Kind: interfaces.MarkupKind.PlainText, Value: item.Label + ": " + d.Type}
+
+		context.items = append(context.items, item)
+	}
+}
+
+func buildCompletionTag(context *completionContext, class *parser.Class) error {
+	for _, thing := range class.GetAvailableThings(context.state) {
+		if !thing.HasComponent() {
+			continue
+		}
+
+		rawSelectors := thing.GetSelectors()
+		selectors, err := ast.ParseSelectorsArray(rawSelectors)
+		if err != nil {
+			return err
+		}
+
+		baseItem := buildBaseCompletionItem(thing)
+
+		for i, selector := range selectors {
+			if selector.Tag == "" {
+				continue
+			}
+
+			item := interfaces.CompletionItem(baseItem)
+
+			insertText := buildInsertTextFromSelector(selector)
+			item.InsertText = &insertText
+
+			item.Label = rawSelectors[i]
+
+			context.items = append(context.items, item)
+		}
+	}
+
+	return nil
+}
+
+func buildInsertTextFromSelector(selector *ast.Selector) string {
+	insertText := strings.Builder{}
+	insertText.WriteString(selector.Tag)
+
+	insertText.WriteRune('(')
+	for i, attribute := range selector.Attributes {
+		insertText.WriteRune('[')
+		insertText.WriteString(attribute)
+		insertText.WriteString("]='$")
+		insertText.WriteString(strconv.Itoa(i))
+		insertText.WriteRune('\'')
+	}
+	insertText.WriteString("$0)")
+
+	return insertText.String()
+}
+
+func buildBaseCompletionItem(thing *parser.Class) interfaces.CompletionItem {
+	return interfaces.CompletionItem{
+		Documentation: &interfaces.MarkupContent{
+			Kind:  interfaces.MarkupKind.Markdown,
+			Value: thing.GetDocumentation(false),
+		},
+		LabelDetails: &interfaces.CompletionItemLabelDetails{
+			Description: thing.Snapshot().Name,
+		},
+		Kind:             &interfaces.CompletionItemKind.Class,
+		InsertTextFormat: &interfaces.InsertTextFormat.Snippet,
+	}
 }

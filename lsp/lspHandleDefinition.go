@@ -14,7 +14,12 @@ type definitionContext struct {
 }
 
 func lspHandleDefinition(writer *utils.Writer, logger *log.Logger, state *parser.State, request interfaces.DefinitionRequest) {
-	baseContext, context := buildDefinitionContext(writer, logger, state, &request)
+	baseContext, context, err := buildDefinitionContext(writer, logger, state, &request)
+	if err != nil {
+		logErrorWithArrayResponse(writer, logger, err, request.ID)
+		return
+	}
+
 	if baseContext == nil || context == nil || !context.file.IsPug() {
 		emptyArrayResponse(writer, request.ID)
 		return
@@ -31,13 +36,17 @@ func lspHandleDefinition(writer *utils.Writer, logger *log.Logger, state *parser
 	definitionsReponse(context)
 }
 
-func buildDefinitionContext(writer *utils.Writer, logger *log.Logger, state *parser.State, request *interfaces.DefinitionRequest) (*context, *definitionContext) {
-	context := buildContext(writer, logger, state, request.Params.TextDocument, request.Params.Position)
-	if context == nil {
-		return nil, nil
+func buildDefinitionContext(writer *utils.Writer, logger *log.Logger, state *parser.State, request *interfaces.DefinitionRequest) (*context, *definitionContext, error) {
+	context, err := buildContext(writer, logger, state, request.Params.TextDocument, request.Params.Position)
+	if err != nil {
+		return nil, nil, err
 	}
 
-	return context, &definitionContext{context: context, locations: []interfaces.Location{}, request: request}
+	if context == nil {
+		return nil, nil, nil
+	}
+
+	return context, &definitionContext{context: context, locations: []interfaces.Location{}, request: request}, nil
 }
 
 func definitionsReponse(context *definitionContext) {

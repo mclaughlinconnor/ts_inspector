@@ -549,11 +549,13 @@ func (c *Class) GetGetters() []ClassedDefinition {
 
 func (c *Class) GetInputs(sort bool) []ClassedDefinition {
 	inputs := c.FilterAllDefinitionsByDecorator("Input")
-	if sort {
-		slices.SortFunc(inputs, func(a ClassedDefinition, b ClassedDefinition) int {
-			return cmp.Compare(a.GetInputName(), b.GetInputName())
-		})
+	if !sort {
+		return inputs
 	}
+
+	slices.SortFunc(inputs, func(a ClassedDefinition, b ClassedDefinition) int {
+		return cmp.Compare(a.GetInputName(), b.GetInputName())
+	})
 
 	return inputs
 }
