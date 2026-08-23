@@ -14,12 +14,7 @@ import (
 )
 
 func newInitializeResponse(id int) interfaces.InitializeResponse {
-	triggerChars := []string{".", "\"", "'", "`", "/", "@", "<", "#", " ", "*"}
-
-	for i := 'A'; i <= 'z'; i++ {
-		triggerChars = append(triggerChars, string(i))
-	}
-
+	triggerChars := []string{"[", "=", "\"", "'", "`"}
 	commitChars := []string{".", ",", ";"}
 
 	labelDetailsSupport := true
