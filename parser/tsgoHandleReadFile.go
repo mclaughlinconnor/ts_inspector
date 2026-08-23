@@ -20,7 +20,13 @@ func tsgoHandleReadFile(tsgo *TsGo, request ReadFileRequest) {
 	path := request.Params
 
 	if !strings.HasSuffix(path, interfaces.TCB_FILENAME_SUFFIX) {
-		tsgoHandleReadFileResponse(tsgo, request, nil)
+		file, found := tsgo.state.GetFile(FilenameFromUri(path))
+		if !found {
+			tsgoHandleReadFileResponse(tsgo, request, nil)
+			return
+		}
+
+		tsgoHandleReadFileResponse(tsgo, request, &Content{Content: file.Snapshot().Content})
 		return
 	}
 
