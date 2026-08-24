@@ -312,7 +312,7 @@ type TypeResponse struct {
 		Value any `json:"value,omitempty"`
 
 		// ObjectType / TypeReference / StringMappingType / IndexType target
-		Target NodeHandle `json:"target,omitempty"`
+		Target TypeID `json:"target,omitempty"`
 
 		// InterfaceType type parameters
 		TypeParameters      []TypeID `json:"typeParameters,omitempty"`
@@ -339,8 +339,22 @@ type TypeResponse struct {
 		// TemplateLiteralType text segments
 		Texts []string `json:"texts,omitempty"`
 
+		// FreshableType data (LiteralType and computed enum types)
+		FreshType   TypeID `json:"freshType,omitzero"`
+		RegularType TypeID `json:"regularType,omitzero"`
+
+		// TypeParameter data
+		IsThisType bool `json:"isThisType,omitempty"`
+
+		// IntrinsicType data
+		IntrinsicName string `json:"intrinsicName,omitempty"`
+
+		// TypeAlias data
+		AliasTypeArguments []TypeID `json:"aliasTypeArguments,omitempty"`
+		AliasSymbol        SymbolID `json:"aliasSymbol,omitzero"`
+
 		// Symbol associated with structured types
-		Symbol SymbolID `json:"symbol,omitempty"`
+		Symbol SymbolID `json:"symbol,omitzero"`
 	}
 }
 
