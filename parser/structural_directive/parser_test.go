@@ -193,6 +193,26 @@ func TestParseShorthand(t *testing.T) {
 			text:    "!!!false",
 			wantErr: true,
 		},
+		{
+			name: "keyexpr let",
+			text: "let item of items",
+			want: makeShorthand("prefix", makeStatements(makeLet("item", 4, "", 0), makeKeyExpr("of", 9, "items", 12, "", 0))),
+		},
+		{
+			name: "string",
+			text: "'string'",
+			want: makeShorthand("prefix", makeStatements(makeExpression("'string'", 0, "", 0))),
+		},
+		{
+			name: "string with pipe",
+			text: "'string'|pipe",
+			want: makeShorthand("prefix", makeStatements(makeExpression("'string'|pipe", 0, "", 0))),
+		},
+		{
+			name: "string with pipe and params",
+			text: "let opt of 'options'|pipe:param",
+			want: makeShorthand("prefix", makeStatements(makeLet("opt", 4, "", 0), makeKeyExpr("of", 8, "'options'|pipe:param", 11, "", 0))),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

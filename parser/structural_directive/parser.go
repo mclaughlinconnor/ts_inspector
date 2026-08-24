@@ -144,11 +144,7 @@ LOOP:
 				}
 
 				expressionText, err := expectAndTakeIdentifier(&endIndex, runeText, true)
-				if err != nil {
-					return nil, err
-				}
-
-				if expressionText == "let" {
+				if err == nil && expressionText == "let" {
 					state = LexStateLet
 					continue LOOP
 				}

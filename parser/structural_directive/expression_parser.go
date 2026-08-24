@@ -115,12 +115,12 @@ func switchBracket(c rune) rune {
 
 func isOperator(c rune, isRoot bool) bool {
 	switch c {
-	case ':':
-		fallthrough
 	case ';':
 		fallthrough
 	case ',':
 		return !isRoot
+	case ':':
+		fallthrough
 	case '$':
 		fallthrough
 	case '&':
