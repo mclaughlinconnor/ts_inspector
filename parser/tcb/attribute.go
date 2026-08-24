@@ -518,6 +518,8 @@ func buildGenericDirectiveAssignment(tcb *Tcb, attribute *Attribute, thing *pars
 			}
 
 			values[inputName] = v
+
+			continue
 		}
 
 		valueShv, err := attached.GetShv()
@@ -632,15 +634,6 @@ func buildNonGenericDirectiveAssignment(tcb *Tcb, attribute *Attribute, thing *p
 
 		value.OffsetByNodeStart(attached.ValueNode).OffsetByOffset(keyExp.ExpressionOffset)
 		tcb.AddAssignment(dirIdent+"."+def.Name, attached.NameNode, value)
-	}
-
-	valueShv, err := attribute.GetShv()
-	if err != nil {
-		return err
-	}
-
-	if valueShv == nil {
-		return nil
 	}
 
 	return nil
