@@ -1,17 +1,20 @@
 package structuraldirective
 
+import "ts_inspector/utils"
+
 // Loosely based on https://github.com/mclaughlinconnor/tree-sitter-pug/blob/attrs/src/scanner.c
 
 func ParseExpression(startIndex int, runeText []rune) (int, error) {
 	i := startIndex
 	paren := rune(0)
+	parenStack := utils.NewStack[rune]()
 
 	for i < len(runeText) {
 		c := runeText[i]
 
-		if paren == 0 {
+		if parenStack.IsEmpty() {
 			if isOpenParen(c) {
-				paren = switchBracket(c)
+				parenStack.Push(switchBracket(c))
 				i++
 				continue
 			}
@@ -67,8 +70,14 @@ func ParseExpression(startIndex int, runeText []rune) (int, error) {
 			continue
 		}
 
-		if paren == c {
-			paren = 0
+		if isOpenParen(c) {
+			parenStack.Push(switchBracket(c))
+			i++
+			continue
+		}
+
+		if *parenStack.Peek() == c {
+			parenStack.Pop()
 			i++
 			continue
 		}
