@@ -1,6 +1,7 @@
 package lsp
 
 import (
+	"runtime"
 	"strings"
 	"ts_inspector/ast"
 	"ts_inspector/config"
@@ -110,7 +111,21 @@ DECLARATION:
 
 		declarationFile, found := context.state.GetFile(node.Path)
 		if !found {
-			continue
+			// TODO: There should be a better solution than this, but I can't write it how
+			// On macos, TsGo uses lowercase filenames.
+			if strings.HasPrefix(runtime.GOOS, "darwin") {
+				files := context.state.GetFiles()
+				for path, file := range files {
+					if strings.ToLower(path) == node.Path {
+						declarationFile = file
+						found = true
+					}
+				}
+			}
+
+			if !found {
+				continue
+			}
 		}
 
 		for _, class := range declarationFile.Snapshot().Classes {
