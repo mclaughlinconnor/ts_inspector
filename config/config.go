@@ -26,6 +26,7 @@ type ConfigSemanticSearch struct {
 }
 
 type ConfigTcb struct {
+	ExperimentalRealPartTagChildScopes     bool `json:"experimentalRealPartTagChildScopes"`
 	ExperimentalTagBasedAttributeRendering bool `json:"experimentalTagBasedAttributeRendering"`
 }
 
@@ -73,6 +74,7 @@ func getDefaultConfig() Config {
 	config.SemanticSearch.EnableSqlite = true
 	config.SemanticSearch.IncludeFileInterestingPoints = false
 	config.Tcb.ExperimentalTagBasedAttributeRendering = false
+	config.Tcb.ExperimentalRealPartTagChildScopes = false
 	config.TsGo.Enable = true
 	config.TsGo.ExperimentalThingCaching = false
 	config.TsGo.ExperimentalConcurrentRequestHandling = false

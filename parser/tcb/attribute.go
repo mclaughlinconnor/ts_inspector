@@ -521,7 +521,7 @@ func buildGuards(tcb *Tcb, attribute *Attribute, thing *parser.Class, assIdent s
 
 	tcb.AddStatement(&statement)
 
-	if len(attribute.Tag.Children.Elements) != 0 {
+	if config.GetConfig().Tcb.ExperimentalRealPartTagChildScopes && len(attribute.Tag.Children.Elements) != 0 {
 		tcb.BeginRealScope(attribute.Tag.Children.Elements[0].Tag.Node)
 	} else {
 		tcb.BeginScope()
