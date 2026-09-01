@@ -3,6 +3,7 @@ package lsp
 import (
 	"fmt"
 	"log"
+	"strings"
 	"ts_inspector/ast"
 	"ts_inspector/interfaces"
 	"ts_inspector/parser"
@@ -34,6 +35,10 @@ type cursorInfo struct {
 func buildContext(writer *utils.Writer, logger *log.Logger, state *parser.State, textDocument interfaces.TextDocumentIdentifier, position utils.Position) (*context, error) {
 	file, _ := state.GetFile(parser.FilenameFromUri(textDocument.Uri))
 	if file == nil {
+		if strings.HasSuffix(textDocument.Uri, interfaces.TCB_FILENAME_SUFFIX) {
+			return nil, nil
+		}
+
 		return nil, fmt.Errorf("filenot found %v", textDocument.Uri)
 	}
 
