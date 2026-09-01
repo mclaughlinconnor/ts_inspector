@@ -54,6 +54,10 @@ func (shv *ShorthandValue) GetExpression() *Expression {
 }
 
 func (shv *ShorthandValue) GetKeyExprWithKey(queryKey string) *KeyExp {
+	if queryKey == "" {
+		return nil
+	}
+
 	for _, s := range shv.Statements.Elements {
 		if !s.HasKeyExp() {
 			continue
@@ -86,16 +90,21 @@ func (l *Let) HasExport() bool {
 }
 
 func (k *KeyExp) GetFullName(shv *ShorthandValue) string {
-	titleCasedKey := shv.Prefix + strings.ToUpper(k.Key[:1]) + k.Key[1:]
-	return titleCasedKey
+	return getFullName(shv.Prefix, k.Key)
 }
 
 func (k *KeyExp) Matches(shv *ShorthandValue, queryKey string) bool {
-	if shv.Prefix+k.Key == queryKey {
+	fullName := k.GetFullName(shv)
+	if fullName == getFullName(shv.Prefix, queryKey) {
 		return true
 	}
 
-	return queryKey == k.GetFullName(shv)
+	return fullName == queryKey
+}
+
+func getFullName(prefix string, key string) string {
+	titleCasedKey := prefix + strings.ToUpper(key[:1]) + key[1:]
+	return titleCasedKey
 }
 
 const (

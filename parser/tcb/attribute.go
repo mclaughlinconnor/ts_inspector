@@ -2,6 +2,7 @@ package tcb
 
 import (
 	"fmt"
+	"iter"
 	"maps"
 	"slices"
 	"strings"
@@ -26,6 +27,10 @@ type Attribute struct {
 	Mixin     *Mixin
 	Tag       *Tag
 	ValueNode *sitter.Node
+}
+
+type AssignedAttributes struct {
+	attributes map[string]*Attribute
 }
 
 func (a *Attribute) GetExpression() (*structuraldirective.Expression, error) {
@@ -133,6 +138,51 @@ func (a *Attribute) Tcb() *Tcb {
 	return a.tcb
 }
 
+func (a *AssignedAttributes) All() iter.Seq2[string, *Attribute] {
+	return func(yield func(string, *Attribute) bool) {
+		for i, v := range a.attributes {
+			if !yield(i, v) {
+				return
+			}
+		}
+	}
+}
+
+func (a *AssignedAttributes) GetAttribute(binding string) (*Attribute, bool, error) {
+	for attributeName, attribute := range a.attributes {
+		if !attribute.IsStructuralInput() {
+			if attributeName == binding {
+				return attribute, true, nil
+			}
+
+			continue
+		}
+
+		shv, err := attribute.GetShv()
+		if err != nil {
+			return nil, false, err
+		}
+
+		if !strings.HasPrefix(binding, shv.Prefix) {
+			continue
+		}
+
+		keyExprKey := binding[len(shv.Prefix):]
+		if keyExprKey == "" {
+			return attribute, true, nil
+		}
+
+		keyExpr := shv.GetKeyExprWithKey(keyExprKey)
+		if keyExpr == nil {
+			continue
+		}
+
+		return attribute, true, nil
+	}
+
+	return nil, false, nil
+}
+
 func (t *Tag) renderAttributes() error {
 	allAttributes := map[string]*Attribute{}
 	for _, a := range t.Attributes.Elements {
@@ -143,7 +193,8 @@ func (t *Tag) renderAttributes() error {
 	}
 
 	if config.GetConfig().Tcb.ExperimentalTagBasedAttributeRendering {
-		return renderAttributes(&allAttributes, t)
+		assignedAttributes := AssignedAttributes{allAttributes}
+		return renderAttributes(assignedAttributes, t)
 	}
 
 	renderedDirectives := map[string]bool{}
@@ -273,7 +324,7 @@ THING:
 	return renderedDirectives, nil
 }
 
-func renderAttributes(allAttributes *map[string]*Attribute, tag *Tag) error {
+func renderAttributes(allAttributes AssignedAttributes, tag *Tag) error {
 	sourceClass := tag.Tcb().Class
 	if !sourceClass.HasComponent() {
 		return nil
@@ -296,13 +347,17 @@ THING:
 			attachedInputs := map[string]*Attribute{}
 			for _, def := range thing.GetAllDefinitions() {
 				inputName := def.GetInputName()
-				a, isAttached := (*allAttributes)[inputName]
+				attribute, isAttached, err := allAttributes.GetAttribute(inputName)
+				if err != nil {
+					return err
+				}
+
 				if isAttached {
-					attachedInputs[inputName] = a
+					attachedInputs[inputName] = attribute
 					continue
 				}
 
-				for attributeName, attribute := range *allAttributes {
+				for attributeName, attribute := range allAttributes.All() {
 					if !attribute.IsStructuralInput() {
 						continue
 					}
@@ -314,7 +369,11 @@ THING:
 			}
 
 			for _, definition := range thing.GetAllDefinitions() {
-				attribute, found := (*allAttributes)[definition.GetInputName()]
+				attribute, found, err := allAttributes.GetAttribute(definition.GetInputName())
+				if err != nil {
+					return err
+				}
+
 				if !found {
 					continue
 				}
