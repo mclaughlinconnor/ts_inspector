@@ -148,6 +148,7 @@ func resolveIdents(idents []string, file *File, state *State) []*Reference {
 			}
 
 			var importedFile *File
+			var err error
 
 			extensions := []string{"", ".ts", ".d.ts", ".js"}
 			joinSuffixes := []string{"", "index"}
@@ -155,7 +156,7 @@ func resolveIdents(idents []string, file *File, state *State) []*Reference {
 			for _, join := range joinSuffixes {
 				ip := path.Join(importPath, join)
 				for _, extension := range extensions {
-					importedFile, err := resolveProjectImportPath(state, file, ip+extension)
+					importedFile, err = resolveProjectImportPath(state, file, ip+extension)
 					if err != nil {
 						state.Logger.Println(err)
 						break
@@ -168,7 +169,7 @@ func resolveIdents(idents []string, file *File, state *State) []*Reference {
 
 				if importedFile == nil {
 					for _, extension := range extensions {
-						importedFile, err := resolveNodeModulesImportPath(state, file, ip+extension)
+						importedFile, err = resolveNodeModulesImportPath(state, file, ip+extension)
 						if err != nil {
 							state.Logger.Println(err)
 							break
