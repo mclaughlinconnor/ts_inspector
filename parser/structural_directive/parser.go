@@ -423,7 +423,7 @@ LOOP:
 			break LOOP
 		}
 
-		if howMany >= 2 {
+		if howMany > 2 {
 			return "", fmt.Errorf("bad character: %q, may not be chained more than twice", c)
 		}
 	}
