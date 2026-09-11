@@ -22,7 +22,7 @@ func cfgUnreachableBlock(state *parser.State, file *parser.File) ([]Analysis, er
 			return analyses, err
 		}
 
-		return analyseCfg(file.Snapshot().Content, cfg, analyses, func(m string, n *sitter.Node, s int) *Analysis {
+		return analyseCfg(file.Snapshot().Content, cfg, analyses, false, func(m string, n *sitter.Node, s int) *Analysis {
 			a := newAnalysisFromFileNode(file, unreachableCode, n, s, m, nil)
 			return &a
 		}), nil
@@ -65,15 +65,17 @@ func cfgUnreachableBlock(state *parser.State, file *parser.File) ([]Analysis, er
 			return analyses, err
 		}
 
-		analyses = analyseCfg(tcbBlock, cfg, analyses, buildPugAnalysis(tcb))
+		analyses = analyseCfg(tcbBlock, cfg, analyses, true, buildPugAnalysis(tcb))
 	}
 
 	return analyses, nil
 }
 
-func analyseCfg(content string, cfgState *cfg.State, analyses []Analysis, buildAnalysis func(string, *sitter.Node, int) *Analysis) []Analysis {
+func analyseCfg(content string, cfgState *cfg.State, analyses []Analysis, skipComplexity bool, buildAnalysis func(string, *sitter.Node, int) *Analysis) []Analysis {
 	for _, cfg := range cfgState.AllCfg {
-		analyses = analyseComplexity(analyses, content, cfg)
+		if !skipComplexity {
+			analyses = analyseComplexity(analyses, content, cfg)
+		}
 
 		for _, block := range cfg.Blocks {
 			if len(block.Before) != 0 || cfg.Start == block {
