@@ -1,7 +1,9 @@
 package parser
 
 import (
+	"fmt"
 	"log"
+	"runtime/debug"
 	"ts_inspector/ast"
 	"ts_inspector/ast/walk"
 	"ts_inspector/utils"
@@ -231,6 +233,10 @@ func extractType(node *sitter.Node, content []byte) string {
 }
 
 func extractTypeScriptDefinitions(class *Class, root *sitter.Node, content []byte) error {
+	if len(content) == 0 {
+		return fmt.Errorf("Empty content: %v, Stack: %v", class.Snapshot().Name, string(debug.Stack()))
+	}
+
 	funcMap := walk.NewVisitorFuncsMap[typescriptWalkState]()
 
 	funcMap["method_definition"] = visitDefinition(content)
@@ -701,6 +707,10 @@ func visitDefinition(content []byte) walk.VisitorFunction[typescriptWalkState] {
 
 		nameNode := node.ChildByFieldName("name")
 		if nameNode != nil {
+			if len(content) == 0 {
+				panic(fmt.Sprintf("len(content) = %v, len(state.Class.Snapshot().Content) = %v", len(content), len(state.Class.Snapshot().Content)))
+			}
+
 			state.DefinitionStack.Peek().Name = nameNode.Content(content)
 		} else {
 			nameNode := node.ChildByFieldName("pattern")
