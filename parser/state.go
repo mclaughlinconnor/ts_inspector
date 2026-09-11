@@ -5,6 +5,7 @@ import (
 	"maps"
 	"sync"
 	"ts_inspector/config"
+	reviewindexer "ts_inspector/parser/review_indexer"
 
 	sitter "github.com/smacker/go-tree-sitter"
 )
@@ -17,12 +18,13 @@ type State struct {
 
 	Logger *log.Logger
 
-	classes       map[string]*Class
-	files         map[string]*File
-	rootURI       string
-	tcbGenerator  TcbGeneratorFunc
-	tsConfigFiles []string
-	tsgo          *TsGo
+	classes        map[string]*Class
+	files          map[string]*File
+	reviewFindings []reviewindexer.Finding
+	rootURI        string
+	tcbGenerator   TcbGeneratorFunc
+	tsConfigFiles  []string
+	tsgo           *TsGo
 }
 
 func CreateState() (State, error) {
@@ -115,6 +117,14 @@ func (s *State) GetInterestingPoints() []InterestingPoint {
 	return interestingPoints
 }
 
+func (s *State) GetReviewFindings() []reviewindexer.Finding {
+	s.RLock()
+	findings := s.reviewFindings
+	s.RUnlock()
+
+	return findings
+}
+
 func (s *State) GetRootPath() string {
 	s.RLock()
 	rootPath := FilenameFromUri(s.rootURI)
@@ -163,6 +173,23 @@ func (s *State) Postprocess() {
 	}
 
 	wg.Wait()
+}
+
+func (s *State) ReindexReviewFindings() error {
+	rootPath := s.GetRootPath()
+
+	s.Lock()
+	findings, err := reviewindexer.Index(rootPath)
+
+	if err != nil {
+		s.Unlock()
+		return err
+	}
+
+	s.reviewFindings = findings
+	s.Unlock()
+
+	return nil
 }
 
 func (s *State) SetClass(id string, class *Class) {

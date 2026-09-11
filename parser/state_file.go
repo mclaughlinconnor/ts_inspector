@@ -238,6 +238,15 @@ func (f *File) GetInterestingPoints() []InterestingPoint {
 	return interestingPoints
 }
 
+func (f *File) GetOffsetForLineNumber(lineNumber int) uint32 {
+	offsets := f.Snapshot().LineOffsets
+	if lineNumber >= len(offsets) {
+		return offsets[len(offsets)-1]
+	}
+
+	return f.Snapshot().LineOffsets[lineNumber]
+}
+
 func (f *File) GetOffsetForPosition(p utils.Position) uint32 {
 	file := f.Snapshot()
 	lines := uint32(len(file.LineOffsets))

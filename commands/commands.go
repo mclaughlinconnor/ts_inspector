@@ -27,8 +27,11 @@ func registerCommand(command Command) {
 
 func InitCommands() {
 	registerCommand(Command{Command: interfaces.Command{Command: "ts_inspector/addImport", Title: "Add Import"}, Perform: AddImport})
+	registerCommand(Command{Command: interfaces.Command{Command: "ts_inspector/getReviewFindings", Title: "Get all review findings"}, Perform: GetReviewFindings})
 	registerCommand(Command{Command: interfaces.Command{Command: "ts_inspector/goToDeclaringModule", Title: "Go to declaring module"}, Perform: GoToDeclaringModule})
+	registerCommand(Command{Command: interfaces.Command{Command: "ts_inspector/gotoReviewFinding", Title: "Go to review finding under cursor"}, Perform: GoToReviewFinding})
 	registerCommand(Command{Command: interfaces.Command{Command: "ts_inspector/printProviders", Title: "Print providers"}, Perform: PrintProviders})
+	registerCommand(Command{Command: interfaces.Command{Command: "ts_inspector/reindexReviewFindings", Title: "Re-index review findings"}, Perform: ReindexReviewFindings})
 	registerCommand(Command{Command: interfaces.Command{Command: "ts_inspector/saveDotCfg", Title: "Save dot graph for CFG"}, Perform: SaveDotForCfg})
 	registerCommand(Command{Command: interfaces.Command{Command: "ts_inspector/viewTcb", Title: "View the TCB for the template"}, Perform: ViewTcb})
 

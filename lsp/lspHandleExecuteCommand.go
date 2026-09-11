@@ -20,7 +20,7 @@ func lspHandleExecuteCommand(writer *utils.Writer, logger *log.Logger, state *pa
 
 	changes, err := command.Perform(writer, state, args)
 	if err != nil {
-		logger.Printf("Error: %s", err)
+		logError(writer, logger, err)
 		return
 	}
 

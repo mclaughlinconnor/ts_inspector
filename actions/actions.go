@@ -40,13 +40,16 @@ func InitActions() {
 	registerAction(Action{CalculateAllProviders, "Calculate all providers"})
 	registerAction(Action{ConvertInjectToProperty, "Convert constructor injection to inject() property"})
 	registerAction(Action{GoToDeclaringModule, "Go to declaring module"})
-	registerAction(Action{ViewTcbFile, "View the TCB for the template"})
+	registerAction(Action{GoToReviewFinding, "Go to review finding under cursor"})
 	registerAction(Action{ImplementAngularAfterViewInit, "Add AfterViewInit"})
 	registerAction(Action{ImplementAngularOnChanges, "Add OnChanges"})
 	registerAction(Action{ImplementAngularOnDestroy, "Add OnDestroy"})
 	registerAction(Action{ImplementAngularOnInit, "Add OnInit"})
 	registerAction(Action{MakeAsync, "Make surrounding method async"})
 	registerAction(Action{RearrangeClass, "Rearrange class"})
+	registerAction(Action{ReindexReviewFindings, "Re-index review findings"})
+	registerAction(Action{GetReviewFindings, "Get review findings"})
+	registerAction(Action{ViewTcbFile, "View the TCB for the template"})
 
 	if config.GetConfig().Debug {
 		registerAction(Action{SaveDotForCfg, "Save dot graph for CFG"})
