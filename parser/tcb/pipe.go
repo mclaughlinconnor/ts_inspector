@@ -3,7 +3,7 @@ package tcb
 import (
 	"ts_inspector/utils"
 
-	sitter "github.com/smacker/go-tree-sitter"
+	sitter "github.com/tree-sitter/go-tree-sitter"
 )
 
 func renderPipeNode(node *sitter.Node, content []byte, tcb *Tcb) *Statement {
@@ -17,7 +17,7 @@ func renderPipeNode(node *sitter.Node, content []byte, tcb *Tcb) *Statement {
 		return &statement
 	}
 
-	name := nameNode.Content(content)
+	name := nameNode.Utf8Text(content)
 
 	for _, thing := range class.Snapshot().Angular.Component.GetAvailableThings(state) {
 		if !thing.HasPipe() {

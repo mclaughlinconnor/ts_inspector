@@ -9,7 +9,7 @@ import (
 	"ts_inspector/ast/walk"
 	"ts_inspector/utils"
 
-	sitter "github.com/smacker/go-tree-sitter"
+	sitter "github.com/tree-sitter/go-tree-sitter"
 )
 
 type Metadata struct {
@@ -61,6 +61,10 @@ func listReviewYamls(rootPath string) ([]string, error) {
 	findings := []string{}
 
 	files, err := os.ReadDir(FINDING_PATH)
+	if err != nil {
+		return findings, err
+	}
+
 	for _, file := range files {
 		if !file.Type().IsRegular() {
 			continue
@@ -77,14 +81,10 @@ func listReviewYamls(rootPath string) ([]string, error) {
 }
 
 func parseReviewYaml(content []byte, rootPath string) (Metadata, error) {
-	root, err := utils.ParseText(content, utils.Yaml)
-	if err != nil {
-		return Metadata{}, err
-	}
+	root := utils.ParseText(content, utils.Yaml)
+	cursor := root.Walk()
 
-	cursor := sitter.NewTreeCursor(root)
-
-	err = goToNextNamedSiblingOfTypeAndChild(cursor, "stream")
+	err := goToNextNamedSiblingOfTypeAndChild(cursor, "stream")
 	if err != nil {
 		return Metadata{}, err
 	}
@@ -106,19 +106,19 @@ func parseReviewYaml(content []byte, rootPath string) (Metadata, error) {
 
 	metadata := Metadata{}
 
-	for cursor.CurrentNode().Type() == "block_mapping_pair" {
-		err = handleYamlKv(cursor.CurrentNode(), content, &metadata, rootPath)
+	for cursor.Node().Kind() == "block_mapping_pair" {
+		err = handleYamlKv(cursor.Node(), content, &metadata, rootPath)
 		if err != nil {
 			return Metadata{}, err
 		}
 
 		// move off of the current node
-		if !cursor.GoToNextSibling() {
+		if !cursor.GotoNextSibling() {
 			break
 		}
 
-		for !cursor.CurrentNode().IsNamed() {
-			if !cursor.GoToNextSibling() {
+		for !cursor.Node().IsNamed() {
+			if !cursor.GotoNextSibling() {
 				break
 			}
 		}
@@ -130,16 +130,16 @@ func parseReviewYaml(content []byte, rootPath string) (Metadata, error) {
 func handleYamlKv(node *sitter.Node, content []byte, metadata *Metadata, rootPath string) error {
 	key := node.ChildByFieldName("key")
 	if key == nil {
-		return fmt.Errorf("Invalid yaml format: missing key")
+		return fmt.Errorf("invalid yaml format: missing key")
 	}
 
 	value := node.ChildByFieldName("value")
 	if value == nil {
-		return fmt.Errorf("Invalid yaml format: missing value")
+		return fmt.Errorf("invalid yaml format: missing value")
 	}
 
-	keyContent := key.Content(content)
-	valueContent := value.Content(content)
+	keyContent := key.Utf8Text(content)
+	valueContent := value.Utf8Text(content)
 
 	switch keyContent {
 	case "filePath":
@@ -170,23 +170,23 @@ func handleYamlKv(node *sitter.Node, content []byte, metadata *Metadata, rootPat
 func parseReviewMarkdown(root *sitter.Node, content []byte) (Content, error) {
 	firstParagraph := root.NamedChild(0)
 	if firstParagraph == nil {
-		return Content{}, fmt.Errorf("Invalid markdown: unexpected EOF")
+		return Content{}, fmt.Errorf("invalid markdown: unexpected EOF")
 	}
 
-	if firstParagraph.Type() != "paragraph" {
-		return Content{}, fmt.Errorf("Invalid markdown: unexpected %v, expected 'paragraph'", firstParagraph.Type())
+	if firstParagraph.Kind() != "paragraph" {
+		return Content{}, fmt.Errorf("invalid markdown: unexpected %v, expected 'paragraph'", firstParagraph.Kind())
 	}
 
 	findingContent := Content{}
-	findingContent.Summary = strings.ReplaceAll(string(firstParagraph.Content(content)), "\n", " ")
+	findingContent.Summary = strings.ReplaceAll(string(firstParagraph.Utf8Text(content)), "\n", " ")
 
-	agentParagraph := root.NamedChild(int(root.NamedChildCount() - 1))
-	agentParagraphContent := agentParagraph.Content(content)
+	agentParagraph := root.NamedChild(root.NamedChildCount() - 1)
+	agentParagraphContent := agentParagraph.Utf8Text(content)
 
 	agentPrefix := "**Agent**: "
 	for !strings.HasPrefix(agentParagraphContent, agentPrefix) {
 		agentParagraph = agentParagraph.PrevNamedSibling()
-		agentParagraphContent = agentParagraph.Content(content)
+		agentParagraphContent = agentParagraph.Utf8Text(content)
 	}
 
 	agent := agentParagraphContent[len(agentPrefix):]
@@ -208,12 +208,12 @@ func parseFromPath(rootPath string, path string) (Finding, error) {
 	}
 
 	funcMap := walk.NewVisitorFuncsMap[Finding]()
-	funcMap["document"] = func(node *sitter.Node, state Finding, indexInParent int, visitorFuncMap walk.VisitorFuncMap[Finding]) (Finding, error) {
+	funcMap["document"] = func(node *sitter.Node, state Finding, indexInParent uint, visitorFuncMap walk.VisitorFuncMap[Finding]) (Finding, error) {
 		return walk.VisitNamedChildren(node, state, visitorFuncMap, false)
 	}
 
-	funcMap["minus_metadata"] = func(node *sitter.Node, state Finding, indexInParent int, visitorFuncMap walk.VisitorFuncMap[Finding]) (Finding, error) {
-		metadata, err := parseReviewYaml([]byte(node.Content(content)), rootPath)
+	funcMap["minus_metadata"] = func(node *sitter.Node, state Finding, indexInParent uint, visitorFuncMap walk.VisitorFuncMap[Finding]) (Finding, error) {
+		metadata, err := parseReviewYaml([]byte(node.Utf8Text(content)), rootPath)
 		if err != nil {
 			return state, err
 		}
@@ -223,7 +223,7 @@ func parseFromPath(rootPath string, path string) (Finding, error) {
 		return state, nil
 	}
 
-	funcMap["section"] = func(node *sitter.Node, state Finding, indexInParent int, visitorFuncMap walk.VisitorFuncMap[Finding]) (Finding, error) {
+	funcMap["section"] = func(node *sitter.Node, state Finding, indexInParent uint, visitorFuncMap walk.VisitorFuncMap[Finding]) (Finding, error) {
 		content, err := parseReviewMarkdown(node, content)
 		if err != nil {
 			return state, err
@@ -238,18 +238,18 @@ func parseFromPath(rootPath string, path string) (Finding, error) {
 }
 
 func goToNextNamedSiblingOfTypeAndChild(cursor *sitter.TreeCursor, nodeType string) error {
-	for !cursor.CurrentNode().IsNamed() {
-		if !cursor.GoToNextSibling() {
-			return fmt.Errorf("Invalid yaml format: unexpected EOF")
+	for !cursor.Node().IsNamed() {
+		if !cursor.GotoNextSibling() {
+			return fmt.Errorf("invalid yaml format: unexpected EOF")
 		}
 	}
 
-	if cursor.CurrentNode().Type() != nodeType {
-		return fmt.Errorf("Invalid yaml format: missing '%v' type node", nodeType)
+	if cursor.Node().Kind() != nodeType {
+		return fmt.Errorf("invalid yaml format: missing '%v' type node", nodeType)
 	}
 
-	if !cursor.GoToFirstChild() {
-		return fmt.Errorf("Invalid yaml format: unexpectedly missing child")
+	if !cursor.GotoFirstChild() {
+		return fmt.Errorf("invalid yaml format: unexpectedly missing child")
 	}
 
 	return nil

@@ -8,7 +8,7 @@ import (
 	"sync"
 	"ts_inspector/utils"
 
-	sitter "github.com/smacker/go-tree-sitter"
+	sitter "github.com/tree-sitter/go-tree-sitter"
 )
 
 type Definition struct {
@@ -118,7 +118,7 @@ func (d *Definition) GetDocumentation(includeDefinitionName bool) string {
 		name = "*" + name
 	}
 
-	nodeType := d.Node.Type()
+	nodeType := d.Node.Kind()
 	isMethod := nodeType == "method_definition" || nodeType == "method_signature" || nodeType == "abstract_method_signature"
 	if isMethod {
 		name += "()"

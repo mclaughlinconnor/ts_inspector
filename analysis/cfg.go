@@ -8,7 +8,7 @@ import (
 	"ts_inspector/parser/tcb"
 	"ts_inspector/utils"
 
-	sitter "github.com/smacker/go-tree-sitter"
+	sitter "github.com/tree-sitter/go-tree-sitter"
 )
 
 const unreachableCode = "unreachable"
@@ -48,10 +48,7 @@ func cfgUnreachableBlock(state *parser.State, file *parser.File) ([]Analysis, er
 	}
 
 	for _, class := range file.Snapshot().Classes {
-		root, err := utils.ParseText([]byte(content), utils.Pug)
-		if err != nil {
-			continue
-		}
+		root := utils.ParseText([]byte(content), utils.Pug)
 
 		tcb, err := tcb.GenerateTcb(state, class, root, content)
 		if err != nil {

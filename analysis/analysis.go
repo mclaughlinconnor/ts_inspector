@@ -7,7 +7,7 @@ import (
 	"ts_inspector/parser"
 	"ts_inspector/utils"
 
-	sitter "github.com/smacker/go-tree-sitter"
+	sitter "github.com/tree-sitter/go-tree-sitter"
 )
 
 type analyser struct {

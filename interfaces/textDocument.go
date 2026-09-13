@@ -3,7 +3,7 @@ package interfaces
 import (
 	"ts_inspector/utils"
 
-	sitter "github.com/smacker/go-tree-sitter"
+	sitter "github.com/tree-sitter/go-tree-sitter"
 )
 
 type TextDocumentIdentifier struct {
@@ -30,11 +30,11 @@ type Location struct {
 }
 
 func NodeToLocation(node *sitter.Node, Uri string) Location {
-	start := node.StartPoint()
-	end := node.EndPoint()
+	start := node.StartPosition()
+	end := node.EndPosition()
 
-	startPosition := utils.PositionFromPoint(start)
-	endPosition := utils.PositionFromPoint(end)
+	startPosition := utils.LspPositionFromTsPosition(start)
+	endPosition := utils.LspPositionFromTsPosition(end)
 
 	return Location{Uri: Uri, Range: utils.Range{End: endPosition, Start: startPosition}}
 }
@@ -52,7 +52,7 @@ func NodeToLocationWithOffsetNode(node *sitter.Node, offsetNode *sitter.Node, co
 	return Location{Uri: Uri, Range: utils.Range{End: endPosition, Start: startPosition}}
 }
 
-func OffsetNodeByNode(node *sitter.Node, offsetNode *sitter.Node) (uint32, uint32) {
+func OffsetNodeByNode(node *sitter.Node, offsetNode *sitter.Node) (uint, uint) {
 	startByte := node.StartByte()
 	endByte := node.EndByte()
 

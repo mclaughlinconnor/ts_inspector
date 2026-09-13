@@ -7,7 +7,7 @@ import (
 	"ts_inspector/parser"
 	"ts_inspector/utils"
 
-	sitter "github.com/smacker/go-tree-sitter"
+	sitter "github.com/tree-sitter/go-tree-sitter"
 )
 
 func MakeAsync(
@@ -23,29 +23,26 @@ func MakeAsync(
 	var edits = utils.TextEdits{}
 
 	content := []byte(file.Snapshot().Content)
-	root, err := utils.ParseText(content, utils.TypeScript)
-	if err != nil {
-		return retEdits(nil, err)
-	}
+	root := utils.ParseText(content, utils.TypeScript)
 
-	cursor := sitter.NewTreeCursor(root)
-	cursor.GoToFirstChild() // go into (program)
-	currentNode := cursor.CurrentNode()
+	cursor := root.Walk()
+	cursor.GotoFirstChild() // go into (program)
+	currentNode := cursor.Node()
 
 	moved := false
 	start, end := file.GetOffsetsForRange(editRange)
 
 	for {
 		if currentNode.StartByte() <= start && currentNode.EndByte() >= end { // if before start, keep going. If after end, stop (backtrack?)
-			moved = cursor.GoToFirstChild()
-			currentNode = cursor.CurrentNode()
+			moved = cursor.GotoFirstChild()
+			currentNode = cursor.Node()
 		} else if currentNode.StartByte() > start {
-			cursor.GoToParent() // reached a terminal node that is past the cursor, go back to the parent
-			cursor.CurrentNode()
+			cursor.GotoParent() // reached a terminal node that is past the cursor, go back to the parent
+			cursor.Node()
 			break
 		} else {
-			moved = cursor.GoToNextSibling()
-			currentNode = cursor.CurrentNode()
+			moved = cursor.GotoNextSibling()
+			currentNode = cursor.Node()
 		}
 
 		if !moved {
@@ -54,12 +51,12 @@ func MakeAsync(
 	}
 
 	for {
-		currentNode = cursor.CurrentNode()
-		if currentNode.Type() == "method_definition" || currentNode.Type() == "function_declaration" || currentNode.Type() == "arrow_function" {
+		currentNode = cursor.Node()
+		if currentNode.Kind() == "method_definition" || currentNode.Kind() == "function_declaration" || currentNode.Kind() == "arrow_function" {
 			break
 		}
 
-		moved = cursor.GoToParent()
+		moved = cursor.GotoParent()
 
 		// Don't have a method_definition in the heirarchy
 		if !moved {
@@ -67,15 +64,15 @@ func MakeAsync(
 		}
 	}
 
-	cursor.GoToFirstChild()
+	cursor.GotoFirstChild()
 
 	var postAsyncNode *sitter.Node
 	hasAsync := false
 
-	if currentNode.Type() == "method_definition" {
-		for cursor.GoToNextSibling() {
-			fieldName := cursor.CurrentFieldName()
-			currentNode = cursor.CurrentNode()
+	if currentNode.Kind() == "method_definition" {
+		for cursor.GotoNextSibling() {
+			fieldName := cursor.FieldName()
+			currentNode = cursor.Node()
 			if fieldName == "return_type" {
 				break
 			}
@@ -84,49 +81,49 @@ func MakeAsync(
 				continue
 			}
 
-			fieldType := currentNode.Type()
+			fieldType := currentNode.Kind()
 			if fieldType == "async" {
 				hasAsync = true
 				continue
 			}
 
 			if fieldType == "get" || fieldType == "set" || fieldType == "*" {
-				postAsyncNode = cursor.CurrentNode()
+				postAsyncNode = cursor.Node()
 			}
 
 			if fieldName == "name" && postAsyncNode == nil {
-				postAsyncNode = cursor.CurrentNode()
+				postAsyncNode = cursor.Node()
 			}
 		}
 
 		if !hasAsync && postAsyncNode != nil {
-			editRange := utils.Range{Start: utils.PositionFromPoint(postAsyncNode.StartPoint()), End: utils.PositionFromPoint(postAsyncNode.StartPoint())}
+			editRange := utils.Range{Start: utils.LspPositionFromTsPosition(postAsyncNode.StartPosition()), End: utils.LspPositionFromTsPosition(postAsyncNode.StartPosition())}
 			edits = append(edits, utils.TextEdit{Range: editRange, NewText: "async "})
 		}
 	} else {
-		nodeContent := currentNode.Content(content)
+		nodeContent := currentNode.Utf8Text(content)
 		if !strings.HasPrefix(nodeContent, "async ") {
-			editRange := utils.Range{Start: utils.PositionFromPoint(currentNode.StartPoint()), End: utils.PositionFromPoint(currentNode.StartPoint())}
+			editRange := utils.Range{Start: utils.LspPositionFromTsPosition(currentNode.StartPosition()), End: utils.LspPositionFromTsPosition(currentNode.StartPosition())}
 			edits = append(edits, utils.TextEdit{Range: editRange, NewText: "async "})
 		}
 
-		for cursor.GoToNextSibling() {
-			fieldName := cursor.CurrentFieldName()
+		for cursor.GotoNextSibling() {
+			fieldName := cursor.FieldName()
 			if fieldName == "return_type" {
 				break
 			}
 		}
 	}
 
-	if cursor.CurrentNode().Type() == "type_annotation" {
-		cursor.GoToFirstChild()  // ":"
-		cursor.GoToNextSibling() // the type
+	if cursor.Node().Kind() == "type_annotation" {
+		cursor.GotoFirstChild()  // ":"
+		cursor.GotoNextSibling() // the type
 
-		currentNode = cursor.CurrentNode()
-		typeName := currentNode.Content(content)
+		currentNode = cursor.Node()
+		typeName := currentNode.Utf8Text(content)
 		if !strings.HasPrefix(typeName, "Promise") { // Promise<Promise<void>> is almost certainly wrong
-			editRange := utils.Range{Start: utils.PositionFromPoint(currentNode.StartPoint()), End: utils.PositionFromPoint(currentNode.EndPoint())}
-			edits = append(edits, utils.TextEdit{Range: editRange, NewText: fmt.Sprintf("Promise<%s>", currentNode.Content(content))})
+			editRange := utils.Range{Start: utils.LspPositionFromTsPosition(currentNode.StartPosition()), End: utils.LspPositionFromTsPosition(currentNode.EndPosition())}
+			edits = append(edits, utils.TextEdit{Range: editRange, NewText: fmt.Sprintf("Promise<%s>", currentNode.Utf8Text(content))})
 		}
 	}
 

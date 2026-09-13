@@ -19,8 +19,8 @@ func illegalDeclaringModule(state *parser.State, file *parser.File) ([]Analysis,
 			if declaration != nil && declaration.Class != nil && declaration.Class.Snapshot().Angular != nil && declaration.Class.Snapshot().Angular.Module != nil {
 				n := declaration.Node
 
-				startPosition := utils.PositionFromPoint(n.StartPoint())
-				endPosition := utils.PositionFromPoint(n.EndPoint())
+				startPosition := utils.LspPositionFromTsPosition(n.StartPosition())
+				endPosition := utils.LspPositionFromTsPosition(n.EndPosition())
 
 				r := utils.Range{Start: startPosition, End: endPosition}
 

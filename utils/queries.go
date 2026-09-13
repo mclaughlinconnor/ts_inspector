@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	sitter "github.com/smacker/go-tree-sitter"
+	sitter "github.com/tree-sitter/go-tree-sitter"
 )
 
 var queries = map[string]map[string]*sitter.Query{}
@@ -15,7 +15,7 @@ const (
 	QueryClassBody       = "query_class_body"
 )
 
-var typescriptClassDefinition = []byte(`
+var typescriptClassDefinition = `
   (class_declaration
     name: (type_identifier) @name
     type_parameters: (type_parameters)? @type_parameters
@@ -23,26 +23,26 @@ var typescriptClassDefinition = []byte(`
       (extends_clause)? @extends_clause
       (implements_clause
         (type_identifier) @identifier)? @implements_clause)?)
-`)
+`
 
-var typescriptImport = []byte(`
+var typescriptImport = `
   (import_statement
     "type"? @type
     (import_clause
       (named_imports) @named_imports) @clause
     source: (string
       (string_fragment) @package)) @import
-`)
+`
 
-var typescriptClassBody = []byte(`(class_body) @body`)
+var typescriptClassBody = `(class_body) @body`
 
-func registerQuery(name string, lang string, queryString []byte) {
+func registerQuery(name string, lang string, queryString string) {
 	_, ok := queries[lang]
 	if !ok {
 		queries[lang] = make(map[string]*sitter.Query, 0)
 	}
 
-	query, err := sitter.NewQuery(queryString, GetLanguage(lang))
+	query, err := sitter.NewQuery(GetLanguage(lang), queryString)
 	if err != nil {
 		log.Fatal(err)
 	}

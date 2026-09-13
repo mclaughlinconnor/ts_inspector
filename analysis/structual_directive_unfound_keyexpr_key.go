@@ -23,10 +23,7 @@ func structuralDirectiveUnfoundKeyExprKey(state *parser.State, file *parser.File
 	strContent := file.Snapshot().Content
 	byteContent := []byte(strContent)
 
-	root, err := utils.ParseText(byteContent, utils.Pug)
-	if err != nil {
-		return analyses, err
-	}
+	root := utils.ParseText(byteContent, utils.Pug)
 
 	ast, err := tcb.Parse(root, byteContent, &tcb.Tcb{})
 	if err != nil {
@@ -81,8 +78,8 @@ func structuralDirectiveUnfoundKeyExprKey(state *parser.State, file *parser.File
 						continue
 					}
 
-					startOffset := attribute.ValueNode.StartByte() + uint32(keyExp.KeyOffset)
-					endOffset := startOffset + uint32(len(keyExp.Key))
+					startOffset := attribute.ValueNode.StartByte() + uint(keyExp.KeyOffset)
+					endOffset := startOffset + uint(len(keyExp.Key))
 
 					startPosition := utils.GetPositionForOffset(strContent, startOffset)
 					endPosition := utils.GetPositionForOffset(strContent, endOffset)

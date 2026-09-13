@@ -141,7 +141,7 @@ func addOrPrependMethod(content []byte, methodName string, toPrepend string) (ut
 		}
 
 		if bodyNode.NamedChildCount() == 0 {
-			editRange := utils.Range{Start: utils.PositionFromPoint(bodyNode.StartPoint()), End: utils.PositionFromPoint(bodyNode.EndPoint())}
+			editRange := utils.Range{Start: utils.LspPositionFromTsPosition(bodyNode.StartPosition()), End: utils.LspPositionFromTsPosition(bodyNode.EndPosition())}
 			text := "{\n  " + toPrepend + "}"
 
 			edits = append(edits, utils.TextEdit{Range: editRange, NewText: text})
@@ -149,8 +149,8 @@ func addOrPrependMethod(content []byte, methodName string, toPrepend string) (ut
 			return edits, nil
 		}
 
-		start := bodyNode.NamedChild(0).StartPoint()
-		editRange := utils.Range{Start: utils.PositionFromPoint(start), End: utils.PositionFromPoint(start)}
+		start := bodyNode.NamedChild(0).StartPosition()
+		editRange := utils.Range{Start: utils.LspPositionFromTsPosition(start), End: utils.LspPositionFromTsPosition(start)}
 		edits = append(edits, utils.TextEdit{Range: editRange, NewText: toPrepend + "\n    "})
 	}
 

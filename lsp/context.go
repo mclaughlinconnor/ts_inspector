@@ -9,7 +9,7 @@ import (
 	"ts_inspector/parser"
 	"ts_inspector/utils"
 
-	sitter "github.com/smacker/go-tree-sitter"
+	sitter "github.com/tree-sitter/go-tree-sitter"
 )
 
 type context struct {
@@ -48,18 +48,12 @@ func buildContext(writer *utils.Writer, logger *log.Logger, state *parser.State,
 
 	content := []byte(file.Snapshot().Content)
 
-	rootNode, err := utils.ParseText(content, utils.Pug)
-	if err != nil {
-		return nil, err
-	}
+	rootNode := utils.ParseText(content, utils.Pug)
 
 	attributeUnderCursor, isOnAttrName := ast.GetAttributeNameAtOffset2(rootNode, file.Snapshot().Content, cursorOffset)
 	tagUnderCursor, isOnTagName := ast.GetTagAtOffset2(rootNode, file.Snapshot().Content, cursorOffset)
 
-	rootNode, err = utils.ParseText(content, utils.Pug)
-	if err != nil {
-		return nil, err
-	}
+	rootNode = utils.ParseText(content, utils.Pug)
 
 	namedNodeUnderCursor := ast.GetNamedNodeAtPosition(rootNode, cursorOffset)
 

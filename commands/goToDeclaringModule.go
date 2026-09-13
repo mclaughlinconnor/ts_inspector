@@ -35,8 +35,8 @@ func GoToDeclaringModule(writer *utils.Writer, state *parser.State, args *any) (
 		return changes, errors.New("rangeEndOffset must be int")
 	}
 
-	rangeStartOffset := uint32(rangeStartOffsetF)
-	rangeEndOffset := uint32(rangeEndOffsetF)
+	rangeStartOffset := uint(rangeStartOffsetF)
+	rangeEndOffset := uint(rangeEndOffsetF)
 
 	file, found := state.GetFile(parser.FilenameFromUri(uri))
 	if !found {

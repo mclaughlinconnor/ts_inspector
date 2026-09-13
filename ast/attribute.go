@@ -3,23 +3,20 @@ package ast
 import (
 	"ts_inspector/utils"
 
-	sitter "github.com/smacker/go-tree-sitter"
+	sitter "github.com/tree-sitter/go-tree-sitter"
 )
 
-func GetAttributeNameAtOffset(content string, offset uint32) (string, bool) {
+func GetAttributeNameAtOffset(content string, offset uint) (string, bool) {
 	c := []byte(content)
 
-	root, err := utils.ParseText(c, utils.Pug)
-	if err != nil {
-		return "", false
-	}
+	root := utils.ParseText(c, utils.Pug)
 
 	node := HasNodeInHierarchy(root, "attribute_name", offset, offset)
 	if node == nil {
 		return "", false
 	}
 
-	attributeName := node.Content(c)
+	attributeName := node.Utf8Text(c)
 	if attributeName == "" {
 		return "", false
 	}
@@ -27,13 +24,13 @@ func GetAttributeNameAtOffset(content string, offset uint32) (string, bool) {
 	return attributeName, true
 }
 
-func GetAttributeNameAtOffset2(root *sitter.Node, content string, offset uint32) (string, bool) {
+func GetAttributeNameAtOffset2(root *sitter.Node, content string, offset uint) (string, bool) {
 	node := HasNodeInHierarchy(root, "attribute_name", offset, offset)
 	if node == nil {
 		return "", false
 	}
 
-	attributeName := node.Content([]byte(content))
+	attributeName := node.Utf8Text([]byte(content))
 	if attributeName == "" {
 		return "", false
 	}

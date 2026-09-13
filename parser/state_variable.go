@@ -1,6 +1,6 @@
 package parser
 
-import sitter "github.com/smacker/go-tree-sitter"
+import sitter "github.com/tree-sitter/go-tree-sitter"
 
 type Value struct {
 	ArrayValues     []*Value
@@ -136,18 +136,18 @@ func (v *Value) Iterate(c any) bool {
 }
 
 func NodeToValue(file *File, node *sitter.Node, content []byte) *Value {
-	switch node.Type() {
+	switch node.Kind() {
 	case "array":
 		return nodeToArrayValue(file, node, content)
 	case "string":
-		return &Value{StringValue: node.Content([]byte(content)), Type: "string"}
+		return &Value{StringValue: node.Utf8Text([]byte(content)), Type: "string"}
 	case "spread_element":
 		if node.NamedChildCount() != 1 {
 			return nil
 		}
 
 		ident := node.NamedChild(0)
-		if ident.Type() != "identifier" {
+		if ident.Kind() != "identifier" {
 			return nil
 		}
 
@@ -165,7 +165,7 @@ func nodeToArrayValue(file *File, node *sitter.Node, content []byte) *Value {
 	values := make([]*Value, 0)
 
 	for i := range node.NamedChildCount() {
-		element := node.NamedChild(int(i))
+		element := node.NamedChild(i)
 		value := NodeToValue(file, element, content)
 		if value == nil {
 			continue
@@ -178,5 +178,5 @@ func nodeToArrayValue(file *File, node *sitter.Node, content []byte) *Value {
 }
 
 func nodeToReference(file *File, node *sitter.Node, content []byte) *Reference {
-	return &Reference{File: file, Name: node.Content(content), Node: node}
+	return &Reference{File: file, Name: node.Utf8Text(content), Node: node}
 }

@@ -3,7 +3,7 @@ package walk
 import (
 	"ts_inspector/utils"
 
-	sitter "github.com/smacker/go-tree-sitter"
+	sitter "github.com/tree-sitter/go-tree-sitter"
 )
 
 func Walk[T any](node *sitter.Node, state T, visitorFuncMap InitVisitorFuncMap[T], lang *sitter.Language, skipMissing bool) (T, error) {
@@ -42,10 +42,10 @@ func WalkTypeScriptShallow[T any](node *sitter.Node, state T, visitorFuncMap Ini
 	return Walk(node, state, visitorFuncMap, lang, true)
 }
 
-func VisitNode[T any](node *sitter.Node, state T, indexInParent int, visitorFuncMap VisitorFuncMap[T], skipMissing bool) (T, error) {
-	symbol := node.Symbol()
+func VisitNode[T any](node *sitter.Node, state T, indexInParent uint, visitorFuncMap VisitorFuncMap[T], skipMissing bool) (T, error) {
+	kindId := node.KindId()
 
-	function, found := visitorFuncMap[symbol]
+	function, found := visitorFuncMap[kindId]
 	if !found {
 		if skipMissing {
 			return state, nil
@@ -61,9 +61,7 @@ func VisitNamedChildren[T any](node *sitter.Node, state T, funcMap VisitorFuncMa
 	var err error
 
 	for i := range node.NamedChildCount() {
-		index := int(i)
-
-		state, err = VisitNode(node.NamedChild(index), state, index, funcMap, skipMissing)
+		state, err = VisitNode(node.NamedChild(i), state, i, funcMap, skipMissing)
 		if err != nil {
 			return state, err
 		}
@@ -74,9 +72,7 @@ func VisitNamedChildren[T any](node *sitter.Node, state T, funcMap VisitorFuncMa
 
 func VisitChildren[T any](node *sitter.Node, state T, funcMap VisitorFuncMap[T], skipMissing bool) (T, error) {
 	for i := range node.ChildCount() {
-		index := int(i)
-
-		state, err := VisitNode(node.Child(index), state, index, funcMap, skipMissing)
+		state, err := VisitNode(node.Child(i), state, i, funcMap, skipMissing)
 		if err != nil {
 			return state, err
 		}

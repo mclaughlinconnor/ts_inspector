@@ -7,7 +7,7 @@ import (
 	"ts_inspector/config"
 	reviewindexer "ts_inspector/parser/review_indexer"
 
-	sitter "github.com/smacker/go-tree-sitter"
+	sitter "github.com/tree-sitter/go-tree-sitter"
 )
 
 // Hacky "fix" because of my badly structured packages

@@ -1,9 +1,7 @@
 package utils
 
 import (
-	"context"
-
-	sitter "github.com/smacker/go-tree-sitter"
+	sitter "github.com/tree-sitter/go-tree-sitter"
 )
 
 func ParseTextFromPath(path string, language string) (*sitter.Node, []byte, error) {
@@ -12,26 +10,25 @@ func ParseTextFromPath(path string, language string) (*sitter.Node, []byte, erro
 		return nil, []byte{}, err
 	}
 
-	root, err := ParseText(content, language)
-	if err != nil {
-		return nil, []byte{}, err
-	}
+	root := ParseText(content, language)
 
 	return root, content, nil
 }
 
-func ParseText(content []byte, language string) (*sitter.Node, error) {
+func ParseText(content []byte, language string) (*sitter.Node) {
+	root, _ := ParseTextWithTree(content, language)
+
+	return root
+}
+
+func ParseTextWithTree(content []byte, language string) (*sitter.Node, *sitter.Tree) {
 	parser := sitter.NewParser()
 	parser.SetLanguage(GetLanguage(language))
 
-	tree, err := parser.ParseCtx(context.TODO(), nil, content)
-	if err != nil {
-		return nil, err
-	}
-
+	tree := parser.Parse(content, nil)
 	root := tree.RootNode()
 
-	return root, nil
+	return root, tree
 }
 
 func GetRootNode(fromDisk bool, source string, language string) (*sitter.Node, error) {
@@ -49,10 +46,7 @@ func GetRootNode(fromDisk bool, source string, language string) (*sitter.Node, e
 	parser := sitter.NewParser()
 	parser.SetLanguage(GetLanguage(language))
 
-	tree, err := parser.ParseCtx(context.TODO(), nil, content)
-	if err != nil {
-		return nil, err
-	}
+	tree := parser.Parse(content, nil)
 
 	return tree.RootNode(), nil
 }

@@ -7,7 +7,7 @@ import (
 	"ts_inspector/ast/walk"
 	"ts_inspector/utils"
 
-	sitter "github.com/smacker/go-tree-sitter"
+	sitter "github.com/tree-sitter/go-tree-sitter"
 )
 
 // TODO: needs despaghetti-ing
@@ -15,9 +15,9 @@ import (
 func ExtractComponentData(class *Class, node *sitter.Node, content []byte) error {
 	funcMap := walk.NewVisitorFuncsMap[any]()
 
-	funcMap["decorator"] = func(node *sitter.Node, _ any, indexInParent int, funcMap walk.VisitorFuncMap[any]) (any, error) {
+	funcMap["decorator"] = func(node *sitter.Node, _ any, indexInParent uint, funcMap walk.VisitorFuncMap[any]) (any, error) {
 		call := node.NamedChild(0)
-		if call.Type() != "call_expression" {
+		if call.Kind() != "call_expression" {
 			return nil, nil
 		}
 
@@ -26,7 +26,7 @@ func ExtractComponentData(class *Class, node *sitter.Node, content []byte) error
 			return nil, nil
 		}
 
-		decoratorName := decoratorNameNode.Content(content)
+		decoratorName := decoratorNameNode.Utf8Text(content)
 
 		var err error
 
@@ -76,11 +76,11 @@ func ExtractComponentData(class *Class, node *sitter.Node, content []byte) error
 }
 
 func extractProvider(node *sitter.Node, content []byte) *Provider {
-	nodeType := node.Type()
+	nodeType := node.Kind()
 	if nodeType == "identifier" {
 		provider := Provider{}
 
-		reference := &Reference{Name: node.Content(content), Node: node}
+		reference := &Reference{Name: node.Utf8Text(content), Node: node}
 		provider.Token = reference
 		provider.Class = reference
 
@@ -94,7 +94,7 @@ func extractProvider(node *sitter.Node, content []byte) *Provider {
 	provider := Provider{}
 
 	for i := range node.NamedChildCount() {
-		pair := node.NamedChild(int(i))
+		pair := node.NamedChild(i)
 		key := pair.ChildByFieldName("key")
 		value := pair.ChildByFieldName("value")
 
@@ -102,8 +102,8 @@ func extractProvider(node *sitter.Node, content []byte) *Provider {
 			return nil
 		}
 
-		keyName := key.Content(content)
-		valueText := value.Content(content)
+		keyName := key.Utf8Text(content)
+		valueText := value.Utf8Text(content)
 
 		switch kn := keyName; kn {
 		case "provide":
@@ -144,32 +144,32 @@ func handleComponentKv(class *Class, vNode *sitter.Node, content []byte, keyName
 func handleCompiledDirectiveProp(class *Class, def *Definition) {
 	node := def.Node
 	tNode := node.ChildByFieldName("type")
-	if tNode == nil || tNode.Type() != "type_annotation" {
+	if tNode == nil || tNode.Kind() != "type_annotation" {
 		return
 	}
 
 	gTypeNode := tNode.NamedChild(0)
-	if gTypeNode == nil || gTypeNode.Type() != "generic_type" {
+	if gTypeNode == nil || gTypeNode.Kind() != "generic_type" {
 		return
 	}
 
 	args := gTypeNode.ChildByFieldName("type_arguments")
-	if args == nil || args.Type() != "type_arguments" {
+	if args == nil || args.Kind() != "type_arguments" {
 		return
 	}
 
 	selectorsNode := args.NamedChild(1)
-	if selectorsNode == nil || selectorsNode.Type() != "literal_type" {
+	if selectorsNode == nil || selectorsNode.Kind() != "literal_type" {
 		return
 	}
 
 	inputMapNode := args.NamedChild(3)
-	if inputMapNode == nil || inputMapNode.Type() != "object_type" {
+	if inputMapNode == nil || inputMapNode.Kind() != "object_type" {
 		return
 	}
 
 	outputMapNode := args.NamedChild(4)
-	if outputMapNode == nil || outputMapNode.Type() != "object_type" {
+	if outputMapNode == nil || outputMapNode.Kind() != "object_type" {
 		return
 	}
 
@@ -177,16 +177,16 @@ func handleCompiledDirectiveProp(class *Class, def *Definition) {
 	class.Snapshot().Angular.EnsureDirective()
 
 	selectorsStringNode := selectorsNode.NamedChild(0)
-	if selectorsStringNode == nil || selectorsStringNode.Type() != "string" {
+	if selectorsStringNode == nil || selectorsStringNode.Kind() != "string" {
 		return
 	}
 
 	selectorsFragNode := selectorsStringNode.NamedChild(0)
-	if selectorsFragNode == nil || selectorsFragNode.Type() != "string_fragment" {
+	if selectorsFragNode == nil || selectorsFragNode.Kind() != "string_fragment" {
 		return
 	}
 
-	selectorSplit := strings.SplitSeq(selectorsFragNode.Content([]byte(class.Snapshot().Content)), ",")
+	selectorSplit := strings.SplitSeq(selectorsFragNode.Utf8Text([]byte(class.Snapshot().Content)), ",")
 	for s := range selectorSplit {
 		trimmed := strings.TrimSpace(s)
 
@@ -206,32 +206,32 @@ func handleCompiledDirectiveProp(class *Class, def *Definition) {
 func handleCompiledModuleProp(class *Class, def *Definition) {
 	node := def.Node
 	tNode := node.ChildByFieldName("type")
-	if tNode == nil || tNode.Type() != "type_annotation" {
+	if tNode == nil || tNode.Kind() != "type_annotation" {
 		return
 	}
 
 	gTypeNode := tNode.NamedChild(0)
-	if gTypeNode == nil || gTypeNode.Type() != "generic_type" {
+	if gTypeNode == nil || gTypeNode.Kind() != "generic_type" {
 		return
 	}
 
 	args := gTypeNode.ChildByFieldName("type_arguments")
-	if args == nil || args.Type() != "type_arguments" {
+	if args == nil || args.Kind() != "type_arguments" {
 		return
 	}
 
 	declarationsNode := args.NamedChild(1)
-	if declarationsNode == nil && declarationsNode.Type() != "tuple_type" && declarationsNode.Type() != "predefined_type" {
+	if declarationsNode == nil && declarationsNode.Kind() != "tuple_type" && declarationsNode.Kind() != "predefined_type" {
 		return
 	}
 
 	importsNode := args.NamedChild(2)
-	if importsNode == nil && importsNode.Type() != "tuple_type" && importsNode.Type() != "predefined_type" {
+	if importsNode == nil && importsNode.Kind() != "tuple_type" && importsNode.Kind() != "predefined_type" {
 		return
 	}
 
 	exportsNode := args.NamedChild(3)
-	if exportsNode == nil && exportsNode.Type() != "tuple_type" && exportsNode.Type() != "predefined_type" {
+	if exportsNode == nil && exportsNode.Kind() != "tuple_type" && exportsNode.Kind() != "predefined_type" {
 		return
 	}
 
@@ -252,27 +252,27 @@ func handleCompiledModuleProp(class *Class, def *Definition) {
 func handleCompiledPipeProp(class *Class, def *Definition) {
 	node := def.Node
 	tNode := node.ChildByFieldName("type")
-	if tNode == nil || tNode.Type() != "type_annotation" {
+	if tNode == nil || tNode.Kind() != "type_annotation" {
 		return
 	}
 
 	gTypeNode := tNode.NamedChild(0)
-	if gTypeNode == nil || gTypeNode.Type() != "generic_type" {
+	if gTypeNode == nil || gTypeNode.Kind() != "generic_type" {
 		return
 	}
 
 	args := gTypeNode.ChildByFieldName("type_arguments")
-	if args == nil || args.Type() != "type_arguments" {
+	if args == nil || args.Kind() != "type_arguments" {
 		return
 	}
 
 	nameLiteralNode := args.NamedChild(1)
-	if nameLiteralNode == nil || nameLiteralNode.Type() != "literal_type" {
+	if nameLiteralNode == nil || nameLiteralNode.Kind() != "literal_type" {
 		return
 	}
 
 	nameNode := nameLiteralNode.NamedChild(0)
-	if nameNode == nil || nameNode.Type() != "string" {
+	if nameNode == nil || nameNode.Kind() != "string" {
 		return
 	}
 
@@ -285,14 +285,14 @@ func handleCompiledPipeProp(class *Class, def *Definition) {
 	class.Snapshot().Angular.EnsurePipe()
 
 	class.Update(func(data *classState) {
-		data.Angular.Pipe.Name = nameFragNode.Content([]byte(data.Content))
+		data.Angular.Pipe.Name = nameFragNode.Utf8Text([]byte(data.Content))
 	})
 }
 
 func handleCompiledModuleArray(class *Class, arrayNode *sitter.Node) []*Value {
 	results := []*Value{}
 
-	if arrayNode.Type() == "predefined_type" {
+	if arrayNode.Kind() == "predefined_type" {
 		return results
 	}
 
@@ -301,18 +301,18 @@ func handleCompiledModuleArray(class *Class, arrayNode *sitter.Node) []*Value {
 	content := []byte(classSnapshot.Content)
 
 	for i := range arrayNode.NamedChildCount() {
-		element := arrayNode.NamedChild(int(i))
-		if element == nil || element.Type() != "type_query" {
+		element := arrayNode.NamedChild(i)
+		if element == nil || element.Kind() != "type_query" {
 			continue
 		}
 
 		memberExpression := element.NamedChild(0)
-		if memberExpression == nil || memberExpression.Type() != "member_expression" {
+		if memberExpression == nil || memberExpression.Kind() != "member_expression" {
 			continue
 		}
 
 		property := memberExpression.ChildByFieldName("property")
-		if property == nil || property.Type() != "property_identifier" {
+		if property == nil || property.Kind() != "property_identifier" {
 			continue
 		}
 
@@ -325,17 +325,17 @@ func handleCompiledModuleArray(class *Class, arrayNode *sitter.Node) []*Value {
 
 func handleCompiledInputs(class *Class, inputMapNode *sitter.Node) {
 	for i := range inputMapNode.NamedChildCount() {
-		child := inputMapNode.NamedChild(int(i))
-		if child == nil || child.Type() != "property_signature" {
+		child := inputMapNode.NamedChild(i)
+		if child == nil || child.Kind() != "property_signature" {
 			continue
 		}
 
 		nameNode := child.ChildByFieldName("name")
-		n := nameNode.Content([]byte(class.Snapshot().Content))
+		n := nameNode.Utf8Text([]byte(class.Snapshot().Content))
 		name := strings.TrimSuffix(strings.TrimPrefix(n, "\""), "\"")
 
 		tNode := child.ChildByFieldName("type")
-		if tNode == nil || tNode.Type() != "type_annotation" {
+		if tNode == nil || tNode.Kind() != "type_annotation" {
 			continue
 		}
 
@@ -344,7 +344,7 @@ func handleCompiledInputs(class *Class, inputMapNode *sitter.Node) {
 			continue
 		}
 
-		switch actualType.Type() {
+		switch actualType.Kind() {
 		case "literal_type":
 			{
 				str := actualType.NamedChild(0)
@@ -358,7 +358,7 @@ func handleCompiledInputs(class *Class, inputMapNode *sitter.Node) {
 				}
 
 				class.Update(func(data *classState) {
-					s := str.Content([]byte(data.Content))
+					s := str.Utf8Text([]byte(data.Content))
 					def.Decorators = append(def.Decorators, Decorator{Arguments: []string{s}, IsAngular: true, Name: "Input"})
 					data.Definitions.Set(def.Name, *def.Definition)
 				})
@@ -368,8 +368,8 @@ func handleCompiledInputs(class *Class, inputMapNode *sitter.Node) {
 				dec := Decorator{Arguments: []string{}, IsAngular: true, Name: "Input"}
 
 				for k := range actualType.NamedChildCount() {
-					propSigKey := actualType.NamedChild(int(k))
-					if propSigKey == nil || propSigKey.Type() != "property_signature" {
+					propSigKey := actualType.NamedChild(k)
+					if propSigKey == nil || propSigKey.Kind() != "property_signature" {
 						continue
 					}
 
@@ -394,11 +394,11 @@ func handleCompiledInputs(class *Class, inputMapNode *sitter.Node) {
 					}
 
 					content := []byte(class.Snapshot().Content)
-					n := nnameFragNode.Content(content)
+					n := nnameFragNode.Utf8Text(content)
 					switch n {
 					case "alias":
 						{
-							v := vvalueFragNode.Content(content)
+							v := vvalueFragNode.Utf8Text(content)
 							dec.Arguments = append(dec.Arguments, v)
 						}
 					}
@@ -420,17 +420,17 @@ func handleCompiledInputs(class *Class, inputMapNode *sitter.Node) {
 
 func handleCompiledOutputs(class *Class, inputMapNode *sitter.Node) {
 	for i := range inputMapNode.NamedChildCount() {
-		child := inputMapNode.NamedChild(int(i))
-		if child.Type() != "property_signature" {
+		child := inputMapNode.NamedChild(i)
+		if child.Kind() != "property_signature" {
 			continue
 		}
 
 		nameNode := child.ChildByFieldName("name")
-		n := nameNode.Content([]byte(class.Snapshot().Content))
+		n := nameNode.Utf8Text([]byte(class.Snapshot().Content))
 		name := strings.TrimSuffix(strings.TrimPrefix(n, "\""), "\"")
 
 		tNode := child.ChildByFieldName("type")
-		if tNode == nil || tNode.Type() != "type_annotation" {
+		if tNode == nil || tNode.Kind() != "type_annotation" {
 			continue
 		}
 
@@ -439,7 +439,7 @@ func handleCompiledOutputs(class *Class, inputMapNode *sitter.Node) {
 			continue
 		}
 
-		switch actualType.Type() {
+		switch actualType.Kind() {
 		case "literal_type":
 			{
 				str := actualType.NamedChild(0)
@@ -453,7 +453,7 @@ func handleCompiledOutputs(class *Class, inputMapNode *sitter.Node) {
 				}
 
 				class.Update(func(data *classState) {
-					s := str.Content([]byte(data.Content))
+					s := str.Utf8Text([]byte(data.Content))
 					def.Decorators = append(def.Decorators, Decorator{Arguments: []string{s}, IsAngular: true, Name: "Output"})
 				})
 			}
@@ -495,7 +495,7 @@ func handlePipeKv(class *Class, vNode *sitter.Node, content []byte, keyName stri
 		}
 
 		class.Update(func(data *classState) {
-			data.Angular.Pipe.Name = fragNode.Content(content)
+			data.Angular.Pipe.Name = fragNode.Utf8Text(content)
 		})
 	}
 }
@@ -536,14 +536,14 @@ func handleImportsModuleKv(class *Class, vNode *sitter.Node, content []byte) {
 }
 
 func handleProvidersComponentKv(class *Class, vNode *sitter.Node, content []byte) {
-	if vNode.Type() != "array" {
+	if vNode.Kind() != "array" {
 		return
 	}
 
 	providers := make([]*Provider, 0)
 
 	for i := range vNode.NamedChildCount() {
-		provider := vNode.NamedChild(int(i))
+		provider := vNode.NamedChild(i)
 
 		p := extractProvider(provider, content)
 		if p == nil {
@@ -559,14 +559,14 @@ func handleProvidersComponentKv(class *Class, vNode *sitter.Node, content []byte
 }
 
 func handleProvidersDirectiveKv(class *Class, vNode *sitter.Node, content []byte) {
-	if vNode.Type() != "array" {
+	if vNode.Kind() != "array" {
 		return
 	}
 
 	providers := make([]*Provider, 0)
 
 	for i := range vNode.NamedChildCount() {
-		provider := vNode.NamedChild(int(i))
+		provider := vNode.NamedChild(i)
 
 		p := extractProvider(provider, content)
 		if p == nil {
@@ -582,14 +582,14 @@ func handleProvidersDirectiveKv(class *Class, vNode *sitter.Node, content []byte
 }
 
 func handleProvidersModuleKv(class *Class, vNode *sitter.Node, content []byte) {
-	if vNode.Type() != "array" {
+	if vNode.Kind() != "array" {
 		return
 	}
 
 	providers := make([]*Provider, 0)
 
 	for i := range vNode.NamedChildCount() {
-		provider := vNode.NamedChild(int(i))
+		provider := vNode.NamedChild(i)
 		providers = append(providers, extractProvider(provider, content))
 	}
 
@@ -599,7 +599,7 @@ func handleProvidersModuleKv(class *Class, vNode *sitter.Node, content []byte) {
 }
 
 func handleSelectorComponentKv(class *Class, vNode *sitter.Node, content []byte) {
-	if vNode.Type() != "string" {
+	if vNode.Kind() != "string" {
 		return
 	}
 
@@ -608,12 +608,12 @@ func handleSelectorComponentKv(class *Class, vNode *sitter.Node, content []byte)
 	}
 
 	fragNode := vNode.NamedChild(0)
-	if fragNode.Type() != "string_fragment" {
+	if fragNode.Kind() != "string_fragment" {
 		return
 	}
 
 	class.Update(func(data *classState) {
-		selectors := fragNode.Content(content)
+		selectors := fragNode.Utf8Text(content)
 
 		split := strings.SplitSeq(selectors, ",")
 		for s := range split {
@@ -627,7 +627,7 @@ func handleSelectorComponentKv(class *Class, vNode *sitter.Node, content []byte)
 }
 
 func handleSelectorDirectiveKv(class *Class, vNode *sitter.Node, content []byte) {
-	if vNode.Type() != "string" {
+	if vNode.Kind() != "string" {
 		return
 	}
 
@@ -636,12 +636,12 @@ func handleSelectorDirectiveKv(class *Class, vNode *sitter.Node, content []byte)
 	}
 
 	fragNode := vNode.NamedChild(0)
-	if fragNode.Type() != "string_fragment" {
+	if fragNode.Kind() != "string_fragment" {
 		return
 	}
 
 	class.Update(func(data *classState) {
-		selectors := fragNode.Content(content)
+		selectors := fragNode.Utf8Text(content)
 
 		split := strings.SplitSeq(selectors, ",")
 		for s := range split {
@@ -655,7 +655,7 @@ func handleSelectorDirectiveKv(class *Class, vNode *sitter.Node, content []byte)
 }
 
 func handleTemplateUrlKv(class *Class, vNode *sitter.Node, content []byte) error {
-	if vNode.Type() != "string" {
+	if vNode.Kind() != "string" {
 		return nil
 	}
 
@@ -664,11 +664,11 @@ func handleTemplateUrlKv(class *Class, vNode *sitter.Node, content []byte) error
 	}
 
 	fragNode := vNode.NamedChild(0)
-	if fragNode.Type() != "string_fragment" {
+	if fragNode.Kind() != "string_fragment" {
 		return nil
 	}
 
-	relativePath := fragNode.Content(content)
+	relativePath := fragNode.Utf8Text(content)
 	if relativePath == "" {
 		return nil
 	}
@@ -694,13 +694,13 @@ func handleTemplateUrlKv(class *Class, vNode *sitter.Node, content []byte) error
 func walkComponentDecoratorParams(class *Class, node *sitter.Node, content []byte) error {
 	funcMap := walk.NewVisitorFuncsMap[any]()
 
-	funcMap["pair"] = func(node *sitter.Node, _ any, indexInParent int, funcMap walk.VisitorFuncMap[any]) (any, error) {
+	funcMap["pair"] = func(node *sitter.Node, _ any, indexInParent uint, funcMap walk.VisitorFuncMap[any]) (any, error) {
 		keyNode := node.ChildByFieldName("key")
 		if keyNode == nil {
 			return nil, nil
 		}
 
-		keyName := keyNode.Content(content)
+		keyName := keyNode.Utf8Text(content)
 		valueNode := node.ChildByFieldName("value")
 		if valueNode == nil {
 			return nil, nil
@@ -722,13 +722,13 @@ func walkComponentDecoratorParams(class *Class, node *sitter.Node, content []byt
 func walkDirectiveDecoratorParams(class *Class, node *sitter.Node, content []byte) error {
 	funcMap := walk.NewVisitorFuncsMap[any]()
 
-	funcMap["pair"] = func(node *sitter.Node, _ any, indexInParent int, funcMap walk.VisitorFuncMap[any]) (any, error) {
+	funcMap["pair"] = func(node *sitter.Node, _ any, indexInParent uint, funcMap walk.VisitorFuncMap[any]) (any, error) {
 		keyNode := node.ChildByFieldName("key")
 		if keyNode == nil {
 			return nil, nil
 		}
 
-		keyName := keyNode.Content(content)
+		keyName := keyNode.Utf8Text(content)
 		valueNode := node.ChildByFieldName("value")
 		if valueNode == nil {
 			return nil, nil
@@ -750,13 +750,13 @@ func walkDirectiveDecoratorParams(class *Class, node *sitter.Node, content []byt
 func walkModuleDecoratorParams(class *Class, node *sitter.Node, content []byte) error {
 	funcMap := walk.NewVisitorFuncsMap[any]()
 
-	funcMap["pair"] = func(node *sitter.Node, _ any, indexInParent int, funcMap walk.VisitorFuncMap[any]) (any, error) {
+	funcMap["pair"] = func(node *sitter.Node, _ any, indexInParent uint, funcMap walk.VisitorFuncMap[any]) (any, error) {
 		keyNode := node.ChildByFieldName("key")
 		if keyNode == nil {
 			return nil, nil
 		}
 
-		keyName := keyNode.Content(content)
+		keyName := keyNode.Utf8Text(content)
 		valueNode := node.ChildByFieldName("value")
 		if valueNode == nil {
 			return nil, nil
@@ -774,13 +774,13 @@ func walkModuleDecoratorParams(class *Class, node *sitter.Node, content []byte) 
 func walkPipeDecoratorParams(class *Class, node *sitter.Node, content []byte) error {
 	funcMap := walk.NewVisitorFuncsMap[any]()
 
-	funcMap["pair"] = func(node *sitter.Node, _ any, indexInParent int, funcMap walk.VisitorFuncMap[any]) (any, error) {
+	funcMap["pair"] = func(node *sitter.Node, _ any, indexInParent uint, funcMap walk.VisitorFuncMap[any]) (any, error) {
 		keyNode := node.ChildByFieldName("key")
 		if keyNode == nil {
 			return nil, nil
 		}
 
-		keyName := keyNode.Content(content)
+		keyName := keyNode.Utf8Text(content)
 		valueNode := node.ChildByFieldName("value")
 		if valueNode == nil {
 			return nil, nil

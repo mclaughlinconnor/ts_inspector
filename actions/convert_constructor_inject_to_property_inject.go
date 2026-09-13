@@ -18,10 +18,7 @@ func ConvertInjectToProperty(_ *utils.Writer, state *parser.State, file *parser.
 
 	action := actionEditHolder{[]utils.TextEdit{}, true}
 	content := []byte(file.Snapshot().Content)
-	root, err := utils.ParseText(content, utils.TypeScript)
-	if err != nil {
-		return retActionErr(err)
-	}
+	root := utils.ParseText(content, utils.TypeScript)
 
 	parameterNode := ast.HasNodeInHierarchy(root, "required_parameter", startByte, endByte)
 	if parameterNode == nil {
@@ -33,7 +30,7 @@ func ConvertInjectToProperty(_ *utils.Writer, state *parser.State, file *parser.
 		return retActionErr(err)
 	}
 
-	name := nameNode.Content(content)
+	name := nameNode.Utf8Text(content)
 
 	classes := file.Snapshot().Classes
 	var class *parser.Class
@@ -111,12 +108,12 @@ func ConvertInjectToProperty(_ *utils.Writer, state *parser.State, file *parser.
 
 	endOffset := parameterNode.EndByte()
 	sibling := parameterNode.NextSibling()
-	if sibling != nil && sibling.Type() == "," {
+	if sibling != nil && sibling.Kind() == "," {
 		endOffset = endOffset + 1
 	}
 
 	sibling = sibling.NextNamedSibling()
-	if sibling != nil && sibling.StartPoint().Row > parameterNode.EndPoint().Row {
+	if sibling != nil && sibling.StartPosition().Row > parameterNode.EndPosition().Row {
 		endOffset = sibling.StartByte()
 	}
 	endPosition := utils.GetPositionForOffset(file.Snapshot().Content, endOffset)

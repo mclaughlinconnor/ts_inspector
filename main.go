@@ -20,7 +20,7 @@ import (
 	"ts_inspector/search"
 	"ts_inspector/utils"
 
-	sitter "github.com/smacker/go-tree-sitter"
+	sitter "github.com/tree-sitter/go-tree-sitter"
 
 	"net/http"
 	_ "net/http/pprof"

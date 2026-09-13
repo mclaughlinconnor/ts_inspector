@@ -10,10 +10,10 @@ type InterestingPoint struct {
 	Kind interfaces.TSymbolKind
 	Text string
 
-	endOffset   uint32
+	endOffset   uint
 	fileContent string
 	location    *interfaces.Location
-	startOffset uint32
+	startOffset uint
 	uri         string
 }
 
@@ -36,7 +36,7 @@ func (i *InterestingPoint) ResolveLocation() interfaces.Location {
 	return location
 }
 
-func (i *InterestingPoint) SetPosition(startOffset uint32, endOffset uint32) {
+func (i *InterestingPoint) SetPosition(startOffset uint, endOffset uint) {
 	i.endOffset = endOffset
 	i.startOffset = startOffset
 }

@@ -1,6 +1,6 @@
 package parser
 
-import sitter "github.com/smacker/go-tree-sitter"
+import sitter "github.com/tree-sitter/go-tree-sitter"
 
 type Usage struct {
 	Access access

@@ -75,7 +75,7 @@ func UriFromFilename(filename string) string {
 	return `file://` + filename
 }
 
-func FindDefinition(state *State, file *File, cursorOffset uint32) ([]interfaces.Location, error) {
+func FindDefinition(state *State, file *File, cursorOffset uint) ([]interfaces.Location, error) {
 	locations := make([]interfaces.Location, 0)
 
 	tagName, cursorOnTagName := ast.GetTagNameAtOffset(file.Snapshot().Content, cursorOffset)

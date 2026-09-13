@@ -6,7 +6,7 @@ import (
 	"slices"
 	"ts_inspector/config"
 
-	sitter "github.com/smacker/go-tree-sitter"
+	sitter "github.com/tree-sitter/go-tree-sitter"
 )
 
 type Angular struct {

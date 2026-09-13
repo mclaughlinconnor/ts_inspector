@@ -6,7 +6,7 @@ import (
 	"ts_inspector/config"
 	"ts_inspector/utils"
 
-	sitter "github.com/smacker/go-tree-sitter"
+	sitter "github.com/tree-sitter/go-tree-sitter"
 )
 
 type Part struct {
@@ -166,8 +166,8 @@ func (s *Statement) TsOffsetToRange(content string, startOffset int, endOffset i
 	var end utils.Position
 
 	if part.IsReal() {
-		start = utils.GetPositionForOffset(content, uint32(*part.PugStartOffset))
-		end = utils.GetPositionForOffset(content, uint32(*part.PugEndOffset))
+		start = utils.GetPositionForOffset(content, uint(*part.PugStartOffset))
+		end = utils.GetPositionForOffset(content, uint(*part.PugEndOffset))
 	} else if config.GetConfig().Debug {
 		start = utils.ZeroPosition()
 		end = utils.ZeroPosition()
@@ -250,7 +250,7 @@ func (s *Statement) ToString() string {
 }
 
 func StatementFromNodeContent(node *sitter.Node, content []byte) *Statement {
-	nodeContent := node.Content(content)
+	nodeContent := node.Utf8Text(content)
 
 	statement := Statement{}
 	statement.AddRealPart(nodeContent, node)

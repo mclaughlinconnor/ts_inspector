@@ -9,7 +9,7 @@ import (
 	"ts_inspector/treesitter_parsers/typescript"
 	"ts_inspector/treesitter_parsers/yaml"
 
-	sitter "github.com/smacker/go-tree-sitter"
+	sitter "github.com/tree-sitter/go-tree-sitter"
 )
 
 const (

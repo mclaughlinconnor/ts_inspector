@@ -1,9 +1,7 @@
 package utils
 
 import (
-	"context"
-
-	sitter "github.com/smacker/go-tree-sitter"
+	sitter "github.com/tree-sitter/go-tree-sitter"
 )
 
 type Captures = map[string][]*sitter.Node
@@ -14,32 +12,29 @@ func WithMatches[T any](query string, language string, content []byte, returnVal
 	parser := sitter.NewParser()
 	parser.SetLanguage(GetLanguage(language))
 
-	tree, err := parser.ParseCtx(context.TODO(), nil, content)
-	if err != nil {
-		return returnValue, err
-	}
+	tree := parser.Parse(content, nil)
 
 	qc, q, err := GetQuery(query, language)
 	if err != nil {
 		return returnValue, err
 	}
 
-	qc.Exec(q, tree.RootNode())
+	matches := qc.Matches(q, tree.RootNode(), content)
 
 	for {
-		m, ok := qc.NextMatch()
-		if !ok {
+		m := matches.Next()
+		if m == nil {
 			break
 		}
 
-		m = qc.FilterPredicates(m, content)
-
 		captures := map[string][]*sitter.Node{}
+		captureNames := q.CaptureNames()
+
 		for _, capture := range m.Captures {
-			if captures[q.CaptureNameForId(capture.Index)] != nil {
-				captures[q.CaptureNameForId(capture.Index)] = append(captures[q.CaptureNameForId(capture.Index)], capture.Node)
+			if captures[captureNames[capture.Index]] != nil {
+				captures[captureNames[capture.Index]] = append(captures[captureNames[capture.Index]], &capture.Node)
 			} else {
-				captures[q.CaptureNameForId(capture.Index)] = []*sitter.Node{capture.Node}
+				captures[captureNames[capture.Index]] = []*sitter.Node{&capture.Node}
 			}
 		}
 

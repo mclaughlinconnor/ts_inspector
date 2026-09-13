@@ -61,11 +61,7 @@ func tsgoHandleReadFile(tsgo *TsGo, request ReadFileRequest) {
 	}
 
 	content := []byte(file.Snapshot().Content)
-	root, err := utils.ParseText(content, utils.Pug)
-	if err != nil {
-		tsgoHandleReadFileResponse(tsgo, request, nil, err)
-		return
-	}
+	root := utils.ParseText(content, utils.Pug)
 
 	classes := file.Snapshot().Classes
 	if len(classes) == 0 {

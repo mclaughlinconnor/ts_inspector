@@ -5,7 +5,7 @@ import (
 	"strings"
 	"ts_inspector/utils"
 
-	sitter "github.com/smacker/go-tree-sitter"
+	sitter "github.com/tree-sitter/go-tree-sitter"
 )
 
 func ExtractClassDefinition(content []byte) (*ClassParseResult, error) {
@@ -32,7 +32,7 @@ func ExtractClassDefinition(content []byte) (*ClassParseResult, error) {
 
 		if captures["identifier"] != nil {
 			for _, identifier := range captures["identifier"] {
-				(*returnValue).ImplementedIdentifiers = append((*returnValue).ImplementedIdentifiers, identifier.Content(content))
+				(*returnValue).ImplementedIdentifiers = append((*returnValue).ImplementedIdentifiers, identifier.Utf8Text(content))
 			}
 		}
 
@@ -50,7 +50,7 @@ func AddToImplement(classResult *ClassParseResult, toAdd string) utils.TextEdits
 
 	if classResult.ImplementsClause == nil {
 		point := findImplementsInsertionPoint(classResult)
-		editRange := utils.Range{Start: utils.PositionFromPoint(point), End: utils.PositionFromPoint(point)}
+		editRange := utils.Range{Start: utils.LspPositionFromTsPosition(point), End: utils.LspPositionFromTsPosition(point)}
 		text := " implements " + toAdd
 
 		return utils.TextEdits{utils.TextEdit{Range: editRange, NewText: text}}
@@ -63,8 +63,8 @@ func AddToImplement(classResult *ClassParseResult, toAdd string) utils.TextEdits
 
 		node := classResult.ImplementsClause
 
-		editRange := utils.Range{Start: utils.PositionFromPoint(node.StartPoint()), End: utils.PositionFromPoint(node.EndPoint())}
-		editRange.Start.Character = editRange.Start.Character + uint32(len("implements "))
+		editRange := utils.Range{Start: utils.LspPositionFromTsPosition(node.StartPosition()), End: utils.LspPositionFromTsPosition(node.EndPosition())}
+		editRange.Start.Character = editRange.Start.Character + uint(len("implements "))
 
 		return utils.TextEdits{utils.TextEdit{Range: editRange, NewText: text}}
 	}
@@ -86,14 +86,14 @@ func AddImplementToFile(content []byte, toAdd string) (utils.TextEdits, error) {
 
 func findImplementsInsertionPoint(classResult *ClassParseResult) sitter.Point {
 	if classResult.ExtendsClause != nil {
-		return classResult.ExtendsClause.EndPoint()
+		return classResult.ExtendsClause.EndPosition()
 	}
 
 	if classResult.TypeParameters != nil {
-		return classResult.TypeParameters.EndPoint()
+		return classResult.TypeParameters.EndPosition()
 	}
 
-	return classResult.NameNode.EndPoint()
+	return classResult.NameNode.EndPosition()
 }
 
 type ClassParseResult struct {

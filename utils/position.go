@@ -1,33 +1,33 @@
 package utils
 
 import (
-	sitter "github.com/smacker/go-tree-sitter"
+	sitter "github.com/tree-sitter/go-tree-sitter"
 )
 
 type Position struct {
-	Line uint32 `json:"line"`
+	Line uint `json:"line"`
 
-	Character uint32 `json:"character"`
+	Character uint `json:"character"`
 }
 
-func PositionFromPoint(point sitter.Point) Position {
+func LspPositionFromTsPosition(point sitter.Point) Position {
 	return Position{Line: point.Row, Character: point.Column}
 }
 
-func GetPositionForOffset(content string, offset uint32) Position {
+func GetPositionForOffset(content string, offset uint) Position {
 	lineOffsets := GetLineOffsets(content)
 
-	if offset >= uint32(len(content)) {
-		return Position{Line: uint32(len(lineOffsets)) - 1, Character: 0}
+	if offset >= uint(len(content)) {
+		return Position{Line: uint(len(lineOffsets)) - 1, Character: 0}
 	}
 
-	var line uint32
-	var character uint32
+	var line uint
+	var character uint
 
 	for index, lineOffset := range lineOffsets {
 		if lineOffset > offset {
 			if index > 0 {
-				line = uint32(index - 1)
+				line = uint(index - 1)
 				character = offset - lineOffsets[index-1]
 			} else {
 				line = 0
@@ -45,7 +45,7 @@ func GetPositionForOffset2(content string, offset int) Position {
 	lineOffsets := GetLineOffsets2(content)
 
 	if offset >= len(content) {
-		return Position{Line: uint32(len(lineOffsets)) - 1, Character: 0}
+		return Position{Line: uint(len(lineOffsets)) - 1, Character: 0}
 	}
 
 	var line int
@@ -65,16 +65,16 @@ func GetPositionForOffset2(content string, offset int) Position {
 		}
 	}
 
-	return Position{Line: uint32(line), Character: uint32(character)}
+	return Position{Line: uint(line), Character: uint(character)}
 }
 
-func GetLineOffsets(text string) []uint32 {
-	var i uint32 = 0
+func GetLineOffsets(text string) []uint {
+	var i uint = 0
 
-	offsets := []uint32{}
+	offsets := []uint{}
 	isLineStart := true
 
-	textLength := uint32(len(text))
+	textLength := uint(len(text))
 	for i < textLength {
 		if isLineStart {
 			offsets = append(offsets, i)

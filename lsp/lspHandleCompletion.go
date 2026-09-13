@@ -35,7 +35,7 @@ func lspHandleCompletion(writer *utils.Writer, logger *log.Logger, state *parser
 		return
 	}
 
-	nodeType := context.ci.namedNodeUnderCursor.Type()
+	nodeType := context.ci.namedNodeUnderCursor.Kind()
 	for _, thing := range context.file.Components() {
 		switch nodeType {
 		case "interpolation_content":
@@ -206,7 +206,7 @@ func buildCompletionProperty(context *completionContext, class *parser.Class) {
 		}
 
 		propertyName := d.Name
-		propertyNodeType := d.Node.Type()
+		propertyNodeType := d.Node.Kind()
 
 		switch propertyNodeType {
 		case "public_field_definition":

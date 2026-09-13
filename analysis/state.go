@@ -5,7 +5,7 @@ import (
 	"ts_inspector/parser"
 	"ts_inspector/utils"
 
-	sitter "github.com/smacker/go-tree-sitter"
+	sitter "github.com/tree-sitter/go-tree-sitter"
 )
 
 type Analysis struct {
@@ -74,7 +74,7 @@ func GenerateDiagnosticsForFile(state *parser.State, file *parser.File, runExpen
 }
 
 func NewDiagnostic(node *sitter.Node, severity int, source string, message string) interfaces.Diagnostic {
-	r := utils.Range{Start: utils.PositionFromPoint(node.StartPoint()), End: utils.PositionFromPoint(node.EndPoint())}
+	r := utils.Range{Start: utils.LspPositionFromTsPosition(node.StartPosition()), End: utils.LspPositionFromTsPosition(node.EndPosition())}
 
 	return interfaces.Diagnostic{
 		Range:    r,

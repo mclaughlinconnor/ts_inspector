@@ -10,7 +10,7 @@ import (
 	"ts_inspector/parser"
 	"ts_inspector/utils"
 
-	sitter "github.com/smacker/go-tree-sitter"
+	sitter "github.com/tree-sitter/go-tree-sitter"
 )
 
 type InstructionKind = int
@@ -101,7 +101,7 @@ func (b *Block) getExpressionNode() *sitter.Node {
 		return nil
 	}
 
-	if node.Type() == "parenthesized_expression" {
+	if node.Kind() == "parenthesized_expression" {
 		node = node.NamedChild(0)
 		if node == nil {
 			return nil
@@ -218,7 +218,7 @@ func (state *State) AddInstruction(kind InstructionKind, left string, node *sitt
 		state.current = current
 	}
 
-	instruction := Instruction{kind, left, node, right, node.Content(content)}
+	instruction := Instruction{kind, left, node, right, node.Utf8Text(content)}
 	state.current.Instructions = append(state.current.Instructions, &instruction)
 }
 
@@ -253,7 +253,7 @@ var funcMap = walk.NewVisitorFuncsMap[*State]()
 
 func InitBuilder() {
 	for k, v := range visitMap {
-		funcMap[k] = func(node *sitter.Node, state *State, indexInParent int, funcMap walk.VisitorFuncMap[*State]) (*State, error) {
+		funcMap[k] = func(node *sitter.Node, state *State, indexInParent uint, funcMap walk.VisitorFuncMap[*State]) (*State, error) {
 			err := v(state, node, state.content)
 			if err != nil {
 				return nil, err
@@ -276,8 +276,8 @@ func handleClass(state *State, node *sitter.Node, content []byte) error {
 	}
 
 	for i := range body.NamedChildCount() {
-		child := body.NamedChild(int(i))
-		if child.Type() != "method_definition" {
+		child := body.NamedChild(i)
+		if child.Kind() != "method_definition" {
 			continue
 		}
 
@@ -296,7 +296,7 @@ func handleNamedChildren(state *State, node *sitter.Node, content []byte) error 
 	}
 
 	for i := range node.NamedChildCount() {
-		err := build(state, node.NamedChild(int(i)), content)
+		err := build(state, node.NamedChild(i), content)
 		if err != nil {
 			return err
 		}
@@ -319,7 +319,7 @@ func handleProgram(state *State, node *sitter.Node, content []byte) error {
 	state.current = start
 
 	for i := range node.NamedChildCount() {
-		err := build(state, node.NamedChild(int(i)), content)
+		err := build(state, node.NamedChild(i), content)
 		if err != nil {
 			return err
 		}
@@ -393,7 +393,7 @@ func handleFunction(state *State, node *sitter.Node, content []byte) error {
 	nameContent := "function"
 	name := node.ChildByFieldName("name")
 	if name != nil {
-		nameContent := name.Content(content)
+		nameContent := name.Utf8Text(content)
 		blockName = blockName + " " + nameContent
 	}
 
@@ -571,7 +571,7 @@ func handleForIn(state *State, node *sitter.Node, content []byte) error {
 	state.cfg().AddEdge(state.current, initialiseBlock)
 
 	state.current = initialiseBlock
-	state.AddInstruction(InstructionAssign, "%iter", rightNode, rightNode.Content(content)+"[Symbol.iterator]()", content)
+	state.AddInstruction(InstructionAssign, "%iter", rightNode, rightNode.Utf8Text(content)+"[Symbol.iterator]()", content)
 
 	state.cfg().AddEdge(initialiseBlock, nextBlock)
 	state.current = nextBlock
@@ -608,7 +608,7 @@ func handleForIn(state *State, node *sitter.Node, content []byte) error {
 
 func handleVariableDeclaration(state *State, node *sitter.Node, content []byte) error {
 	declarator := node.NamedChild(0)
-	if declarator == nil || declarator.Type() != "variable_declarator" {
+	if declarator == nil || declarator.Kind() != "variable_declarator" {
 		return errors.New("declarator unexpectedly nil")
 	}
 
@@ -619,8 +619,8 @@ func handleVariableDeclaration(state *State, node *sitter.Node, content []byte) 
 		return errors.New("valueNode or nameNode unexpectedly nil")
 	}
 
-	name := nameNode.Content(content)
-	value := valueNode.Content(content)
+	name := nameNode.Utf8Text(content)
+	value := valueNode.Utf8Text(content)
 
 	err := build(state, valueNode, content)
 	if err != nil {
@@ -636,12 +636,9 @@ func BuildGraphFromContent(content string) (*State, error) {
 	c := []byte(content)
 	state := newState(c)
 
-	root, err := utils.ParseText(c, utils.TypeScript)
-	if err != nil {
-		return nil, err
-	}
+	root := utils.ParseText(c, utils.TypeScript)
 
-	err = build(state, root, c)
+	err := build(state, root, c)
 	if err != nil {
 		return nil, err
 	}
@@ -691,7 +688,7 @@ func printFromBlock(sb *strings.Builder, visited *map[*Block]any, parent *Block,
 }
 
 func checkBinaryExpression(node *sitter.Node, content []byte, check func(*sitter.Node, []byte) bool) bool {
-	if node == nil || node.Type() != "binary_expression" {
+	if node == nil || node.Kind() != "binary_expression" {
 		return false
 	}
 
@@ -700,7 +697,7 @@ func checkBinaryExpression(node *sitter.Node, content []byte, check func(*sitter
 		return false
 	}
 
-	operator := operatorNode.Content(content)
+	operator := operatorNode.Utf8Text(content)
 	if operator != "&&" {
 		return false
 	}
@@ -723,7 +720,7 @@ func getExpressionNode(node *sitter.Node) *sitter.Node {
 		return nil
 	}
 
-	if node.Type() == "parenthesized_expression" {
+	if node.Kind() == "parenthesized_expression" {
 		node = node.NamedChild(0)
 		if node == nil {
 			return nil
@@ -741,11 +738,11 @@ func hasConstantExpression(node *sitter.Node, content []byte) bool {
 		return false
 	}
 
-	if n.Type() == "true" || n.Type() == "false" {
+	if n.Kind() == "true" || n.Kind() == "false" {
 		return true
 	}
 
-	if n.Type() == "binary_expression" {
+	if n.Kind() == "binary_expression" {
 		return checkBinaryExpression(n, content, hasConstantExpression)
 	}
 
@@ -759,11 +756,11 @@ func hasConstantFalse(node *sitter.Node, content []byte) bool {
 		return false
 	}
 
-	if n.Type() == "false" {
+	if n.Kind() == "false" {
 		return true
 	}
 
-	if n.Type() == "binary_expression" {
+	if n.Kind() == "binary_expression" {
 		return checkBinaryExpression(n, content, hasConstantFalse)
 	}
 
@@ -777,11 +774,11 @@ func hasConstantTrue(node *sitter.Node, content []byte) bool {
 		return false
 	}
 
-	if n.Type() == "true" {
+	if n.Kind() == "true" {
 		return true
 	}
 
-	if n.Type() == "binary_expression" {
+	if n.Kind() == "binary_expression" {
 		return checkBinaryExpression(n, content, hasConstantTrue)
 	}
 

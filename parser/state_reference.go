@@ -8,7 +8,7 @@ import (
 	"ts_inspector/config"
 	"ts_inspector/utils"
 
-	sitter "github.com/smacker/go-tree-sitter"
+	sitter "github.com/tree-sitter/go-tree-sitter"
 )
 
 type Reference struct {

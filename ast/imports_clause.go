@@ -8,41 +8,41 @@ import (
 	"ts_inspector/ast/walk"
 	"ts_inspector/utils"
 
-	sitter "github.com/smacker/go-tree-sitter"
+	sitter "github.com/tree-sitter/go-tree-sitter"
 )
 
 func doExtractImports(node *sitter.Node, content []byte) ([]*ImportParseResult, error) {
 	funcMap := walk.NewVisitorFuncsMap[[]*ImportParseResult]()
-	funcMap["import_statement"] = func(node *sitter.Node, state []*ImportParseResult, indexInParent int, funcMap walk.VisitorFuncMap[[]*ImportParseResult]) ([]*ImportParseResult, error) {
+	funcMap["import_statement"] = func(node *sitter.Node, state []*ImportParseResult, indexInParent uint, funcMap walk.VisitorFuncMap[[]*ImportParseResult]) ([]*ImportParseResult, error) {
 		isType := false
 
 		importNode := node
 
 		for i := range node.ChildCount() {
-			child := node.Child(int(i))
-			if child.Type() == "type" {
+			child := node.Child(i)
+			if child.Kind() == "type" {
 				isType = true
 				break
 			}
 		}
 
 		internalFuncMap := walk.NewVisitorFuncsMap[*ImportParseResult]()
-		internalFuncMap["import_clause"] = func(node *sitter.Node, state *ImportParseResult, indexInParent int, internalFuncMap walk.VisitorFuncMap[*ImportParseResult]) (*ImportParseResult, error) {
+		internalFuncMap["import_clause"] = func(node *sitter.Node, state *ImportParseResult, indexInParent uint, internalFuncMap walk.VisitorFuncMap[*ImportParseResult]) (*ImportParseResult, error) {
 			state.Clause = node
 
 			for i := range node.ChildCount() {
-				child := node.Child(int(i))
-				if child.Type() == "identifier" {
+				child := node.Child(i)
+				if child.Kind() == "identifier" {
 					imp := ImportIdentifier{
-						ForeignIdentifier: child.Content(content),
+						ForeignIdentifier: child.Utf8Text(content),
 						IsType:            isType,
-						LocalIdentifier:   child.Content(content),
+						LocalIdentifier:   child.Utf8Text(content),
 					}
 
 					state.Imports = append(state.Imports, imp)
 					state.Import = importNode
 				} else {
-					_, err := walk.VisitNode(node.Child(int(i)), state, int(i), internalFuncMap, false)
+					_, err := walk.VisitNode(node.Child(i), state, i, internalFuncMap, false)
 					if err != nil {
 						return nil, err
 					}
@@ -52,7 +52,7 @@ func doExtractImports(node *sitter.Node, content []byte) ([]*ImportParseResult, 
 			return state, nil
 		}
 
-		internalFuncMap["import_specifier"] = func(node *sitter.Node, state *ImportParseResult, indexInParent int, internalFuncMap walk.VisitorFuncMap[*ImportParseResult]) (*ImportParseResult, error) {
+		internalFuncMap["import_specifier"] = func(node *sitter.Node, state *ImportParseResult, indexInParent uint, internalFuncMap walk.VisitorFuncMap[*ImportParseResult]) (*ImportParseResult, error) {
 			state.Import = importNode
 
 			localIsType := isType
@@ -60,16 +60,16 @@ func doExtractImports(node *sitter.Node, content []byte) ([]*ImportParseResult, 
 			var aliasNode *sitter.Node
 
 			for i := range node.ChildCount() {
-				child := node.Child(int(i))
-				if child.Type() == "type" {
+				child := node.Child(i)
+				if child.Kind() == "type" {
 					localIsType = true
 				}
 
-				if node.FieldNameForChild(int(i)) == "name" {
+				if node.FieldNameForChild(uint32(i)) == "name" {
 					nameNode = child
 				}
 
-				if node.FieldNameForChild(int(i)) == "alias" {
+				if node.FieldNameForChild(uint32(i)) == "alias" {
 					aliasNode = child
 				}
 			}
@@ -82,8 +82,8 @@ func doExtractImports(node *sitter.Node, content []byte) ([]*ImportParseResult, 
 				aliasNode = nameNode
 			}
 
-			name := nameNode.Content(content)
-			alias := aliasNode.Content(content)
+			name := nameNode.Utf8Text(content)
+			alias := aliasNode.Utf8Text(content)
 
 			imp := ImportIdentifier{
 				ForeignIdentifier: name,
@@ -95,7 +95,7 @@ func doExtractImports(node *sitter.Node, content []byte) ([]*ImportParseResult, 
 			return state, nil
 		}
 
-		internalFuncMap["namespace_import"] = func(node *sitter.Node, state *ImportParseResult, indexInParent int, internalFuncMap walk.VisitorFuncMap[*ImportParseResult]) (*ImportParseResult, error) {
+		internalFuncMap["namespace_import"] = func(node *sitter.Node, state *ImportParseResult, indexInParent uint, internalFuncMap walk.VisitorFuncMap[*ImportParseResult]) (*ImportParseResult, error) {
 			state.Import = importNode
 
 			aliasNode := importNode.NamedChild(0)
@@ -103,7 +103,7 @@ func doExtractImports(node *sitter.Node, content []byte) ([]*ImportParseResult, 
 				return state, nil
 			}
 
-			alias := aliasNode.Content(content)
+			alias := aliasNode.Utf8Text(content)
 
 			imp := ImportIdentifier{
 				ForeignIdentifier: "*",
@@ -121,7 +121,7 @@ func doExtractImports(node *sitter.Node, content []byte) ([]*ImportParseResult, 
 		if packageStringNode != nil {
 			packageNode := packageStringNode.NamedChild(0)
 			if packageNode != nil {
-				importParseResult.Package = packageNode.Content(content)
+				importParseResult.Package = packageNode.Utf8Text(content)
 			}
 		}
 
@@ -139,9 +139,9 @@ func doExtractImports(node *sitter.Node, content []byte) ([]*ImportParseResult, 
 func doExtractDynamicImports(node *sitter.Node, content []byte) ([]string, error) {
 	funcMap := walk.NewVisitorFuncsMap[[]string]()
 	// Do I need to do `require()` too? Require is just an `(identifier)` so there will likely be a performance hit
-	funcMap["import"] = func(node *sitter.Node, state []string, indexInParent int, funcMap walk.VisitorFuncMap[[]string]) ([]string, error) {
+	funcMap["import"] = func(node *sitter.Node, state []string, indexInParent uint, funcMap walk.VisitorFuncMap[[]string]) ([]string, error) {
 		call := node.Parent()
-		if call == nil || call.Type() != "call_expression" {
+		if call == nil || call.Kind() != "call_expression" {
 			return state, nil
 		}
 
@@ -156,11 +156,11 @@ func doExtractDynamicImports(node *sitter.Node, content []byte) ([]string, error
 		}
 
 		fragment := string.NamedChild(0)
-		if fragment == nil || fragment.Type() != "string_fragment" {
+		if fragment == nil || fragment.Kind() != "string_fragment" {
 			return state, nil
 		}
 
-		return append(state, fragment.Content(content)), nil
+		return append(state, fragment.Utf8Text(content)), nil
 	}
 
 	return walk.WalkTypeScript(node, []string{}, funcMap)
@@ -171,10 +171,7 @@ func ExtractDynamicImports(node *sitter.Node, content []byte) ([]string, error) 
 		return doExtractDynamicImports(node, content)
 	}
 
-	root, err := utils.ParseText(content, utils.TypeScript)
-	if err != nil {
-		return []string{}, err
-	}
+	root := utils.ParseText(content, utils.TypeScript)
 
 	return doExtractDynamicImports(root, content)
 }
@@ -184,10 +181,7 @@ func ExtractImports(node *sitter.Node, content []byte) ([]*ImportParseResult, er
 		return doExtractImports(node, content)
 	}
 
-	root, err := utils.ParseText(content, utils.TypeScript)
-	if err != nil {
-		return []*ImportParseResult{}, err
-	}
+	root := utils.ParseText(content, utils.TypeScript)
 
 	return doExtractImports(root, content)
 }
@@ -242,16 +236,16 @@ func AddToImport(importResults []*ImportParseResult, packageName string, toAdd [
 						r = importResults[index-1]
 					}
 
-					startPoint := r.Import.StartPoint()
-					editRange = utils.Range{Start: utils.PositionFromPoint(startPoint), End: utils.PositionFromPoint(startPoint)}
+					startPoint := r.Import.StartPosition()
+					editRange = utils.Range{Start: utils.LspPositionFromTsPosition(startPoint), End: utils.LspPositionFromTsPosition(startPoint)}
 					text = text + "\n"
 
 					return utils.TextEdits{utils.TextEdit{Range: editRange, NewText: text}}
 				}
 			}
 
-			lastPoint := importResults[len(importResults)-1].Import.EndPoint()
-			editRange = utils.Range{Start: utils.PositionFromPoint(lastPoint), End: utils.PositionFromPoint(lastPoint)}
+			lastPoint := importResults[len(importResults)-1].Import.EndPosition()
+			editRange = utils.Range{Start: utils.LspPositionFromTsPosition(lastPoint), End: utils.LspPositionFromTsPosition(lastPoint)}
 			text = "\n" + text
 		}
 
@@ -293,7 +287,7 @@ func AddToImport(importResults []*ImportParseResult, packageName string, toAdd [
 		text := "{" + strings.Join(importStrings, ", ") + "}"
 
 		node := importResult.Clause
-		editRange := utils.Range{Start: utils.PositionFromPoint(node.StartPoint()), End: utils.PositionFromPoint(node.EndPoint())}
+		editRange := utils.Range{Start: utils.LspPositionFromTsPosition(node.StartPosition()), End: utils.LspPositionFromTsPosition(node.EndPosition())}
 
 		return utils.TextEdits{utils.TextEdit{Range: editRange, NewText: text}}
 	}

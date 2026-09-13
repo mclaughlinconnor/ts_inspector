@@ -5,7 +5,7 @@ import (
 	"strings"
 	"ts_inspector/utils"
 
-	sitter "github.com/smacker/go-tree-sitter"
+	sitter "github.com/tree-sitter/go-tree-sitter"
 )
 
 // TODO: Should be combined with parser.tcb.Tag
@@ -103,20 +103,17 @@ func ExtractTagNameAndAttrFromSelector(selector string) (bool, string, string) {
 	return true, tag, attr
 }
 
-func GetTagNameAtOffset(content string, offset uint32) (string, bool) {
+func GetTagNameAtOffset(content string, offset uint) (string, bool) {
 	c := []byte(content)
 
-	root, err := utils.ParseText(c, utils.Pug)
-	if err != nil {
-		return "", false
-	}
+	root := utils.ParseText(c, utils.Pug)
 
 	node := HasNodeInHierarchy(root, "tag_name", offset, offset)
 	if node == nil {
 		return "", false
 	}
 
-	tagName := node.Content(c)
+	tagName := node.Utf8Text(c)
 
 	if tagName == "" {
 		return "", false
@@ -125,15 +122,12 @@ func GetTagNameAtOffset(content string, offset uint32) (string, bool) {
 	return tagName, true
 }
 
-func GetTagAtOffset(content string, offset uint32) (Tag, bool) {
+func GetTagAtOffset(content string, offset uint) (Tag, bool) {
 	c := []byte(content)
 
 	foundTag := Tag{Name: "", Attributes: []string{}}
 
-	root, err := utils.ParseText(c, utils.Pug)
-	if err != nil {
-		return foundTag, false
-	}
+	root := utils.ParseText(c, utils.Pug)
 
 	tag := HasNodeInHierarchy(root, "tag", offset, offset)
 	if tag == nil {
@@ -141,27 +135,27 @@ func GetTagAtOffset(content string, offset uint32) (Tag, bool) {
 	}
 
 	for i := range tag.NamedChildCount() {
-		child := tag.NamedChild(int(i))
+		child := tag.NamedChild(i)
 		if child == nil {
 			continue
 		}
 
-		if child.Type() == "tag_name" {
-			tagName := child.Content([]byte(content))
+		if child.Kind() == "tag_name" {
+			tagName := child.Utf8Text([]byte(content))
 			foundTag.Name = tagName
 		}
 
-		if (child.Type() == "class" || child.Type() == "id") && foundTag.Name == "" {
+		if (child.Kind() == "class" || child.Kind() == "id") && foundTag.Name == "" {
 			foundTag.Name = "div"
 		}
 
-		if child.Type() == "attributes" {
+		if child.Kind() == "attributes" {
 			for j := range child.NamedChildCount() {
-				attribute := child.NamedChild(int(j))
+				attribute := child.NamedChild(j)
 				for k := range attribute.NamedChildCount() {
-					attributeChild := attribute.NamedChild(int(k))
-					if attributeChild.Type() == "attribute_name" {
-						foundTag.Attributes = append(foundTag.Attributes, attributeChild.Content(c))
+					attributeChild := attribute.NamedChild(k)
+					if attributeChild.Kind() == "attribute_name" {
+						foundTag.Attributes = append(foundTag.Attributes, attributeChild.Utf8Text(c))
 					}
 				}
 			}
@@ -175,7 +169,7 @@ func GetTagAtOffset(content string, offset uint32) (Tag, bool) {
 	return Tag{}, false
 }
 
-func GetTagAtOffset2(root *sitter.Node, content string, offset uint32) (*Tag, bool) {
+func GetTagAtOffset2(root *sitter.Node, content string, offset uint) (*Tag, bool) {
 	c := []byte(content)
 
 	tag := HasNodeInHierarchy(root, "tag", offset, offset)
@@ -187,28 +181,28 @@ func GetTagAtOffset2(root *sitter.Node, content string, offset uint32) (*Tag, bo
 	foundTag := Tag{Name: "", Attributes: []string{}}
 
 	for i := range tag.NamedChildCount() {
-		child := tag.NamedChild(int(i))
+		child := tag.NamedChild(i)
 		if child == nil {
 			continue
 		}
 
-		if child.Type() == "tag_name" {
+		if child.Kind() == "tag_name" {
 			cursorOnTagName = cursorOnTagName || (child.StartByte() <= offset && offset <= child.EndByte())
-			tagName := child.Content([]byte(content))
+			tagName := child.Utf8Text([]byte(content))
 			foundTag.Name = tagName
 		}
 
-		if (child.Type() == "class" || child.Type() == "id") && foundTag.Name == "" {
+		if (child.Kind() == "class" || child.Kind() == "id") && foundTag.Name == "" {
 			foundTag.Name = "div"
 		}
 
-		if child.Type() == "attributes" {
+		if child.Kind() == "attributes" {
 			for j := range child.NamedChildCount() {
-				attribute := child.NamedChild(int(j))
+				attribute := child.NamedChild(j)
 				for k := range attribute.NamedChildCount() {
-					attributeChild := attribute.NamedChild(int(k))
-					if attributeChild.Type() == "attribute_name" {
-						foundTag.Attributes = append(foundTag.Attributes, attributeChild.Content(c))
+					attributeChild := attribute.NamedChild(k)
+					if attributeChild.Kind() == "attribute_name" {
+						foundTag.Attributes = append(foundTag.Attributes, attributeChild.Utf8Text(c))
 					}
 				}
 			}

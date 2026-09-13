@@ -18,7 +18,7 @@ import (
 	"ts_inspector/interfaces"
 	"ts_inspector/utils"
 
-	sitter "github.com/smacker/go-tree-sitter"
+	sitter "github.com/tree-sitter/go-tree-sitter"
 )
 
 type fileState struct {
@@ -31,7 +31,7 @@ type fileState struct {
 	Functions          []*Function
 	Imports            []*ast.ImportParseResult
 	IsOpen             bool
-	LineOffsets        []uint32
+	LineOffsets        []uint
 	URI                string
 	Variables          []*Variable
 	Version            int
@@ -238,7 +238,7 @@ func (f *File) GetInterestingPoints() []InterestingPoint {
 	return interestingPoints
 }
 
-func (f *File) GetOffsetForLineNumber(lineNumber int) uint32 {
+func (f *File) GetOffsetForLineNumber(lineNumber int) uint {
 	offsets := f.Snapshot().LineOffsets
 	if lineNumber >= len(offsets) {
 		return offsets[len(offsets)-1]
@@ -247,17 +247,17 @@ func (f *File) GetOffsetForLineNumber(lineNumber int) uint32 {
 	return f.Snapshot().LineOffsets[lineNumber]
 }
 
-func (f *File) GetOffsetForPosition(p utils.Position) uint32 {
+func (f *File) GetOffsetForPosition(p utils.Position) uint {
 	file := f.Snapshot()
-	lines := uint32(len(file.LineOffsets))
+	lines := uint(len(file.LineOffsets))
 
 	if p.Line >= lines {
-		return uint32(len(file.Content))
+		return uint(len(file.Content))
 	}
 
 	lineOffset := file.LineOffsets[p.Line]
 
-	var nextLineOffset uint32
+	var nextLineOffset uint
 
 	if p.Line+1 < lines {
 		nextLineOffset = file.LineOffsets[p.Line+1]
@@ -268,7 +268,7 @@ func (f *File) GetOffsetForPosition(p utils.Position) uint32 {
 	return max(min(lineOffset+p.Character, nextLineOffset), lineOffset)
 }
 
-func (f *File) GetOffsetsForRange(r utils.Range) (uint32, uint32) {
+func (f *File) GetOffsetsForRange(r utils.Range) (uint, uint) {
 	return f.GetOffsetForPosition(r.Start), f.GetOffsetForPosition(r.End)
 }
 
@@ -509,7 +509,7 @@ func NewFile(uri string, filetype string, version int) (*File, error) {
 		}
 	}
 
-	fileState := fileState{Classes: []*Class{}, Content: "", DynamicImportFiles: []*File{}, DynamicImportPaths: []string{}, Exports: []*Reference{}, Filetype: filetype, Imports: []*ast.ImportParseResult{}, LineOffsets: []uint32{}, URI: UriFromFilename(filename), Version: version}
+	fileState := fileState{Classes: []*Class{}, Content: "", DynamicImportFiles: []*File{}, DynamicImportPaths: []string{}, Exports: []*Reference{}, Filetype: filetype, Imports: []*ast.ImportParseResult{}, LineOffsets: []uint{}, URI: UriFromFilename(filename), Version: version}
 	file := File{state: fileState}
 
 	return &file, nil

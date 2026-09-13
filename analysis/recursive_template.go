@@ -24,8 +24,8 @@ func recursiveTemplate(_ *parser.State, file *parser.File) ([]Analysis, error) {
 		for _, selector := range component.Selectors {
 			// TODO: selectors aren't necessarily the tag name
 			for _, u := range component.Template.TagUsages[selector].Usages {
-				startPosition := utils.PositionFromPoint(u.Node.StartPoint())
-				endPosition := utils.PositionFromPoint(u.Node.EndPoint())
+				startPosition := utils.LspPositionFromTsPosition(u.Node.StartPosition())
+				endPosition := utils.LspPositionFromTsPosition(u.Node.EndPosition())
 
 				r := utils.Range{Start: startPosition, End: endPosition}
 				analyses = append(analyses, newAnalysis("angular-recursive-component", r, AnalysisSeverity.Information, message, nil))

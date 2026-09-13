@@ -5,7 +5,7 @@ import (
 	"ts_inspector/ast/walk"
 	"ts_inspector/utils"
 
-	sitter "github.com/smacker/go-tree-sitter"
+	sitter "github.com/tree-sitter/go-tree-sitter"
 )
 
 type exprState struct {
@@ -47,10 +47,7 @@ func initTcbExpression() {
 func buildTcbExpression(ast *Ast, expression string) (*Statement, error) {
 	content := []byte(expression)
 
-	root, err := utils.ParseText(content, utils.AngularExpr)
-	if err != nil {
-		return nil, err
-	}
+	root := utils.ParseText(content, utils.AngularExpr)
 
 	state := exprState{ast: ast, content: content, parts: &Statement{}}
 	output, err := newWalk(root, &state)
@@ -67,9 +64,9 @@ func newWalk(node *sitter.Node, state *exprState) (*exprState, error) {
 	return walk.VisitNode(node, &newState, 0, exprOptimisedMap, false)
 }
 
-func visitUnary(node *sitter.Node, state *exprState, indexInParent int, internalFuncMap walk.VisitorFuncMap[*exprState]) (*exprState, error) {
+func visitUnary(node *sitter.Node, state *exprState, indexInParent uint, internalFuncMap walk.VisitorFuncMap[*exprState]) (*exprState, error) {
 	operatorNode := node.ChildByFieldName("operator")
-	operator := operatorNode.Content(state.content)
+	operator := operatorNode.Utf8Text(state.content)
 
 	exprNode := node.ChildByFieldName("value")
 	expr, err := newWalk(exprNode, state)
@@ -83,7 +80,7 @@ func visitUnary(node *sitter.Node, state *exprState, indexInParent int, internal
 	return state, nil
 }
 
-func visitBinary(node *sitter.Node, state *exprState, indexInParent int, internalFuncMap walk.VisitorFuncMap[*exprState]) (*exprState, error) {
+func visitBinary(node *sitter.Node, state *exprState, indexInParent uint, internalFuncMap walk.VisitorFuncMap[*exprState]) (*exprState, error) {
 	lhsNode := node.ChildByFieldName("left")
 	lhs, err := newWalk(lhsNode, state)
 	if err != nil {
@@ -91,7 +88,7 @@ func visitBinary(node *sitter.Node, state *exprState, indexInParent int, interna
 	}
 
 	operatorNode := node.ChildByFieldName("operator")
-	operator := operatorNode.Content(state.content)
+	operator := operatorNode.Utf8Text(state.content)
 
 	rhsNode := node.ChildByFieldName("right")
 	rhs, err := newWalk(rhsNode, state)
@@ -106,9 +103,9 @@ func visitBinary(node *sitter.Node, state *exprState, indexInParent int, interna
 	return state, nil
 }
 
-func visitBracketExpression(node *sitter.Node, state *exprState, indexInParent int, internalFuncMap walk.VisitorFuncMap[*exprState]) (*exprState, error) {
+func visitBracketExpression(node *sitter.Node, state *exprState, indexInParent uint, internalFuncMap walk.VisitorFuncMap[*exprState]) (*exprState, error) {
 	operator := node.ChildByFieldName("object").NextSibling()
-	switch operator.Type() {
+	switch operator.Kind() {
 	default:
 		fallthrough
 	case ".":
@@ -120,7 +117,7 @@ func visitBracketExpression(node *sitter.Node, state *exprState, indexInParent i
 	}
 }
 
-func visitGroup(node *sitter.Node, state *exprState, indexInParent int, internalFuncMap walk.VisitorFuncMap[*exprState]) (*exprState, error) {
+func visitGroup(node *sitter.Node, state *exprState, indexInParent uint, internalFuncMap walk.VisitorFuncMap[*exprState]) (*exprState, error) {
 	// "(", stuff, ")"
 	stuffNode := node.NamedChild(0)
 	stuff, err := newWalk(stuffNode, state)
@@ -135,7 +132,7 @@ func visitGroup(node *sitter.Node, state *exprState, indexInParent int, internal
 	return state, nil
 }
 
-func visitConditional(node *sitter.Node, state *exprState, indexInParent int, internalFuncMap walk.VisitorFuncMap[*exprState]) (*exprState, error) {
+func visitConditional(node *sitter.Node, state *exprState, indexInParent uint, internalFuncMap walk.VisitorFuncMap[*exprState]) (*exprState, error) {
 	condNode := node.ChildByFieldName("condition")
 	condState, err := newWalk(condNode, state)
 	if err != nil {
@@ -162,9 +159,9 @@ func visitConditional(node *sitter.Node, state *exprState, indexInParent int, in
 	return state, nil
 }
 
-func visitInterpolation(node *sitter.Node, state *exprState, indexInParent int, internalFuncMap walk.VisitorFuncMap[*exprState]) (*exprState, error) {
+func visitInterpolation(node *sitter.Node, state *exprState, indexInParent uint, internalFuncMap walk.VisitorFuncMap[*exprState]) (*exprState, error) {
 	for i := range node.NamedChildCount() {
-		part := node.NamedChild(int(i))
+		part := node.NamedChild(i)
 
 		partState, err := newWalk(part, state)
 		if err != nil {
@@ -183,7 +180,7 @@ func visitInterpolation(node *sitter.Node, state *exprState, indexInParent int, 
 	return state, nil
 }
 
-func visitKeyedRead(node *sitter.Node, state *exprState, indexInParent int, internalFuncMap walk.VisitorFuncMap[*exprState]) (*exprState, error) {
+func visitKeyedRead(node *sitter.Node, state *exprState, indexInParent uint, internalFuncMap walk.VisitorFuncMap[*exprState]) (*exprState, error) {
 	receiverNode := node.ChildByFieldName("object")
 	receiverState, err := newWalk(receiverNode, state)
 	if err != nil {
@@ -204,7 +201,7 @@ func visitKeyedRead(node *sitter.Node, state *exprState, indexInParent int, inte
 	return state, nil
 }
 
-func visitLiteralArray(node *sitter.Node, state *exprState, indexInParent int, internalFuncMap walk.VisitorFuncMap[*exprState]) (*exprState, error) {
+func visitLiteralArray(node *sitter.Node, state *exprState, indexInParent uint, internalFuncMap walk.VisitorFuncMap[*exprState]) (*exprState, error) {
 	state.parts.AddVirtPart("[")
 
 	for i := range node.NamedChildCount() {
@@ -212,7 +209,7 @@ func visitLiteralArray(node *sitter.Node, state *exprState, indexInParent int, i
 			state.parts.AddVirtPart(", ")
 		}
 
-		element := node.NamedChild(int(i))
+		element := node.NamedChild(i)
 		elementState, err := newWalk(element, state)
 		if err != nil {
 			return state, err
@@ -226,18 +223,18 @@ func visitLiteralArray(node *sitter.Node, state *exprState, indexInParent int, i
 	return state, nil
 }
 
-func visitLiteralMap(node *sitter.Node, state *exprState, indexInParent int, internalFuncMap walk.VisitorFuncMap[*exprState]) (*exprState, error) {
+func visitLiteralMap(node *sitter.Node, state *exprState, indexInParent uint, internalFuncMap walk.VisitorFuncMap[*exprState]) (*exprState, error) {
 	state.parts.AddVirtPart("{")
 
 	for i := range node.NamedChildCount() {
-		pair := node.NamedChild(int(i))
+		pair := node.NamedChild(i)
 
 		keyNode := pair.ChildByFieldName("key")
 		if keyNode == nil {
 			continue
 		}
 
-		key := "\"" + keyNode.Content(state.content) + "\""
+		key := "\"" + keyNode.Utf8Text(state.content) + "\""
 
 		if i != 0 {
 			state.parts.AddVirtPart(", ")
@@ -266,23 +263,23 @@ func visitLiteralMap(node *sitter.Node, state *exprState, indexInParent int, int
 	return state, nil
 }
 
-func visitString(node *sitter.Node, state *exprState, indexInParent int, internalFuncMap walk.VisitorFuncMap[*exprState]) (*exprState, error) {
-	state.parts.AddRealPart(node.Content(state.content), node)
+func visitString(node *sitter.Node, state *exprState, indexInParent uint, internalFuncMap walk.VisitorFuncMap[*exprState]) (*exprState, error) {
+	state.parts.AddRealPart(node.Utf8Text(state.content), node)
 
 	return state, nil
 }
 
-func visitNumber(node *sitter.Node, state *exprState, indexInParent int, internalFuncMap walk.VisitorFuncMap[*exprState]) (*exprState, error) {
-	state.parts.AddRealPart(node.Content(state.content), node)
+func visitNumber(node *sitter.Node, state *exprState, indexInParent uint, internalFuncMap walk.VisitorFuncMap[*exprState]) (*exprState, error) {
+	state.parts.AddRealPart(node.Utf8Text(state.content), node)
 
 	return state, nil
 }
 
-func visitMemberExpression(node *sitter.Node, state *exprState, indexInParent int, internalFuncMap walk.VisitorFuncMap[*exprState]) (*exprState, error) {
+func visitMemberExpression(node *sitter.Node, state *exprState, indexInParent uint, internalFuncMap walk.VisitorFuncMap[*exprState]) (*exprState, error) {
 	var err error
 
 	operator := node.ChildByFieldName("object").NextSibling()
-	switch operator.Type() {
+	switch operator.Kind() {
 	case ".":
 		state, err = visitPropertyRead(node, state, indexInParent, internalFuncMap)
 	case "?.":
@@ -294,7 +291,7 @@ func visitMemberExpression(node *sitter.Node, state *exprState, indexInParent in
 	return state, err
 }
 
-func visitKeyedNonNullAssertRead(node *sitter.Node, state *exprState, indexInParent int, internalFuncMap walk.VisitorFuncMap[*exprState]) (*exprState, error) {
+func visitKeyedNonNullAssertRead(node *sitter.Node, state *exprState, indexInParent uint, internalFuncMap walk.VisitorFuncMap[*exprState]) (*exprState, error) {
 	receiverNode := node.ChildByFieldName("object")
 	receiverState, err := newWalk(receiverNode, state)
 	if err != nil {
@@ -316,7 +313,7 @@ func visitKeyedNonNullAssertRead(node *sitter.Node, state *exprState, indexInPar
 	return state, nil
 }
 
-func visitNonNullAssertRead(node *sitter.Node, state *exprState, indexInParent int, internalFuncMap walk.VisitorFuncMap[*exprState]) (*exprState, error) {
+func visitNonNullAssertRead(node *sitter.Node, state *exprState, indexInParent uint, internalFuncMap walk.VisitorFuncMap[*exprState]) (*exprState, error) {
 	receiverNode := node.ChildByFieldName("object")
 	receiverState, err := newWalk(receiverNode, state)
 	if err != nil {
@@ -333,7 +330,7 @@ func visitNonNullAssertRead(node *sitter.Node, state *exprState, indexInParent i
 	return state, nil
 }
 
-func visitPropertyRead(node *sitter.Node, state *exprState, indexInParent int, internalFuncMap walk.VisitorFuncMap[*exprState]) (*exprState, error) {
+func visitPropertyRead(node *sitter.Node, state *exprState, indexInParent uint, internalFuncMap walk.VisitorFuncMap[*exprState]) (*exprState, error) {
 	receiverNode := node.ChildByFieldName("object")
 	receiverState, err := newWalk(receiverNode, state)
 	if err != nil {
@@ -350,7 +347,7 @@ func visitPropertyRead(node *sitter.Node, state *exprState, indexInParent int, i
 	return state, nil
 }
 
-func visitWrite(node *sitter.Node, state *exprState, indexInParent int, internalFuncMap walk.VisitorFuncMap[*exprState]) (*exprState, error) {
+func visitWrite(node *sitter.Node, state *exprState, indexInParent uint, internalFuncMap walk.VisitorFuncMap[*exprState]) (*exprState, error) {
 	leftNode := node.ChildByFieldName("name")
 	leftState, err := newWalk(leftNode, state)
 	if err != nil {
@@ -376,7 +373,7 @@ func visitWrite(node *sitter.Node, state *exprState, indexInParent int, internal
 	return state, nil
 }
 
-func visitSafePropertyRead(node *sitter.Node, state *exprState, indexInParent int, internalFuncMap walk.VisitorFuncMap[*exprState]) (*exprState, error) {
+func visitSafePropertyRead(node *sitter.Node, state *exprState, indexInParent uint, internalFuncMap walk.VisitorFuncMap[*exprState]) (*exprState, error) {
 	receiverNode := node.ChildByFieldName("object")
 	receiverState, err := newWalk(receiverNode, state)
 	if err != nil {
@@ -407,7 +404,7 @@ func visitSafePropertyRead(node *sitter.Node, state *exprState, indexInParent in
 	return state, nil
 }
 
-func visitSafeKeyedRead(node *sitter.Node, state *exprState, indexInParent int, internalFuncMap walk.VisitorFuncMap[*exprState]) (*exprState, error) {
+func visitSafeKeyedRead(node *sitter.Node, state *exprState, indexInParent uint, internalFuncMap walk.VisitorFuncMap[*exprState]) (*exprState, error) {
 	receiverNode := node.ChildByFieldName("object")
 	receiverState, err := newWalk(receiverNode, state)
 	if err != nil {
@@ -442,7 +439,7 @@ func visitSafeKeyedRead(node *sitter.Node, state *exprState, indexInParent int, 
 	return state, nil
 }
 
-func visitCall(node *sitter.Node, state *exprState, indexInParent int, internalFuncMap walk.VisitorFuncMap[*exprState]) (*exprState, error) {
+func visitCall(node *sitter.Node, state *exprState, indexInParent uint, internalFuncMap walk.VisitorFuncMap[*exprState]) (*exprState, error) {
 	argsNode := node.ChildByFieldName("arguments")
 	args := make([]*Statement, 0)
 	if argsNode != nil {
@@ -450,7 +447,7 @@ func visitCall(node *sitter.Node, state *exprState, indexInParent int, internalF
 		args = make([]*Statement, argCount)
 
 		for i := range argsNode.NamedChildCount() {
-			expr := argsNode.NamedChild(int(i))
+			expr := argsNode.NamedChild(i)
 			s, err := newWalk(expr, state)
 			if err != nil {
 				return state, err
@@ -466,7 +463,7 @@ func visitCall(node *sitter.Node, state *exprState, indexInParent int, internalF
 	}
 	receiverStatementExpr := receiverStatement.parts
 
-	if receiverNode.Content(state.content) == "$any" && len(args) == 1 {
+	if receiverNode.Utf8Text(state.content) == "$any" && len(args) == 1 {
 		state.parts.AddVirtPart("(")
 		state.parts.AddStatement(args[0])
 		state.parts.AddVirtPart(" as any)")
@@ -475,7 +472,7 @@ func visitCall(node *sitter.Node, state *exprState, indexInParent int, internalF
 	}
 
 	chainNode := receiverNode.NextSibling()
-	chain := chainNode.Type()
+	chain := chainNode.Kind()
 
 	if chain == "?." {
 		state.parts.AddStatement(convertToSafeCall(receiverStatementExpr, args))
@@ -500,10 +497,10 @@ func visitCall(node *sitter.Node, state *exprState, indexInParent int, internalF
 	return state, nil
 }
 
-func visitIdentifier(node *sitter.Node, state *exprState, indexInParent int, internalFuncMap walk.VisitorFuncMap[*exprState]) (*exprState, error) {
-	name := node.Content(state.content)
+func visitIdentifier(node *sitter.Node, state *exprState, indexInParent uint, internalFuncMap walk.VisitorFuncMap[*exprState]) (*exprState, error) {
+	name := node.Utf8Text(state.content)
 	if isIntrinsicValue(name) {
-		state.parts.AddRealPart(node.Content(state.content), node)
+		state.parts.AddRealPart(node.Utf8Text(state.content), node)
 		return state, nil
 	}
 
@@ -526,7 +523,7 @@ func visitIdentifier(node *sitter.Node, state *exprState, indexInParent int, int
 	return state, nil
 }
 
-func visitExpression(node *sitter.Node, state *exprState, indexInParent int, internalFuncMap walk.VisitorFuncMap[*exprState]) (*exprState, error) {
+func visitExpression(node *sitter.Node, state *exprState, indexInParent uint, internalFuncMap walk.VisitorFuncMap[*exprState]) (*exprState, error) {
 	pipesNode := node.ChildByFieldName("pipes")
 	if pipesNode != nil {
 		_, err := walk.VisitNode(pipesNode, state, 0, exprOptimisedMap, false)
@@ -552,12 +549,12 @@ func visitExpression(node *sitter.Node, state *exprState, indexInParent int, int
 	return state, nil
 }
 
-func visitPipeSequence(node *sitter.Node, state *exprState, indexInParent int, internalFuncMap walk.VisitorFuncMap[*exprState]) (*exprState, error) {
+func visitPipeSequence(node *sitter.Node, state *exprState, indexInParent uint, internalFuncMap walk.VisitorFuncMap[*exprState]) (*exprState, error) {
 	pipeNodes := []*sitter.Node{}
 
 	for i := range node.NamedChildCount() {
-		childNode := node.NamedChild(int(i))
-		if childNode.Type() != "pipe_call" {
+		childNode := node.NamedChild(i)
+		if childNode.Kind() != "pipe_call" {
 			continue
 		}
 
@@ -581,7 +578,7 @@ func visitPipeSequence(node *sitter.Node, state *exprState, indexInParent int, i
 	return state, nil
 }
 
-func visitNonNullAssertion(node *sitter.Node, state *exprState, indexInParent int, internalFuncMap walk.VisitorFuncMap[*exprState]) (*exprState, error) {
+func visitNonNullAssertion(node *sitter.Node, state *exprState, indexInParent uint, internalFuncMap walk.VisitorFuncMap[*exprState]) (*exprState, error) {
 	state.parts.AddVirtPart("!")
 
 	return state, nil

@@ -6,7 +6,7 @@ import (
 	"ts_inspector/ast/walk"
 	"ts_inspector/utils"
 
-	sitter "github.com/smacker/go-tree-sitter"
+	sitter "github.com/tree-sitter/go-tree-sitter"
 )
 
 // field public static = 300 + 2 + 10
@@ -47,20 +47,20 @@ import (
 
 func calculateSortScore(node *sitter.Node, content []byte) int {
 	name := node.ChildByFieldName("name")
-	if name.Content(content) == "constructor" {
+	if name.Utf8Text(content) == "constructor" {
 		return 200
 	}
 
 	score := 0
 
-	if node.Type() == "public_field_definition" {
+	if node.Kind() == "public_field_definition" {
 		score = score + 300
 	}
 
 	child := node.Child(0)
 	for child != nil {
-		if child.Type() == "accessibility_modifier" {
-			modifier := child.Content(content)
+		if child.Kind() == "accessibility_modifier" {
+			modifier := child.Utf8Text(content)
 			switch modifier {
 			case "public":
 				score = score + 2
@@ -71,11 +71,11 @@ func calculateSortScore(node *sitter.Node, content []byte) int {
 			}
 		}
 
-		if child.Type() == "get" || child.Type() == "set" {
+		if child.Kind() == "get" || child.Kind() == "set" {
 			score = score + 100
 		}
 
-		if child.Type() == "static" {
+		if child.Kind() == "static" {
 			score = score + 10
 		}
 
@@ -86,26 +86,23 @@ func calculateSortScore(node *sitter.Node, content []byte) int {
 }
 
 func ExtractDefinitions(content []byte) ([]MethodDefinitionParseResult, error) {
-	node, err := utils.ParseText(content, utils.TypeScript)
-	if err != nil {
-		return []MethodDefinitionParseResult{}, err
-	}
+	node := utils.ParseText(content, utils.TypeScript)
 
 	funcMap := walk.NewVisitorFuncsMap[[]MethodDefinitionParseResult]()
 
-	methodHandler := func(node *sitter.Node, state []MethodDefinitionParseResult, indexInParent int, _ walk.VisitorFuncMap[[]MethodDefinitionParseResult]) ([]MethodDefinitionParseResult, error) {
+	methodHandler := func(node *sitter.Node, state []MethodDefinitionParseResult, indexInParent uint, _ walk.VisitorFuncMap[[]MethodDefinitionParseResult]) ([]MethodDefinitionParseResult, error) {
 		result := MethodDefinitionParseResult{}
 
-		result.Range = utils.Range{Start: utils.PositionFromPoint(node.StartPoint()), End: utils.PositionFromPoint(node.EndPoint())}
-		result.Type = node.Type()
+		result.Range = utils.Range{Start: utils.LspPositionFromTsPosition(node.StartPosition()), End: utils.LspPositionFromTsPosition(node.EndPosition())}
+		result.Type = node.Kind()
 		result.DefinitionNode = node
 
 		possibleSemiOrComment := node.NextSibling()
 		for {
-			if possibleSemiOrComment.Type() == ";" || possibleSemiOrComment.Type() == "comment" {
-				point := utils.PositionFromPoint(possibleSemiOrComment.EndPoint())
+			if possibleSemiOrComment.Kind() == ";" || possibleSemiOrComment.Kind() == "comment" {
+				point := utils.LspPositionFromTsPosition(possibleSemiOrComment.EndPosition())
 				if result.Range.End.Line == point.Line {
-					result.Range.End = utils.PositionFromPoint(possibleSemiOrComment.EndPoint())
+					result.Range.End = utils.LspPositionFromTsPosition(possibleSemiOrComment.EndPosition())
 					possibleSemiOrComment = possibleSemiOrComment.NextSibling()
 					continue
 				}
@@ -116,19 +113,19 @@ func ExtractDefinitions(content []byte) ([]MethodDefinitionParseResult, error) {
 		}
 
 		prev := node.PrevSibling()
-		for prev.Type() == "decorator" || prev.Type() == "comment" {
+		for prev.Kind() == "decorator" || prev.Kind() == "comment" {
 			pprev := prev.PrevSibling()
 
-			if prev.StartPoint().Row == pprev.StartPoint().Row {
+			if prev.StartPosition().Row == pprev.StartPosition().Row {
 				break // A comment or decorator on the same line as something else
 			}
 
-			result.Range.Start = utils.PositionFromPoint(prev.StartPoint())
+			result.Range.Start = utils.LspPositionFromTsPosition(prev.StartPosition())
 			prev = pprev
 		}
 
 		name := node.ChildByFieldName("name")
-		nameContent := name.Content(content)
+		nameContent := name.Utf8Text(content)
 		result.Name = nameContent
 
 		result.Score = calculateSortScore(node, content)
@@ -242,7 +239,7 @@ func AddToMethodDefinition(methodResults *[]MethodDefinitionParseResult, classBo
 	if insertionIndex == -1 {
 		if len(*methodResults) == 0 {
 			insertionText := "{\n" + toAdd + "\n}"
-			editRange := utils.Range{Start: utils.PositionFromPoint(classBodyNode.StartPoint()), End: utils.PositionFromPoint(classBodyNode.EndPoint())}
+			editRange := utils.Range{Start: utils.LspPositionFromTsPosition(classBodyNode.StartPosition()), End: utils.LspPositionFromTsPosition(classBodyNode.EndPosition())}
 			return utils.TextEdits{utils.TextEdit{Range: editRange, NewText: insertionText}}
 		} else {
 			insertPosition := (*methodResults)[0].Range.Start

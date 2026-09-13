@@ -8,7 +8,7 @@ import (
 	"ts_inspector/ast"
 	"ts_inspector/interfaces"
 
-	sitter "github.com/smacker/go-tree-sitter"
+	sitter "github.com/tree-sitter/go-tree-sitter"
 )
 
 type Decorator struct {
@@ -203,7 +203,7 @@ func (c *Class) GetInterestingPoints() []InterestingPoint {
 
 		var kind interfaces.TSymbolKind
 
-		nodeKind := d.Node.Type()
+		nodeKind := d.Node.Kind()
 		if nodeKind == "method_definition" || nodeKind == "method_signature" || nodeKind == "abstract_method_signature" {
 			kind = interfaces.SymbolKind.Method
 		} else {

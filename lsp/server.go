@@ -12,7 +12,7 @@ import (
 	"ts_inspector/rpc"
 	"ts_inspector/utils"
 
-	sitter "github.com/smacker/go-tree-sitter"
+	sitter "github.com/tree-sitter/go-tree-sitter"
 )
 
 var Shutdown = make(chan int, 1)

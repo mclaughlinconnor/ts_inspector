@@ -1,10 +1,10 @@
 package walk
 
-import sitter "github.com/smacker/go-tree-sitter"
+import sitter "github.com/tree-sitter/go-tree-sitter"
 
-type VisitorFunction[T any] func(node *sitter.Node, state T, indexInParent int, visitorFuncMap VisitorFuncMap[T]) (T, error)
+type VisitorFunction[T any] func(node *sitter.Node, state T, indexInParent uint, visitorFuncMap VisitorFuncMap[T]) (T, error)
 type InitVisitorFuncMap[T any] map[string]VisitorFunction[T]
-type VisitorFuncMap[T any] map[sitter.Symbol]VisitorFunction[T]
+type VisitorFuncMap[T any] map[uint16]VisitorFunction[T]
 
 func NewVisitorFuncsMap[T any]() InitVisitorFuncMap[T] {
 	return map[string]VisitorFunction[T]{}
@@ -13,20 +13,20 @@ func NewVisitorFuncsMap[T any]() InitVisitorFuncMap[T] {
 func GenerateSymbolMap[T any](lang *sitter.Language, stringMap map[string]VisitorFunction[T]) VisitorFuncMap[T] {
 	optimizedMap := make(VisitorFuncMap[T])
 
-	count := uint32(lang.SymbolCount())
+	count := uint(lang.NodeKindCount())
 	for i := range count {
-		symbolID := sitter.Symbol(i)
-		name := lang.SymbolName(symbolID)
+		id := uint16(i)
+		name := lang.NodeKindForId(id)
 
 		handler, exists := stringMap[name]
 		if exists {
-			optimizedMap[symbolID] = handler
+			optimizedMap[id] = handler
 		}
 	}
 
 	return optimizedMap
 }
 
-func dummyVisitor[T any](node *sitter.Node, state T, indexInParent int, visitorFuncMap VisitorFuncMap[T]) (T, error) {
+func dummyVisitor[T any](node *sitter.Node, state T, indexInParent uint, visitorFuncMap VisitorFuncMap[T]) (T, error) {
 	return VisitNamedChildren(node, state, visitorFuncMap, false)
 }

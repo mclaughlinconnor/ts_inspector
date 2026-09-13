@@ -15,10 +15,7 @@ func BuildTcbBlock(state *parser.State, file *parser.File) (*Statement, error) {
 	class := classes[0]
 	content := []byte(file.Snapshot().Content)
 
-	root, err := utils.ParseText(content, utils.Pug)
-	if err != nil {
-		return nil, err
-	}
+	root := utils.ParseText(content, utils.Pug)
 
 	tcb, err := GenerateTcb(state, class, root, content)
 	if err != nil {

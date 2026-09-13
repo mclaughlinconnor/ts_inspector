@@ -12,7 +12,7 @@ import (
 	structuraldirective "ts_inspector/parser/structural_directive"
 	"ts_inspector/utils"
 
-	sitter "github.com/smacker/go-tree-sitter"
+	sitter "github.com/tree-sitter/go-tree-sitter"
 )
 
 type Attribute struct {

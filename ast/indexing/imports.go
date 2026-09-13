@@ -6,7 +6,7 @@ import (
 	"ts_inspector/ast/walk"
 	"ts_inspector/utils"
 
-	sitter "github.com/smacker/go-tree-sitter"
+	sitter "github.com/tree-sitter/go-tree-sitter"
 )
 
 func DetermineFilename(baseFilename string) (string, bool) {
@@ -34,7 +34,7 @@ func extractImportsFromFile(filename string) ([]string, error) {
 	}
 
 	funcMap := walk.NewVisitorFuncsMap[[]string]()
-	funcMap["import_statement"] = func(node *sitter.Node, state []string, indexInParent int, _ walk.VisitorFuncMap[[]string]) ([]string, error) {
+	funcMap["import_statement"] = func(node *sitter.Node, state []string, indexInParent uint, _ walk.VisitorFuncMap[[]string]) ([]string, error) {
 		source := node.ChildByFieldName("source")
 		if source == nil {
 			return state, nil
@@ -46,7 +46,7 @@ func extractImportsFromFile(filename string) ([]string, error) {
 		}
 
 		// TODO: only supports relative imports
-		pathString := path.Content(content)
+		pathString := path.Utf8Text(content)
 		if !strings.HasPrefix(pathString, ".") {
 			return state, nil
 		}

@@ -34,14 +34,14 @@ func PrintProviders(writer *utils.Writer, state *parser.State, args *any) (map[s
 			} else if p.Provider.Existing != nil {
 				text = text + ": " + p.Provider.Existing.Name
 			} else if p.Provider.Factory != nil {
-				text = text + ": " + p.Provider.Factory.Content(content)
+				text = text + ": " + p.Provider.Factory.Utf8Text(content)
 			} else if p.Provider.RefToken != nil {
 				text = text + ": " + p.Provider.RefToken.Name
 			} else if p.Provider.Value != nil {
 				valueNode := p.Provider.Value
-				valueText := valueNode.Content(content)
+				valueText := valueNode.Utf8Text(content)
 
-				if valueNode.Type() == "identifier" {
+				if valueNode.Kind() == "identifier" {
 					t := ""
 					for _, variable := range p.Source.Snapshot().File.Snapshot().Variables {
 						if variable.Name == valueText && variable.Value != nil && variable.Value.Type == "string" {
@@ -53,7 +53,7 @@ func PrintProviders(writer *utils.Writer, state *parser.State, args *any) (map[s
 						text = text + ": " + t
 					}
 				} else {
-					text = text + ": " + p.Provider.Value.Content(content)
+					text = text + ": " + p.Provider.Value.Utf8Text(content)
 				}
 			}
 
