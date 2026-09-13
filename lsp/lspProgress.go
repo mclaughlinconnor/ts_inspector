@@ -10,8 +10,8 @@ import (
 var progressResponses map[int]chan bool = map[int]chan bool{}
 
 func lspCreateProgressToken(writer *utils.Writer) (*interfaces.ProgressToken, bool) {
-	id := utils.GetNextId()
-	token := utils.GetNextId()
+	id := utils.GetNextIdGlobal()
+	token := utils.GetNextIdGlobal()
 
 	request := interfaces.WorkDoneProgressCreateRequest{
 		RequestMessage: interfaces.RequestMessage{

@@ -69,7 +69,7 @@ func (t *Tcb) AddImport(class *parser.Class) string {
 	if index != -1 {
 		i = t.Imports[index]
 	} else {
-		i = &Import{Class: class, File: f, Identifier: utils.GetNextStringId()}
+		i = &Import{Class: class, File: f, Identifier: utils.GetNextStringIdGlobal()}
 		t.Imports = append(t.Imports, i)
 	}
 
@@ -203,7 +203,7 @@ func (t *Tcb) CreateVarInScope(value *Statement, scope *Scope, alias string) str
 		return v.Identifier
 	}
 
-	name := "_t" + utils.GetNextStringId()
+	name := "_t" + utils.GetNextStringIdGlobal()
 	scope.AddVirtPart("var ")
 	scope.AddVirtPart(name)
 	scope.AddVirtPart(" = ")
@@ -235,7 +235,7 @@ func (t *Tcb) CreateVarAfterPart(value *Statement, alias string, after *Part) (s
 		return v.Identifier, v.LastPart
 	}
 
-	name := "_t" + utils.GetNextStringId()
+	name := "_t" + utils.GetNextStringIdGlobal()
 	statement := Statement{}
 	statement.AddVirtPart("var ")
 	statement.AddVirtPart(name)
@@ -347,7 +347,7 @@ func InitTcb() {
 
 func buildTemplatePreamble(tcb *Tcb) {
 	tcb.GetScope().AddVirtPart("function _tcb")
-	tcb.GetScope().AddVirtPart(utils.GetNextStringId())
+	tcb.GetScope().AddVirtPart(utils.GetNextStringIdGlobal())
 	tcb.GetScope().AddVirtPart("(this: ")
 
 	classIdent := tcb.AddImport(tcb.Class)

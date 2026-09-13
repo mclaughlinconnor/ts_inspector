@@ -30,7 +30,7 @@ func renderPipeNode(node *sitter.Node, content []byte, tcb *Tcb) *Statement {
 
 		pipeIdent := tcb.GetPipeIdent(thing)
 		if pipeIdent == "" {
-			pipeIdent = "_pipe" + utils.GetNextStringId()
+			pipeIdent = "_pipe" + utils.GetNextStringIdGlobal()
 
 			impIdent := tcb.AddImport(thing)
 

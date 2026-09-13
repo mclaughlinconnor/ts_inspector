@@ -156,7 +156,7 @@ func (t *TsGo) GetSemanticDiagnostics(uri string) *DiagnosticResponse {
 
 	t.updateSnapshotLocked(nil, []DocumentIdentifier{{URI: uri}})
 
-	id := utils.GetNextStringId()
+	id := utils.GetNextStringIdGlobal()
 	request := GetDiagnosticsRequest{
 		TsGoRequest: TsGoRequest{RPC: "2.0", ID: id, Method: "getSemanticDiagnostics"},
 		Params: GetDiagnosticsParams{
@@ -187,7 +187,7 @@ func (t *TsGo) GetSymbolAtPosition(uri string, offset int) *Symbol {
 
 	t.updateSnapshotLocked(nil, []DocumentIdentifier{{URI: uri}})
 
-	id := utils.GetNextStringId()
+	id := utils.GetNextStringIdGlobal()
 	request := GetSymbolAtPositionRequest{
 		TsGoRequest: TsGoRequest{RPC: "2.0", ID: id, Method: "getSymbolAtPosition"},
 		Params: GetSymbolAtPositionParams{
@@ -215,7 +215,7 @@ func (t *TsGo) GetSymbolAtPosition(uri string, offset int) *Symbol {
 func (t *TsGo) GetTypeOfSymbol(symbol SymbolID) *TypeResponse {
 	t.opLock.Lock()
 	defer t.opLock.Unlock()
-	id := utils.GetNextStringId()
+	id := utils.GetNextStringIdGlobal()
 	request := GetTypeOfSymbolRequest{
 		TsGoRequest: TsGoRequest{RPC: "2.0", ID: id, Method: "getTypeOfSymbol"},
 		Params: GetTypeOfSymbolParams{
@@ -243,7 +243,7 @@ func (t *TsGo) GetTypeAtPosition(uri string, offset int) *TypeResponse {
 	documentIdentifier := DocumentIdentifier{URI: uri}
 	t.UpdateSnapshot("", []DocumentIdentifier{documentIdentifier})
 
-	id := utils.GetNextStringId()
+	id := utils.GetNextStringIdGlobal()
 	request := GetTypeAtPositionParamsRequest{
 		TsGoRequest: TsGoRequest{RPC: "2.0", ID: id, Method: "getTypeAtPosition"},
 		Params: GetTypeAtPositionParams{
@@ -272,7 +272,7 @@ func (t *TsGo) Initialize() *InitializeResponse {
 	t.opLock.Lock()
 	defer t.opLock.Unlock()
 
-	id := utils.GetNextStringId()
+	id := utils.GetNextStringIdGlobal()
 	request := TsGoRequest{RPC: "2.0", ID: id, Method: "initialize"}
 
 	utils.WriteResponse(t.stdin, request)
@@ -292,7 +292,7 @@ func (t *TsGo) Initialize() *InitializeResponse {
 func (t *TsGo) TypeToString(ttype TypeID) *TypeToStringResponse {
 	t.opLock.Lock()
 	defer t.opLock.Unlock()
-	id := utils.GetNextStringId()
+	id := utils.GetNextStringIdGlobal()
 	request := TypeToTypeNodeRequest{
 		TsGoRequest: TsGoRequest{RPC: "2.0", ID: id, Method: "typeToString"},
 		Params: TypeToTypeNodeParams{
@@ -325,7 +325,7 @@ func (t *TsGo) UpdateSnapshot(tsconfig string, changes []DocumentIdentifier) *Up
 }
 
 func (t *TsGo) updateSnapshotLocked(tsconfig *string, changes []DocumentIdentifier) *UpdateSnapshotResponse {
-	id := utils.GetNextStringId()
+	id := utils.GetNextStringIdGlobal()
 
 	tsGoChanges := []DocumentIdentifier{}
 	tsGoCreated := []DocumentIdentifier{}
@@ -393,7 +393,7 @@ func (t *TsGo) GetNodePosition(handle NodeHandle) (pos int, end int, err error) 
 
 	t.opLock.Lock()
 
-	id := utils.GetNextStringId()
+	id := utils.GetNextStringIdGlobal()
 	request := GetSourceFileRequest{
 		TsGoRequest: TsGoRequest{RPC: "2.0", ID: id, Method: "getSourceFile"},
 		Params: GetSourceFileParams{

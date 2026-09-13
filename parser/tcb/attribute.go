@@ -712,7 +712,7 @@ func buildDirectiveDeclaration(tcb *Tcb, thing *parser.Class) string {
 }
 
 func buildGenericDirectiveDeclaration(tcb *Tcb, thing *parser.Class) string {
-	ctorIdent := "_ctor" + utils.GetNextStringId()
+	ctorIdent := "_ctor" + utils.GetNextStringIdGlobal()
 
 	statement := Statement{}
 	statement.AddVirtPart("const " + ctorIdent + ": ")
@@ -828,7 +828,7 @@ func buildStatementFromAttributeAndOffset(attribute *Attribute, tsText string, p
 		PugStartOffset: &pugEndOffset,
 		TsEndOffset:    &tsEndOffset,
 		TsStartOffset:  &tsStartOffset,
-		Id:             utils.GetNextId(),
+		Id:             utils.GetNextIdGlobal(),
 	}
 
 	valueStatement.AddPartRaw(&part)

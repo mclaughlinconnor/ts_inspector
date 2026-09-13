@@ -51,6 +51,10 @@ func GetPositionForOffset2(content string, offset int) Position {
 	var line int
 	var character int
 
+	if len(lineOffsets) == 1 {
+		return Position{Line: 0, Character: uint(offset)}
+	}
+
 	for index, lineOffset := range lineOffsets {
 		if lineOffset > offset {
 			if index > 0 {

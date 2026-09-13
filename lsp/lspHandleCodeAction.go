@@ -34,15 +34,25 @@ func lspHandleCodeAction(writer *utils.Writer, logger *log.Logger, state *parser
 		return
 	}
 
-	codeActions := GenerateActions(writer, logger, state, file, request.Params.Range)
+	codeActions := GenerateActions(writer, logger, state, file, request.Params.Range, request.Params.TextDocument)
 
 	utils.WriteResponse(writer, newCodeActionResponse(request.ID, codeActions))
 }
 
-func GenerateActions(writer *utils.Writer, logger *log.Logger, state *parser.State, file *parser.File, editRange utils.Range) []interfaces.CodeAction {
+func GenerateActions(writer *utils.Writer, logger *log.Logger, state *parser.State, file *parser.File, editRange utils.Range, textDocument interfaces.TextDocumentIdentifier) []interfaces.CodeAction {
+	context, err := buildContext(writer, logger, state, textDocument, editRange.Start)
+	if err != nil {
+		logger.Printf("Error: %s", err)
+	}
+
 	codeActions := []interfaces.CodeAction{}
 
-	for _, action := range actions.Actions {
+	actions, err := actions.GetActions(state, file, context.ci.cursorOffset)
+	if err != nil {
+		logger.Printf("Error: %s", err)
+	}
+
+	for _, action := range actions {
 		edits, command, allowed, err := action.Perform(writer, state, file, editRange)
 
 		if err != nil {

@@ -15,7 +15,7 @@ func ParseTextFromPath(path string, language string) (*sitter.Node, []byte, erro
 	return root, content, nil
 }
 
-func ParseText(content []byte, language string) (*sitter.Node) {
+func ParseText(content []byte, language string) *sitter.Node {
 	root, _ := ParseTextWithTree(content, language)
 
 	return root

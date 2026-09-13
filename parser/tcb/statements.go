@@ -58,7 +58,7 @@ func (s *Statement) AddStatement(statement *Statement) {
 			PugStartOffset: p.PugStartOffset,
 			PugEndOffset:   p.PugEndOffset,
 
-			Id: utils.GetNextId(),
+			Id: utils.GetNextIdGlobal(),
 		}
 
 		s.AddPart(newPart)
@@ -129,7 +129,7 @@ func (s *Statement) PrependVirtPart(text string) {
 	tsStartOffset := 0
 	tsEndOffset := len(text)
 
-	p := &Part{text: text, TsStartOffset: &tsStartOffset, TsEndOffset: &tsEndOffset, Id: utils.GetNextId()}
+	p := &Part{text: text, TsStartOffset: &tsStartOffset, TsEndOffset: &tsEndOffset, Id: utils.GetNextIdGlobal()}
 	s.Parts = slices.Insert(s.Parts, 0, p)
 
 	for _, p := range s.Parts {
@@ -209,7 +209,7 @@ func (s *Statement) AddRealPart(text string, node *sitter.Node) {
 	tsStartOffset := s.sb.Len()
 	tsEndOffset := tsStartOffset + len(text)
 
-	s.AddPart(&Part{node: node, text: text, TsEndOffset: &tsEndOffset, TsStartOffset: &tsStartOffset, Id: utils.GetNextId()})
+	s.AddPart(&Part{node: node, text: text, TsEndOffset: &tsEndOffset, TsStartOffset: &tsStartOffset, Id: utils.GetNextIdGlobal()})
 }
 
 func (s *Statement) AddScopePart(scope *Scope) {
@@ -218,7 +218,7 @@ func (s *Statement) AddScopePart(scope *Scope) {
 		startOffset = *s.Parts[len(s.Parts)-1].TsEndOffset
 	}
 
-	s.AddPart(&Part{scope: scope, TsStartOffset: &startOffset, Id: utils.GetNextId()})
+	s.AddPart(&Part{scope: scope, TsStartOffset: &startOffset, Id: utils.GetNextIdGlobal()})
 }
 
 func (s *Statement) AppendStatement(statement Statement) {
