@@ -31,14 +31,15 @@ func GetActions(state *parser.State, file *parser.File, offset int) ([]Action, e
 		}
 
 		for _, astAction := range ast.GetAllActions(uint(offset)) {
-			ast, err := manipulation.BuildAst(file.Snapshot().Content)
+			// ast, err := manipulation.BuildAst(file.Snapshot().Content)
 			if err != nil {
 				return []Action{}, err
 			}
 
 			allowedActions = append(allowedActions, Action{
 				Perform: func(w *utils.Writer, s *parser.State, f *parser.File, r utils.Range) (actionEdits *[]utils.TextEdit, command *interfaces.Command, allowed bool, err error) {
-					edits := ast.ApplyProvidedAction(astAction.NodeId, astAction.Name)
+					edits := astAction.Perform()
+					// perform needs to be roll-back-able
 					return &edits, nil, true, nil
 				},
 				Title: astAction.Name,

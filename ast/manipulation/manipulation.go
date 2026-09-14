@@ -13,6 +13,12 @@ import (
 const NULL_KIND = "__null_kind"
 const ID_NAMESPACE = "manipulation"
 
+const (
+	VisitContinue = iota
+	VisitAbort    = iota
+	VisitSkip     = iota
+)
+
 type editSession struct {
 	afterDocument  string
 	beforeDocument string
@@ -26,7 +32,7 @@ type programContent struct {
 }
 
 type nodeInterface interface {
-	applyAction(nodeId int, name string) []utils.TextEdit
+	applyAction(apply func()) []utils.TextEdit
 	editText(newText string)
 	getAstNodeAtOffset(offset uint) (nodeInterface, bool)
 	getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool)
@@ -39,7 +45,7 @@ type nodeInterface interface {
 	getText() string
 	getTsNode() *sitter.Node
 	isUnderCursor(offset uint) bool
-	visit(func(nodeInterface))
+	visit(func(nodeInterface) int) int
 }
 
 type invertableNodeInterface interface {
@@ -65,8 +71,8 @@ type root struct {
 }
 
 type action struct {
-	Name   string
-	NodeId int
+	Name    string
+	Perform func() []utils.TextEdit
 }
 
 type binaryExpressionOperatorType = string
@@ -144,19 +150,6 @@ func BuildAst(content string) (*root, error) {
 	return &astRoot, nil
 }
 
-func (b *binaryExpression) applyAction(nodeId int, name string) []utils.TextEdit {
-	b.getProgramContent().beginEditSession()
-	defer b.getProgramContent().endEditSession()
-	switch name {
-	case "deMorgans":
-		b.deMorgans()
-	}
-
-	edit := b.getProgramContent().editSession.buildLspTextEdit()
-
-	return []utils.TextEdit{edit}
-}
-
 func (b *binaryExpression) deMorgans() {
 	b.invert()
 	b.editText("!(" + b.getText() + ")")
@@ -164,7 +157,7 @@ func (b *binaryExpression) deMorgans() {
 
 func (b *binaryExpression) getActions() []action {
 	return []action{
-		{Name: "deMorgans", NodeId: b.getId()},
+		{Name: "deMorgans", Perform: func() []utils.TextEdit { return b.applyAction(b.deMorgans) }},
 	}
 }
 
@@ -222,12 +215,28 @@ func (b *binaryExpression) invert() {
 	}
 }
 
-func (b *binaryExpression) visit(exec func(nodeInterface)) {
-	exec(b)
+func (b *binaryExpression) visit(exec func(nodeInterface) int) int {
+	if ret := exec(b); ret != VisitContinue {
+		if ret == VisitAbort {
+			return ret
+		}
 
-	b.Left.visit(exec)
-	b.Operator.visit(exec)
-	b.Right.visit(exec)
+		if ret == VisitSkip {
+			return VisitContinue
+		}
+	}
+
+	if ret := b.Left.visit(exec); ret == VisitAbort {
+		return ret
+	}
+	if ret := b.Operator.visit(exec); ret == VisitAbort {
+		return ret
+	}
+	if ret := b.Right.visit(exec); ret == VisitAbort {
+		return ret
+	}
+
+	return VisitContinue
 }
 
 func (c *binaryExpressionOperator) getAstNodeAtOffset(offset uint) (nodeInterface, bool) {
@@ -276,8 +285,18 @@ func (b *binaryExpressionOperator) invert() {
 	}
 }
 
-func (b *binaryExpressionOperator) visit(exec func(nodeInterface)) {
-	exec(b)
+func (b *binaryExpressionOperator) visit(exec func(nodeInterface) int) int {
+	if ret := exec(b); ret != VisitContinue {
+		if ret == VisitAbort {
+			return ret
+		}
+
+		if ret == VisitSkip {
+			return VisitContinue
+		}
+	}
+
+	return VisitContinue
 }
 
 func (b *boolean) getAstNodeAtOffset(offset uint) (nodeInterface, bool) {
@@ -311,12 +330,29 @@ func (b *boolean) invert() {
 	}
 }
 
-func (b *boolean) visit(exec func(nodeInterface)) {
-	exec(b)
+func (b *boolean) visit(exec func(nodeInterface) int) int {
+	if ret := exec(b); ret != VisitContinue {
+		if ret == VisitAbort {
+			return ret
+		}
+
+		if ret == VisitSkip {
+			return VisitContinue
+		}
+	}
+
+	return VisitContinue
 }
 
-func (c *commonNode) applyAction(nodeId int, name string) []utils.TextEdit {
-	return []utils.TextEdit{}
+func (c *commonNode) applyAction(apply func()) []utils.TextEdit {
+	c.getProgramContent().beginEditSession()
+	defer c.getProgramContent().endEditSession()
+
+	apply()
+
+	edit := c.getProgramContent().editSession.buildLspTextEdit()
+
+	return []utils.TextEdit{edit}
 }
 
 func (c *commonNode) editText(newText string) {
@@ -472,12 +508,24 @@ func (e *expressionStatement) getAstNodeOfKindAtOffset(offset uint, kind string,
 	return nil, false
 }
 
-func (e *expressionStatement) visit(exec func(nodeInterface)) {
-	exec(e)
+func (e *expressionStatement) visit(exec func(nodeInterface) int) int {
+	if ret := exec(e); ret != VisitContinue {
+		if ret == VisitAbort {
+			return ret
+		}
+
+		if ret == VisitSkip {
+			return VisitContinue
+		}
+	}
 
 	for _, child := range e.Children {
-		child.visit(exec)
+		if ret := child.visit(exec); ret == VisitAbort {
+			return ret
+		}
 	}
+
+	return VisitContinue
 }
 
 func (i *identifier) getAstNodeAtOffset(offset uint) (nodeInterface, bool) {
@@ -497,21 +545,18 @@ func (i *identifier) getAstNodeOfKindAtOffset(offset uint, kind string, first bo
 	return nil, false
 }
 
-func (i *identifier) visit(exec func(nodeInterface)) {
-	exec(i)
-}
-
-func (r *root) ApplyProvidedAction(nodeId int, name string) []utils.TextEdit {
-	edits := []utils.TextEdit{}
-	r.visit(func(ni nodeInterface) {
-		if ni.getId() != nodeId {
-			return
+func (i *identifier) visit(exec func(nodeInterface) int) int {
+	if ret := exec(i); ret != VisitContinue {
+		if ret == VisitAbort {
+			return ret
 		}
 
-		edits = append(edits, ni.applyAction(nodeId, name)...)
-	})
+		if ret == VisitSkip {
+			return VisitContinue
+		}
+	}
 
-	return edits
+	return VisitContinue
 }
 
 func (p *programContent) beginEditSession() {
@@ -525,7 +570,10 @@ func (p *programContent) editText(startOffset uint, endOffset uint, replacementT
 
 func (p *programContent) editTree(ei *sitter.InputEdit) {
 	p.tree.Edit(ei)
-	p.root.visit(func(ni nodeInterface) { ni.getTsNode().Edit(ei) })
+	p.root.visit(func(ni nodeInterface) int {
+		ni.getTsNode().Edit(ei)
+		return VisitContinue
+	})
 }
 
 func (p *programContent) endEditSession() {
@@ -564,27 +612,39 @@ func (p *program) getAstNodeOfKindAtOffset(offset uint, kind string, first bool)
 	return nil, false
 }
 
-func (p *program) visit(exec func(nodeInterface)) {
-	exec(p)
+func (p *program) visit(exec func(nodeInterface) int) int {
+	if ret := exec(p); ret != VisitContinue {
+		if ret == VisitAbort {
+			return ret
+		}
+
+		if ret == VisitSkip {
+			return VisitContinue
+		}
+	}
 
 	for _, child := range p.Children {
-		child.visit(exec)
+		if ret := child.visit(exec); ret == VisitAbort {
+			return ret
+		}
 	}
+
+	return VisitContinue
 }
 
 func (r *root) GetAllActions(offset uint) []action {
 	actions := []action{}
-	r.visit(func(ni nodeInterface) {
+	r.visit(func(ni nodeInterface) int {
 		if !ni.isUnderCursor(offset) {
-			return
+			return VisitSkip
 		}
 
 		as := ni.getActions()
-		if len(as) == 0 {
-			return
+		if len(as) != 0 {
+			actions = append(actions, as...)
 		}
 
-		actions = append(actions, as...)
+		return VisitContinue
 	})
 
 	return actions
@@ -602,9 +662,18 @@ func (r *root) getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (n
 	return r.Program.getAstNodeOfKindAtOffset(offset, kind, first)
 }
 
-func (r *root) visit(exec func(nodeInterface)) {
-	exec(r)
-	r.Program.visit(exec)
+func (r *root) visit(exec func(nodeInterface) int) int {
+	if ret := exec(r); ret != VisitContinue {
+		if ret == VisitAbort {
+			return ret
+		}
+
+		if ret == VisitSkip {
+			return VisitContinue
+		}
+	}
+
+	return r.Program.visit(exec)
 }
 
 func (u *unhandled) getAstNodeAtOffset(offset uint) (nodeInterface, bool) {
@@ -635,12 +704,24 @@ func (u *unhandled) getAstNodeOfKindAtOffset(offset uint, kind string, first boo
 	return nil, false
 }
 
-func (u *unhandled) visit(exec func(nodeInterface)) {
-	exec(u)
+func (u *unhandled) visit(exec func(nodeInterface) int) int {
+	if ret := exec(u); ret != VisitContinue {
+		if ret == VisitAbort {
+			return ret
+		}
+
+		if ret == VisitSkip {
+			return VisitContinue
+		}
+	}
 
 	for _, child := range u.Children {
-		child.visit(exec)
+		if ret := child.visit(exec); ret == VisitAbort {
+			return ret
+		}
 	}
+
+	return VisitContinue
 }
 
 type state = nodeInterface
