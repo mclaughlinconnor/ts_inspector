@@ -394,7 +394,7 @@ func (c *commonNode) getProgramText() []byte {
 func (c *commonNode) isUnderCursor(offset uint) bool {
 	tsNode := c.getTsNode()
 
-	return tsNode.StartByte() <= offset || offset < tsNode.EndByte()
+	return tsNode.StartByte() <= offset && offset < tsNode.EndByte()
 }
 
 func (e *editSession) buildLspTextEdit() utils.TextEdit {
