@@ -51,7 +51,7 @@ func VisitNode[T any](node *sitter.Node, state T, indexInParent uint, visitorFun
 			return state, nil
 		}
 
-		function = dummyVisitor
+		function = visitorFuncMap[DUMMY_VISITOR_ID]
 	}
 
 	return function(node, state, indexInParent, visitorFuncMap)

@@ -6,12 +6,15 @@ type VisitorFunction[T any] func(node *sitter.Node, state T, indexInParent uint,
 type InitVisitorFuncMap[T any] map[string]VisitorFunction[T]
 type VisitorFuncMap[T any] map[uint16]VisitorFunction[T]
 
+const DUMMY_VISITOR_ID uint16 = 65535
+const DUMMY_VISITOR_KIND = "__dummy_visitor"
+
 func NewVisitorFuncsMap[T any]() InitVisitorFuncMap[T] {
 	return map[string]VisitorFunction[T]{}
 }
 
 func GenerateSymbolMap[T any](lang *sitter.Language, stringMap map[string]VisitorFunction[T]) VisitorFuncMap[T] {
-	optimizedMap := make(VisitorFuncMap[T])
+	optimisedMap := make(VisitorFuncMap[T])
 
 	count := uint(lang.NodeKindCount())
 	for i := range count {
@@ -20,11 +23,18 @@ func GenerateSymbolMap[T any](lang *sitter.Language, stringMap map[string]Visito
 
 		handler, exists := stringMap[name]
 		if exists {
-			optimizedMap[id] = handler
+			optimisedMap[id] = handler
 		}
 	}
 
-	return optimizedMap
+	customDummyVisitor, found := stringMap[DUMMY_VISITOR_KIND]
+	if found {
+		optimisedMap[DUMMY_VISITOR_ID] = customDummyVisitor
+	} else {
+		optimisedMap[DUMMY_VISITOR_ID] = dummyVisitor
+	}
+
+	return optimisedMap
 }
 
 func dummyVisitor[T any](node *sitter.Node, state T, indexInParent uint, visitorFuncMap VisitorFuncMap[T]) (T, error) {
