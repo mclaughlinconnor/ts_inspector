@@ -1,28 +1,42 @@
 package utils
 
-import "strconv"
+import (
+	"strconv"
+	"sync"
+)
 
-var ids = map[string]int{"global": 0}
-
-func GetNextIdGlobal() int {
-	return GetNextId("global")
+type Ids struct {
+	sync.Mutex
+	ids map[string]int
 }
 
+var ids = Ids{sync.Mutex{}, map[string]int{"global": 0}}
+
 func GetNextId(id string) int {
-	next := ids[id]
-	ids[id] = next + 1
+	ids.Lock()
+	defer ids.Unlock()
+
+	next := ids.ids[id]
+	ids.ids[id] = next + 1
 
 	return next
 }
 
-func GetNextStringIdGlobal() string {
-	return strconv.Itoa(GetNextIdGlobal())
+func GetNextIdGlobal() int {
+	return GetNextId("global")
 }
 
 func GetNextStringId(id string) string {
 	return strconv.Itoa(GetNextId(id))
 }
 
+func GetNextStringIdGlobal() string {
+	return strconv.Itoa(GetNextIdGlobal())
+}
+
 func ResetNextId(id string) {
-	ids[id] = 0
+	ids.Lock()
+	defer ids.Unlock()
+
+	ids.ids[id] = 0
 }
