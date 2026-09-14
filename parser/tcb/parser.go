@@ -189,6 +189,10 @@ func (n *Node) Render() error {
 }
 
 func handleAttribute(node *sitter.Node, state *Ast, indexInParent uint, internalFuncMap walk.VisitorFuncMap[*Ast]) (*Ast, error) {
+	if (*state.Current.Peek()).Tag == nil {
+		return state, nil
+	}
+
 	attribute := Attribute{Name: "", Node: node, Tag: (*state.Current.Peek()).Tag, tcb: state.Tcb, value: ""}
 
 	a := &attribute
@@ -328,7 +332,7 @@ func handleTag(node *sitter.Node, state *Ast, indexInParent uint, internalFuncMa
 }
 
 func handleTagClass(node *sitter.Node, state *Ast, indexInParent uint, internalFuncMap walk.VisitorFuncMap[*Ast]) (*Ast, error) {
-	if p := state.Current.Peek(); p != nil && (*p).Tag.Name == "" {
+	if p := state.Current.Peek(); p != nil && (*p).Tag != nil && (*p).Tag.Name == "" {
 		(*p).Tag.Name = "div"
 		(*p).Tag.NameNode = node
 	}
@@ -364,7 +368,7 @@ func handleTagContent(node *sitter.Node, state *Ast, indexInParent uint, interna
 }
 
 func handleTagId(node *sitter.Node, state *Ast, indexInParent uint, internalFuncMap walk.VisitorFuncMap[*Ast]) (*Ast, error) {
-	if p := state.Current.Peek(); p != nil && (*p).Tag.Name == "" {
+	if p := state.Current.Peek(); p != nil && (*p).Tag != nil && (*p).Tag.Name == "" {
 		(*p).Tag.Name = "div"
 		(*p).Tag.NameNode = node
 	}
@@ -373,7 +377,7 @@ func handleTagId(node *sitter.Node, state *Ast, indexInParent uint, internalFunc
 }
 
 func handleTagName(node *sitter.Node, state *Ast, indexInParent uint, internalFuncMap walk.VisitorFuncMap[*Ast]) (*Ast, error) {
-	if p := state.Current.Peek(); p != nil {
+	if p := state.Current.Peek(); p != nil && (*p).Tag != nil {
 		(*p).Tag.Name = node.Utf8Text(state.Content)
 		(*p).Tag.NameNode = node
 	}
