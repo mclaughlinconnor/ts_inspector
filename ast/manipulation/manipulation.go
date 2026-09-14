@@ -110,6 +110,11 @@ type identifier struct {
 	commonNode
 }
 
+type unhandled struct {
+	commonNode
+	Children []nodeInterface
+}
+
 func BuildAst(content string) (*root, error) {
 	utils.ResetNextId(ID_NAMESPACE)
 	byteContent := []byte(content)
@@ -123,8 +128,9 @@ func BuildAst(content string) (*root, error) {
 	funcMap["identifier"] = visitIdentifier
 	funcMap["program"] = visitProgram
 	funcMap["true"] = visitBoolean
+	funcMap[walk.DUMMY_VISITOR_KIND] = visitUnhandled
 
-	astRoot := root{commonNode: commonNode{node: rootNode, programContent: &programContent{text: byteContent, tree: tree}}}
+	astRoot := root{commonNode: commonNode{kind: "root", node: rootNode, programContent: &programContent{text: byteContent, tree: tree}}}
 	var ast state = &astRoot
 	astRoot.getProgramContent().root = ast.(*root)
 
@@ -601,6 +607,42 @@ func (r *root) visit(exec func(nodeInterface)) {
 	r.Program.visit(exec)
 }
 
+func (u *unhandled) getAstNodeAtOffset(offset uint) (nodeInterface, bool) {
+	return u.getAstNodeOfKindAtOffset(offset, NULL_KIND, false)
+}
+
+func (u *unhandled) getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool) {
+	tsNode := u.getTsNode()
+	if tsNode.StartByte() > offset || offset >= tsNode.EndByte() {
+		return nil, false
+	}
+
+	if first && u.getKind() == kind {
+		return u, true
+	}
+
+	for _, child := range u.Children {
+		astNode, found := child.getAstNodeOfKindAtOffset(offset, kind, first)
+		if found {
+			return astNode, true
+		}
+	}
+
+	if kind == NULL_KIND || u.getKind() == kind {
+		return u, true
+	}
+
+	return nil, false
+}
+
+func (u *unhandled) visit(exec func(nodeInterface)) {
+	exec(u)
+
+	for _, child := range u.Children {
+		child.visit(exec)
+	}
+}
+
 type state = nodeInterface
 
 func makeCommonNode(kind string, state state, node *sitter.Node) commonNode {
@@ -657,7 +699,7 @@ func visitBoolean(node *sitter.Node, state state, indexInParent uint, funcMap wa
 }
 
 func visitExpressionStatement(node *sitter.Node, state state, indexInParent uint, funcMap walk.VisitorFuncMap[state]) (state, error) {
-	root := expressionStatement{commonNode: makeCommonNode("root", state, node)}
+	root := expressionStatement{commonNode: makeCommonNode("expressionStatement", state, node)}
 
 	children := []nodeInterface{}
 
@@ -708,4 +750,27 @@ func visitProgram(node *sitter.Node, state state, indexInParent uint, funcMap wa
 	root.Children = children
 
 	return &root, nil
+}
+
+func visitUnhandled(node *sitter.Node, state state, indexInParent uint, funcMap walk.VisitorFuncMap[state]) (state, error) {
+	unhandled := unhandled{commonNode: makeCommonNode("unhandled", state, node)}
+
+	children := []nodeInterface{}
+
+	for i := range node.NamedChildCount() {
+		child, err := walk.VisitNode(node.NamedChild(i), state, i, funcMap, false)
+		if err != nil {
+			return nil, err
+		}
+
+		if child.getId() == state.getId() {
+			continue
+		}
+
+		children = append(children, child)
+	}
+
+	unhandled.Children = children
+
+	return &unhandled, nil
 }
