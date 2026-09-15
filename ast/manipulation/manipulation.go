@@ -31,6 +31,7 @@ func BuildAst(content string) (*root, error) {
 	funcMap["if_statement"] = visitIfStatement
 	funcMap["program"] = visitProgram
 	funcMap["true"] = visitBoolean
+	funcMap["unary_expression"] = visitUnaryExpression
 	funcMap[walk.DUMMY_VISITOR_KIND] = visitUnhandled
 
 	astRoot := root{commonNode: commonNode{kind: "root", element: elementFromNode(rootNode), programContent: &programContent{text: byteContent, tree: tree}}}
