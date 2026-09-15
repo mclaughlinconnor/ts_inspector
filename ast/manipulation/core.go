@@ -99,12 +99,12 @@ func (e *element) edit(edit *elementEdit) {
 		return
 	}
 
-	difference := edit.newEndOffset - edit.oldEndOffset
+	difference := int(edit.newEndOffset) - int(edit.oldEndOffset)
 	if e.getStartOffset() > edit.startOffset {
-		e.startOffset += difference
+		e.startOffset = uint(int(e.startOffset) + difference)
 	}
 
-	e.endOffset += difference
+	e.endOffset = uint(int(e.endOffset) + difference)
 }
 
 func (e *element) getEndOffset() uint {
