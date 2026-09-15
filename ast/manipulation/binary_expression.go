@@ -144,7 +144,7 @@ func (b *binaryExpressionOperator) invert() {
 	}
 }
 
-func visitBinaryExpression(node *sitter.Node, state walkState, indexInParent uint, funcMap walk.VisitorFuncMap[walkState]) (walkState, error) {
+func visitBinaryExpression(node *sitter.Node, state walkState, _ uint, funcMap walk.VisitorFuncMap[walkState]) (walkState, error) {
 	binaryExpression := binaryExpression{commonNode: makeCommonNode("binaryExpression", state, node)}
 
 	leftNode := node.ChildByFieldName("left")

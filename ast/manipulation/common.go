@@ -48,6 +48,7 @@ type nodeInterface interface {
 	getText() string
 	hasEditSession() bool
 	isUnderCursor(offset uint) bool
+	setElement(element *element)
 	visit(func(nodeInterface) int) int
 }
 
@@ -180,6 +181,14 @@ func (c *commonNode) isUnderCursor(offset uint) bool {
 	tsNode := c.getElement()
 
 	return tsNode.getStartOffset() <= offset && offset < tsNode.getEndOffset()
+}
+
+func (c *commonNode) setElement(element *element) {
+	if c.stagedElement != nil {
+		c.stagedElement = element
+	}
+
+	c.element = element
 }
 
 func (c *commonNode) visit(exec func(nodeInterface) int) int {

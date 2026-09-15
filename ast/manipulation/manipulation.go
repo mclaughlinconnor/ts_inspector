@@ -24,9 +24,11 @@ func BuildAst(content string) (*root, error) {
 
 	funcMap := walk.NewVisitorFuncsMap[walkState]()
 	funcMap["binary_expression"] = visitBinaryExpression
+	funcMap["else_clause"] = visitElseClause
 	funcMap["expression_statement"] = visitExpressionStatement
 	funcMap["false"] = visitBoolean
 	funcMap["identifier"] = visitIdentifier
+	funcMap["if_statement"] = visitIfStatement
 	funcMap["program"] = visitProgram
 	funcMap["true"] = visitBoolean
 	funcMap[walk.DUMMY_VISITOR_KIND] = visitUnhandled

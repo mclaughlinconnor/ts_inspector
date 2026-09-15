@@ -44,4 +44,3 @@ func (r *root) visit(exec func(nodeInterface) int) int {
 
 	return r.Program.visit(exec)
 }
-
