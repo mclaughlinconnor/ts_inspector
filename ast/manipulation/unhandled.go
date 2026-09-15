@@ -10,6 +10,15 @@ type unhandled struct {
 	childedCommonNode
 }
 
+func (u *unhandled) invert() {
+	for _, child := range u.getChildren() {
+		invertableChild, isInvertable := child.(invertableNodeInterface)
+		if isInvertable {
+			invertableChild.invert()
+		}
+	}
+}
+
 func visitUnhandled(node *sitter.Node, state walkState, indexInParent uint, funcMap walk.VisitorFuncMap[walkState]) (walkState, error) {
 	unhandled := unhandled{childedCommonNode: makeCommonChildedNode("unhandled", state, node)}
 	unhandled._self = &unhandled
