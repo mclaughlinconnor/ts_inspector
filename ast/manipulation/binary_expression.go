@@ -180,9 +180,3 @@ func visitBinaryExpression(node *sitter.Node, state walkState, indexInParent uin
 
 	return &binaryExpression, nil
 }
-
-func visitBoolean(node *sitter.Node, state walkState, indexInParent uint, funcMap walk.VisitorFuncMap[walkState]) (walkState, error) {
-	boolean := boolean{commonNode: makeCommonNode("boolean", state, node)}
-
-	return &boolean, nil
-}
