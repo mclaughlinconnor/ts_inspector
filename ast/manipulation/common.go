@@ -124,12 +124,7 @@ func (c *commonNode) editText(newText string) {
 }
 
 func (c *commonNode) getActions() []action {
-	impl := c.getImpl()
-	if impl == c {
-		return []action{}
-	}
-
-	return impl.getActions()
+	return []action{}
 }
 
 func (c *commonNode) getAstNodeAtOffset(offset uint) (nodeInterface, bool) {
