@@ -338,6 +338,11 @@ func renderAttributes(allAttributes AssignedAttributes, tag *Tag) error {
 
 THING:
 	for _, thing := range things {
+		if thing == nil {
+			state.Logger.Printf("Thing was unexpectedly nil '%+v' in %+v's renderAttributes\n", thing, sourceClass.Snapshot().Name)
+			continue
+		}
+
 		for _, selector := range thing.GetSelectors() {
 			matchesSelector, _ := tag.MatchesSelector(selector)
 			if !matchesSelector {
