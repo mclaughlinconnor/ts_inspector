@@ -26,6 +26,24 @@ func (e *elseClause) isElseIf() bool {
 	return ok
 }
 
+func (e *elseClause) visit(exec func(nodeInterface) int) int {
+	if ret := exec(e); ret != VisitContinue {
+		if ret == VisitAbort {
+			return ret
+		}
+
+		if ret == VisitSkip {
+			return VisitContinue
+		}
+	}
+
+	if ret := e.statement.visit(exec); ret == VisitAbort {
+		return ret
+	}
+
+	return VisitContinue
+}
+
 func (i *ifStatement) flipElse() {
 	if i.alternative == nil || i.alternative.isElseIf() {
 		return
@@ -81,6 +99,34 @@ func (i *ifStatement) getAstNodeOfKindAtOffset(offset uint, kind string, first b
 	}
 
 	return nil, false
+}
+
+func (i *ifStatement) visit(exec func(nodeInterface) int) int {
+	if ret := exec(i); ret != VisitContinue {
+		if ret == VisitAbort {
+			return ret
+		}
+
+		if ret == VisitSkip {
+			return VisitContinue
+		}
+	}
+
+	if ret := i.condition.visit(exec); ret == VisitAbort {
+		return ret
+	}
+
+	if ret := i.consequence.visit(exec); ret == VisitAbort {
+		return ret
+	}
+
+	if i.alternative != nil {
+		if ret := i.alternative.visit(exec); ret == VisitAbort {
+			return ret
+		}
+	}
+
+	return VisitContinue
 }
 
 func visitElseClause(node *sitter.Node, state walkState, _ uint, funcMap walk.VisitorFuncMap[walkState]) (walkState, error) {
