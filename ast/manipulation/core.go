@@ -17,6 +17,17 @@ type editSession struct {
 	beforeDocument string
 }
 
+type element struct {
+	endOffset   uint
+	startOffset uint
+}
+
+type elementEdit struct {
+	newEndOffset uint
+	oldEndOffset uint
+	startOffset  uint
+}
+
 type programContent struct {
 	editSession *editSession
 	root        *root
@@ -71,6 +82,27 @@ func (e *editSession) buildLspTextEdit() utils.TextEdit {
 	return utils.TextEdit{Range: r, NewText: newText}
 }
 
+func (e *element) edit(edit *elementEdit) {
+	if e.getStartOffset() < edit.startOffset && e.getEndOffset() < edit.startOffset {
+		return
+	}
+
+	difference := edit.newEndOffset - edit.oldEndOffset
+	if e.getStartOffset() >= edit.startOffset {
+		e.startOffset += difference
+	}
+
+	e.endOffset += difference
+}
+
+func (e *element) getEndOffset() uint {
+	return e.endOffset
+}
+
+func (e *element) getStartOffset() uint {
+	return e.startOffset
+}
+
 func (p *programContent) beginEditSession() {
 	p.editSession = &editSession{beforeDocument: string(p.text)}
 }
@@ -80,10 +112,9 @@ func (p *programContent) editText(startOffset uint, endOffset uint, replacementT
 	p.updateEditSessionSnapshot(string(p.text))
 }
 
-func (p *programContent) editTree(ei *sitter.InputEdit) {
-	p.tree.Edit(ei)
+func (p *programContent) editTree(edit *elementEdit) {
 	p.root.visit(func(ni nodeInterface) int {
-		ni.getTsNode().Edit(ei)
+		ni.getElement().edit(edit)
 		return VisitContinue
 	})
 }
@@ -94,4 +125,8 @@ func (p *programContent) endEditSession() {
 
 func (p *programContent) updateEditSessionSnapshot(document string) {
 	p.editSession.afterDocument = document
+}
+
+func elementFromNode(node *sitter.Node) *element {
+	return &element{endOffset: node.EndByte(), startOffset: node.StartByte()}
 }

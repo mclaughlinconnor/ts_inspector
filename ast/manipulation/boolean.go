@@ -11,9 +11,7 @@ type boolean struct {
 }
 
 func (b *boolean) getValue() bool {
-	node := b.getTsNode()
-
-	return node.Kind() == "true"
+	return b.getText() == "true"
 }
 
 func (b *boolean) invert() {

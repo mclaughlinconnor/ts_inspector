@@ -1,7 +1,6 @@
 package manipulation
 
 import (
-	"strings"
 	"ts_inspector/utils"
 
 	sitter "github.com/tree-sitter/go-tree-sitter"
@@ -18,10 +17,11 @@ type childedNodeInterface interface {
 }
 
 type commonNode struct {
+	element        *element
 	id             int
 	kind           string
-	node           *sitter.Node
 	programContent *programContent
+	stagedElement  *element
 }
 
 type invertableNodeInterface interface {
@@ -31,17 +31,20 @@ type invertableNodeInterface interface {
 
 type nodeInterface interface {
 	applyAction(apply func()) []utils.TextEdit
+	// beginEditSession()
+	// commitEditSession()
+	// dropEditSession()
 	editText(newText string)
 	getAstNodeAtOffset(offset uint) (nodeInterface, bool)
 	getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool)
 	getActions() []action
+	getElement() *element
 	getKind() string
 	getId() int
 	getProgramContent() *programContent
 	getProgramRoot() *root
 	getProgramText() []byte
 	getText() string
-	getTsNode() *sitter.Node
 	isUnderCursor(offset uint) bool
 	visit(func(nodeInterface) int) int
 }
@@ -58,43 +61,23 @@ func (c *commonNode) applyAction(apply func()) []utils.TextEdit {
 }
 
 func (c *commonNode) editText(newText string) {
-	node := c.getTsNode()
+	node := c.getElement()
 
-	startIndex := node.StartByte()
+	startIndex := node.getStartOffset()
 
-	oldEndIndex := node.EndByte()
+	oldEndIndex := node.getEndOffset()
 	newEndIndex := startIndex + uint(len(newText))
 
-	startPosition := node.StartPosition()
-
-	oldEndPosition := node.EndPosition()
-	newEndPosition := sitter.Point{Column: oldEndPosition.Column, Row: oldEndPosition.Row}
-
-	lastNewLineOffset := 0
-	endColumn := startPosition.Column + uint(len(newText))
-
-	newLineCount := strings.Count(newText, "\n")
-	if newLineCount > 0 {
-		lastNewLineOffset = strings.LastIndex(newText, "\n")
-		endColumn = uint(len(newText) - lastNewLineOffset)
-	}
-
-	newEndPosition.Column = uint(endColumn)
-	newEndPosition.Row = startPosition.Row + uint(newLineCount)
-
 	programContent := c.getProgramContent()
-	programContent.editText(node.StartByte(), node.EndByte(), newText)
+	programContent.editText(node.getStartOffset(), node.getEndOffset(), newText)
 
-	ei := sitter.InputEdit{
-		StartByte:      startIndex,
-		OldEndByte:     oldEndIndex,
-		NewEndByte:     newEndIndex,
-		StartPosition:  startPosition,
-		OldEndPosition: oldEndPosition,
-		NewEndPosition: newEndPosition,
+	edit := elementEdit{
+		startOffset:  startIndex,
+		oldEndOffset: oldEndIndex,
+		newEndOffset: newEndIndex,
 	}
 
-	programContent.editTree(&ei)
+	programContent.editTree(&edit)
 }
 
 func (c *commonNode) getActions() []action {
@@ -117,6 +100,10 @@ func (c *commonNode) getAstNodeOfKindAtOffset(offset uint, kind string, _ bool) 
 	return nil, false
 }
 
+func (c *commonNode) getElement() *element {
+	return c.element
+}
+
 func (c *commonNode) getKind() string {
 	return c.kind
 }
@@ -126,11 +113,8 @@ func (c *commonNode) getId() int {
 }
 
 func (c *commonNode) getText() string {
-	return c.getTsNode().Utf8Text(c.getProgramText())
-}
-
-func (c *commonNode) getTsNode() *sitter.Node {
-	return c.node
+	element := c.getElement()
+	return string(c.getProgramText()[element.startOffset:element.endOffset])
 }
 
 func (c *commonNode) getProgramContent() *programContent {
@@ -146,9 +130,9 @@ func (c *commonNode) getProgramText() []byte {
 }
 
 func (c *commonNode) isUnderCursor(offset uint) bool {
-	tsNode := c.getTsNode()
+	tsNode := c.getElement()
 
-	return tsNode.StartByte() <= offset && offset < tsNode.EndByte()
+	return tsNode.getStartOffset() <= offset && offset < tsNode.getEndOffset()
 }
 
 func (c *commonNode) visit(exec func(nodeInterface) int) int {
@@ -164,8 +148,8 @@ func (c *childedCommonNode) visit(exec func(nodeInterface) int) int {
 }
 
 func (c *childedCommonNode) getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool) {
-	tsNode := c.getTsNode()
-	if tsNode.StartByte() > offset || offset >= tsNode.EndByte() {
+	tsNode := c.getElement()
+	if tsNode.getStartOffset() > offset || offset >= tsNode.getEndOffset() {
 		return nil, false
 	}
 
@@ -188,7 +172,7 @@ func (c *childedCommonNode) getAstNodeOfKindAtOffset(offset uint, kind string, f
 }
 
 func makeCommonNode(kind string, state walkState, node *sitter.Node) commonNode {
-	return commonNode{id: utils.GetNextId(ID_NAMESPACE), kind: kind, node: node, programContent: state.getProgramContent()}
+	return commonNode{id: utils.GetNextId(ID_NAMESPACE), kind: kind, element: elementFromNode(node), programContent: state.getProgramContent()}
 }
 
 func makeCommonChildedNode(kind string, state walkState, node *sitter.Node) childedCommonNode {

@@ -31,7 +31,7 @@ func BuildAst(content string) (*root, error) {
 	funcMap["true"] = visitBoolean
 	funcMap[walk.DUMMY_VISITOR_KIND] = visitUnhandled
 
-	astRoot := root{commonNode: commonNode{kind: "root", node: rootNode, programContent: &programContent{text: byteContent, tree: tree}}}
+	astRoot := root{commonNode: commonNode{kind: "root", element: elementFromNode(rootNode), programContent: &programContent{text: byteContent, tree: tree}}}
 	var ast walkState = &astRoot
 	astRoot.getProgramContent().root = ast.(*root)
 
