@@ -12,6 +12,11 @@ type action struct {
 	Perform func() []utils.TextEdit
 }
 
+type childedNodeInterface interface {
+	nodeInterface
+	getChildren() []nodeInterface
+}
+
 type editSession struct {
 	afterDocument  string
 	beforeDocument string

@@ -23,10 +23,6 @@ func (r *root) GetAllActions(offset uint) []action {
 	return actions
 }
 
-func (r *root) getAstNodeAtOffset(offset uint) (nodeInterface, bool) {
-	return r.getAstNodeOfKindAtOffset(offset, NULL_KIND, false)
-}
-
 func (r *root) getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool) {
 	if kind == NULL_KIND || r.getKind() == kind {
 		return r, true

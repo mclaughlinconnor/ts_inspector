@@ -47,13 +47,8 @@ func (b *binaryExpression) getActions() []action {
 	}
 }
 
-func (b *binaryExpression) getAstNodeAtOffset(offset uint) (nodeInterface, bool) {
-	return b.getAstNodeOfKindAtOffset(offset, NULL_KIND, false)
-}
-
 func (b *binaryExpression) getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool) {
-	node := b.getTsNode()
-	if node.StartByte() > offset || offset >= node.EndByte() {
+	if !b.isUnderCursor(offset) {
 		return nil, false
 	}
 
@@ -61,18 +56,15 @@ func (b *binaryExpression) getAstNodeOfKindAtOffset(offset uint, kind string, fi
 		return b, true
 	}
 
-	leftNode := b.Left.getTsNode()
-	if leftNode.StartByte() <= offset && offset < leftNode.EndByte() {
+	if b.Left.isUnderCursor(offset) {
 		return b.Left.getAstNodeOfKindAtOffset(offset, kind, first)
 	}
 
-	operatorNode := b.Operator.getTsNode()
-	if operatorNode.StartByte() <= offset && offset < operatorNode.EndByte() {
+	if b.Operator.isUnderCursor(offset) {
 		return b.Operator.getAstNodeOfKindAtOffset(offset, kind, first)
 	}
 
-	rightNode := b.Right.getTsNode()
-	if rightNode.StartByte() <= offset && offset < rightNode.EndByte() {
+	if b.Right.isUnderCursor(offset) {
 		return b.Right.getAstNodeOfKindAtOffset(offset, kind, first)
 	}
 
@@ -123,23 +115,6 @@ func (b *binaryExpression) visit(exec func(nodeInterface) int) int {
 	return VisitContinue
 }
 
-func (c *binaryExpressionOperator) getAstNodeAtOffset(offset uint) (nodeInterface, bool) {
-	return c.getAstNodeOfKindAtOffset(offset, NULL_KIND, false)
-}
-
-func (c *binaryExpressionOperator) getAstNodeOfKindAtOffset(offset uint, kind string, _ bool) (nodeInterface, bool) {
-	if kind != NULL_KIND && c.getKind() != kind {
-		return nil, false
-	}
-
-	node := c.getTsNode()
-	if node.StartByte() <= offset && offset < node.EndByte() {
-		return c, true
-	}
-
-	return nil, false
-}
-
 func (b *binaryExpressionOperator) getOperator() binaryExpressionOperatorType {
 	return b.getText()
 }
@@ -168,21 +143,6 @@ func (b *binaryExpressionOperator) invert() {
 		b.editText("&&")
 	}
 }
-
-func (b *binaryExpressionOperator) visit(exec func(nodeInterface) int) int {
-	if ret := exec(b); ret != VisitContinue {
-		if ret == VisitAbort {
-			return ret
-		}
-
-		if ret == VisitSkip {
-			return VisitContinue
-		}
-	}
-
-	return VisitContinue
-}
-
 
 func visitBinaryExpression(node *sitter.Node, state walkState, indexInParent uint, funcMap walk.VisitorFuncMap[walkState]) (walkState, error) {
 	binaryExpression := binaryExpression{commonNode: makeCommonNode("binaryExpression", state, node)}
@@ -214,15 +174,9 @@ func visitBinaryExpression(node *sitter.Node, state walkState, indexInParent uin
 		return nil, err
 	}
 
-	if left.getId() != state.getId() {
-		binaryExpression.Left = left
-	}
-
+	binaryExpression.Left = left
 	binaryExpression.Operator = operator
-
-	if right.getId() != state.getId() {
-		binaryExpression.Right = right
-	}
+	binaryExpression.Right = right
 
 	return &binaryExpression, nil
 }
