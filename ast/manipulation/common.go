@@ -9,15 +9,18 @@ import (
 
 type childedCommonNode struct {
 	commonNode
+	_self    childedNodeInterface
 	children []nodeInterface
 }
 
 type childedNodeInterface interface {
 	nodeInterface
 	getChildren() []nodeInterface
+	getImpl() childedNodeInterface
 }
 
 type commonNode struct {
+	_self          nodeInterface
 	element        *element
 	id             int
 	kind           string
@@ -52,12 +55,30 @@ type nodeInterface interface {
 	visit(func(nodeInterface) int) int
 }
 
+func (c *commonNode) applyAction(apply func()) ([]utils.TextEdit, error) {
+	err := c.getImpl().getProgramContent().beginEditSession()
+	if err != nil {
+		return []utils.TextEdit{}, err
+	}
+
+	apply()
+
+	edits := c.getImpl().getProgramContent().editSession.buildLspTextEdits()
+
+	err = c.getImpl().getProgramContent().dropEditSession()
+	if err != nil {
+		return []utils.TextEdit{}, err
+	}
+
+	return edits, nil
+}
+
 func (c *commonNode) beginEditSession() error {
 	if c.hasEditSession() {
 		return fmt.Errorf("tried to start an edit session when there is already an edit session in progress")
 	}
 
-	c.stagedElement = c.getElement().copy()
+	c.stagedElement = c.getImpl().getElement().copy()
 
 	return nil
 }
@@ -82,34 +103,16 @@ func (c *commonNode) dropEditSession() error {
 	return nil
 }
 
-func (c *commonNode) applyAction(apply func()) ([]utils.TextEdit, error) {
-	err := c.getProgramContent().beginEditSession()
-	if err != nil {
-		return []utils.TextEdit{}, err
-	}
-
-	apply()
-
-	edit := c.getProgramContent().editSession.buildLspTextEdit()
-
-	err = c.getProgramContent().dropEditSession()
-	if err != nil {
-		return []utils.TextEdit{}, err
-	}
-
-	return []utils.TextEdit{edit}, nil
-}
-
 func (c *commonNode) editText(newText string) {
-	node := c.getElement()
+	element := c.getImpl().getElement()
 
-	startIndex := node.getStartOffset()
+	startIndex := element.getStartOffset()
 
-	oldEndIndex := node.getEndOffset()
+	oldEndIndex := element.getEndOffset()
 	newEndIndex := startIndex + uint(len(newText))
 
-	programContent := c.getProgramContent()
-	programContent.editText(node.getStartOffset(), node.getEndOffset(), newText)
+	programContent := c.getImpl().getProgramContent()
+	programContent.editText(element.getStartOffset(), element.getEndOffset(), newText)
 
 	edit := elementEdit{
 		startOffset:  startIndex,
@@ -121,19 +124,24 @@ func (c *commonNode) editText(newText string) {
 }
 
 func (c *commonNode) getActions() []action {
-	return []action{}
+	impl := c.getImpl()
+	if impl == c {
+		return []action{}
+	}
+
+	return impl.getActions()
 }
 
 func (c *commonNode) getAstNodeAtOffset(offset uint) (nodeInterface, bool) {
-	return c.getAstNodeOfKindAtOffset(offset, NULL_KIND, false)
+	return c.getImpl().getAstNodeOfKindAtOffset(offset, NULL_KIND, false)
 }
 
 func (c *commonNode) getAstNodeOfKindAtOffset(offset uint, kind string, _ bool) (nodeInterface, bool) {
-	if kind != NULL_KIND && c.getKind() != kind {
+	if kind != NULL_KIND && c.getImpl().getKind() != kind {
 		return nil, false
 	}
 
-	if c.isUnderCursor(offset) {
+	if c.getImpl().isUnderCursor(offset) {
 		return c, true
 	}
 
@@ -156,9 +164,17 @@ func (c *commonNode) getId() int {
 	return c.id
 }
 
+func (c *commonNode) getImpl() nodeInterface {
+	if c._self == nil {
+		return c
+	}
+
+	return c._self
+}
+
 func (c *commonNode) getText() string {
-	element := c.getElement()
-	return c.getProgramText()[element.startOffset:element.endOffset]
+	element := c.getImpl().getElement()
+	return c.getImpl().getProgramText()[element.startOffset:element.endOffset]
 }
 
 func (c *commonNode) getProgramContent() *programContent {
@@ -166,11 +182,11 @@ func (c *commonNode) getProgramContent() *programContent {
 }
 
 func (c *commonNode) getProgramRoot() *root {
-	return c.getProgramContent().getRoot()
+	return c.getImpl().getProgramContent().getRoot()
 }
 
 func (c *commonNode) getProgramText() string {
-	return c.getProgramContent().getText()
+	return c.getImpl().getProgramContent().getText()
 }
 
 func (c *commonNode) hasEditSession() bool {
@@ -178,9 +194,9 @@ func (c *commonNode) hasEditSession() bool {
 }
 
 func (c *commonNode) isUnderCursor(offset uint) bool {
-	tsNode := c.getElement()
+	element := c.getImpl().getElement()
 
-	return tsNode.getStartOffset() <= offset && offset < tsNode.getEndOffset()
+	return element.getStartOffset() <= offset && offset < element.getEndOffset()
 }
 
 func (c *commonNode) setElement(element *element) {
@@ -199,21 +215,25 @@ func (c *childedCommonNode) getChildren() []nodeInterface {
 	return c.children
 }
 
+func (c *childedCommonNode) getImpl() childedNodeInterface {
+	return c._self
+}
+
 func (c *childedCommonNode) visit(exec func(nodeInterface) int) int {
 	return childedVisitor(c, exec)
 }
 
 func (c *childedCommonNode) getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool) {
-	tsNode := c.getElement()
+	tsNode := c.getImpl().getElement()
 	if tsNode.getStartOffset() > offset || offset >= tsNode.getEndOffset() {
 		return nil, false
 	}
 
-	if first && c.getKind() == kind {
+	if first && c.getImpl().getKind() == kind {
 		return c, true
 	}
 
-	for _, child := range c.getChildren() {
+	for _, child := range c.getImpl().getChildren() {
 		astNode, found := child.getAstNodeOfKindAtOffset(offset, kind, first)
 		if found {
 			return astNode, true
@@ -246,7 +266,7 @@ func childedVisitor(this childedNodeInterface, exec func(nodeInterface) int) int
 		}
 	}
 
-	for _, child := range this.getChildren() {
+	for _, child := range this.getImpl().getChildren() {
 		if ret := child.visit(exec); ret == VisitAbort {
 			return ret
 		}

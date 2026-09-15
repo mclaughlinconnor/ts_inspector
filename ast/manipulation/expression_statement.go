@@ -12,6 +12,7 @@ type expressionStatement struct {
 
 func visitExpressionStatement(node *sitter.Node, state walkState, indexInParent uint, funcMap walk.VisitorFuncMap[walkState]) (walkState, error) {
 	root := expressionStatement{childedCommonNode: makeCommonChildedNode("expressionStatement", state, node)}
+	root._self = &root
 
 	children := []nodeInterface{}
 

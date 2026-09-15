@@ -85,6 +85,7 @@ func (i *ifStatement) getAstNodeOfKindAtOffset(offset uint, kind string, first b
 
 func visitElseClause(node *sitter.Node, state walkState, _ uint, funcMap walk.VisitorFuncMap[walkState]) (walkState, error) {
 	elseClause := elseClause{commonNode: makeCommonNode("elseClause", state, node)}
+	elseClause._self = &elseClause
 
 	statementNode := node.NamedChild(0)
 	if statementNode == nil {
@@ -103,13 +104,14 @@ func visitElseClause(node *sitter.Node, state walkState, _ uint, funcMap walk.Vi
 
 func visitIfStatement(node *sitter.Node, state walkState, _ uint, funcMap walk.VisitorFuncMap[walkState]) (walkState, error) {
 	ifStatement := ifStatement{commonNode: makeCommonNode("ifStatement", state, node)}
+	ifStatement._self = &ifStatement
 
 	conditionNode := node.ChildByFieldName("condition")
 	if conditionNode == nil {
 		return nil, fmt.Errorf("invalid ast: missing condition")
 	}
 
-	consequenceNode := node.ChildByFieldName("condition")
+	consequenceNode := node.ChildByFieldName("consequence")
 	if consequenceNode == nil {
 		return nil, fmt.Errorf("invalid ast: missing consequence")
 	}

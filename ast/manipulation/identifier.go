@@ -12,6 +12,7 @@ type identifier struct {
 
 func visitIdentifier(node *sitter.Node, state walkState, indexInParent uint, funcMap walk.VisitorFuncMap[walkState]) (walkState, error) {
 	identifier := identifier{commonNode: makeCommonNode("identifier", state, node)}
+	identifier._self = &identifier
 
 	return &identifier, nil
 }

@@ -12,6 +12,7 @@ type unhandled struct {
 
 func visitUnhandled(node *sitter.Node, state walkState, indexInParent uint, funcMap walk.VisitorFuncMap[walkState]) (walkState, error) {
 	unhandled := unhandled{childedCommonNode: makeCommonChildedNode("unhandled", state, node)}
+	unhandled._self = &unhandled
 
 	children := []nodeInterface{}
 

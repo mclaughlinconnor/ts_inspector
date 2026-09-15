@@ -24,6 +24,7 @@ func (b *boolean) invert() {
 
 func visitBoolean(node *sitter.Node, state walkState, indexInParent uint, funcMap walk.VisitorFuncMap[walkState]) (walkState, error) {
 	boolean := boolean{commonNode: makeCommonNode("boolean", state, node)}
+	boolean._self = &boolean
 
 	return &boolean, nil
 }

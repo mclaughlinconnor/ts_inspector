@@ -12,6 +12,7 @@ type program struct {
 
 func visitProgram(node *sitter.Node, state walkState, indexInParent uint, funcMap walk.VisitorFuncMap[walkState]) (walkState, error) {
 	program := program{childedCommonNode: makeCommonChildedNode("program", state, node)}
+	program._self = &program
 
 	children := []nodeInterface{}
 
