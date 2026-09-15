@@ -50,29 +50,27 @@ func (e *editSession) buildLspTextEdits() []utils.TextEdit {
 			break
 		}
 
-		if afterDocument[i] == beforeDocument[i] {
-			continue
+		if afterDocument[i] != beforeDocument[i] {
+			break
 		}
 
 		editStart = i
-		break
 	}
 
 	afterEditEnd := lenAfterDocument - 1
 	beforeEditEnd := lenBeforeDocument - 1
 
-	for afterEditEnd >= 0 && beforeEditEnd >= 0 {
-		if afterDocument[afterEditEnd] == beforeDocument[beforeEditEnd] {
-			afterEditEnd--
-			beforeEditEnd--
-			continue
+	for afterEditEnd >= editStart && beforeEditEnd >= editStart {
+		if afterDocument[afterEditEnd] != beforeDocument[beforeEditEnd] {
+			break
 		}
 
-		afterEditEnd = min(afterEditEnd+1, lenAfterDocument-1)
-		beforeEditEnd = min(beforeEditEnd+1, lenBeforeDocument-1)
-
-		break
+		afterEditEnd--
+		beforeEditEnd--
 	}
+
+	afterEditEnd = min(afterEditEnd+1, lenAfterDocument-1)
+	beforeEditEnd = min(beforeEditEnd+1, lenBeforeDocument-1)
 
 	if afterEditEnd == -1 && beforeEditEnd == -1 {
 		return []utils.TextEdit{}
