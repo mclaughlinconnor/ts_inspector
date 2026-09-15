@@ -48,10 +48,12 @@ type nodeInterface interface {
 	getProgramContent() *programContent
 	getProgramRoot() *root
 	getProgramText() string
+	getStagedElement() *element
 	getText() string
 	hasEditSession() bool
 	isUnderCursor(offset uint) bool
 	setElement(element *element)
+	setStagedElement(element *element)
 	visit(func(nodeInterface) int) int
 }
 
@@ -78,7 +80,8 @@ func (c *commonNode) beginEditSession() error {
 		return fmt.Errorf("tried to start an edit session when there is already an edit session in progress")
 	}
 
-	c.stagedElement = c.getImpl().getElement().copy()
+	stagedElement := c.getImpl().getElement().copy()
+	c.getImpl().setStagedElement(stagedElement)
 
 	return nil
 }
@@ -88,7 +91,8 @@ func (c *commonNode) commitEditSession() error {
 		return fmt.Errorf("tried to commit an edit session when there is no edit session in progress")
 	}
 
-	c.element = c.stagedElement
+	element := c.getImpl().getElement()
+	c.setElement(element)
 
 	return nil
 }
@@ -98,7 +102,7 @@ func (c *commonNode) dropEditSession() error {
 		return fmt.Errorf("tried to drop an edit session when there is no edit session in progress")
 	}
 
-	c.stagedElement = nil
+	c.getImpl().setStagedElement(nil)
 
 	return nil
 }
@@ -144,8 +148,9 @@ func (c *commonNode) getAstNodeOfKindAtOffset(offset uint, kind string, _ bool) 
 }
 
 func (c *commonNode) getElement() *element {
-	if c.stagedElement != nil {
-		return c.stagedElement
+	stagedElement := c.getImpl().getStagedElement()
+	if stagedElement != nil {
+		return stagedElement
 	}
 
 	return c.element
@@ -184,8 +189,13 @@ func (c *commonNode) getProgramText() string {
 	return c.getImpl().getProgramContent().getText()
 }
 
+func (c *commonNode) getStagedElement() *element {
+	return c.stagedElement
+}
+
 func (c *commonNode) hasEditSession() bool {
-	return c.stagedElement != nil
+	stagedElement := c.getImpl().getStagedElement()
+	return stagedElement != nil
 }
 
 func (c *commonNode) isUnderCursor(offset uint) bool {
@@ -195,11 +205,15 @@ func (c *commonNode) isUnderCursor(offset uint) bool {
 }
 
 func (c *commonNode) setElement(element *element) {
-	if c.stagedElement != nil {
-		c.stagedElement = element
+	if c.getImpl().getStagedElement() != nil {
+		c.getImpl().setStagedElement(element)
 	}
 
 	c.element = element
+}
+
+func (c *commonNode) setStagedElement(element *element) {
+	c.stagedElement = element
 }
 
 func (c *commonNode) visit(exec func(nodeInterface) int) int {
