@@ -50,6 +50,7 @@ func GenerateActions(writer *utils.Writer, logger *log.Logger, state *parser.Sta
 	actions, err := actions.GetActions(state, file, context.ci.cursorOffset)
 	if err != nil {
 		logger.Printf("Error: %s", err)
+		return codeActions
 	}
 
 	for _, action := range actions {
@@ -57,6 +58,7 @@ func GenerateActions(writer *utils.Writer, logger *log.Logger, state *parser.Sta
 
 		if err != nil {
 			logger.Printf("Error: %s", err)
+			continue
 		}
 
 		if allowed && err == nil && ((edits != nil && len(*edits) > 0) || command != nil) {

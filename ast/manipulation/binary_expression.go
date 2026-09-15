@@ -43,7 +43,7 @@ func (b *binaryExpression) deMorgans() {
 
 func (b *binaryExpression) getActions() []action {
 	return []action{
-		{Name: "deMorgans", Perform: func() []utils.TextEdit { return b.applyAction(b.deMorgans) }},
+		{Name: "deMorgans", Perform: func() ([]utils.TextEdit, error) { return b.applyAction(b.deMorgans) }},
 	}
 }
 

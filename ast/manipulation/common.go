@@ -1,6 +1,7 @@
 package manipulation
 
 import (
+	"fmt"
 	"ts_inspector/utils"
 
 	sitter "github.com/tree-sitter/go-tree-sitter"
@@ -30,10 +31,10 @@ type invertableNodeInterface interface {
 }
 
 type nodeInterface interface {
-	applyAction(apply func()) []utils.TextEdit
-	// beginEditSession()
-	// commitEditSession()
-	// dropEditSession()
+	applyAction(apply func()) ([]utils.TextEdit, error)
+	beginEditSession() error
+	commitEditSession() error
+	dropEditSession() error
 	editText(newText string)
 	getAstNodeAtOffset(offset uint) (nodeInterface, bool)
 	getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool)
@@ -43,21 +44,59 @@ type nodeInterface interface {
 	getId() int
 	getProgramContent() *programContent
 	getProgramRoot() *root
-	getProgramText() []byte
+	getProgramText() string
 	getText() string
+	hasEditSession() bool
 	isUnderCursor(offset uint) bool
 	visit(func(nodeInterface) int) int
 }
 
-func (c *commonNode) applyAction(apply func()) []utils.TextEdit {
-	c.getProgramContent().beginEditSession()
-	defer c.getProgramContent().endEditSession()
+func (c *commonNode) beginEditSession() error {
+	if c.hasEditSession() {
+		return fmt.Errorf("tried to start an edit session when there is already an edit session in progress")
+	}
+
+	c.stagedElement = c.getElement().copy()
+
+	return nil
+}
+
+func (c *commonNode) commitEditSession() error {
+	if !c.hasEditSession() {
+		return fmt.Errorf("tried to commit an edit session when there is no edit session in progress")
+	}
+
+	c.element = c.stagedElement
+
+	return nil
+}
+
+func (c *commonNode) dropEditSession() error {
+	if !c.hasEditSession() {
+		return fmt.Errorf("tried to drop an edit session when there is no edit session in progress")
+	}
+
+	c.stagedElement = nil
+
+	return nil
+}
+
+func (c *commonNode) applyAction(apply func()) ([]utils.TextEdit, error) {
+	err := c.getProgramContent().beginEditSession()
+	if err != nil {
+		return []utils.TextEdit{}, err
+	}
 
 	apply()
 
 	edit := c.getProgramContent().editSession.buildLspTextEdit()
 
-	return []utils.TextEdit{edit}
+	err = c.getProgramContent().dropEditSession()
+	if err != nil {
+		return []utils.TextEdit{}, err
+	}
+
+	return []utils.TextEdit{edit}, nil
 }
 
 func (c *commonNode) editText(newText string) {
@@ -101,6 +140,10 @@ func (c *commonNode) getAstNodeOfKindAtOffset(offset uint, kind string, _ bool) 
 }
 
 func (c *commonNode) getElement() *element {
+	if c.stagedElement != nil {
+		return c.stagedElement
+	}
+
 	return c.element
 }
 
@@ -114,7 +157,7 @@ func (c *commonNode) getId() int {
 
 func (c *commonNode) getText() string {
 	element := c.getElement()
-	return string(c.getProgramText()[element.startOffset:element.endOffset])
+	return c.getProgramText()[element.startOffset:element.endOffset]
 }
 
 func (c *commonNode) getProgramContent() *programContent {
@@ -122,11 +165,15 @@ func (c *commonNode) getProgramContent() *programContent {
 }
 
 func (c *commonNode) getProgramRoot() *root {
-	return c.programContent.root
+	return c.getProgramContent().getRoot()
 }
 
-func (c *commonNode) getProgramText() []byte {
-	return c.programContent.text
+func (c *commonNode) getProgramText() string {
+	return c.getProgramContent().getText()
+}
+
+func (c *commonNode) hasEditSession() bool {
+	return c.stagedElement != nil
 }
 
 func (c *commonNode) isUnderCursor(offset uint) bool {

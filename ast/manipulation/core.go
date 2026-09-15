@@ -1,6 +1,7 @@
 package manipulation
 
 import (
+	"fmt"
 	"slices"
 	"ts_inspector/utils"
 
@@ -9,12 +10,12 @@ import (
 
 type action struct {
 	Name    string
-	Perform func() []utils.TextEdit
+	Perform func() ([]utils.TextEdit, error)
 }
 
 type editSession struct {
-	afterDocument  string
-	beforeDocument string
+	afterDocument  []byte
+	beforeDocument []byte
 }
 
 type element struct {
@@ -73,13 +74,20 @@ func (e *editSession) buildLspTextEdit() utils.TextEdit {
 		break
 	}
 
-	startPosition := utils.GetPositionForOffset2(beforeDocument, editStart)
-	endPosition := utils.GetPositionForOffset2(beforeDocument, beforeEditEnd)
+	beforeDocumentString := string(beforeDocument)
+	afterDocumentString := string(afterDocument)
+
+	startPosition := utils.GetPositionForOffset2(beforeDocumentString, editStart)
+	endPosition := utils.GetPositionForOffset2(beforeDocumentString, beforeEditEnd)
 
 	r := utils.Range{Start: startPosition, End: endPosition}
-	newText := afterDocument[editStart:afterEditEnd]
+	newText := afterDocumentString[editStart:afterEditEnd]
 
 	return utils.TextEdit{Range: r, NewText: newText}
+}
+
+func (e *element) copy() *element {
+	return &element{endOffset: e.getEndOffset(), startOffset: e.getStartOffset()}
 }
 
 func (e *element) edit(edit *elementEdit) {
@@ -88,7 +96,7 @@ func (e *element) edit(edit *elementEdit) {
 	}
 
 	difference := edit.newEndOffset - edit.oldEndOffset
-	if e.getStartOffset() >= edit.startOffset {
+	if e.getStartOffset() > edit.startOffset {
 		e.startOffset += difference
 	}
 
@@ -103,13 +111,74 @@ func (e *element) getStartOffset() uint {
 	return e.startOffset
 }
 
-func (p *programContent) beginEditSession() {
-	p.editSession = &editSession{beforeDocument: string(p.text)}
+func (p *programContent) beginEditSession() error {
+	if p.hasEditSession() {
+		return fmt.Errorf("tried to start an edit session when there is already an edit session in progress")
+	}
+
+	p.editSession = &editSession{afterDocument: slices.Clone(p.text), beforeDocument: slices.Clone(p.text)}
+
+	var err error = nil
+
+	p.root.visit(func(ni nodeInterface) int {
+		err = ni.beginEditSession()
+		if err != nil {
+			return VisitAbort
+		}
+
+		return VisitContinue
+	})
+
+	return err
+}
+
+func (p *programContent) commitEditSession() error {
+	if p.hasEditSession() {
+		return fmt.Errorf("tried to commit an edit session when there is no edit session in progress")
+	}
+
+	p.text = p.editSession.afterDocument
+	p.editSession = nil
+
+	var err error = nil
+
+	p.root.visit(func(ni nodeInterface) int {
+		err = ni.dropEditSession()
+		if err != nil {
+			return VisitAbort
+		}
+
+		return VisitContinue
+	})
+
+	return err
+}
+
+func (p *programContent) dropEditSession() error {
+	if !p.hasEditSession() {
+		return fmt.Errorf("tried to drop an edit session when there is no edit session in progress")
+	}
+
+	p.text = []byte(p.editSession.beforeDocument)
+	p.editSession = nil
+
+	var err error = nil
+
+	p.root.visit(func(ni nodeInterface) int {
+		err = ni.dropEditSession()
+		if err != nil {
+			return VisitAbort
+		}
+
+		return VisitContinue
+	})
+
+	return err
 }
 
 func (p *programContent) editText(startOffset uint, endOffset uint, replacementText string) {
 	p.text = slices.Replace(p.text, int(startOffset), int(endOffset), []byte(replacementText)...)
-	p.updateEditSessionSnapshot(string(p.text))
+	p.updateEditSessionSnapshot(p.text)
 }
 
 func (p *programContent) editTree(edit *elementEdit) {
@@ -119,12 +188,24 @@ func (p *programContent) editTree(edit *elementEdit) {
 	})
 }
 
-func (p *programContent) endEditSession() {
-	p.editSession = nil
+func (p *programContent) getText() string {
+	if p.editSession != nil {
+		return string(p.editSession.afterDocument)
+	}
+
+	return string(p.text)
 }
 
-func (p *programContent) updateEditSessionSnapshot(document string) {
-	p.editSession.afterDocument = document
+func (p *programContent) getRoot() *root {
+	return p.root
+}
+
+func (p *programContent) hasEditSession() bool {
+	return p.editSession != nil
+}
+
+func (p *programContent) updateEditSessionSnapshot(document []byte) {
+	p.editSession.afterDocument = slices.Clone(document)
 }
 
 func elementFromNode(node *sitter.Node) *element {
