@@ -44,6 +44,7 @@ func (b *binaryExpression) deMorgans() {
 func (b *binaryExpression) getActions() []action {
 	return []action{
 		{Name: "Apply deMorgans", Perform: func() ([]utils.TextEdit, error) { return b.applyAction(b.deMorgans) }},
+		{Name: "Remove redundant terms from binary expression", Perform: func() ([]utils.TextEdit, error) { return b.applyAction(b.removeRedundant) }},
 	}
 }
 
@@ -86,6 +87,48 @@ func (b *binaryExpression) invert() {
 	right, ok := b.Right.(invertableNodeInterface)
 	if ok {
 		right.invert()
+	}
+}
+
+func (b *binaryExpression) removeRedundant() {
+	operatorNode := b.Operator
+	operator := operatorNode.getOperator()
+
+	if operator != binaryExpressionOperatorEnum.OR && operator != binaryExpressionOperatorEnum.AND {
+		return
+	}
+
+	binaryLeft, leftIsBinary := b.Left.(*binaryExpression)
+	binaryRight, rightIsBinary := b.Right.(*binaryExpression)
+
+	if leftIsBinary {
+		binaryLeft.removeRedundant()
+	}
+
+	if rightIsBinary {
+		binaryRight.removeRedundant()
+	}
+
+	if leftIsBinary && rightIsBinary {
+		return
+	}
+
+	_, leftIsRedundant := b.Left.(*boolean)
+	_, rightIsRedundant := b.Right.(*boolean)
+
+	if leftIsRedundant && rightIsRedundant {
+		b.editText("")
+		return
+	}
+
+	if leftIsRedundant {
+		b.editText(b.Right.getText())
+		return
+	}
+
+	if rightIsRedundant {
+		b.editText(b.Left.getText())
+		return
 	}
 }
 
