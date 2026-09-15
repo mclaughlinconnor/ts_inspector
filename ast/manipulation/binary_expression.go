@@ -43,8 +43,9 @@ func (b *binaryExpression) deMorgans() {
 
 func (b *binaryExpression) getActions() []action {
 	return []action{
-		{Name: "Apply deMorgans", Perform: func() ([]utils.TextEdit, error) { return b.applyAction(b.deMorgans) }},
+		{Name: "Apply deMorgan's", Perform: func() ([]utils.TextEdit, error) { return b.applyAction(b.deMorgans) }},
 		{Name: "Remove redundant terms from binary expression", Perform: func() ([]utils.TextEdit, error) { return b.applyAction(b.removeRedundant) }},
+		{Name: "Invert condition", Perform: func() ([]utils.TextEdit, error) { return b.applyAction(b.invert) }},
 	}
 }
 
