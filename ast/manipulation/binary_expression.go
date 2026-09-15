@@ -61,11 +61,9 @@ func (b *binaryExpression) getAstNodeOfKindAtOffset(offset uint, kind string, fi
 		return b, true
 	}
 
-	if b.Left != nil {
-		leftNode := b.Left.getTsNode()
-		if leftNode.StartByte() <= offset && offset < leftNode.EndByte() {
-			return b.Left.getAstNodeOfKindAtOffset(offset, kind, first)
-		}
+	leftNode := b.Left.getTsNode()
+	if leftNode.StartByte() <= offset && offset < leftNode.EndByte() {
+		return b.Left.getAstNodeOfKindAtOffset(offset, kind, first)
 	}
 
 	operatorNode := b.Operator.getTsNode()
@@ -73,11 +71,9 @@ func (b *binaryExpression) getAstNodeOfKindAtOffset(offset uint, kind string, fi
 		return b.Operator.getAstNodeOfKindAtOffset(offset, kind, first)
 	}
 
-	if b.Right != nil {
-		rightNode := b.Right.getTsNode()
-		if rightNode.StartByte() <= offset && offset < rightNode.EndByte() {
-			return b.Right.getAstNodeOfKindAtOffset(offset, kind, first)
-		}
+	rightNode := b.Right.getTsNode()
+	if rightNode.StartByte() <= offset && offset < rightNode.EndByte() {
+		return b.Right.getAstNodeOfKindAtOffset(offset, kind, first)
 	}
 
 	if kind == NULL_KIND || b.getKind() == kind {
