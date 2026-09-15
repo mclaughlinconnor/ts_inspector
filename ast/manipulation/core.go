@@ -12,36 +12,9 @@ type action struct {
 	Perform func() []utils.TextEdit
 }
 
-type childedNodeInterface interface {
-	nodeInterface
-	getChildren() []nodeInterface
-}
-
 type editSession struct {
 	afterDocument  string
 	beforeDocument string
-}
-
-type invertableNodeInterface interface {
-	nodeInterface
-	invert()
-}
-
-type nodeInterface interface {
-	applyAction(apply func()) []utils.TextEdit
-	editText(newText string)
-	getAstNodeAtOffset(offset uint) (nodeInterface, bool)
-	getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool)
-	getActions() []action
-	getKind() string
-	getId() int
-	getProgramContent() *programContent
-	getProgramRoot() *root
-	getProgramText() []byte
-	getText() string
-	getTsNode() *sitter.Node
-	isUnderCursor(offset uint) bool
-	visit(func(nodeInterface) int) int
 }
 
 type programContent struct {

@@ -7,6 +7,16 @@ import (
 	sitter "github.com/tree-sitter/go-tree-sitter"
 )
 
+type childedCommonNode struct {
+	commonNode
+	children []nodeInterface
+}
+
+type childedNodeInterface interface {
+	nodeInterface
+	getChildren() []nodeInterface
+}
+
 type commonNode struct {
 	id             int
 	kind           string
@@ -14,9 +24,26 @@ type commonNode struct {
 	programContent *programContent
 }
 
-type childedCommonNode struct {
-	commonNode
-	children []nodeInterface
+type invertableNodeInterface interface {
+	nodeInterface
+	invert()
+}
+
+type nodeInterface interface {
+	applyAction(apply func()) []utils.TextEdit
+	editText(newText string)
+	getAstNodeAtOffset(offset uint) (nodeInterface, bool)
+	getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool)
+	getActions() []action
+	getKind() string
+	getId() int
+	getProgramContent() *programContent
+	getProgramRoot() *root
+	getProgramText() []byte
+	getText() string
+	getTsNode() *sitter.Node
+	isUnderCursor(offset uint) bool
+	visit(func(nodeInterface) int) int
 }
 
 func (c *commonNode) applyAction(apply func()) []utils.TextEdit {
