@@ -36,7 +36,7 @@ type programContent struct {
 	tree        *sitter.Tree
 }
 
-func (e *editSession) buildLspTextEdit() utils.TextEdit {
+func (e *editSession) buildLspTextEdits() []utils.TextEdit {
 	editStart := 0
 
 	afterDocument := e.afterDocument
@@ -74,6 +74,10 @@ func (e *editSession) buildLspTextEdit() utils.TextEdit {
 		break
 	}
 
+	if afterEditEnd == -1 && beforeEditEnd == -1 {
+		return []utils.TextEdit{}
+	}
+
 	beforeDocumentString := string(beforeDocument)
 	afterDocumentString := string(afterDocument)
 
@@ -83,7 +87,7 @@ func (e *editSession) buildLspTextEdit() utils.TextEdit {
 	r := utils.Range{Start: startPosition, End: endPosition}
 	newText := afterDocumentString[editStart:afterEditEnd]
 
-	return utils.TextEdit{Range: r, NewText: newText}
+	return []utils.TextEdit{{Range: r, NewText: newText}}
 }
 
 func (e *element) copy() *element {
