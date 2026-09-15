@@ -615,16 +615,20 @@ func handleVariableDeclaration(state *State, node *sitter.Node, content []byte) 
 	nameNode := declarator.ChildByFieldName("name")
 	valueNode := declarator.ChildByFieldName("value")
 
-	if valueNode == nil || nameNode == nil {
-		return errors.New("valueNode or nameNode unexpectedly nil")
+	if nameNode == nil {
+		return errors.New("nameNode unexpectedly nil")
 	}
 
 	name := nameNode.Utf8Text(content)
-	value := valueNode.Utf8Text(content)
 
-	err := build(state, valueNode, content)
-	if err != nil {
-		return err
+	var value string = ""
+	if valueNode != nil {
+		value = valueNode.Utf8Text(content)
+
+		err := build(state, valueNode, content)
+		if err != nil {
+			return err
+		}
 	}
 
 	state.AddInstruction(InstructionAssign, name, node, value, content)
