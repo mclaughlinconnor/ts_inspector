@@ -67,7 +67,7 @@ func (i *ifStatement) getActions() []action {
 	actions := []action{}
 
 	if i.alternative != nil && !i.alternative.isElseIf() {
-		actions = append(actions, action{Name: "flipElse", Perform: func() ([]utils.TextEdit, error) { return i.applyAction(i.flipElse) }})
+		actions = append(actions, action{Name: "Flip consequence and alternative branches", Perform: func() ([]utils.TextEdit, error) { return i.applyAction(i.flipElse) }})
 	}
 
 	return actions
