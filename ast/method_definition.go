@@ -91,11 +91,11 @@ func ExtractDefinitions(content []byte) ([]MethodDefinitionParseResult, error) {
 	funcMap := walk.NewVisitorFuncsMap[[]MethodDefinitionParseResult]()
 
 	methodHandler := func(node *sitter.Node, state []MethodDefinitionParseResult, indexInParent uint, _ walk.VisitorFuncMap[[]MethodDefinitionParseResult]) ([]MethodDefinitionParseResult, error) {
-		result := MethodDefinitionParseResult{}
-
-		result.Range = utils.Range{Start: utils.LspPositionFromTsPosition(node.StartPosition()), End: utils.LspPositionFromTsPosition(node.EndPosition())}
-		result.Type = node.Kind()
-		result.DefinitionNode = node
+		result := MethodDefinitionParseResult{
+			Range:          utils.Range{Start: utils.LspPositionFromTsPosition(node.StartPosition()), End: utils.LspPositionFromTsPosition(node.EndPosition())},
+			Type:           node.Kind(),
+			DefinitionNode: node,
+		}
 
 		possibleSemiOrComment := node.NextSibling()
 		for {

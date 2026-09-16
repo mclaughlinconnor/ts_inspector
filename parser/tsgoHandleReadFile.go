@@ -13,8 +13,8 @@ func tsgoHandleReadFileResponse(tsgo *TsGo, request ReadFileRequest, content *Co
 	}
 
 	response := ReadFileResponse{
-		TsGoResponse: TsGoResponse{RPC: "2.0", ID: request.ID},
-		Result:       content,
+		RPC: "2.0", ID: request.ID,
+		Result: content,
 	}
 
 	utils.WriteResponse(tsgo.stdin, response)

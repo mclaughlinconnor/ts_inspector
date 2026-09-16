@@ -10,8 +10,8 @@ import (
 
 func tsgoHandleGetAccessibleEntriesResponse(t *TsGo, request GetAccessibleEntriesRequest, entries *Entries) {
 	response := GetAcceessibleEntriesResponse{
-		TsGoResponse: TsGoResponse{RPC: "2.0", ID: request.ID},
-		Result:       entries,
+		RPC: "2.0", ID: request.ID,
+		Result: entries,
 	}
 
 	utils.WriteResponse(t.stdin, response)

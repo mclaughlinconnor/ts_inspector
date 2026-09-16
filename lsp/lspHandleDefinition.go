@@ -50,7 +50,7 @@ func buildDefinitionContext(writer *utils.Writer, logger *log.Logger, state *par
 }
 
 func definitionsReponse(context *definitionContext) {
-	utils.WriteResponse(context.writer, interfaces.DefinitionResponse{Result: context.locations, ResponseMessage: interfaces.ResponseMessage{ID: &context.request.ID, RPC: "2.0"}})
+	utils.WriteResponse(context.writer, interfaces.DefinitionResponse{Result: context.locations, ID: &context.request.ID, RPC: "2.0"})
 }
 
 func logErrorDefinitionsResponse(context *definitionContext, err error) {

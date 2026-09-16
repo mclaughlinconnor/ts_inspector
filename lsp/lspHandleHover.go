@@ -57,7 +57,7 @@ THING:
 	}
 
 	hover := interfaces.Hover{Contents: interfaces.MarkupContent{Kind: interfaces.MarkupKind.Markdown, Value: strings.Join(context.sb, "\n---\n")}}
-	utils.WriteResponse(writer, interfaces.HoverResponse{Result: hover, ResponseMessage: interfaces.ResponseMessage{ID: &request.ID, RPC: "2.0"}})
+	utils.WriteResponse(writer, interfaces.HoverResponse{Result: hover, ID: &request.ID, RPC: "2.0"})
 }
 
 func buildAttrHoverDocumentation(context *hoverContext, thing *parser.Class, selector *ast.Selector) bool {

@@ -177,8 +177,9 @@ func parseReviewMarkdown(root *sitter.Node, content []byte) (Content, error) {
 		return Content{}, fmt.Errorf("invalid markdown: unexpected %v, expected 'paragraph'", firstParagraph.Kind())
 	}
 
-	findingContent := Content{}
-	findingContent.Summary = strings.ReplaceAll(string(firstParagraph.Utf8Text(content)), "\n", " ")
+	findingContent := Content{
+		Summary: strings.ReplaceAll(string(firstParagraph.Utf8Text(content)), "\n", " "),
+	}
 
 	agentParagraph := root.NamedChild(root.NamedChildCount() - 1)
 	agentParagraphContent := agentParagraph.Utf8Text(content)

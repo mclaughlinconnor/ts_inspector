@@ -92,10 +92,7 @@ func GetEmbeddingBatch(texts []string) ([][]float32, error) {
 	embeddingIndex := 0
 
 	for i := 0; i < len(allTokens); i += EMBEDDING_BATCH_SIZE {
-		end := i + EMBEDDING_BATCH_SIZE
-		if end > len(allTokens) {
-			end = len(allTokens)
-		}
+		end := min(i+EMBEDDING_BATCH_SIZE, len(allTokens))
 
 		for embeddings[embeddingIndex] != nil {
 			embeddingIndex++
@@ -197,7 +194,7 @@ func GetEmbeddingsFromTokens(allTokens [][]llama.Token) ([][]float32, error) {
 	embeddings := make([][]float32, len(allTokens))
 	embeddingDimensions := llama.ModelNEmbd(model)
 
-	for i := 0; i < len(allTokens); i++ {
+	for i := range allTokens {
 		embedding, err := llama.GetEmbeddingsSeq(context, llama.SeqId(i), embeddingDimensions)
 		if err != nil {
 			return [][]float32{}, err

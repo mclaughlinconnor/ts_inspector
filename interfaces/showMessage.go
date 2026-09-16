@@ -29,7 +29,7 @@ type ShowMessageNotification struct {
 
 func BuildMessageNotification(message string, messageType TMessageType) *ShowMessageNotification {
 	return &ShowMessageNotification{
-		Notification: Notification{RPC: "2.0", Method: "window/showMessage"},
-		Params:       ShowMessageParams{Type: messageType, Message: message},
+		RPC: "2.0", Method: "window/showMessage",
+		Params: ShowMessageParams{Type: messageType, Message: message},
 	}
 }

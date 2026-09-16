@@ -31,11 +31,9 @@ func lspHandleExecuteCommand(writer *utils.Writer, logger *log.Logger, state *pa
 	utils.WriteResponse(
 		writer,
 		interfaces.ApplyWorkspaceEditRequest{
-			RequestMessage: interfaces.RequestMessage{
-				RPC:    "2.0",
-				ID:     utils.GetNextIdGlobal(),
-				Method: "workspace/applyEdit",
-			},
+			RPC:    "2.0",
+			ID:     utils.GetNextIdGlobal(),
+			Method: "workspace/applyEdit",
 			Params: interfaces.ApplyWorkspaceEditParams{
 				Label: command.Title,
 				Edit:  interfaces.WorkspaceEdit{Changes: changes},

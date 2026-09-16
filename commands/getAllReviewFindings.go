@@ -28,8 +28,8 @@ func GetReviewFindings(writer *utils.Writer, state *parser.State, args *any) (ma
 	}
 
 	response := interfaces.ShowLocationsNotification{
-		Notification: interfaces.Notification{RPC: "2.0", Method: "ts_inspector/showLocations"},
-		Params:       locations,
+		RPC: "2.0", Method: "ts_inspector/showLocations",
+		Params: locations,
 	}
 
 	utils.WriteResponse(writer, response)

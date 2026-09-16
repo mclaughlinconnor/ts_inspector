@@ -14,11 +14,9 @@ func lspCreateProgressToken(writer *utils.Writer) (*interfaces.ProgressToken, bo
 	token := utils.GetNextIdGlobal()
 
 	request := interfaces.WorkDoneProgressCreateRequest{
-		RequestMessage: interfaces.RequestMessage{
-			RPC:    "2.0",
-			ID:     id,
-			Method: "window/workDoneProgress/create",
-		},
+		RPC:    "2.0",
+		ID:     id,
+		Method: "window/workDoneProgress/create",
 		Params: interfaces.WorkDoneProgressCreateParams{
 			Token: token,
 		},
@@ -138,8 +136,8 @@ func lspEndProgress(writer *utils.Writer, progressToken *interfaces.ProgressToke
 
 func sendProgressNotification(writer *utils.Writer, progressToken interfaces.ProgressToken, progress interfaces.WorkDoneProgress) {
 	notification := interfaces.ProgressNotification{
-		Notification: interfaces.Notification{RPC: "2.0", Method: "$/progress"},
-		Params:       interfaces.ProgressParams{Token: progressToken, Value: progress},
+		RPC: "2.0", Method: "$/progress",
+		Params: interfaces.ProgressParams{Token: progressToken, Value: progress},
 	}
 
 	utils.WriteResponse(writer, notification)

@@ -76,10 +76,8 @@ func GoToDeclaringModule(writer *utils.Writer, state *parser.State, args *any) (
 		selection := utils.Range{Start: position, End: position}
 
 		notification := interfaces.ShowDocumentNotification{
-			Notification: interfaces.Notification{
-				RPC:    "2.0",
-				Method: "window/showDocument",
-			},
+			RPC:    "2.0",
+			Method: "window/showDocument",
 			Params: interfaces.ShowDocumentParams{Uri: declaringUri, Selection: &selection},
 		}
 

@@ -10,10 +10,8 @@ import (
 
 func newCodeActionResponse(id int, codeActions []interfaces.CodeAction) interfaces.CodeActionRepsonse {
 	return interfaces.CodeActionRepsonse{
-		ResponseMessage: interfaces.ResponseMessage{
-			RPC: "2.0",
-			ID:  &id,
-		},
+		RPC:    "2.0",
+		ID:     &id,
 		Result: codeActions,
 	}
 }

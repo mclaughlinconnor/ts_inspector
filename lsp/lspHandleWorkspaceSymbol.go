@@ -10,10 +10,8 @@ import (
 
 func newWorkspaceSymbolResponse(id int, symbols []interfaces.WorkspaceSymbol) interfaces.WorkspaceSymbolResponse {
 	return interfaces.WorkspaceSymbolResponse{
-		ResponseMessage: interfaces.ResponseMessage{
-			RPC: "2.0",
-			ID:  &id,
-		},
+		RPC:    "2.0",
+		ID:     &id,
 		Result: symbols,
 	}
 }

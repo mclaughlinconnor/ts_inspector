@@ -57,10 +57,8 @@ func AnalysisSeverityFromTsGoCategory(category *parser.Category) int {
 
 func NewDiagnosticNotification(uri string, version int, diagnostics []interfaces.Diagnostic) interfaces.PublishDiagnosticsNotification {
 	return interfaces.PublishDiagnosticsNotification{
-		Notification: interfaces.Notification{
-			RPC:    "2.0",
-			Method: "textDocument/publishDiagnostics",
-		},
+		RPC:    "2.0",
+		Method: "textDocument/publishDiagnostics",
 		Params: interfaces.PublishDiagnosticsParams{Uri: uri, Version: &version, Diagnostics: diagnostics},
 	}
 }

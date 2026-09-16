@@ -64,7 +64,7 @@ func lspHandleCompletion(writer *utils.Writer, logger *log.Logger, state *parser
 		}
 	}
 
-	utils.WriteResponse(writer, interfaces.CompletionResponse{Result: context.items, ResponseMessage: interfaces.ResponseMessage{ID: &request.ID, RPC: "2.0"}})
+	utils.WriteResponse(writer, interfaces.CompletionResponse{Result: context.items, ID: &request.ID, RPC: "2.0"})
 }
 
 func buildCompletionAttribute(context *completionContext, class *parser.Class) error {

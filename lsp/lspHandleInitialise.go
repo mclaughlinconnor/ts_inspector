@@ -20,10 +20,8 @@ func newInitializeResponse(id int) interfaces.InitializeResponse {
 	labelDetailsSupport := true
 
 	return interfaces.InitializeResponse{
-		ResponseMessage: interfaces.ResponseMessage{
-			RPC: "2.0",
-			ID:  &id,
-		},
+		RPC: "2.0",
+		ID:  &id,
 		Result: interfaces.InitializeResult{
 			Capabilities: interfaces.ServerCapabilities{
 				CodeActionProvider: true,

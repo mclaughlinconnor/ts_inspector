@@ -158,7 +158,7 @@ func (t *TsGo) GetSemanticDiagnostics(uri string) *DiagnosticResponse {
 
 	id := utils.GetNextStringIdGlobal()
 	request := GetDiagnosticsRequest{
-		TsGoRequest: TsGoRequest{RPC: "2.0", ID: id, Method: "getSemanticDiagnostics"},
+		RPC: "2.0", ID: id, Method: "getSemanticDiagnostics",
 		Params: GetDiagnosticsParams{
 			Snapshot: t.snapshotHandle,
 			Project:  t.projectHandle,
@@ -189,7 +189,7 @@ func (t *TsGo) GetSymbolAtPosition(uri string, offset int) *Symbol {
 
 	id := utils.GetNextStringIdGlobal()
 	request := GetSymbolAtPositionRequest{
-		TsGoRequest: TsGoRequest{RPC: "2.0", ID: id, Method: "getSymbolAtPosition"},
+		RPC: "2.0", ID: id, Method: "getSymbolAtPosition",
 		Params: GetSymbolAtPositionParams{
 			File:     DocumentIdentifier{URI: uri},
 			Position: uint32(offset),
@@ -217,7 +217,7 @@ func (t *TsGo) GetTypeOfSymbol(symbol SymbolID) *TypeResponse {
 	defer t.opLock.Unlock()
 	id := utils.GetNextStringIdGlobal()
 	request := GetTypeOfSymbolRequest{
-		TsGoRequest: TsGoRequest{RPC: "2.0", ID: id, Method: "getTypeOfSymbol"},
+		RPC: "2.0", ID: id, Method: "getTypeOfSymbol",
 		Params: GetTypeOfSymbolParams{
 			Project:  t.projectHandle,
 			Snapshot: t.snapshotHandle,
@@ -245,7 +245,7 @@ func (t *TsGo) GetTypeAtPosition(uri string, offset int) *TypeResponse {
 
 	id := utils.GetNextStringIdGlobal()
 	request := GetTypeAtPositionParamsRequest{
-		TsGoRequest: TsGoRequest{RPC: "2.0", ID: id, Method: "getTypeAtPosition"},
+		RPC: "2.0", ID: id, Method: "getTypeAtPosition",
 		Params: GetTypeAtPositionParams{
 			Project:  t.projectHandle,
 			Snapshot: t.snapshotHandle,
@@ -294,7 +294,7 @@ func (t *TsGo) TypeToString(ttype TypeID) *TypeToStringResponse {
 	defer t.opLock.Unlock()
 	id := utils.GetNextStringIdGlobal()
 	request := TypeToTypeNodeRequest{
-		TsGoRequest: TsGoRequest{RPC: "2.0", ID: id, Method: "typeToString"},
+		RPC: "2.0", ID: id, Method: "typeToString",
 		Params: TypeToTypeNodeParams{
 			Flags:    TypeFormatFlagsUseAliasDefinedOutsideCurrentScope | TypeFormatFlagsUseInstantiationExpressions,
 			Project:  t.projectHandle,
@@ -351,7 +351,7 @@ func (t *TsGo) updateSnapshotLocked(tsconfig *string, changes []DocumentIdentifi
 	}
 
 	request := UpdateSnapshotRequest{
-		TsGoRequest: TsGoRequest{RPC: "2.0", ID: id, Method: "updateSnapshot"},
+		RPC: "2.0", ID: id, Method: "updateSnapshot",
 		Params: UpdateSnapshotParams{
 			OpenProject:  tsconfig,
 			OpenProjects: openProjects,
@@ -395,7 +395,7 @@ func (t *TsGo) GetNodePosition(handle NodeHandle) (pos int, end int, err error) 
 
 	id := utils.GetNextStringIdGlobal()
 	request := GetSourceFileRequest{
-		TsGoRequest: TsGoRequest{RPC: "2.0", ID: id, Method: "getSourceFile"},
+		RPC: "2.0", ID: id, Method: "getSourceFile",
 		Params: GetSourceFileParams{
 			Snapshot: t.snapshotHandle,
 			Project:  t.projectHandle,

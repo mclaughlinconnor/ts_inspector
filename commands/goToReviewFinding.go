@@ -50,10 +50,8 @@ func GoToReviewFinding(writer *utils.Writer, state *parser.State, args *any) (ma
 
 		takeFocus := true
 		notification := interfaces.ShowDocumentNotification{
-			Notification: interfaces.Notification{
-				RPC:    "2.0",
-				Method: "window/showDocument",
-			},
+			RPC:    "2.0",
+			Method: "window/showDocument",
 			Params: interfaces.ShowDocumentParams{TakeFocus: &takeFocus, Uri: parser.UriFromFilename(finding.FilePath)},
 		}
 

@@ -149,11 +149,11 @@ func handleMessage(logger *log.Logger, writer *utils.Writer, state *parser.State
 }
 
 func emptyResponse(writer *utils.Writer, requestId int) {
-	utils.WriteResponse(writer, interfaces.EmptyResponse{Result: nil, ResponseMessage: interfaces.ResponseMessage{ID: &requestId, RPC: "2.0"}})
+	utils.WriteResponse(writer, interfaces.EmptyResponse{Result: nil, ID: &requestId, RPC: "2.0"})
 }
 
 func emptyArrayResponse(writer *utils.Writer, requestId int) {
-	utils.WriteResponse(writer, interfaces.EmptyArrayResponse{Result: []any{}, ResponseMessage: interfaces.ResponseMessage{ID: &requestId, RPC: "2.0"}})
+	utils.WriteResponse(writer, interfaces.EmptyArrayResponse{Result: []any{}, ID: &requestId, RPC: "2.0"})
 }
 
 func logError(writer *utils.Writer, logger *log.Logger, err error) {

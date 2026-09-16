@@ -60,11 +60,11 @@ func getConfigPath() (string, error) {
 }
 
 func getDefaultConfig() Config {
-	config := Config{}
-
-	config.Concurrency = false
-	config.Debug = false
-	config.DelayStart = false
+	config := Config{
+		Concurrency: false,
+		Debug:       false,
+		DelayStart:  false,
+	}
 	config.Indexing.ExperiementalParallelInitialIndexing = false
 	config.LSP.Enable = true
 	config.LogsPath = "/home/connor/Development/ts_inspector/logs/"

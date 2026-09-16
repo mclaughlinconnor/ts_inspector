@@ -13,8 +13,8 @@ func tsgoHandleFileExistsResponse(tsgo *TsGo, request FileExistsRequest, found *
 	}
 
 	response := FileExistsResponse{
-		TsGoResponse: TsGoResponse{RPC: "2.0", ID: request.ID},
-		Result:       found,
+		RPC: "2.0", ID: request.ID,
+		Result: found,
 	}
 
 	utils.WriteResponse(tsgo.stdin, response)
