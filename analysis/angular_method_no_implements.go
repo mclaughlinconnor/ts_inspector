@@ -1,12 +1,13 @@
 package analysis
 
 import (
+	"ts_inspector/interfaces"
 	"ts_inspector/parser"
 )
 
-func angularMethodNoImplements(_ *parser.State, file *parser.File) ([]Analysis, error) {
-	return analyseClasses(file, func(class *parser.Class) ([]Analysis, error) {
-		analyses := []Analysis{}
+func angularMethodNoImplements(_ *parser.State, file *parser.File) ([]interfaces.Analysis, error) {
+	return analyseClasses(file, func(class *parser.Class) ([]interfaces.Analysis, error) {
+		analyses := []interfaces.Analysis{}
 
 	OUTER:
 		for _, definition := range class.Snapshot().Definitions.All() {
@@ -20,7 +21,7 @@ func angularMethodNoImplements(_ *parser.State, file *parser.File) ([]Analysis, 
 			}
 
 			message := "Angular method declared on class without relevant interface implementation clause"
-			analyses = append(analyses, newAnalysisHighlightName(definition.Node, class, AnalysisSeverity.Error, "angular-method-no-implements", message))
+			analyses = append(analyses, newAnalysisHighlightName(definition.Node, class, interfaces.AnalysisSeverity.Error, "angular-method-no-implements", message))
 		}
 
 		return analyses, nil

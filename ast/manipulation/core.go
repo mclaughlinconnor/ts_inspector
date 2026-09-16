@@ -31,7 +31,7 @@ type elementEdit struct {
 
 type programContent struct {
 	editSession *editSession
-	root        *root
+	root        *Ast
 	text        []byte
 	tree        *sitter.Tree
 }
@@ -199,7 +199,7 @@ func (p *programContent) getText() string {
 	return string(p.text)
 }
 
-func (p *programContent) getRoot() *root {
+func (p *programContent) getRoot() *Ast {
 	return p.root
 }
 

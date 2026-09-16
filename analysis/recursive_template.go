@@ -1,12 +1,13 @@
 package analysis
 
 import (
+	"ts_inspector/interfaces"
 	"ts_inspector/parser"
 	"ts_inspector/utils"
 )
 
-func recursiveTemplate(_ *parser.State, file *parser.File) ([]Analysis, error) {
-	analyses := []Analysis{}
+func recursiveTemplate(_ *parser.State, file *parser.File) ([]interfaces.Analysis, error) {
+	analyses := []interfaces.Analysis{}
 
 	if file.Snapshot().Filetype != "pug" {
 		return analyses, nil
@@ -28,7 +29,7 @@ func recursiveTemplate(_ *parser.State, file *parser.File) ([]Analysis, error) {
 				endPosition := utils.LspPositionFromTsPosition(u.Node.EndPosition())
 
 				r := utils.Range{Start: startPosition, End: endPosition}
-				analyses = append(analyses, newAnalysis("angular-recursive-component", r, AnalysisSeverity.Information, message, nil))
+				analyses = append(analyses, interfaces.NewAnalysis("angular-recursive-component", r, interfaces.AnalysisSeverity.Information, message, nil))
 			}
 		}
 	}

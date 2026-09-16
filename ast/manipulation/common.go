@@ -2,6 +2,7 @@ package manipulation
 
 import (
 	"fmt"
+	"ts_inspector/interfaces"
 	"ts_inspector/utils"
 
 	sitter "github.com/tree-sitter/go-tree-sitter"
@@ -39,6 +40,7 @@ type nodeInterface interface {
 	commitEditSession() error
 	dropEditSession() error
 	editText(newText string)
+	getAnalysis() []interfaces.Analysis
 	getAstNodeAtOffset(offset uint) (nodeInterface, bool)
 	getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool)
 	getActions() []action
@@ -46,8 +48,9 @@ type nodeInterface interface {
 	getKind() string
 	getId() int
 	getProgramContent() *programContent
-	getProgramRoot() *root
+	getProgramRoot() *Ast
 	getProgramText() string
+	getRange() utils.Range
 	getStagedElement() *element
 	getText() string
 	hasEditSession() bool
@@ -131,6 +134,10 @@ func (c *commonNode) getActions() []action {
 	return []action{}
 }
 
+func (c *commonNode) getAnalysis() []interfaces.Analysis {
+	return []interfaces.Analysis{}
+}
+
 func (c *commonNode) getAstNodeAtOffset(offset uint) (nodeInterface, bool) {
 	return c.getImpl().getAstNodeOfKindAtOffset(offset, NULL_KIND, false)
 }
@@ -172,6 +179,15 @@ func (c *commonNode) getImpl() nodeInterface {
 	return c._self
 }
 
+func (c *commonNode) getRange() utils.Range {
+	content := c.getImpl().getProgramText()
+
+	start := utils.GetPositionForOffset(content, c.getImpl().getElement().getStartOffset())
+	end := utils.GetPositionForOffset(content, c.getImpl().getElement().getEndOffset())
+
+	return utils.Range{End: end, Start: start}
+}
+
 func (c *commonNode) getText() string {
 	element := c.getImpl().getElement()
 	return c.getImpl().getProgramText()[element.startOffset:element.endOffset]
@@ -181,7 +197,7 @@ func (c *commonNode) getProgramContent() *programContent {
 	return c.programContent
 }
 
-func (c *commonNode) getProgramRoot() *root {
+func (c *commonNode) getProgramRoot() *Ast {
 	return c.getImpl().getProgramContent().getRoot()
 }
 

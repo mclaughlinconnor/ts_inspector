@@ -3,19 +3,20 @@ package analysis
 import (
 	"fmt"
 	"ts_inspector/analysis/cfg"
+	"ts_inspector/interfaces"
 	"ts_inspector/parser"
 	"ts_inspector/utils"
 )
 
-func debug(_ *parser.State, file *parser.File) ([]Analysis, error) {
-	analyses := []Analysis{}
+func debug(_ *parser.State, file *parser.File) ([]interfaces.Analysis, error) {
+	analyses := []interfaces.Analysis{}
 
-	analyses = append(analyses, analyseClasses(file, func(class *parser.Class) ([]Analysis, error) {
-		analyses := []Analysis{}
+	analyses = append(analyses, analyseClasses(file, func(class *parser.Class) ([]interfaces.Analysis, error) {
+		analyses := []interfaces.Analysis{}
 
 		for _, definition := range class.Snapshot().Definitions.All() {
 			message := fmt.Sprintf("Usages: %d", len(definition.Usages))
-			analyses = append(analyses, newAnalysisHighlightName(definition.Node, class, AnalysisSeverity.Hint, "", message))
+			analyses = append(analyses, newAnalysisHighlightName(definition.Node, class, interfaces.AnalysisSeverity.Hint, "", message))
 		}
 
 		return analyses, nil
@@ -48,7 +49,7 @@ func debug(_ *parser.State, file *parser.File) ([]Analysis, error) {
 
 		message := "Found " + variable.Kind + " `" + variable.Name + "` with value `" + str + "`"
 
-		analyses = append(analyses, newAnalysis("variable", utils.Range{Start: startPosition, End: endPosition}, AnalysisSeverity.Warning, message, nil))
+		analyses = append(analyses, interfaces.NewAnalysis("variable", utils.Range{Start: startPosition, End: endPosition}, interfaces.AnalysisSeverity.Warning, message, nil))
 	}
 
 	if file.Snapshot().Filetype == "typescript" {
@@ -64,7 +65,7 @@ func debug(_ *parser.State, file *parser.File) ([]Analysis, error) {
 
 			message := fmt.Sprintf("Complexity: %v (%v edges, %v nodes)", cfg.CalculateCyclomaticComplexity(), cfg.CountDownwardEdges(), cfg.CountDownwardNodes())
 
-			analysis := newAnalysisFromFileNode(file, "complexity", cfg.Node, AnalysisSeverity.Warning, message, nil)
+			analysis := newAnalysisFromFileNode(file, "complexity", cfg.Node, interfaces.AnalysisSeverity.Warning, message, nil)
 			analysis.Range.End = analysis.Range.Start
 			analyses = append(analyses, analysis)
 		}
@@ -80,7 +81,7 @@ func debug(_ *parser.State, file *parser.File) ([]Analysis, error) {
 	classes := file.Snapshot().Classes
 
 	if len(classes) == 0 {
-		analyses = append(analyses, newAnalysis("code", utils.Range{Start: zero, End: zero}, 2, "Has no classes", nil))
+		analyses = append(analyses, interfaces.NewAnalysis("code", utils.Range{Start: zero, End: zero}, 2, "Has no classes", nil))
 	} else {
 		hasDeclaredIn := false
 		for _, c := range classes {
@@ -90,7 +91,7 @@ func debug(_ *parser.State, file *parser.File) ([]Analysis, error) {
 		}
 
 		if !hasDeclaredIn {
-			analyses = append(analyses, newAnalysis("code", utils.Range{Start: one, End: one}, 2, "Is not declared anywhere", nil))
+			analyses = append(analyses, interfaces.NewAnalysis("code", utils.Range{Start: one, End: one}, 2, "Is not declared anywhere", nil))
 		}
 	}
 

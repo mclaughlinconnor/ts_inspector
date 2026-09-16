@@ -1,13 +1,14 @@
 package analysis
 
 import (
+	"ts_inspector/interfaces"
 	"ts_inspector/parser"
 	"ts_inspector/utils"
 )
 
-func illegalDeclaringModule(state *parser.State, file *parser.File) ([]Analysis, error) {
-	return analyseClasses(file, func(class *parser.Class) ([]Analysis, error) {
-		analyses := []Analysis{}
+func illegalDeclaringModule(state *parser.State, file *parser.File) ([]interfaces.Analysis, error) {
+	return analyseClasses(file, func(class *parser.Class) ([]interfaces.Analysis, error) {
+		analyses := []interfaces.Analysis{}
 
 		if class.Snapshot().Angular == nil || class.Snapshot().Angular.Module == nil {
 			return analyses, nil
@@ -25,7 +26,7 @@ func illegalDeclaringModule(state *parser.State, file *parser.File) ([]Analysis,
 				r := utils.Range{Start: startPosition, End: endPosition}
 
 				message := "Angular NgModule may not declare another NgModule"
-				analyses = append(analyses, newAnalysis("illegal-declaring-module", r, AnalysisSeverity.Error, message, nil))
+				analyses = append(analyses, interfaces.NewAnalysis("illegal-declaring-module", r, interfaces.AnalysisSeverity.Error, message, nil))
 			}
 		}
 

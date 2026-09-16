@@ -3,6 +3,7 @@ package manipulation
 import (
 	"fmt"
 	"ts_inspector/ast/walk"
+	"ts_inspector/interfaces"
 	"ts_inspector/utils"
 
 	sitter "github.com/tree-sitter/go-tree-sitter"
@@ -47,6 +48,23 @@ func (b *binaryExpression) getActions() []action {
 		{Name: "Remove redundant terms from binary expression", Perform: func() ([]utils.TextEdit, error) { return b.applyAction(b.removeRedundant) }},
 		{Name: "Invert condition", Perform: func() ([]utils.TextEdit, error) { return b.applyAction(b.invert) }},
 	}
+}
+
+func (b *binaryExpression) getAnalysis() []interfaces.Analysis {
+	analyses := []interfaces.Analysis{}
+
+	_, leftIsRedundant := b.Left.(*boolean)
+	_, rightIsRedundant := b.Right.(*boolean)
+
+	if leftIsRedundant {
+		analyses = append(analyses, interfaces.NewAnalysis("redundant", b.Left.getRange(), interfaces.AnalysisSeverity.Error, "This part of the binary expression is redundant", nil))
+	}
+
+	if rightIsRedundant {
+		analyses = append(analyses, interfaces.NewAnalysis("redundant", b.Right.getRange(), interfaces.AnalysisSeverity.Error, "This part of the binary expression is redundant", nil))
+	}
+
+	return analyses
 }
 
 func (b *binaryExpression) getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool) {

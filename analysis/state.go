@@ -8,53 +8,6 @@ import (
 	sitter "github.com/tree-sitter/go-tree-sitter"
 )
 
-type Analysis struct {
-	Code string
-
-	Message string
-
-	Range utils.Range
-
-	RelatedInformation []RelatedInformation
-
-	Severity int
-
-	Source string
-}
-
-type RelatedInformation struct {
-	Message string
-	Uri     string
-	Range   utils.Range
-}
-
-type severity struct {
-	Error int
-
-	Warning int
-
-	Information int
-
-	Hint int
-}
-
-var AnalysisSeverity = severity{1, 2, 3, 4}
-
-func AnalysisSeverityFromTsGoCategory(category *parser.Category) int {
-	switch *category {
-	case parser.CategoryWarning:
-		return AnalysisSeverity.Warning
-	case parser.CategoryError:
-		return AnalysisSeverity.Error
-	case parser.CategorySuggestion:
-		return AnalysisSeverity.Hint
-	case parser.CategoryMessage:
-		return AnalysisSeverity.Information
-	default:
-		return AnalysisSeverity.Error
-	}
-}
-
 func NewDiagnosticNotification(uri string, version int, diagnostics []interfaces.Diagnostic) interfaces.PublishDiagnosticsNotification {
 	return interfaces.PublishDiagnosticsNotification{
 		RPC:    "2.0",
@@ -82,7 +35,7 @@ func NewDiagnostic(node *sitter.Node, severity int, source string, message strin
 	}
 }
 
-func DiagnosticFromAnalysis(analysis Analysis) interfaces.Diagnostic {
+func DiagnosticFromAnalysis(analysis interfaces.Analysis) interfaces.Diagnostic {
 	code := any(analysis.Code)
 
 	diagnostic := interfaces.Diagnostic{
@@ -107,7 +60,7 @@ func DiagnosticFromAnalysis(analysis Analysis) interfaces.Diagnostic {
 	return diagnostic
 }
 
-func DiagnosticsFromAnalyses(analyses []Analysis) []interfaces.Diagnostic {
+func DiagnosticsFromAnalyses(analyses []interfaces.Analysis) []interfaces.Diagnostic {
 	diagnostics := []interfaces.Diagnostic{}
 
 	for _, analysis := range analyses {

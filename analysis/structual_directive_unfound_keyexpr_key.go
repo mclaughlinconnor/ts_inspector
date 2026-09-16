@@ -4,13 +4,14 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"ts_inspector/interfaces"
 	"ts_inspector/parser"
 	"ts_inspector/parser/tcb"
 	"ts_inspector/utils"
 )
 
-func structuralDirectiveUnfoundKeyExprKey(state *parser.State, file *parser.File) ([]Analysis, error) {
-	analyses := []Analysis{}
+func structuralDirectiveUnfoundKeyExprKey(state *parser.State, file *parser.File) ([]interfaces.Analysis, error) {
+	analyses := []interfaces.Analysis{}
 
 	if file.Snapshot().Filetype != "pug" {
 		return analyses, nil
@@ -36,7 +37,7 @@ func structuralDirectiveUnfoundKeyExprKey(state *parser.State, file *parser.File
 	analyseClass := func(class *parser.Class, attribute *tcb.Attribute) {
 		valueShv, err := attribute.GetShv()
 		if err != nil {
-			analyses = append(analyses, newAnalysisFromFileNode(file, "structuralDirectiveUnfoundKeyExprKey", attribute.ValueNode, AnalysisSeverity.Error, err.Error(), nil))
+			analyses = append(analyses, newAnalysisFromFileNode(file, "structuralDirectiveUnfoundKeyExprKey", attribute.ValueNode, interfaces.AnalysisSeverity.Error, err.Error(), nil))
 			return
 		}
 
@@ -92,7 +93,7 @@ func structuralDirectiveUnfoundKeyExprKey(state *parser.State, file *parser.File
 					// TODO: Add a "did you mean ..."
 					message := fmt.Sprintf("Key %v doesn't exist on %v.", keyExp.GetFullName(valueShv), thing.Snapshot().Name)
 
-					analysis := newAnalysis("structuralDirectiveUnfoundKeyExprKey", rrange, AnalysisSeverity.Error, message, nil)
+					analysis := interfaces.NewAnalysis("structuralDirectiveUnfoundKeyExprKey", rrange, interfaces.AnalysisSeverity.Error, message, nil)
 					analyses = append(analyses, analysis)
 				}
 			}
@@ -116,7 +117,7 @@ func structuralDirectiveUnfoundKeyExprKey(state *parser.State, file *parser.File
 			}
 
 			message := fmt.Sprintf("[%v]%v is not selected by any directive", attribute.GetStrippedName(), keyExprs.String())
-			analysis := newAnalysisFromFileNode(file, "structuralDirectiveUnfoundKeyExprKey", attribute.NameNode, AnalysisSeverity.Error, message, nil)
+			analysis := newAnalysisFromFileNode(file, "structuralDirectiveUnfoundKeyExprKey", attribute.NameNode, interfaces.AnalysisSeverity.Error, message, nil)
 			analyses = append(analyses, analysis)
 		}
 	}
@@ -132,7 +133,7 @@ func structuralDirectiveUnfoundKeyExprKey(state *parser.State, file *parser.File
 	return analyses, nil
 }
 
-func visit(node *tcb.Node, analyses *[]Analysis, analyse func(*tcb.Attribute)) {
+func visit(node *tcb.Node, analyses *[]interfaces.Analysis, analyse func(*tcb.Attribute)) {
 	if node.Kind != tcb.KindTag {
 		for _, c := range node.GetChildren().Elements {
 			visit(c, analyses, analyse)

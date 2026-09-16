@@ -14,6 +14,7 @@ import (
 	"sync"
 	"ts_inspector/ast"
 	"ts_inspector/ast/indexing"
+	"ts_inspector/ast/manipulation"
 	"ts_inspector/config"
 	"ts_inspector/interfaces"
 	"ts_inspector/utils"
@@ -22,6 +23,7 @@ import (
 )
 
 type fileState struct {
+	Ast                *manipulation.Ast
 	Classes            []*Class
 	Content            string
 	DynamicImportFiles []*File
@@ -70,6 +72,15 @@ func (f *File) FindImportPath(identifier string) string {
 	}
 
 	return ""
+}
+
+func (f *File) GetAnalysis() []interfaces.Analysis {
+	ast := f.Snapshot().Ast
+	if ast == nil {
+		return []interfaces.Analysis{}
+	}
+
+	return ast.GetAllAnalysis()
 }
 
 func (f *File) GetAvailableThings(state *State) []*Class {
@@ -314,6 +325,14 @@ func (f *File) IsTypeScript() bool {
 
 func (f *File) Postprocess(state *State) {
 	f.ResetThings()
+
+	// Ignore the error for now
+	ast, err := manipulation.BuildAst(f.Snapshot().Content)
+	if err == nil {
+		f.Update(func(data *fileState) {
+			data.Ast = ast
+		})
+	}
 
 	for _, class := range f.Snapshot().Classes {
 		state.SetClass(class.Id(), class)

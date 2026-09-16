@@ -1,11 +1,13 @@
 package manipulation
 
-type root struct {
+import "ts_inspector/interfaces"
+
+type Ast struct {
 	commonNode
 	Program nodeInterface
 }
 
-func (r *root) GetAllActions(offset uint) []action {
+func (r *Ast) GetAllActions(offset uint) []action {
 	actions := []action{}
 	r.visit(func(ni nodeInterface) int {
 		if !ni.isUnderCursor(offset) {
@@ -23,7 +25,21 @@ func (r *root) GetAllActions(offset uint) []action {
 	return actions
 }
 
-func (r *root) getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool) {
+func (r *Ast) GetAllAnalysis() []interfaces.Analysis {
+	analyses := []interfaces.Analysis{}
+	r.visit(func(ni nodeInterface) int {
+		as := ni.getAnalysis()
+		if len(as) != 0 {
+			analyses = append(analyses, as...)
+		}
+
+		return VisitContinue
+	})
+
+	return analyses
+}
+
+func (r *Ast) getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool) {
 	if kind == NULL_KIND || r.getKind() == kind {
 		return r, true
 	}
@@ -31,7 +47,7 @@ func (r *root) getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (n
 	return r.Program.getAstNodeOfKindAtOffset(offset, kind, first)
 }
 
-func (r *root) visit(exec func(nodeInterface) int) int {
+func (r *Ast) visit(exec func(nodeInterface) int) int {
 	if ret := exec(r); ret != VisitContinue {
 		if ret == VisitAbort {
 			return ret

@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 	"ts_inspector/config"
+	"ts_inspector/interfaces"
 	"ts_inspector/parser"
 	"ts_inspector/parser/tcb"
 	"ts_inspector/utils"
@@ -18,8 +19,8 @@ func shouldSkip(diagnostic *parser.Diagnostic) bool {
 	return slices.Contains(excludedCodes, diagnostic.Code)
 }
 
-func typescript(state *parser.State, file *parser.File) ([]Analysis, error) {
-	analyses := []Analysis{}
+func typescript(state *parser.State, file *parser.File) ([]interfaces.Analysis, error) {
+	analyses := []interfaces.Analysis{}
 
 	if file.Snapshot().Filetype != "pug" {
 		return analyses, nil
@@ -54,14 +55,14 @@ func typescript(state *parser.State, file *parser.File) ([]Analysis, error) {
 
 		code := "typescript-" + strconv.Itoa(int(diagnostic.Code))
 
-		relatedInformation := []RelatedInformation{}
+		relatedInformation := []interfaces.RelatedInformation{}
 		for _, ri := range diagnostic.RelatedInformation {
-			ri := RelatedInformation{ri.Text, parser.UriFromFilename(ri.FileName), utils.ZeroRange()}
+			ri := interfaces.RelatedInformation{Message: ri.Text, Uri: parser.UriFromFilename(ri.FileName), Range: utils.ZeroRange()}
 			relatedInformation = append(relatedInformation, ri)
 		}
 
 		text := strings.TrimRight(flattenText(&diagnostic, 0), "\n")
-		analyses = append(analyses, newAnalysis(code, *r, AnalysisSeverityFromTsGoCategory(&diagnostic.Category), text, &relatedInformation))
+		analyses = append(analyses, interfaces.NewAnalysis(code, *r, interfaces.AnalysisSeverityFromTsGoCategory(&diagnostic.Category), text, &relatedInformation))
 	}
 
 	return analyses, nil

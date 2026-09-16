@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"ts_inspector/analysis/cfg"
 	"ts_inspector/config"
+	"ts_inspector/interfaces"
 	"ts_inspector/parser"
 	"ts_inspector/parser/tcb"
 	"ts_inspector/utils"
@@ -13,8 +14,8 @@ import (
 
 const unreachableCode = "unreachable"
 
-func cfgUnreachableBlock(state *parser.State, file *parser.File) ([]Analysis, error) {
-	analyses := []Analysis{}
+func cfgUnreachableBlock(state *parser.State, file *parser.File) ([]interfaces.Analysis, error) {
+	analyses := []interfaces.Analysis{}
 
 	if file.Snapshot().Filetype == "typescript" {
 		cfg, err := cfg.BuildGraphFromFile(file)
@@ -22,7 +23,7 @@ func cfgUnreachableBlock(state *parser.State, file *parser.File) ([]Analysis, er
 			return analyses, err
 		}
 
-		return analyseCfg(file.Snapshot().Content, cfg, analyses, false, func(m string, n *sitter.Node, s int) *Analysis {
+		return analyseCfg(file.Snapshot().Content, cfg, analyses, false, func(m string, n *sitter.Node, s int) *interfaces.Analysis {
 			a := newAnalysisFromFileNode(file, unreachableCode, n, s, m, nil)
 			return &a
 		}), nil
@@ -34,14 +35,14 @@ func cfgUnreachableBlock(state *parser.State, file *parser.File) ([]Analysis, er
 
 	content := []byte(file.Snapshot().Content)
 
-	buildPugAnalysis := func(tcbBlock *tcb.Statement) func(string, *sitter.Node, int) *Analysis {
-		return func(message string, node *sitter.Node, severity int) *Analysis {
+	buildPugAnalysis := func(tcbBlock *tcb.Statement) func(string, *sitter.Node, int) *interfaces.Analysis {
+		return func(message string, node *sitter.Node, severity int) *interfaces.Analysis {
 			r := tcbBlock.TsNodeToRange(file.Snapshot().Content, node, config.GetConfig().Debug)
 			if r == nil {
 				return nil
 			}
 
-			a := newAnalysis(unreachableCode, *r, severity, message, nil)
+			a := interfaces.NewAnalysis(unreachableCode, *r, severity, message, nil)
 
 			return &a
 		}
@@ -71,7 +72,7 @@ func cfgUnreachableBlock(state *parser.State, file *parser.File) ([]Analysis, er
 	return analyses, nil
 }
 
-func analyseCfg(content string, cfgState *cfg.State, analyses []Analysis, skipComplexity bool, buildAnalysis func(string, *sitter.Node, int) *Analysis) []Analysis {
+func analyseCfg(content string, cfgState *cfg.State, analyses []interfaces.Analysis, skipComplexity bool, buildAnalysis func(string, *sitter.Node, int) *interfaces.Analysis) []interfaces.Analysis {
 	for _, cfg := range cfgState.AllCfg {
 		if !skipComplexity {
 			analyses = analyseComplexity(analyses, content, cfg)
@@ -95,7 +96,7 @@ func analyseCfg(content string, cfgState *cfg.State, analyses []Analysis, skipCo
 				continue
 			}
 
-			a := buildAnalysis(message, node, AnalysisSeverity.Error)
+			a := buildAnalysis(message, node, interfaces.AnalysisSeverity.Error)
 			if a != nil {
 				analyses = append(analyses, *a)
 			}
@@ -105,7 +106,7 @@ func analyseCfg(content string, cfgState *cfg.State, analyses []Analysis, skipCo
 	return analyses
 }
 
-func analyseComplexity(analyses []Analysis, content string, cfg *cfg.FunctionCFG) []Analysis {
+func analyseComplexity(analyses []interfaces.Analysis, content string, cfg *cfg.FunctionCFG) []interfaces.Analysis {
 	complexity := cfg.CalculateCyclomaticComplexity()
 	if complexity <= 10 {
 		return analyses
@@ -116,13 +117,13 @@ func analyseComplexity(analyses []Analysis, content string, cfg *cfg.FunctionCFG
 
 	if complexity <= 20 {
 		level = "Moderate"
-		severity = AnalysisSeverity.Warning
+		severity = interfaces.AnalysisSeverity.Warning
 	} else if complexity <= 50 {
 		level = "High"
-		severity = AnalysisSeverity.Error
+		severity = interfaces.AnalysisSeverity.Error
 	} else {
 		level = "Very high"
-		severity = AnalysisSeverity.Error
+		severity = interfaces.AnalysisSeverity.Error
 	}
 
 	message := fmt.Sprintf("%v complexity: %v", level, cfg.CalculateCyclomaticComplexity())

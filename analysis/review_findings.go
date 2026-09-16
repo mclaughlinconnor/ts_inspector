@@ -2,17 +2,18 @@ package analysis
 
 import (
 	"fmt"
+	"ts_inspector/interfaces"
 	"ts_inspector/parser"
 	"ts_inspector/utils"
 )
 
-func reviewFindings(state *parser.State, file *parser.File) ([]Analysis, error) {
+func reviewFindings(state *parser.State, file *parser.File) ([]interfaces.Analysis, error) {
 	findings := state.GetReviewFindings()
 	if len(findings) == 0 {
-		return []Analysis{}, nil
+		return []interfaces.Analysis{}, nil
 	}
 
-	analyses := []Analysis{}
+	analyses := []interfaces.Analysis{}
 
 	for _, finding := range findings {
 		metadata := finding.Metadata
@@ -24,7 +25,7 @@ func reviewFindings(state *parser.State, file *parser.File) ([]Analysis, error) 
 
 		mkAnalysis := func(r utils.Range) {
 			message := fmt.Sprintf("[%v]: %v", metadata.Category, content.Summary)
-			analyses = append(analyses, newAnalysis(finding.Content.Agent, r, AnalysisSeverity.Error, message, nil))
+			analyses = append(analyses, interfaces.NewAnalysis(finding.Content.Agent, r, interfaces.AnalysisSeverity.Error, message, nil))
 		}
 
 		if finding.Metadata.NewLine != 0 {

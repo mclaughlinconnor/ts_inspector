@@ -1,7 +1,6 @@
 package actions
 
 import (
-	"ts_inspector/ast/manipulation"
 	"ts_inspector/config"
 	"ts_inspector/interfaces"
 	"ts_inspector/parser"
@@ -25,16 +24,12 @@ func GetActions(state *parser.State, file *parser.File, offset int) ([]Action, e
 	allowedActions = append(allowedActions, actions...)
 
 	if file.Snapshot().Filetype == "typescript" {
-		ast, err := manipulation.BuildAst(file.Snapshot().Content)
-		if err != nil {
-			return []Action{}, err
+		ast := file.Snapshot().Ast
+		if ast == nil {
+			return []Action{}, nil
 		}
 
 		for _, astAction := range ast.GetAllActions(uint(offset)) {
-			if err != nil {
-				return []Action{}, err
-			}
-
 			allowedActions = append(allowedActions, Action{
 				Perform: func(w *utils.Writer, s *parser.State, f *parser.File, r utils.Range) (actionEdits *[]utils.TextEdit, command *interfaces.Command, allowed bool, err error) {
 					edits, err := astAction.Perform()

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"ts_inspector/analysis/cfg"
 	"ts_inspector/config"
+	"ts_inspector/interfaces"
 	"ts_inspector/parser"
 	"ts_inspector/utils"
 
@@ -11,7 +12,7 @@ import (
 )
 
 type analyser struct {
-	exec      func(state *parser.State, file *parser.File) ([]Analysis, error)
+	exec      func(state *parser.State, file *parser.File) ([]interfaces.Analysis, error)
 	expensive bool
 	name      string // mostly for logging
 }
@@ -22,8 +23,8 @@ func registerAnalyser(analyser analyser) {
 	Analysers = append(Analysers, analyser)
 }
 
-func Analyse(state *parser.State, file *parser.File, runExpensive bool) []Analysis {
-	analyses := []Analysis{}
+func Analyse(state *parser.State, file *parser.File, runExpensive bool) []interfaces.Analysis {
+	analyses := file.GetAnalysis()
 
 	var errors = []error{}
 
@@ -40,13 +41,13 @@ func Analyse(state *parser.State, file *parser.File, runExpensive bool) []Analys
 		analyses = append(analyses, a...)
 	}
 
-	analyses = append(analyses, errorsToAnalyses(errors)...)
+	analyses = append(analyses, interfaces.ErrorsToAnalyses(errors)...)
 
 	return analyses
 }
 
-func analyseClasses(file *parser.File, analyse func(class *parser.Class) ([]Analysis, error)) []Analysis {
-	analyses := []Analysis{}
+func analyseClasses(file *parser.File, analyse func(class *parser.Class) ([]interfaces.Analysis, error)) []interfaces.Analysis {
+	analyses := []interfaces.Analysis{}
 
 	var errors = []error{}
 
@@ -63,29 +64,12 @@ func analyseClasses(file *parser.File, analyse func(class *parser.Class) ([]Anal
 		analyses = append(analyses, a...)
 	}
 
-	analyses = append(analyses, errorsToAnalyses(errors)...)
+	analyses = append(analyses, interfaces.ErrorsToAnalyses(errors)...)
 
 	return analyses
 }
 
-func errorToAnalyses(err error) Analysis {
-	return newAnalysis("analysisError", utils.ZeroRange(), AnalysisSeverity.Error, err.Error(), nil)
-}
-
-func errorsToAnalyses(errors []error) []Analysis {
-	if len(errors) == 0 {
-		return []Analysis{}
-	}
-
-	analyses := []Analysis{}
-	for _, err := range errors {
-		analyses = append(analyses, errorToAnalyses(err))
-	}
-
-	return analyses
-}
-
-func newAnalysisHighlightName(problemNode *sitter.Node, class *parser.Class, severity int, code string, message string) Analysis {
+func newAnalysisHighlightName(problemNode *sitter.Node, class *parser.Class, severity int, code string, message string) interfaces.Analysis {
 	var highlightNode *sitter.Node
 
 	nameNode := problemNode.ChildByFieldName("name")
@@ -106,24 +90,13 @@ func newAnalysisHighlightName(problemNode *sitter.Node, class *parser.Class, sev
 	startPosition := utils.GetPositionForOffset(content, startByte)
 	endPosition := utils.GetPositionForOffset(content, endByte)
 
-	return newAnalysis(code, utils.Range{Start: startPosition, End: endPosition}, severity, message, nil)
+	return interfaces.NewAnalysis(code, utils.Range{Start: startPosition, End: endPosition}, severity, message, nil)
 }
 
-func newAnalysis(code string, highlightRange utils.Range, severity int, message string, relatedInformation *[]RelatedInformation) Analysis {
-	var ri []RelatedInformation
+func newAnalysisFromFileContent(content string, code string, node *sitter.Node, severity int, message string, relatedInformation *[]interfaces.RelatedInformation) interfaces.Analysis {
+	var ri []interfaces.RelatedInformation
 	if relatedInformation == nil {
-		ri = []RelatedInformation{}
-	} else {
-		ri = *relatedInformation
-	}
-
-	return Analysis{code, message, highlightRange, ri, severity, "ts_inspector"}
-}
-
-func newAnalysisFromFileContent(content string, code string, node *sitter.Node, severity int, message string, relatedInformation *[]RelatedInformation) Analysis {
-	var ri []RelatedInformation
-	if relatedInformation == nil {
-		ri = []RelatedInformation{}
+		ri = []interfaces.RelatedInformation{}
 	} else {
 		ri = *relatedInformation
 	}
@@ -133,10 +106,10 @@ func newAnalysisFromFileContent(content string, code string, node *sitter.Node, 
 
 	rrange := utils.Range{Start: startPosition, End: endPosition}
 
-	return Analysis{code, message, rrange, ri, severity, "ts_inspector"}
+	return interfaces.Analysis{Code: code, Message: message, Range: rrange, RelatedInformation: ri, Severity: severity, Source: "ts_inspector"}
 }
 
-func newAnalysisFromFileNode(file *parser.File, code string, node *sitter.Node, severity int, message string, relatedInformation *[]RelatedInformation) Analysis {
+func newAnalysisFromFileNode(file *parser.File, code string, node *sitter.Node, severity int, message string, relatedInformation *[]interfaces.RelatedInformation) interfaces.Analysis {
 	content := file.Snapshot().Content
 
 	return newAnalysisFromFileContent(content, code, node, severity, message, relatedInformation)

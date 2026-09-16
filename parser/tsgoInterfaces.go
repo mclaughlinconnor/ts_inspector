@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"ts_inspector/interfaces"
 )
 
 type (
@@ -211,7 +212,7 @@ type Diagnostic struct {
 	// Code is the diagnostic error code.
 	Code int32 `json:"code"`
 	// Category is the diagnostic category (error, warning, suggestion, message).
-	Category Category `json:"category"`
+	Category interfaces.Category `json:"category"`
 	// Text is the localized diagnostic message text.
 	Text string `json:"text"`
 	// ReportsUnnecessary indicates this diagnostic highlights unnecessary code.
@@ -227,29 +228,6 @@ type Diagnostic struct {
 // DiagnosticResponse is the API response for a single diagnostic.
 type DiagnosticResponse struct {
 	Result []Diagnostic
-}
-
-type Category int32
-
-const (
-	CategoryWarning Category = iota
-	CategoryError
-	CategorySuggestion
-	CategoryMessage
-)
-
-func (category Category) Name() string {
-	switch category {
-	case CategoryWarning:
-		return "warning"
-	case CategoryError:
-		return "error"
-	case CategorySuggestion:
-		return "suggestion"
-	case CategoryMessage:
-		return "message"
-	}
-	panic("Unhandled diagnostic category")
 }
 
 type GetSymbolAtPositionParams struct {

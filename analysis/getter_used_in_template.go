@@ -2,12 +2,13 @@ package analysis
 
 import (
 	"fmt"
+	"ts_inspector/interfaces"
 	"ts_inspector/parser"
 )
 
-func getterUsedInTemplate(_ *parser.State, file *parser.File) ([]Analysis, error) {
-	return analyseClasses(file, func(class *parser.Class) ([]Analysis, error) {
-		analyses := []Analysis{}
+func getterUsedInTemplate(_ *parser.State, file *parser.File) ([]interfaces.Analysis, error) {
+	return analyseClasses(file, func(class *parser.Class) ([]interfaces.Analysis, error) {
+		analyses := []interfaces.Analysis{}
 
 		if class.GetTemplateFile() == nil {
 			return analyses, nil
@@ -17,7 +18,7 @@ func getterUsedInTemplate(_ *parser.State, file *parser.File) ([]Analysis, error
 			used := len(definition.Usages) != 0
 			if used && definition.UsageAccess == parser.TemplateAccess {
 				message := fmt.Sprintf("Getter used in template: %s", definition.Name)
-				analyses = append(analyses, newAnalysisHighlightName(definition.Node, class, AnalysisSeverity.Hint, "getter-used-in-template", message))
+				analyses = append(analyses, newAnalysisHighlightName(definition.Node, class, interfaces.AnalysisSeverity.Hint, "getter-used-in-template", message))
 			}
 		}
 

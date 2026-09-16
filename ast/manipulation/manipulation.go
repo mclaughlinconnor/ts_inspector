@@ -16,7 +16,7 @@ const (
 
 type walkState = nodeInterface
 
-func BuildAst(content string) (*root, error) {
+func BuildAst(content string) (*Ast, error) {
 	utils.ResetNextId(ID_NAMESPACE)
 	byteContent := []byte(content)
 
@@ -37,9 +37,9 @@ func BuildAst(content string) (*root, error) {
 	funcMap["unary_expression"] = visitUnaryExpression
 	funcMap[walk.DUMMY_VISITOR_KIND] = visitUnhandled
 
-	astRoot := root{kind: "root", element: elementFromNode(rootNode), programContent: &programContent{text: byteContent, tree: tree}}
+	astRoot := Ast{kind: "root", element: elementFromNode(rootNode), programContent: &programContent{text: byteContent, tree: tree}}
 	var ast walkState = &astRoot
-	astRoot.getProgramContent().root = ast.(*root)
+	astRoot.getProgramContent().root = ast.(*Ast)
 
 	program, err := walk.WalkTypeScript(rootNode, ast, funcMap)
 	if err != nil {
