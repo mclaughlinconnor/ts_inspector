@@ -45,7 +45,7 @@ func (b *binaryExpression) deMorgans() {
 func (b *binaryExpression) getActions() []action {
 	return []action{
 		{Name: "Apply deMorgan's", Perform: func() ([]utils.TextEdit, error) { return b.applyAction(b.deMorgans) }},
-		{Name: "Remove redundant terms from binary expression", Perform: func() ([]utils.TextEdit, error) { return b.applyAction(b.removeRedundant) }},
+		{Name: "Remove redundant terms from binary expression", Perform: func() ([]utils.TextEdit, error) { return b.applyAction(func() { b.removeRedundant() }) }},
 		{Name: "Invert condition", Perform: func() ([]utils.TextEdit, error) { return b.applyAction(b.invert) }},
 	}
 }
@@ -109,46 +109,61 @@ func (b *binaryExpression) invert() {
 	}
 }
 
-func (b *binaryExpression) removeRedundant() {
+// Returns true when the entire node was made blank
+func (b *binaryExpression) removeRedundant() bool {
 	operatorNode := b.Operator
 	operator := operatorNode.getOperator()
 
 	if operator != binaryExpressionOperatorEnum.OR && operator != binaryExpressionOperatorEnum.AND {
-		return
+		return false
 	}
 
 	binaryLeft, leftIsBinary := b.Left.(*binaryExpression)
 	binaryRight, rightIsBinary := b.Right.(*binaryExpression)
 
+	leftIsRedundant := false
 	if leftIsBinary {
-		binaryLeft.removeRedundant()
+		leftIsRedundant = binaryLeft.removeRedundant()
 	}
 
+	rightIsRedundant := false
 	if rightIsBinary {
-		binaryRight.removeRedundant()
+		rightIsRedundant = binaryRight.removeRedundant()
 	}
 
 	if leftIsBinary && rightIsBinary {
-		return
+		if leftIsRedundant && rightIsRedundant {
+			b.editText("")
+			return true
+		}
+
+		return false
 	}
 
-	_, leftIsRedundant := b.Left.(*boolean)
-	_, rightIsRedundant := b.Right.(*boolean)
+	if _, isRedundant := b.Left.(*boolean); isRedundant {
+		leftIsRedundant = isRedundant
+	}
+
+	if _, isRedundant := b.Right.(*boolean); isRedundant {
+		rightIsRedundant = isRedundant
+	}
 
 	if leftIsRedundant && rightIsRedundant {
 		b.editText("")
-		return
+		return true
 	}
 
 	if leftIsRedundant {
 		b.editText(b.Right.getText())
-		return
+		return false
 	}
 
 	if rightIsRedundant {
 		b.editText(b.Left.getText())
-		return
+		return false
 	}
+
+	return false
 }
 
 func (b *binaryExpression) visit(exec func(nodeInterface) int) int {
