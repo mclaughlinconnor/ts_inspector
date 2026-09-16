@@ -96,14 +96,14 @@ func (b *binaryExpression) getAstNodeOfKindAtOffset(offset uint, kind string, fi
 }
 
 func (b *binaryExpression) invert() {
-	left, ok := b.Left.(invertableNodeInterface)
+	left, ok := b.Left.(*binaryExpression)
 	if ok {
 		left.invert()
 	}
 
 	b.Operator.invert()
 
-	right, ok := b.Right.(invertableNodeInterface)
+	right, ok := b.Right.(*binaryExpression)
 	if ok {
 		right.invert()
 	}
