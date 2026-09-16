@@ -20,7 +20,10 @@ func BuildAst(content string) (*root, error) {
 	utils.ResetNextId(ID_NAMESPACE)
 	byteContent := []byte(content)
 
-	rootNode, tree := utils.ParseTextWithTree(byteContent, utils.TypeScript)
+	rootNode, tree, err := utils.ParseTextWithTree(byteContent, utils.TypeScript)
+	if err != nil {
+		return nil, err
+	}
 
 	funcMap := walk.NewVisitorFuncsMap[walkState]()
 	funcMap["binary_expression"] = visitBinaryExpression

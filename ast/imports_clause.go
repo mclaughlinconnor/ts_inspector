@@ -171,7 +171,10 @@ func ExtractDynamicImports(node *sitter.Node, content []byte) ([]string, error) 
 		return doExtractDynamicImports(node, content)
 	}
 
-	root := utils.ParseText(content, utils.TypeScript)
+	root, err := utils.ParseText(content, utils.TypeScript)
+	if err != nil {
+		return []string{}, err
+	}
 
 	return doExtractDynamicImports(root, content)
 }
@@ -181,7 +184,10 @@ func ExtractImports(node *sitter.Node, content []byte) ([]*ImportParseResult, er
 		return doExtractImports(node, content)
 	}
 
-	root := utils.ParseText(content, utils.TypeScript)
+	root, err := utils.ParseText(content, utils.TypeScript)
+	if err != nil {
+		return []*ImportParseResult{}, err
+	}
 
 	return doExtractImports(root, content)
 }

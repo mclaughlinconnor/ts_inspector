@@ -10,25 +10,34 @@ func ParseTextFromPath(path string, language string) (*sitter.Node, []byte, erro
 		return nil, []byte{}, err
 	}
 
-	root := ParseText(content, language)
+	root, err := ParseText(content, language)
+	if err != nil {
+		return nil, []byte{}, err
+	}
 
 	return root, content, nil
 }
 
-func ParseText(content []byte, language string) *sitter.Node {
-	root, _ := ParseTextWithTree(content, language)
+func ParseText(content []byte, language string) (*sitter.Node, error) {
+	root, _, err := ParseTextWithTree(content, language)
+	if err != nil {
+		return nil, err
+	}
 
-	return root
+	return root, nil
 }
 
-func ParseTextWithTree(content []byte, language string) (*sitter.Node, *sitter.Tree) {
+func ParseTextWithTree(content []byte, language string) (*sitter.Node, *sitter.Tree, error) {
 	parser := sitter.NewParser()
-	parser.SetLanguage(GetLanguage(language))
+	err := parser.SetLanguage(GetLanguage(language))
+	if err != nil {
+		return nil, nil, err
+	}
 
 	tree := parser.Parse(content, nil)
 	root := tree.RootNode()
 
-	return root, tree
+	return root, tree, nil
 }
 
 func GetRootNode(fromDisk bool, source string, language string) (*sitter.Node, error) {
@@ -44,7 +53,10 @@ func GetRootNode(fromDisk bool, source string, language string) (*sitter.Node, e
 	}
 
 	parser := sitter.NewParser()
-	parser.SetLanguage(GetLanguage(language))
+	err = parser.SetLanguage(GetLanguage(language))
+	if err != nil {
+		return nil, err
+	}
 
 	tree := parser.Parse(content, nil)
 

@@ -342,7 +342,10 @@ func handleTagClass(node *sitter.Node, state *Ast, indexInParent uint, internalF
 
 func handleTagContent(node *sitter.Node, state *Ast, indexInParent uint, internalFuncMap walk.VisitorFuncMap[*Ast]) (*Ast, error) {
 	content := []byte(node.Utf8Text(state.Content))
-	root := utils.ParseText([]byte(node.Utf8Text(state.Content)), utils.AngularContent)
+	root, err := utils.ParseText([]byte(node.Utf8Text(state.Content)), utils.AngularContent)
+	if err != nil {
+		return nil, err
+	}
 
 	for i := range root.ChildCount() {
 		child := root.Child(i)

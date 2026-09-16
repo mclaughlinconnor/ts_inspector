@@ -38,12 +38,17 @@ func lspHandleCodeAction(writer *utils.Writer, logger *log.Logger, state *parser
 }
 
 func GenerateActions(writer *utils.Writer, logger *log.Logger, state *parser.State, file *parser.File, editRange utils.Range, textDocument interfaces.TextDocumentIdentifier) []interfaces.CodeAction {
+	codeActions := []interfaces.CodeAction{}
+
 	context, err := buildContext(writer, logger, state, textDocument, editRange.Start)
 	if err != nil {
 		logger.Printf("Error: %s", err)
+		return codeActions
 	}
 
-	codeActions := []interfaces.CodeAction{}
+	if context == nil {
+		return codeActions
+	}
 
 	actions, err := actions.GetActions(state, file, context.ci.cursorOffset)
 	if err != nil {

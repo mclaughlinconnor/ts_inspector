@@ -18,7 +18,10 @@ func ConvertInjectToProperty(_ *utils.Writer, state *parser.State, file *parser.
 
 	action := actionEditHolder{[]utils.TextEdit{}, true}
 	content := []byte(file.Snapshot().Content)
-	root := utils.ParseText(content, utils.TypeScript)
+	root, err := utils.ParseText(content, utils.TypeScript)
+	if err != nil {
+		return retActionErr(err)
+	}
 
 	parameterNode := ast.HasNodeInHierarchy(root, "required_parameter", startByte, endByte)
 	if parameterNode == nil {

@@ -9,7 +9,10 @@ import (
 func GetAttributeNameAtOffset(content string, offset uint) (string, bool) {
 	c := []byte(content)
 
-	root := utils.ParseText(c, utils.Pug)
+	root, err := utils.ParseText(c, utils.Pug)
+	if err != nil {
+		return "", false
+	}
 
 	node := HasNodeInHierarchy(root, "attribute_name", offset, offset)
 	if node == nil {

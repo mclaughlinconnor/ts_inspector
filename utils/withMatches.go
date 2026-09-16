@@ -10,7 +10,10 @@ type HandleMatch[T any] func(captures Captures, returnValue T) (T, error)
 
 func WithMatches[T any](query string, language string, content []byte, returnValue T, handler HandleMatch[T]) (T, error) {
 	parser := sitter.NewParser()
-	parser.SetLanguage(GetLanguage(language))
+	err := parser.SetLanguage(GetLanguage(language))
+	if err != nil {
+		return returnValue, err
+	}
 
 	tree := parser.Parse(content, nil)
 

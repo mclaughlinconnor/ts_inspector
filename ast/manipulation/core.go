@@ -134,6 +134,7 @@ func (p *programContent) beginEditSession() error {
 	return err
 }
 
+//nolint:unused
 func (p *programContent) commitEditSession() error {
 	if p.hasEditSession() {
 		return fmt.Errorf("tried to commit an edit session when there is no edit session in progress")

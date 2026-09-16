@@ -48,7 +48,10 @@ func cfgUnreachableBlock(state *parser.State, file *parser.File) ([]Analysis, er
 	}
 
 	for _, class := range file.Snapshot().Classes {
-		root := utils.ParseText([]byte(content), utils.Pug)
+		root, err := utils.ParseText([]byte(content), utils.Pug)
+		if err != nil {
+			return nil, err
+		}
 
 		tcb, err := tcb.GenerateTcb(state, class, root, content)
 		if err != nil {

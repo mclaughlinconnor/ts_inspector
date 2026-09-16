@@ -81,10 +81,14 @@ func listReviewYamls(rootPath string) ([]string, error) {
 }
 
 func parseReviewYaml(content []byte, rootPath string) (Metadata, error) {
-	root := utils.ParseText(content, utils.Yaml)
+	root, err := utils.ParseText(content, utils.Yaml)
+	if err != nil {
+		return Metadata{}, err
+	}
+
 	cursor := root.Walk()
 
-	err := goToNextNamedSiblingOfTypeAndChild(cursor, "stream")
+	err = goToNextNamedSiblingOfTypeAndChild(cursor, "stream")
 	if err != nil {
 		return Metadata{}, err
 	}

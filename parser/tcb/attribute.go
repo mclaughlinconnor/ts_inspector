@@ -379,7 +379,7 @@ THING:
 					return err
 				}
 
-				if !found {
+				if !found || attribute == nil {
 					continue
 				}
 

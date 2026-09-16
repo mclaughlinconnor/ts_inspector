@@ -48,12 +48,18 @@ func buildContext(writer *utils.Writer, logger *log.Logger, state *parser.State,
 
 	content := []byte(file.Snapshot().Content)
 
-	rootNode := utils.ParseText(content, utils.Pug)
+	rootNode, err := utils.ParseText(content, utils.Pug)
+	if err != nil {
+		return nil, err
+	}
 
 	attributeUnderCursor, isOnAttrName := ast.GetAttributeNameAtOffset2(rootNode, file.Snapshot().Content, cursorOffset)
 	tagUnderCursor, isOnTagName := ast.GetTagAtOffset2(rootNode, file.Snapshot().Content, cursorOffset)
 
-	rootNode = utils.ParseText(content, utils.Pug)
+	rootNode, err = utils.ParseText(content, utils.Pug)
+	if err != nil {
+		return nil, err
+	}
 
 	namedNodeUnderCursor := ast.GetNamedNodeAtPosition(rootNode, cursorOffset)
 

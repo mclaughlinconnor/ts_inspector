@@ -352,6 +352,10 @@ func handleBreak(state *State, node *sitter.Node, content []byte) error {
 	afterBlock := state.peekBreakBlock()
 	breakBlock := state.cfg().AddBlock("Break block")
 
+	if afterBlock == nil {
+		return errors.New("break stack is unexpectedly empty")
+	}
+
 	state.current = breakBlock
 
 	state.AddInstruction(InstructionBranch, "", node, "", content)
@@ -366,6 +370,10 @@ func handleContinue(state *State, node *sitter.Node, content []byte) error {
 	prevBlock := state.current
 	afterBlock := state.peekContinueBlock()
 	breakBlock := state.cfg().AddBlock("Continue block")
+
+	if afterBlock == nil {
+		return errors.New("continue stack is unexpectedly empty")
+	}
 
 	state.current = breakBlock
 
@@ -621,7 +629,7 @@ func handleVariableDeclaration(state *State, node *sitter.Node, content []byte) 
 
 	name := nameNode.Utf8Text(content)
 
-	var value string = ""
+	var value = ""
 	if valueNode != nil {
 		value = valueNode.Utf8Text(content)
 
@@ -640,9 +648,12 @@ func BuildGraphFromContent(content string) (*State, error) {
 	c := []byte(content)
 	state := newState(c)
 
-	root := utils.ParseText(c, utils.TypeScript)
+	root, err := utils.ParseText(c, utils.TypeScript)
+	if err != nil {
+		return nil, err
+	}
 
-	err := build(state, root, c)
+	err = build(state, root, c)
 	if err != nil {
 		return nil, err
 	}

@@ -47,7 +47,10 @@ func initTcbExpression() {
 func buildTcbExpression(ast *Ast, expression string) (*Statement, error) {
 	content := []byte(expression)
 
-	root := utils.ParseText(content, utils.AngularExpr)
+	root, err := utils.ParseText(content, utils.AngularExpr)
+	if err != nil {
+		return nil, err
+	}
 
 	state := exprState{ast: ast, content: content, parts: &Statement{}}
 	output, err := newWalk(root, &state)

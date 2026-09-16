@@ -23,7 +23,10 @@ func MakeAsync(
 	var edits = utils.TextEdits{}
 
 	content := []byte(file.Snapshot().Content)
-	root := utils.ParseText(content, utils.TypeScript)
+	root, err := utils.ParseText(content, utils.TypeScript)
+	if err != nil {
+		return retActionErr(err)
+	}
 
 	cursor := root.Walk()
 	cursor.GotoFirstChild() // go into (program)

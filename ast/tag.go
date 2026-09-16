@@ -106,7 +106,10 @@ func ExtractTagNameAndAttrFromSelector(selector string) (bool, string, string) {
 func GetTagNameAtOffset(content string, offset uint) (string, bool) {
 	c := []byte(content)
 
-	root := utils.ParseText(c, utils.Pug)
+	root, err := utils.ParseText(c, utils.Pug)
+	if err != nil {
+		return "", false
+	}
 
 	node := HasNodeInHierarchy(root, "tag_name", offset, offset)
 	if node == nil {
@@ -127,7 +130,10 @@ func GetTagAtOffset(content string, offset uint) (Tag, bool) {
 
 	foundTag := Tag{Name: "", Attributes: []string{}}
 
-	root := utils.ParseText(c, utils.Pug)
+	root, err := utils.ParseText(c, utils.Pug)
+	if err != nil {
+		return foundTag, false
+	}
 
 	tag := HasNodeInHierarchy(root, "tag", offset, offset)
 	if tag == nil {

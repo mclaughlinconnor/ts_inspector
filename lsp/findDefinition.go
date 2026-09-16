@@ -128,6 +128,10 @@ DECLARATION:
 			}
 		}
 
+		if declarationFile == nil {
+			continue
+		}
+
 		for _, class := range declarationFile.Snapshot().Classes {
 			definition := class.GetDefinitionInRange(pos, end)
 			if definition != nil {

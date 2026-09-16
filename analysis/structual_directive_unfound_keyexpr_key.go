@@ -23,7 +23,10 @@ func structuralDirectiveUnfoundKeyExprKey(state *parser.State, file *parser.File
 	strContent := file.Snapshot().Content
 	byteContent := []byte(strContent)
 
-	root := utils.ParseText(byteContent, utils.Pug)
+	root, err := utils.ParseText(byteContent, utils.Pug)
+	if err != nil {
+		return analyses, err
+	}
 
 	ast, err := tcb.Parse(root, byteContent, &tcb.Tcb{})
 	if err != nil {

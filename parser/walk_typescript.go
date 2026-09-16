@@ -37,9 +37,12 @@ type varWalkState struct {
 func Index(state *State, file *File) error {
 	file.ResetDeclarations()
 
-	root := utils.ParseText([]byte(file.Snapshot().Content), utils.TypeScript)
+	root, err := utils.ParseText([]byte(file.Snapshot().Content), utils.TypeScript)
+	if err != nil {
+		return err
+	}
 
-	err := extractFileImports(root, file) // todo need to reset imports too
+	err = extractFileImports(root, file) // todo need to reset imports too
 	if err != nil {
 		return err
 	}
@@ -231,7 +234,7 @@ func extractType(node *sitter.Node, content []byte) string {
 
 func extractTypeScriptDefinitions(class *Class, root *sitter.Node, content []byte) error {
 	if len(content) == 0 {
-		return fmt.Errorf("Empty content: %v, Stack: %v", class.Snapshot().Name, string(debug.Stack()))
+		return fmt.Errorf("empty content: %v, Stack: %v", class.Snapshot().Name, string(debug.Stack()))
 	}
 
 	funcMap := walk.NewVisitorFuncsMap[typescriptWalkState]()
@@ -433,7 +436,10 @@ func parseClasses(state *State, root *sitter.Node, file *File) error {
 		classContentW := []byte(classContentS)
 
 		var class *Class
-		classRoot := utils.ParseText(classContentW, utils.TypeScript)
+		classRoot, err := utils.ParseText(classContentW, utils.TypeScript)
+		if err != nil {
+			return classWalkState, err
+		}
 
 		uri := file.Snapshot().URI
 
