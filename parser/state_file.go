@@ -327,11 +327,15 @@ func (f *File) Postprocess(state *State) {
 	f.ResetThings()
 
 	// Ignore the error for now
-	ast, err := manipulation.BuildAst(f.Snapshot().Content)
-	if err == nil {
-		f.Update(func(data *fileState) {
-			data.Ast = ast
-		})
+	if f.Snapshot().Filetype == "typescript" {
+		ast, err := manipulation.BuildAst(f.Snapshot().Content)
+		if err == nil {
+			f.Update(func(data *fileState) {
+				data.Ast = ast
+			})
+		} else {
+			state.Logger.Println(err)
+		}
 	}
 
 	for _, class := range f.Snapshot().Classes {
