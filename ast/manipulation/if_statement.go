@@ -131,7 +131,7 @@ func (i *ifStatement) visit(exec func(nodeInterface) int) int {
 
 func visitElseClause(node *sitter.Node, state walkState, _ uint, funcMap walk.VisitorFuncMap[walkState]) (walkState, error) {
 	elseClause := elseClause{commonNode: makeCommonNode("elseClause", state, node)}
-	elseClause._self = &elseClause
+	elseClause.setImpl(&elseClause)
 
 	statementNode := node.NamedChild(0)
 	if statementNode == nil {
@@ -150,7 +150,7 @@ func visitElseClause(node *sitter.Node, state walkState, _ uint, funcMap walk.Vi
 
 func visitIfStatement(node *sitter.Node, state walkState, _ uint, funcMap walk.VisitorFuncMap[walkState]) (walkState, error) {
 	ifStatement := ifStatement{commonNode: makeCommonNode("ifStatement", state, node)}
-	ifStatement._self = &ifStatement
+	ifStatement.setImpl(&ifStatement)
 
 	conditionNode := node.ChildByFieldName("condition")
 	if conditionNode == nil {

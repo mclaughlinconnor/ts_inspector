@@ -223,7 +223,7 @@ func (b *binaryExpressionOperator) invert() {
 
 func visitBinaryExpression(node *sitter.Node, state walkState, _ uint, funcMap walk.VisitorFuncMap[walkState]) (walkState, error) {
 	binaryExpression := binaryExpression{commonNode: makeCommonNode("binaryExpression", state, node)}
-	binaryExpression._self = &binaryExpression
+	binaryExpression.setImpl(&binaryExpression)
 
 	leftNode := node.ChildByFieldName("left")
 	if leftNode == nil {
@@ -246,7 +246,7 @@ func visitBinaryExpression(node *sitter.Node, state walkState, _ uint, funcMap w
 	}
 
 	operator := binaryExpressionOperator{commonNode: makeCommonNode("operator", state, operatorNode)}
-	operator._self = &operator
+	operator.setImpl(&operator)
 
 	right, err := walk.VisitNode(rightNode, state, 0, funcMap, false)
 	if err != nil {

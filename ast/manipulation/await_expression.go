@@ -6,17 +6,12 @@ import (
 	sitter "github.com/tree-sitter/go-tree-sitter"
 )
 
-type parenthesizedExpression struct {
+type awaitExpression struct {
 	childedCommonNode
 	expression nodeInterface
 }
 
-func (p *parenthesizedExpression) getNode() impl[nodeInterface] {
-	commonNode, _ := p.expression.(impl[nodeInterface])
-	return commonNode
-}
-
-func (e *parenthesizedExpression) visit(exec func(nodeInterface) int) int {
+func (e *awaitExpression) visit(exec func(nodeInterface) int) int {
 	if ret := exec(e); ret != VisitContinue {
 		if ret == VisitAbort {
 			return ret
@@ -34,13 +29,9 @@ func (e *parenthesizedExpression) visit(exec func(nodeInterface) int) int {
 	return VisitContinue
 }
 
-func visitParenthesizedExpression(node *sitter.Node, state walkState, indexInParent uint, funcMap walk.VisitorFuncMap[walkState]) (walkState, error) {
-	parenthsizedExpression := parenthesizedExpression{childedCommonNode: makeCommonChildedNode("parenthesizedExpression", state, node)}
-	parenthsizedExpression.setImpl(&parenthsizedExpression)
-
-	if node.NamedChildCount() == 0 {
-		return &parenthsizedExpression, nil
-	}
+func visitAwaitExpression(node *sitter.Node, state walkState, indexInParent uint, funcMap walk.VisitorFuncMap[walkState]) (walkState, error) {
+	awaitExpression := awaitExpression{childedCommonNode: makeCommonChildedNode("awaitExpression", state, node)}
+	awaitExpression.setImpl(&awaitExpression)
 
 	children := []nodeInterface{}
 	var expression nodeInterface = nil
@@ -64,8 +55,8 @@ func visitParenthesizedExpression(node *sitter.Node, state walkState, indexInPar
 		}
 	}
 
-	parenthsizedExpression.children = children
-	parenthsizedExpression.expression = expression
+	awaitExpression.children = children
+	awaitExpression.expression = expression
 
-	return &parenthsizedExpression, nil
+	return &awaitExpression, nil
 }

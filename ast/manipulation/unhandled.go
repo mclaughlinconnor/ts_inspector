@@ -21,7 +21,7 @@ func (u *unhandled) invert() {
 
 func visitUnhandled(node *sitter.Node, state walkState, indexInParent uint, funcMap walk.VisitorFuncMap[walkState]) (walkState, error) {
 	unhandled := unhandled{childedCommonNode: makeCommonChildedNode("unhandled", state, node)}
-	unhandled._self = &unhandled
+	unhandled.setImpl(&unhandled)
 
 	children := []nodeInterface{}
 

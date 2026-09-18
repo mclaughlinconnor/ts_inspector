@@ -96,7 +96,7 @@ func (b *unaryExpressionOperator) invert() {
 
 func visitUnaryExpression(node *sitter.Node, state walkState, _ uint, funcMap walk.VisitorFuncMap[walkState]) (walkState, error) {
 	unaryExpression := unaryExpression{commonNode: makeCommonNode("unaryExpression", state, node)}
-	unaryExpression._self = &unaryExpression
+	unaryExpression.setImpl(&unaryExpression)
 
 	operatorNode := node.ChildByFieldName("operator")
 	if operatorNode == nil {
@@ -109,7 +109,7 @@ func visitUnaryExpression(node *sitter.Node, state walkState, _ uint, funcMap wa
 	}
 
 	operator := unaryExpressionOperator{commonNode: makeCommonNode("operator", state, operatorNode)}
-	operator._self = &operator
+	operator.setImpl(&operator)
 
 	argument, err := walk.VisitNode(argumentNode, state, 0, funcMap, false)
 	if err != nil {

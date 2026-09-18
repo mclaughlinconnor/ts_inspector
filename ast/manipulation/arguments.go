@@ -6,13 +6,13 @@ import (
 	sitter "github.com/tree-sitter/go-tree-sitter"
 )
 
-type program struct {
+type arguments struct {
 	childedCommonNode
 }
 
-func visitProgram(node *sitter.Node, state walkState, indexInParent uint, funcMap walk.VisitorFuncMap[walkState]) (walkState, error) {
-	program := program{childedCommonNode: makeCommonChildedNode("program", state, node)}
-	program.setImpl(&program)
+func visitArguments(node *sitter.Node, state walkState, indexInParent uint, funcMap walk.VisitorFuncMap[walkState]) (walkState, error) {
+	arguments := arguments{childedCommonNode: makeCommonChildedNode("arguments", state, node)}
+	arguments.setImpl(&arguments)
 
 	children := []nodeInterface{}
 
@@ -30,7 +30,7 @@ func visitProgram(node *sitter.Node, state walkState, indexInParent uint, funcMa
 		children = append(children, child)
 	}
 
-	program.children = children
+	arguments.children = children
 
-	return &program, nil
+	return &arguments, nil
 }

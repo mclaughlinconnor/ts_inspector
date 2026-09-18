@@ -65,6 +65,13 @@ type nodeInterface interface {
 	isExpressionStatement() (*expressionStatement, bool)
 	isIdentifier() (*identifier, bool)
 	isIfStatement() (*ifStatement, bool)
+	isArguments() (*arguments, bool)
+	isAwaitExpression() (*awaitExpression, bool)
+	isBreak() (*breakExpression, bool)
+	isCallExpression() (*callExpression, bool)
+	isContinue() (*continueExpression, bool)
+	isForInStatement() (*forInStatement, bool)
+	isReturn() (*returnExpression, bool)
 	isInvertable() (invertableNodeInterface, bool)
 	isProgram() (*program, bool)
 	isRoot() (*Ast, bool)
@@ -151,7 +158,10 @@ func (c *commonNode) getActions() []action {
 }
 
 func (c *commonNode) getAnalysis() []interfaces.Analysis {
-	return []interfaces.Analysis{}
+	return []interfaces.Analysis{
+		interfaces.NewAnalysis("debug", c.getRange(), interfaces.AnalysisSeverity.Warning, c.getKind(), nil),
+	}
+	// return []interfaces.Analysis{}
 }
 
 func (c *commonNode) getAstNodeAtOffset(offset uint) (nodeInterface, bool) {
@@ -234,6 +244,16 @@ func (c *commonNode) hasEditSession() bool {
 	return stagedElement != nil
 }
 
+func (c *commonNode) isArguments() (*arguments, bool) {
+	n, yes := c.getImpl().getNode().getImpl().(*arguments)
+	return n, yes
+}
+
+func (c *commonNode) isAwaitExpression() (*awaitExpression, bool) {
+	n, yes := c.getImpl().getNode().getImpl().(*awaitExpression)
+	return n, yes
+}
+
 func (c *commonNode) isBinaryExpression() (*binaryExpression, bool) {
 	n, yes := c.getImpl().getNode().getImpl().(*binaryExpression)
 	return n, yes
@@ -244,15 +264,33 @@ func (c *commonNode) isBoolean() (*boolean, bool) {
 	return n, yes
 }
 
-func (c *commonNode) isElseClause() (*elseClause, bool) {
-	node := c.getImpl().getNode().getImpl()
-	n, yes := node.(*elseClause)
+func (c *commonNode) isBreak() (*breakExpression, bool) {
+	n, yes := c.getImpl().getNode().getImpl().(*breakExpression)
+	return n, yes
+}
 
+func (c *commonNode) isCallExpression() (*callExpression, bool) {
+	n, yes := c.getImpl().getNode().getImpl().(*callExpression)
+	return n, yes
+}
+
+func (c *commonNode) isContinue() (*continueExpression, bool) {
+	n, yes := c.getImpl().getNode().getImpl().(*continueExpression)
+	return n, yes
+}
+
+func (c *commonNode) isElseClause() (*elseClause, bool) {
+	n, yes := c.getImpl().getNode().getImpl().(*elseClause)
 	return n, yes
 }
 
 func (c *commonNode) isExpressionStatement() (*expressionStatement, bool) {
 	n, yes := c.getImpl().getNode().getImpl().(*expressionStatement)
+	return n, yes
+}
+
+func (c *commonNode) isForInStatement() (*forInStatement, bool) {
+	n, yes := c.getImpl().getNode().getImpl().(*forInStatement)
 	return n, yes
 }
 
@@ -273,6 +311,11 @@ func (c *commonNode) isInvertable() (invertableNodeInterface, bool) {
 
 func (c *commonNode) isProgram() (*program, bool) {
 	n, yes := c.getImpl().getNode().getImpl().(*program)
+	return n, yes
+}
+
+func (c *commonNode) isReturn() (*returnExpression, bool) {
+	n, yes := c.getImpl().getNode().getImpl().(*returnExpression)
 	return n, yes
 }
 
@@ -305,6 +348,10 @@ func (c *commonNode) setElement(element *element) {
 	c.element = element
 }
 
+func (c *commonNode) setImpl(impl nodeInterface) {
+	c._self = impl
+}
+
 func (c *commonNode) setStagedElement(element *element) {
 	c.stagedElement = element
 }
@@ -319,6 +366,11 @@ func (c *childedCommonNode) getChildren() []nodeInterface {
 
 func (c *childedCommonNode) getImpl() childedNodeInterface {
 	return c._self
+}
+
+func (c *childedCommonNode) setImpl(impl childedNodeInterface) {
+	c._self = impl
+	c.commonNode.setImpl(impl)
 }
 
 func (c *childedCommonNode) visit(exec func(nodeInterface) int) int {
