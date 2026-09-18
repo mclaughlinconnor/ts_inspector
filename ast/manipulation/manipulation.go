@@ -32,6 +32,7 @@ func BuildAst(content string) (*Ast, error) {
 	funcMap["false"] = visitBoolean
 	funcMap["identifier"] = visitIdentifier
 	funcMap["if_statement"] = visitIfStatement
+	funcMap["parenthesized_expression"] = visitParenthesizedExpression
 	funcMap["program"] = visitProgram
 	funcMap["true"] = visitBoolean
 	funcMap["unary_expression"] = visitUnaryExpression

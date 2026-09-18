@@ -21,7 +21,7 @@ type ifStatement struct {
 }
 
 func (e *elseClause) isElseIf() bool {
-	_, ok := e.statement.(*ifStatement)
+	_, ok := e.statement.isIfStatement()
 
 	return ok
 }
@@ -49,7 +49,7 @@ func (i *ifStatement) flipElse() {
 		return
 	}
 
-	invertableCondition, ok := i.condition.(invertableNodeInterface)
+	invertableCondition, ok := i.condition.isInvertable()
 	if !ok {
 		return
 	}
@@ -181,7 +181,7 @@ func visitIfStatement(node *sitter.Node, state walkState, _ uint, funcMap walk.V
 			return nil, err
 		}
 
-		alternativeElseClause, ok := alternativeWalkState.(*elseClause)
+		alternativeElseClause, ok := alternativeWalkState.isElseClause()
 		if !ok {
 			return nil, fmt.Errorf("invalid ast: else branch is not an else node, %+v", alternativeWalkState)
 		}

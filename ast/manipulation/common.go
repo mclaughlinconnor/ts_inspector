@@ -16,8 +16,8 @@ type childedCommonNode struct {
 
 type childedNodeInterface interface {
 	nodeInterface
+	impl[childedNodeInterface]
 	getChildren() []nodeInterface
-	getImpl() childedNodeInterface
 }
 
 type commonNode struct {
@@ -27,6 +27,10 @@ type commonNode struct {
 	kind           string
 	programContent *programContent
 	stagedElement  *element
+}
+
+type impl[T nodeInterface] interface {
+	getImpl() T
 }
 
 type invertableNodeInterface interface {
@@ -40,13 +44,14 @@ type nodeInterface interface {
 	commitEditSession() error
 	dropEditSession() error
 	editText(newText string)
+	getActions() []action
 	getAnalysis() []interfaces.Analysis
 	getAstNodeAtOffset(offset uint) (nodeInterface, bool)
 	getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool)
-	getActions() []action
 	getElement() *element
-	getKind() string
 	getId() int
+	getKind() string
+	getNode() impl[nodeInterface]
 	getProgramContent() *programContent
 	getProgramRoot() *Ast
 	getProgramText() string
@@ -54,7 +59,18 @@ type nodeInterface interface {
 	getStagedElement() *element
 	getText() string
 	hasEditSession() bool
+	isBinaryExpression() (*binaryExpression, bool)
+	isBoolean() (*boolean, bool)
+	isElseClause() (*elseClause, bool)
+	isExpressionStatement() (*expressionStatement, bool)
+	isIdentifier() (*identifier, bool)
+	isIfStatement() (*ifStatement, bool)
+	isInvertable() (invertableNodeInterface, bool)
+	isProgram() (*program, bool)
+	isRoot() (*Ast, bool)
+	isUnaryExpression() (*unaryExpression, bool)
 	isUnderCursor(offset uint) bool
+	isUnhandled() (*unhandled, bool)
 	setElement(element *element)
 	setStagedElement(element *element)
 	visit(func(nodeInterface) int) int
@@ -179,6 +195,10 @@ func (c *commonNode) getImpl() nodeInterface {
 	return c._self
 }
 
+func (c *commonNode) getNode() impl[nodeInterface] {
+	return c
+}
+
 func (c *commonNode) getRange() utils.Range {
 	content := c.getImpl().getProgramText()
 
@@ -214,10 +234,67 @@ func (c *commonNode) hasEditSession() bool {
 	return stagedElement != nil
 }
 
+func (c *commonNode) isBinaryExpression() (*binaryExpression, bool) {
+	n, yes := c.getImpl().getNode().getImpl().(*binaryExpression)
+	return n, yes
+}
+
+func (c *commonNode) isBoolean() (*boolean, bool) {
+	n, yes := c.getImpl().getNode().getImpl().(*boolean)
+	return n, yes
+}
+
+func (c *commonNode) isElseClause() (*elseClause, bool) {
+	node := c.getImpl().getNode().getImpl()
+	n, yes := node.(*elseClause)
+
+	return n, yes
+}
+
+func (c *commonNode) isExpressionStatement() (*expressionStatement, bool) {
+	n, yes := c.getImpl().getNode().getImpl().(*expressionStatement)
+	return n, yes
+}
+
+func (c *commonNode) isIdentifier() (*identifier, bool) {
+	n, yes := c.getImpl().getNode().getImpl().(*identifier)
+	return n, yes
+}
+
+func (c *commonNode) isIfStatement() (*ifStatement, bool) {
+	n, yes := c.getImpl().getNode().getImpl().(*ifStatement)
+	return n, yes
+}
+
+func (c *commonNode) isInvertable() (invertableNodeInterface, bool) {
+	n, yes := c.getImpl().getNode().getImpl().(invertableNodeInterface)
+	return n, yes
+}
+
+func (c *commonNode) isProgram() (*program, bool) {
+	n, yes := c.getImpl().getNode().getImpl().(*program)
+	return n, yes
+}
+
+func (c *commonNode) isRoot() (*Ast, bool) {
+	n, yes := c.getImpl().getNode().getImpl().(*Ast)
+	return n, yes
+}
+
+func (c *commonNode) isUnaryExpression() (*unaryExpression, bool) {
+	n, yes := c.getImpl().getNode().getImpl().(*unaryExpression)
+	return n, yes
+}
+
 func (c *commonNode) isUnderCursor(offset uint) bool {
 	element := c.getImpl().getElement()
 
 	return element.getStartOffset() <= offset && offset < element.getEndOffset()
+}
+
+func (c *commonNode) isUnhandled() (*unhandled, bool) {
+	n, yes := c.getImpl().getNode().getImpl().(*unhandled)
+	return n, yes
 }
 
 func (c *commonNode) setElement(element *element) {

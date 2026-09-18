@@ -53,8 +53,8 @@ func (b *binaryExpression) getActions() []action {
 func (b *binaryExpression) getAnalysis() []interfaces.Analysis {
 	analyses := []interfaces.Analysis{}
 
-	_, leftIsRedundant := b.Left.(*boolean)
-	_, rightIsRedundant := b.Right.(*boolean)
+	_, leftIsRedundant := b.Left.isBoolean()
+	_, rightIsRedundant := b.Right.isBoolean()
 
 	if leftIsRedundant {
 		analyses = append(analyses, interfaces.NewAnalysis("redundant", b.Left.getRange(), interfaces.AnalysisSeverity.Error, "This part of the binary expression is redundant", nil))
@@ -96,14 +96,14 @@ func (b *binaryExpression) getAstNodeOfKindAtOffset(offset uint, kind string, fi
 }
 
 func (b *binaryExpression) invert() {
-	left, ok := b.Left.(*binaryExpression)
+	left, ok := b.Left.isBinaryExpression()
 	if ok {
 		left.invert()
 	}
 
 	b.Operator.invert()
 
-	right, ok := b.Right.(*binaryExpression)
+	right, ok := b.Right.isBinaryExpression()
 	if ok {
 		right.invert()
 	}
@@ -118,8 +118,8 @@ func (b *binaryExpression) removeRedundant() bool {
 		return false
 	}
 
-	binaryLeft, leftIsBinary := b.Left.(*binaryExpression)
-	binaryRight, rightIsBinary := b.Right.(*binaryExpression)
+	binaryLeft, leftIsBinary := b.Left.isBinaryExpression()
+	binaryRight, rightIsBinary := b.Right.isBinaryExpression()
 
 	leftIsRedundant := false
 	if leftIsBinary {
@@ -140,11 +140,11 @@ func (b *binaryExpression) removeRedundant() bool {
 		return false
 	}
 
-	if _, isRedundant := b.Left.(*boolean); isRedundant {
+	if _, isRedundant := b.Left.isBoolean(); isRedundant {
 		leftIsRedundant = isRedundant
 	}
 
-	if _, isRedundant := b.Right.(*boolean); isRedundant {
+	if _, isRedundant := b.Right.isBoolean(); isRedundant {
 		rightIsRedundant = isRedundant
 	}
 
