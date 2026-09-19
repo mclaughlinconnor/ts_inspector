@@ -3,6 +3,7 @@ package manipulation
 import (
 	"fmt"
 	"ts_inspector/ast/walk"
+	"ts_inspector/interfaces"
 	"ts_inspector/utils"
 
 	sitter "github.com/tree-sitter/go-tree-sitter"
@@ -71,6 +72,19 @@ func (i *ifStatement) getActions() []action {
 	}
 
 	return actions
+}
+
+func (i *ifStatement) getAnalysis() []interfaces.Analysis {
+	analyses := []interfaces.Analysis{}
+
+	if !i.alternative.isElseIf() {
+		unaryExpression, isUnaryExpression := i.condition.isUnaryExpression()
+		if isUnaryExpression && unaryExpression.Operator.getOperator() == unaryExpressionOperatorEnum.LNOT {
+			analyses = append(analyses, interfaces.NewAnalysis("yoda speak", i.condition.getRange(), interfaces.AnalysisSeverity.Information, "This condition could be inverted for readability", nil))
+		}
+	}
+
+	return analyses
 }
 
 func (i *ifStatement) getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool) {
