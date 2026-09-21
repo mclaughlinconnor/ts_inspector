@@ -53,15 +53,33 @@ func (b *binaryExpression) getActions() []action {
 func (b *binaryExpression) getAnalysis() []interfaces.Analysis {
 	analyses := []interfaces.Analysis{}
 
-	_, leftIsRedundant := b.Left.isBoolean()
-	_, rightIsRedundant := b.Right.isBoolean()
+	leftBoolean, leftIsBoolean := b.Left.isBoolean()
+	rightBoolean, rightIsBoolean := b.Right.isBoolean()
 
-	if leftIsRedundant {
-		analyses = append(analyses, interfaces.NewAnalysis("redundant", b.Left.getRange(), interfaces.AnalysisSeverity.Error, "This part of the binary expression is redundant", nil))
+	if !leftIsBoolean && !rightIsBoolean {
+		return analyses
 	}
 
-	if rightIsRedundant {
-		analyses = append(analyses, interfaces.NewAnalysis("redundant", b.Right.getRange(), interfaces.AnalysisSeverity.Error, "This part of the binary expression is redundant", nil))
+	if leftIsBoolean {
+		var r utils.Range
+		if leftBoolean.getValue() == true && b.Operator.getOperator() == binaryExpressionOperatorEnum.OR {
+			r = b.Right.getRange()
+		} else {
+			r = b.Left.getRange()
+		}
+
+		analyses = append(analyses, interfaces.NewAnalysis("redundant", r, interfaces.AnalysisSeverity.Error, "This part of the binary expression is redundant", nil))
+	}
+
+	if rightIsBoolean {
+		var r utils.Range
+		if rightBoolean.getValue() == true && b.Operator.getOperator() == binaryExpressionOperatorEnum.OR {
+			r = b.Left.getRange()
+		} else {
+			r = b.Right.getRange()
+		}
+
+		analyses = append(analyses, interfaces.NewAnalysis("redundant", r, interfaces.AnalysisSeverity.Error, "This part of the binary expression is redundant", nil))
 	}
 
 	return analyses
@@ -140,12 +158,20 @@ func (b *binaryExpression) removeRedundant() bool {
 		return false
 	}
 
-	if _, isRedundant := b.Left.isBoolean(); isRedundant {
-		leftIsRedundant = isRedundant
+	if boolean, isRedundant := b.Left.isBoolean(); isRedundant {
+		if boolean.getValue() == true && b.Operator.getOperator() == binaryExpressionOperatorEnum.OR {
+			rightIsRedundant = isRedundant
+		} else {
+			leftIsRedundant = isRedundant
+		}
 	}
 
-	if _, isRedundant := b.Right.isBoolean(); isRedundant {
-		rightIsRedundant = isRedundant
+	if boolean, isRedundant := b.Right.isBoolean(); isRedundant {
+		if boolean.getValue() == true && b.Operator.getOperator() == binaryExpressionOperatorEnum.OR {
+			leftIsRedundant = isRedundant
+		} else {
+			rightIsRedundant = isRedundant
+		}
 	}
 
 	if leftIsRedundant && rightIsRedundant {
