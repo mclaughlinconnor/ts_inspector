@@ -288,7 +288,7 @@ func handleMixinAttributeName(node *sitter.Node, state *Ast, indexInParent uint,
 }
 
 func handleMixinName(node *sitter.Node, state *Ast, indexInParent uint, internalFuncMap walk.VisitorFuncMap[*Ast]) (*Ast, error) {
-	if p := state.Current.Peek(); p != nil {
+	if p := state.Current.Peek(); p != nil && (*p).Mixin != nil {
 		(*p).Mixin.Name = node.Utf8Text(state.Content)
 		(*p).Mixin.NameNode = node
 	}
