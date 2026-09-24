@@ -27,6 +27,7 @@ func BuildAst(content string) (*Ast, error) {
 
 	funcMap := walk.NewVisitorFuncsMap[walkState]()
 	funcMap["arguments"] = visitArguments
+	funcMap["arrow_function"] = visitArrowFunction
 	funcMap["await_expression"] = visitAwaitExpression
 	funcMap["binary_expression"] = visitBinaryExpression
 	funcMap["break_statement"] = visitBreak
@@ -36,10 +37,13 @@ func BuildAst(content string) (*Ast, error) {
 	funcMap["expression_statement"] = visitExpressionStatement
 	funcMap["false"] = visitBoolean
 	funcMap["for_in_statement"] = visitForInStatement
+	funcMap["function_declaration"] = visitFunctionDeclaration
 	funcMap["identifier"] = visitIdentifier
 	funcMap["if_statement"] = visitIfStatement
+	funcMap["method_definition"] = visitMethodDefinition
 	funcMap["parenthesized_expression"] = visitParenthesizedExpression
 	funcMap["program"] = visitProgram
+	funcMap["property_identifier"] = visitPropertyIdentifier
 	funcMap["return_statement"] = visitReturn
 	funcMap["true"] = visitBoolean
 	funcMap["unary_expression"] = visitUnaryExpression

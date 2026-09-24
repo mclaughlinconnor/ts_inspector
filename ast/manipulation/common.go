@@ -59,21 +59,25 @@ type nodeInterface interface {
 	getStagedElement() *element
 	getText() string
 	hasEditSession() bool
+	isArguments() (*arguments, bool)
+	isArrowFunction() (*arrowFunction, bool)
+	isAwaitExpression() (*awaitExpression, bool)
 	isBinaryExpression() (*binaryExpression, bool)
 	isBoolean() (*boolean, bool)
-	isElseClause() (*elseClause, bool)
-	isExpressionStatement() (*expressionStatement, bool)
-	isIdentifier() (*identifier, bool)
-	isIfStatement() (*ifStatement, bool)
-	isArguments() (*arguments, bool)
-	isAwaitExpression() (*awaitExpression, bool)
 	isBreak() (*breakExpression, bool)
 	isCallExpression() (*callExpression, bool)
 	isContinue() (*continueExpression, bool)
+	isElseClause() (*elseClause, bool)
+	isExpressionStatement() (*expressionStatement, bool)
 	isForInStatement() (*forInStatement, bool)
-	isReturn() (*returnExpression, bool)
+	isFunctionDeclaration() (*functionDeclaration, bool)
+	isIdentifier() (*identifier, bool)
+	isPropertyIdentifier() (*propertyIdentifier, bool)
+	isIfStatement() (*ifStatement, bool)
 	isInvertable() (invertableNodeInterface, bool)
+	isMethodDefinition() (*methodDefinition, bool)
 	isProgram() (*program, bool)
+	isReturn() (*returnExpression, bool)
 	isRoot() (*Ast, bool)
 	isUnaryExpression() (*unaryExpression, bool)
 	isUnderCursor(offset uint) bool
@@ -249,6 +253,11 @@ func (c *commonNode) isArguments() (*arguments, bool) {
 	return n, yes
 }
 
+func (c *commonNode) isArrowFunction() (*arrowFunction, bool) {
+	n, yes := c.getImpl().getNode().getImpl().(*arrowFunction)
+	return n, yes
+}
+
 func (c *commonNode) isAwaitExpression() (*awaitExpression, bool) {
 	n, yes := c.getImpl().getNode().getImpl().(*awaitExpression)
 	return n, yes
@@ -289,6 +298,11 @@ func (c *commonNode) isExpressionStatement() (*expressionStatement, bool) {
 	return n, yes
 }
 
+func (c *commonNode) isFunctionDeclaration() (*functionDeclaration, bool) {
+	n, yes := c.getImpl().getNode().getImpl().(*functionDeclaration)
+	return n, yes
+}
+
 func (c *commonNode) isForInStatement() (*forInStatement, bool) {
 	n, yes := c.getImpl().getNode().getImpl().(*forInStatement)
 	return n, yes
@@ -309,8 +323,18 @@ func (c *commonNode) isInvertable() (invertableNodeInterface, bool) {
 	return n, yes
 }
 
+func (c *commonNode) isMethodDefinition() (*methodDefinition, bool) {
+	n, yes := c.getImpl().getNode().getImpl().(*methodDefinition)
+	return n, yes
+}
+
 func (c *commonNode) isProgram() (*program, bool) {
 	n, yes := c.getImpl().getNode().getImpl().(*program)
+	return n, yes
+}
+
+func (c *commonNode) isPropertyIdentifier() (*propertyIdentifier, bool) {
+	n, yes := c.getImpl().getNode().getImpl().(*propertyIdentifier)
 	return n, yes
 }
 
