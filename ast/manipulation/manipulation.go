@@ -50,9 +50,10 @@ func BuildAst(content string) (*Ast, error) {
 	funcMap["unary_expression"] = visitUnaryExpression
 	funcMap["variable_declaration"] = visitVariableDeclaration
 	funcMap["variable_declarator"] = visitVariableDeclarator
+	funcMap["while_statement"] = visitWhileStatement
 	funcMap[walk.DUMMY_VISITOR_KIND] = visitUnhandled
 
-	astRoot := Ast{kind: "root", element: elementFromNode(rootNode), programContent: &programContent{text: byteContent, tree: tree}}
+	astRoot := Ast{cfg: newCfg(), kind: "root", element: elementFromNode(rootNode), programContent: &programContent{text: byteContent, tree: tree}}
 	var ast walkState = &astRoot
 	astRoot.getProgramContent().root = ast.(*Ast)
 

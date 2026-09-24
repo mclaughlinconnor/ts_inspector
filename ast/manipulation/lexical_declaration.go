@@ -22,28 +22,34 @@ type lexicalDeclaration struct {
 	kind       string
 }
 
-func (a *lexicalDeclaration) getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool) {
-	if !a.isUnderCursor(offset) {
+func (l *lexicalDeclaration) _buildCfgBlock() (bool, error) {
+	l.getCfg().addInstruction(instructionAssign, l.declarator.getNameText(), l, l.declarator.getValueText())
+
+	return true, nil
+}
+
+func (l *lexicalDeclaration) getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool) {
+	if !l.isUnderCursor(offset) {
 		return nil, false
 	}
 
-	if first && a.getKind() == kind {
-		return a, true
+	if first && l.getKind() == kind {
+		return l, true
 	}
 
-	if a.declarator != nil && a.declarator.isUnderCursor(offset) {
-		return a.declarator.getAstNodeOfKindAtOffset(offset, kind, first)
+	if l.declarator != nil && l.declarator.isUnderCursor(offset) {
+		return l.declarator.getAstNodeOfKindAtOffset(offset, kind, first)
 	}
 
-	if kind == NULL_KIND || a.getKind() == kind {
-		return a, true
+	if kind == NULL_KIND || l.getKind() == kind {
+		return l, true
 	}
 
 	return nil, false
 }
 
-func (a *lexicalDeclaration) visit(exec func(nodeInterface) int) int {
-	if ret := exec(a); ret != VisitContinue {
+func (l *lexicalDeclaration) visit(exec func(nodeInterface) int) int {
+	if ret := exec(l); ret != VisitContinue {
 		if ret == VisitAbort {
 			return ret
 		}
@@ -53,7 +59,7 @@ func (a *lexicalDeclaration) visit(exec func(nodeInterface) int) int {
 		}
 	}
 
-	if ret := a.declarator.visit(exec); ret == VisitAbort {
+	if ret := l.declarator.visit(exec); ret == VisitAbort {
 		return ret
 	}
 

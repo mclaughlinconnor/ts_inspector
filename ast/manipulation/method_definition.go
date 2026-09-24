@@ -53,6 +53,10 @@ func (a *methodDefinition) getAstNodeOfKindAtOffset(offset uint, kind string, fi
 	return nil, false
 }
 
+func (f *methodDefinition) _buildCfgBlock() (bool, error) {
+	return true, buildFunctionCfg(f, f.name.getText(), f.body)
+}
+
 func (a *methodDefinition) visit(exec func(nodeInterface) int) int {
 	if ret := exec(a); ret != VisitContinue {
 		if ret == VisitAbort {

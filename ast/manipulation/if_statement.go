@@ -45,6 +45,68 @@ func (e *elseClause) visit(exec func(nodeInterface) int) int {
 	return VisitContinue
 }
 
+func (i *ifStatement) _buildCfgBlock() (bool, error) {
+	cfg := i.getCfg()
+
+	conditionBlock := cfg.currentCfg().addBlock("If condition block")
+	consequenceBlock := cfg.currentCfg().addBlock("If then block")
+	alternativeBlock := cfg.currentCfg().addBlock("If else block")
+	afterBlock := cfg.currentCfg().addBlock("If after block")
+
+	cfg.addInstruction(instructionBranch, "", i, "")
+
+	cfg.currentCfg().addEdge(cfg.current, conditionBlock)
+	conditionBlock.Node = i.condition
+
+	cfg.current = conditionBlock
+	cfg.addInstruction(instructionBranch, "", i, "")
+
+	if !conditionBlock.hasConstantFalse() {
+		cfg.currentCfg().addEdge(cfg.current, consequenceBlock)
+	}
+
+	consequenceBlock.Node = i.consequence
+
+	alternative := i.alternative
+	if alternative == nil {
+		cfg.currentCfg().addEdge(cfg.current, afterBlock)
+	} else {
+		if !conditionBlock.hasConstantTrue() {
+			cfg.currentCfg().addEdge(cfg.current, alternativeBlock)
+		}
+
+		alternativeBlock.Node = alternative
+	}
+
+	cfg.current = consequenceBlock
+	cfg.addInstruction(instructionBranch, "", consequenceBlock.Node, "")
+
+	_, err := i.consequence.buildCfgBlock()
+	if err != nil {
+		return true, err
+	}
+
+	if len(cfg.current.After) == 0 {
+		cfg.currentCfg().addEdge(cfg.current, afterBlock)
+	}
+
+	if alternative != nil {
+		cfg.current = alternativeBlock
+		_, err := alternative.buildCfgBlock()
+		if err != nil {
+			return true, err
+		}
+
+		if len(cfg.current.After) == 0 {
+			cfg.currentCfg().addEdge(cfg.current, afterBlock)
+		}
+	}
+
+	cfg.current = afterBlock
+
+	return true, nil
+}
+
 func (i *ifStatement) flipElse() {
 	if i.alternative == nil || i.alternative.isElseIf() {
 		return
@@ -77,7 +139,7 @@ func (i *ifStatement) getActions() []action {
 func (i *ifStatement) getAnalysis() []interfaces.Analysis {
 	analyses := []interfaces.Analysis{}
 
-	if !i.alternative.isElseIf() {
+	if i.alternative != nil && !i.alternative.isElseIf() {
 		unaryExpression, isUnaryExpression := i.condition.isUnaryExpression()
 		if isUnaryExpression && unaryExpression.Operator.getOperator() == unaryExpressionOperatorEnum.LNOT {
 			analyses = append(analyses, interfaces.NewAnalysis("yoda speak", i.condition.getRange(), interfaces.AnalysisSeverity.Information, "This condition could be inverted for readability", nil))

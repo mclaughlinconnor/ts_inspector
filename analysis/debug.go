@@ -2,7 +2,6 @@ package analysis
 
 import (
 	"fmt"
-	"ts_inspector/analysis/cfg"
 	"ts_inspector/interfaces"
 	"ts_inspector/parser"
 	"ts_inspector/utils"
@@ -53,19 +52,19 @@ func debug(_ *parser.State, file *parser.File) ([]interfaces.Analysis, error) {
 	}
 
 	if file.Snapshot().Filetype == "typescript" {
-		cfgState, err := cfg.BuildGraphFromFile(file)
+		cfg, err := file.Snapshot().Ast.GetCfg()
 		if err != nil {
 			return analyses, err
 		}
 
-		for _, cfg := range cfgState.AllCfg {
-			if cfg.Type == "program" {
+		for _, cfg := range cfg.GetAllFunctionCfg() {
+			if cfg.Kind == "program" {
 				continue
 			}
 
 			message := fmt.Sprintf("Complexity: %v (%v edges, %v nodes)", cfg.CalculateCyclomaticComplexity(), cfg.CountDownwardEdges(), cfg.CountDownwardNodes())
 
-			analysis := newAnalysisFromFileNode(file, "complexity", cfg.Node, interfaces.AnalysisSeverity.Warning, message, nil)
+			analysis := interfaces.NewAnalysis("complexity", cfg.Node.GetRange(), interfaces.AnalysisSeverity.Warning, message, nil)
 			analysis.Range.End = analysis.Range.Start
 			analyses = append(analyses, analysis)
 		}

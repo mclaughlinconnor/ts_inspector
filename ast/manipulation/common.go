@@ -8,6 +8,8 @@ import (
 	sitter "github.com/tree-sitter/go-tree-sitter"
 )
 
+type AstManipulationNode = nodeInterface
+
 type childedCommonNode struct {
 	commonNode
 	_self    childedNodeInterface
@@ -18,10 +20,12 @@ type childedNodeInterface interface {
 	nodeInterface
 	impl[childedNodeInterface]
 	getChildren() []nodeInterface
+	visitChildren(func(nodeInterface) int) int
 }
 
 type commonNode struct {
 	_self          nodeInterface
+	cfg            *Cfg
 	element        *element
 	id             int
 	kind           string
@@ -39,8 +43,13 @@ type invertableNodeInterface interface {
 }
 
 type nodeInterface interface {
+	GetEndOffset() uint
+	GetRange() utils.Range
+	GetStartOffset() uint
+
 	applyAction(apply func()) ([]utils.TextEdit, error)
 	beginEditSession() error
+	buildCfgBlock() (bool, error)
 	commitEditSession() error
 	dropEditSession() error
 	editText(newText string)
@@ -48,6 +57,8 @@ type nodeInterface interface {
 	getAnalysis() []interfaces.Analysis
 	getAstNodeAtOffset(offset uint) (nodeInterface, bool)
 	getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool)
+	getCfg() *Cfg
+	getEndOffset() uint
 	getElement() *element
 	getId() int
 	getKind() string
@@ -57,7 +68,11 @@ type nodeInterface interface {
 	getProgramText() string
 	getRange() utils.Range
 	getStagedElement() *element
+	getStartOffset() uint
 	getText() string
+	hasConstantExpression() bool
+	hasConstantFalse() bool
+	hasConstantTrue() bool
 	hasEditSession() bool
 	isArguments() (*arguments, bool)
 	isArrowFunction() (*arrowFunction, bool)
@@ -77,6 +92,7 @@ type nodeInterface interface {
 	isIfStatement() (*ifStatement, bool)
 	isInvertable() (invertableNodeInterface, bool)
 	isMethodDefinition() (*methodDefinition, bool)
+	isParenthesizedExpression() (*parenthesizedExpression, bool)
 	isProgram() (*program, bool)
 	isReturn() (*returnExpression, bool)
 	isRoot() (*Ast, bool)
@@ -85,9 +101,24 @@ type nodeInterface interface {
 	isUnhandled() (*unhandled, bool)
 	isVariableDeclaration() (*variableDeclaration, bool)
 	isVariableDeclarator() (*variableDeclarator, bool)
+	isWhileStatment() (*whileStatement, bool)
 	setElement(element *element)
 	setStagedElement(element *element)
 	visit(func(nodeInterface) int) int
+
+	_buildCfgBlock() (bool, error)
+}
+
+func (c *commonNode) GetEndOffset() uint {
+	return c.getEndOffset()
+}
+
+func (c *commonNode) GetRange() utils.Range {
+	return c.getRange()
+}
+
+func (c *commonNode) GetStartOffset() uint {
+	return c.getStartOffset()
 }
 
 func (c *commonNode) applyAction(apply func()) ([]utils.TextEdit, error) {
@@ -119,6 +150,10 @@ func (c *commonNode) beginEditSession() error {
 	return nil
 }
 
+func (c *commonNode) buildCfgBlock() (bool, error) {
+	return c.getImpl()._buildCfgBlock()
+}
+
 func (c *commonNode) commitEditSession() error {
 	if !c.hasEditSession() {
 		return fmt.Errorf("tried to commit an edit session when there is no edit session in progress")
@@ -141,15 +176,13 @@ func (c *commonNode) dropEditSession() error {
 }
 
 func (c *commonNode) editText(newText string) {
-	element := c.getImpl().getElement()
+	startIndex := c.getStartOffset()
 
-	startIndex := element.getStartOffset()
-
-	oldEndIndex := element.getEndOffset()
+	oldEndIndex := c.getEndOffset()
 	newEndIndex := startIndex + uint(len(newText))
 
 	programContent := c.getImpl().getProgramContent()
-	programContent.editText(element.getStartOffset(), element.getEndOffset(), newText)
+	programContent.editText(c.getStartOffset(), c.getEndOffset(), newText)
 
 	edit := elementEdit{
 		startOffset:  startIndex,
@@ -187,6 +220,10 @@ func (c *commonNode) getAstNodeOfKindAtOffset(offset uint, kind string, _ bool) 
 	return nil, false
 }
 
+func (c *commonNode) getCfg() *Cfg {
+	return c.cfg
+}
+
 func (c *commonNode) getElement() *element {
 	stagedElement := c.getImpl().getStagedElement()
 	if stagedElement != nil {
@@ -194,6 +231,10 @@ func (c *commonNode) getElement() *element {
 	}
 
 	return c.element
+}
+
+func (c *commonNode) getEndOffset() uint {
+	return c.getImpl().getElement().getEndOffset()
 }
 
 func (c *commonNode) getKind() string {
@@ -219,15 +260,31 @@ func (c *commonNode) getNode() impl[nodeInterface] {
 func (c *commonNode) getRange() utils.Range {
 	content := c.getImpl().getProgramText()
 
-	start := utils.GetPositionForOffset(content, c.getImpl().getElement().getStartOffset())
-	end := utils.GetPositionForOffset(content, c.getImpl().getElement().getEndOffset())
+	start := utils.GetPositionForOffset(content, c.getImpl().getStartOffset())
+	end := utils.GetPositionForOffset(content, c.getImpl().getEndOffset())
 
 	return utils.Range{End: end, Start: start}
+}
+
+func (c *commonNode) getStartOffset() uint {
+	return c.getImpl().getElement().getStartOffset()
 }
 
 func (c *commonNode) getText() string {
 	element := c.getImpl().getElement()
 	return c.getImpl().getProgramText()[element.startOffset:element.endOffset]
+}
+
+func (c *commonNode) hasConstantExpression() bool {
+	return false
+}
+
+func (c *commonNode) hasConstantFalse() bool {
+	return false
+}
+
+func (c *commonNode) hasConstantTrue() bool {
+	return false
 }
 
 func (c *commonNode) getProgramContent() *programContent {
@@ -336,6 +393,11 @@ func (c *commonNode) isMethodDefinition() (*methodDefinition, bool) {
 	return n, yes
 }
 
+func (c *commonNode) isParenthesizedExpression() (*parenthesizedExpression, bool) {
+	n, yes := c.getImpl().getNode().getImpl().(*parenthesizedExpression)
+	return n, yes
+}
+
 func (c *commonNode) isProgram() (*program, bool) {
 	n, yes := c.getImpl().getNode().getImpl().(*program)
 	return n, yes
@@ -362,9 +424,7 @@ func (c *commonNode) isUnaryExpression() (*unaryExpression, bool) {
 }
 
 func (c *commonNode) isUnderCursor(offset uint) bool {
-	element := c.getImpl().getElement()
-
-	return element.getStartOffset() <= offset && offset < element.getEndOffset()
+	return c.getStartOffset() <= offset && offset < c.getEndOffset()
 }
 
 func (c *commonNode) isUnhandled() (*unhandled, bool) {
@@ -379,6 +439,11 @@ func (c *commonNode) isVariableDeclaration() (*variableDeclaration, bool) {
 
 func (c *commonNode) isVariableDeclarator() (*variableDeclarator, bool) {
 	n, yes := c.getImpl().getNode().getImpl().(*variableDeclarator)
+	return n, yes
+}
+
+func (c *commonNode) isWhileStatment() (*whileStatement, bool) {
+	n, yes := c.getImpl().getNode().getImpl().(*whileStatement)
 	return n, yes
 }
 
@@ -402,6 +467,24 @@ func (c *commonNode) visit(exec func(nodeInterface) int) int {
 	return terminalVisitor(c, exec)
 }
 
+func (c *commonNode) _buildCfgBlock() (bool, error) {
+	return false, nil
+}
+
+func (c *childedCommonNode) _buildCfgBlock() (bool, error) {
+	built := false
+	for _, child := range c.getChildren() {
+		b, err := child.buildCfgBlock()
+		built = built || b
+
+		if err != nil {
+			return built, err
+		}
+	}
+
+	return built, nil
+}
+
 func (c *childedCommonNode) getChildren() []nodeInterface {
 	return c.children
 }
@@ -417,6 +500,16 @@ func (c *childedCommonNode) setImpl(impl childedNodeInterface) {
 
 func (c *childedCommonNode) visit(exec func(nodeInterface) int) int {
 	return childedVisitor(c, exec)
+}
+
+func (c *childedCommonNode) visitChildren(exec func(nodeInterface) int) int {
+	for _, child := range c.getImpl().getChildren() {
+		if ret := child.visit(exec); ret == VisitAbort {
+			return ret
+		}
+	}
+
+	return VisitContinue
 }
 
 func (c *childedCommonNode) getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool) {
@@ -444,7 +537,13 @@ func (c *childedCommonNode) getAstNodeOfKindAtOffset(offset uint, kind string, f
 }
 
 func makeCommonNode(kind string, state walkState, node *sitter.Node) commonNode {
-	return commonNode{id: utils.GetNextId(ID_NAMESPACE), kind: kind, element: elementFromNode(node), programContent: state.getProgramContent()}
+	return commonNode{
+		id:             utils.GetNextId(ID_NAMESPACE),
+		kind:           kind,
+		element:        elementFromNode(node),
+		programContent: state.getProgramContent(),
+		cfg:            state.getCfg(),
+	}
 }
 
 func makeCommonChildedNode(kind string, state walkState, node *sitter.Node) childedCommonNode {
@@ -462,10 +561,8 @@ func childedVisitor(this childedNodeInterface, exec func(nodeInterface) int) int
 		}
 	}
 
-	for _, child := range this.getImpl().getChildren() {
-		if ret := child.visit(exec); ret == VisitAbort {
-			return ret
-		}
+	if ret := this.visitChildren(exec); ret == VisitAbort {
+		return ret
 	}
 
 	return VisitContinue
@@ -483,4 +580,36 @@ func terminalVisitor(this nodeInterface, exec func(nodeInterface) int) int {
 	}
 
 	return VisitContinue
+}
+
+func buildFunctionCfg(this nodeInterface, name string, body nodeInterface) error {
+	blockName := "Function " + name
+
+	cfg := this.getCfg()
+	cfg.addInstruction(instructionAssign, name, this, "")
+
+	currentCfg := &FunctionCfg{blocks: []*CfgBlock{}, Node: this, Kind: "function"}
+	cfg.allCfg = append(cfg.allCfg, currentCfg)
+	cfg.cfgStack.Push(currentCfg)
+
+	start := cfg.currentCfg().addBlock(blockName + " start")
+	end := cfg.currentCfg().addBlock(blockName + " end")
+
+	cfg.currentCfg().Start = start
+	cfg.currentCfg().End = end
+
+	prevCurrent := cfg.current
+	cfg.current = start
+
+	_, err := body.buildCfgBlock()
+	if err != nil {
+		return err
+	}
+
+	cfg.currentCfg().addEdge(cfg.current, end)
+
+	cfg.cfgStack.Pop()
+	cfg.current = prevCurrent
+
+	return nil
 }

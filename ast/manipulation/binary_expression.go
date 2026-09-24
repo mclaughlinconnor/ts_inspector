@@ -113,6 +113,30 @@ func (b *binaryExpression) getAstNodeOfKindAtOffset(offset uint, kind string, fi
 	return nil, false
 }
 
+func (b *binaryExpression) hasConstantExpression() bool {
+	if b.Operator.getOperator() != binaryExpressionOperatorEnum.AND {
+		return false
+	}
+
+	return b.Left.hasConstantExpression() && b.Right.hasConstantExpression()
+}
+
+func (b *binaryExpression) hasConstantFalse() bool {
+	if b.Operator.getOperator() != binaryExpressionOperatorEnum.AND {
+		return false
+	}
+
+	return b.Left.hasConstantFalse() && b.Right.hasConstantFalse()
+}
+
+func (b *binaryExpression) hasConstantTrue() bool {
+	if b.Operator.getOperator() != binaryExpressionOperatorEnum.AND {
+		return false
+	}
+
+	return b.Left.hasConstantTrue() && b.Right.hasConstantTrue()
+}
+
 func (b *binaryExpression) invert() {
 	left, ok := b.Left.isBinaryExpression()
 	if ok {

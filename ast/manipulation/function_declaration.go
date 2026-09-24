@@ -15,36 +15,40 @@ type functionDeclaration struct {
 	returnType nodeInterface // type_annotation
 }
 
-func (a *functionDeclaration) getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool) {
-	if !a.isUnderCursor(offset) {
+func (f *functionDeclaration) _buildCfgBlock() (bool, error) {
+	return true, buildFunctionCfg(f, f.name.getText(), f.body)
+}
+
+func (f *functionDeclaration) getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool) {
+	if !f.isUnderCursor(offset) {
 		return nil, false
 	}
 
-	if first && a.getKind() == kind {
-		return a, true
+	if first && f.getKind() == kind {
+		return f, true
 	}
 
-	if a.body != nil && a.body.isUnderCursor(offset) {
-		return a.body.getAstNodeOfKindAtOffset(offset, kind, first)
+	if f.body != nil && f.body.isUnderCursor(offset) {
+		return f.body.getAstNodeOfKindAtOffset(offset, kind, first)
 	}
 
-	if a.parameters != nil && a.parameters.isUnderCursor(offset) {
-		return a.parameters.getAstNodeOfKindAtOffset(offset, kind, first)
+	if f.parameters != nil && f.parameters.isUnderCursor(offset) {
+		return f.parameters.getAstNodeOfKindAtOffset(offset, kind, first)
 	}
 
-	if a.returnType != nil && a.returnType.isUnderCursor(offset) {
-		return a.returnType.getAstNodeOfKindAtOffset(offset, kind, first)
+	if f.returnType != nil && f.returnType.isUnderCursor(offset) {
+		return f.returnType.getAstNodeOfKindAtOffset(offset, kind, first)
 	}
 
-	if kind == NULL_KIND || a.getKind() == kind {
-		return a, true
+	if kind == NULL_KIND || f.getKind() == kind {
+		return f, true
 	}
 
 	return nil, false
 }
 
-func (a *functionDeclaration) visit(exec func(nodeInterface) int) int {
-	if ret := exec(a); ret != VisitContinue {
+func (f *functionDeclaration) visit(exec func(nodeInterface) int) int {
+	if ret := exec(f); ret != VisitContinue {
 		if ret == VisitAbort {
 			return ret
 		}
@@ -54,16 +58,16 @@ func (a *functionDeclaration) visit(exec func(nodeInterface) int) int {
 		}
 	}
 
-	if ret := a.parameters.visit(exec); ret == VisitAbort {
+	if ret := f.parameters.visit(exec); ret == VisitAbort {
 		return ret
 	}
 
-	if ret := a.body.visit(exec); ret == VisitAbort {
+	if ret := f.body.visit(exec); ret == VisitAbort {
 		return ret
 	}
 
-	if a.returnType != nil {
-		if ret := a.returnType.visit(exec); ret == VisitAbort {
+	if f.returnType != nil {
+		if ret := f.returnType.visit(exec); ret == VisitAbort {
 			return ret
 		}
 	}

@@ -2,14 +2,12 @@ package analysis
 
 import (
 	"fmt"
-	"ts_inspector/analysis/cfg"
+	"ts_inspector/ast/manipulation"
 	"ts_inspector/config"
 	"ts_inspector/interfaces"
 	"ts_inspector/parser"
 	"ts_inspector/parser/tcb"
 	"ts_inspector/utils"
-
-	sitter "github.com/tree-sitter/go-tree-sitter"
 )
 
 const unreachableCode = "unreachable"
@@ -18,13 +16,13 @@ func cfgUnreachableBlock(state *parser.State, file *parser.File) ([]interfaces.A
 	analyses := []interfaces.Analysis{}
 
 	if file.Snapshot().Filetype == "typescript" {
-		cfg, err := cfg.BuildGraphFromFile(file)
+		cfg, err := file.Snapshot().Ast.GetCfg()
 		if err != nil {
 			return analyses, err
 		}
 
-		return analyseCfg(file.Snapshot().Content, cfg, analyses, false, func(m string, n *sitter.Node, s int) *interfaces.Analysis {
-			a := newAnalysisFromFileNode(file, unreachableCode, n, s, m, nil)
+		return analyseCfg(file.Snapshot().Content, cfg, analyses, false, func(m string, n manipulation.AstManipulationNode, s int) *interfaces.Analysis {
+			a := interfaces.Analysis{Code: unreachableCode, Message: m, Range: n.GetRange(), RelatedInformation: nil, Severity: s, Source: "ts_inspector"}
 			return &a
 		}), nil
 	}
@@ -35,9 +33,9 @@ func cfgUnreachableBlock(state *parser.State, file *parser.File) ([]interfaces.A
 
 	content := []byte(file.Snapshot().Content)
 
-	buildPugAnalysis := func(tcbBlock *tcb.Statement) func(string, *sitter.Node, int) *interfaces.Analysis {
-		return func(message string, node *sitter.Node, severity int) *interfaces.Analysis {
-			r := tcbBlock.TsNodeToRange(file.Snapshot().Content, node, config.GetConfig().Debug)
+	buildPugAnalysis := func(tcbBlock *tcb.Statement) func(string, manipulation.AstManipulationNode, int) *interfaces.Analysis {
+		return func(message string, node manipulation.AstManipulationNode, severity int) *interfaces.Analysis {
+			r := tcbBlock.TsOffsetToRange(file.Snapshot().Content, int(node.GetStartOffset()), int(node.GetEndOffset()), config.GetConfig().Debug)
 			if r == nil {
 				return nil
 			}
@@ -61,7 +59,12 @@ func cfgUnreachableBlock(state *parser.State, file *parser.File) ([]interfaces.A
 
 		tcbBlock := tcb.ToString()
 
-		cfg, err := cfg.BuildGraphFromContent(tcbBlock)
+		ast, err := manipulation.BuildAst(tcbBlock)
+		if err != nil {
+			return analyses, err
+		}
+
+		cfg, err := ast.GetCfg()
 		if err != nil {
 			return analyses, err
 		}
@@ -72,20 +75,20 @@ func cfgUnreachableBlock(state *parser.State, file *parser.File) ([]interfaces.A
 	return analyses, nil
 }
 
-func analyseCfg(content string, cfgState *cfg.State, analyses []interfaces.Analysis, skipComplexity bool, buildAnalysis func(string, *sitter.Node, int) *interfaces.Analysis) []interfaces.Analysis {
-	for _, cfg := range cfgState.AllCfg {
+func analyseCfg(content string, cfgState *manipulation.Cfg, analyses []interfaces.Analysis, skipComplexity bool, buildAnalysis func(string, manipulation.AstManipulationNode, int) *interfaces.Analysis) []interfaces.Analysis {
+	for _, cfg := range cfgState.GetAllFunctionCfg() {
 		if !skipComplexity {
 			analyses = analyseComplexity(analyses, content, cfg)
 		}
 
-		for _, block := range cfg.Blocks {
+		for _, block := range cfg.GetBlocks() {
 			if len(block.Before) != 0 || cfg.Start == block {
 				continue
 			}
 
 			message := "Code is unreachable"
 
-			var node *sitter.Node
+			var node manipulation.AstManipulationNode
 			if block.Node != nil {
 				node = block.Node
 			} else if len(block.Instructions) != 0 {
@@ -106,7 +109,7 @@ func analyseCfg(content string, cfgState *cfg.State, analyses []interfaces.Analy
 	return analyses
 }
 
-func analyseComplexity(analyses []interfaces.Analysis, content string, cfg *cfg.FunctionCFG) []interfaces.Analysis {
+func analyseComplexity(analyses []interfaces.Analysis, content string, cfg *manipulation.FunctionCfg) []interfaces.Analysis {
 	complexity := cfg.CalculateCyclomaticComplexity()
 	if complexity <= 10 {
 		return analyses
@@ -128,7 +131,8 @@ func analyseComplexity(analyses []interfaces.Analysis, content string, cfg *cfg.
 
 	message := fmt.Sprintf("%v complexity: %v", level, cfg.CalculateCyclomaticComplexity())
 
-	analysis := newAnalysisFromFileContent(content, "complexity", cfg.Node, severity, message, nil)
+	analysis := interfaces.Analysis{Code: "complexity", Message: message, Range: cfg.Node.GetRange(), RelatedInformation: nil, Severity: severity, Source: "ts_inspector"}
+
 	analysis.Range.End = analysis.Range.Start
 	analyses = append(analyses, analysis)
 

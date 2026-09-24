@@ -13,32 +13,45 @@ type callExpression struct {
 	arguments nodeInterface // could be a `template_string`
 }
 
-func (i *callExpression) getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool) {
-	if !i.isUnderCursor(offset) {
+func (c *callExpression) _buildCfgBlock() (bool, error) {
+	c.getCfg().addInstruction(instructionCall, "", c, "")
+
+	if expressionStatement, isExpressionStatement := c.arguments.isExpressionStatement(); isExpressionStatement {
+		_, err := expressionStatement.buildCfgBlock()
+		if err != nil {
+			return true, err
+		}
+	}
+
+	return true, nil
+}
+
+func (c *callExpression) getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool) {
+	if !c.isUnderCursor(offset) {
 		return nil, false
 	}
 
-	if first && i.getKind() == kind {
-		return i, true
+	if first && c.getKind() == kind {
+		return c, true
 	}
 
-	if i.function.isUnderCursor(offset) {
-		return i.function.getAstNodeOfKindAtOffset(offset, kind, first)
+	if c.function.isUnderCursor(offset) {
+		return c.function.getAstNodeOfKindAtOffset(offset, kind, first)
 	}
 
-	if i.arguments.isUnderCursor(offset) {
-		return i.arguments.getAstNodeOfKindAtOffset(offset, kind, first)
+	if c.arguments.isUnderCursor(offset) {
+		return c.arguments.getAstNodeOfKindAtOffset(offset, kind, first)
 	}
 
-	if kind == NULL_KIND || i.getKind() == kind {
-		return i, true
+	if kind == NULL_KIND || c.getKind() == kind {
+		return c, true
 	}
 
 	return nil, false
 }
 
-func (e *callExpression) visit(exec func(nodeInterface) int) int {
-	if ret := exec(e); ret != VisitContinue {
+func (c *callExpression) visit(exec func(nodeInterface) int) int {
+	if ret := exec(c); ret != VisitContinue {
 		if ret == VisitAbort {
 			return ret
 		}
@@ -48,11 +61,11 @@ func (e *callExpression) visit(exec func(nodeInterface) int) int {
 		}
 	}
 
-	if ret := e.function.visit(exec); ret == VisitAbort {
+	if ret := c.function.visit(exec); ret == VisitAbort {
 		return ret
 	}
 
-	if ret := e.arguments.visit(exec); ret == VisitAbort {
+	if ret := c.arguments.visit(exec); ret == VisitAbort {
 		return ret
 	}
 

@@ -2,7 +2,6 @@ package analysis
 
 import (
 	"fmt"
-	"ts_inspector/analysis/cfg"
 	"ts_inspector/config"
 	"ts_inspector/interfaces"
 	"ts_inspector/parser"
@@ -137,6 +136,4 @@ func InitAnalysers() {
 	if config.GetConfig().TsGo.Enable {
 		registerAnalyser(analyser{exec: typescript, expensive: true, name: "typescript"})
 	}
-
-	cfg.InitBuilder()
 }

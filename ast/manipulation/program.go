@@ -10,6 +10,42 @@ type program struct {
 	childedCommonNode
 }
 
+func (p *program) _buildCfgBlock() (bool, error) {
+	currentCfg := &FunctionCfg{blocks: []*CfgBlock{}, Node: p, Kind: "program"}
+	cfg := p.getCfg()
+
+	cfg.allCfg = append(cfg.allCfg, currentCfg)
+	cfg.cfgStack.Push(currentCfg)
+
+	start := cfg.currentCfg().addBlock("Program start")
+	end := cfg.currentCfg().addBlock("Program end")
+
+	cfg.currentCfg().Start = start
+	cfg.currentCfg().End = end
+
+	cfg.current = start
+
+	var outsideError error
+
+	p.visitChildren(func(ni nodeInterface) int {
+		_, err := ni.buildCfgBlock()
+		if err == nil {
+			outsideError = err
+			return VisitAbort
+		}
+
+		return VisitSkip
+	})
+
+	if outsideError != nil {
+		return true, outsideError
+	}
+
+	cfg.currentCfg().addEdge(cfg.current, end)
+
+	return false, nil
+}
+
 func visitProgram(node *sitter.Node, state walkState, indexInParent uint, funcMap walk.VisitorFuncMap[walkState]) (walkState, error) {
 	program := program{childedCommonNode: makeCommonChildedNode("program", state, node)}
 	program.setImpl(&program)

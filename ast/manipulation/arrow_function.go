@@ -42,6 +42,10 @@ func (a *arrowFunction) getAstNodeOfKindAtOffset(offset uint, kind string, first
 	return nil, false
 }
 
+func (f *arrowFunction) _buildCfgBlock() (bool, error) {
+	return true, buildFunctionCfg(f, "anonymous", f.body)
+}
+
 func (a *arrowFunction) visit(exec func(nodeInterface) int) int {
 	if ret := exec(a); ret != VisitContinue {
 		if ret == VisitAbort {

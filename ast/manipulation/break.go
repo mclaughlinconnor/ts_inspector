@@ -12,6 +12,27 @@ type breakExpression struct {
 	label nodeInterface
 }
 
+func (b *breakExpression) _buildCfgBlock() (bool, error) {
+	cfg := b.getCfg()
+
+	prevBlock := cfg.current
+	afterBlock := cfg.peekBreakBlock()
+	breakBlock := cfg.currentCfg().addBlock("Break block")
+
+	if afterBlock == nil {
+		return true, fmt.Errorf("break stack is unexpectedly empty")
+	}
+
+	cfg.current = breakBlock
+
+	cfg.addInstruction(instructionBranch, "", b, "")
+
+	cfg.currentCfg().addEdge(prevBlock, breakBlock)
+	cfg.currentCfg().addEdge(breakBlock, afterBlock)
+
+	return true, nil
+}
+
 func (i *breakExpression) getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool) {
 	if !i.isUnderCursor(offset) {
 		return nil, false

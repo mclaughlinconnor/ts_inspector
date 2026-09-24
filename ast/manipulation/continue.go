@@ -12,28 +12,49 @@ type continueExpression struct {
 	label nodeInterface
 }
 
-func (i *continueExpression) getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool) {
-	if !i.isUnderCursor(offset) {
+func (c *continueExpression) _buildCfgBlock() (bool, error) {
+	cfg := c.getCfg()
+
+	prevBlock := cfg.current
+	afterBlock := cfg.peekContinueBlock()
+	breakBlock := cfg.currentCfg().addBlock("Continue block")
+
+	if afterBlock == nil {
+		return true, fmt.Errorf("continue stack is unexpectedly empty")
+	}
+
+	cfg.current = breakBlock
+
+	cfg.addInstruction(instructionBranch, "", c, "")
+
+	cfg.currentCfg().addEdge(prevBlock, breakBlock)
+	cfg.currentCfg().addEdge(breakBlock, afterBlock)
+
+	return true, nil
+}
+
+func (c *continueExpression) getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool) {
+	if !c.isUnderCursor(offset) {
 		return nil, false
 	}
 
-	if first && i.getKind() == kind {
-		return i, true
+	if first && c.getKind() == kind {
+		return c, true
 	}
 
-	if i.label.isUnderCursor(offset) {
-		return i.label.getAstNodeOfKindAtOffset(offset, kind, first)
+	if c.label.isUnderCursor(offset) {
+		return c.label.getAstNodeOfKindAtOffset(offset, kind, first)
 	}
 
-	if kind == NULL_KIND || i.getKind() == kind {
-		return i, true
+	if kind == NULL_KIND || c.getKind() == kind {
+		return c, true
 	}
 
 	return nil, false
 }
 
-func (e *continueExpression) visit(exec func(nodeInterface) int) int {
-	if ret := exec(e); ret != VisitContinue {
+func (c *continueExpression) visit(exec func(nodeInterface) int) int {
+	if ret := exec(c); ret != VisitContinue {
 		if ret == VisitAbort {
 			return ret
 		}
@@ -43,7 +64,7 @@ func (e *continueExpression) visit(exec func(nodeInterface) int) int {
 		}
 	}
 
-	if ret := e.label.visit(exec); ret == VisitAbort {
+	if ret := c.label.visit(exec); ret == VisitAbort {
 		return ret
 	}
 

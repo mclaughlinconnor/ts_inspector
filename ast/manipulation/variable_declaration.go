@@ -12,6 +12,12 @@ type variableDeclaration struct {
 	declarator *variableDeclarator
 }
 
+func (a *variableDeclaration) _buildCfgBlock() (bool, error) {
+	a.getCfg().addInstruction(instructionAssign, a.declarator.getNameText(), a, a.declarator.getValueText())
+
+	return true, nil
+}
+
 func (a *variableDeclaration) getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool) {
 	if !a.isUnderCursor(offset) {
 		return nil, false

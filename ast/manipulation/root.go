@@ -7,9 +7,29 @@ type Ast struct {
 	Program nodeInterface
 }
 
-func (r *Ast) GetAllActions(offset uint) []action {
+func (a *Ast) GetCfg() (*Cfg, error) {
+	var outsideError error
+
+	a.visit(func(ni nodeInterface) int {
+		built, err := ni.buildCfgBlock()
+		if err != nil {
+			outsideError = err
+			return VisitAbort
+		}
+
+		if built {
+			return VisitSkip
+		}
+
+		return VisitContinue
+	})
+
+	return a.getCfg(), outsideError
+}
+
+func (a *Ast) GetAllActions(offset uint) []action {
 	actions := []action{}
-	r.visit(func(ni nodeInterface) int {
+	a.visit(func(ni nodeInterface) int {
 		if !ni.isUnderCursor(offset) {
 			return VisitSkip
 		}
@@ -25,9 +45,9 @@ func (r *Ast) GetAllActions(offset uint) []action {
 	return actions
 }
 
-func (r *Ast) GetAllAnalysis() []interfaces.Analysis {
+func (a *Ast) GetAllAnalysis() []interfaces.Analysis {
 	analyses := []interfaces.Analysis{}
-	r.visit(func(ni nodeInterface) int {
+	a.visit(func(ni nodeInterface) int {
 		as := ni.getAnalysis()
 		if len(as) != 0 {
 			analyses = append(analyses, as...)
@@ -39,16 +59,16 @@ func (r *Ast) GetAllAnalysis() []interfaces.Analysis {
 	return analyses
 }
 
-func (r *Ast) getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool) {
-	if kind == NULL_KIND || r.getKind() == kind {
-		return r, true
+func (a *Ast) getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool) {
+	if kind == NULL_KIND || a.getKind() == kind {
+		return a, true
 	}
 
-	return r.Program.getAstNodeOfKindAtOffset(offset, kind, first)
+	return a.Program.getAstNodeOfKindAtOffset(offset, kind, first)
 }
 
-func (r *Ast) visit(exec func(nodeInterface) int) int {
-	if ret := exec(r); ret != VisitContinue {
+func (a *Ast) visit(exec func(nodeInterface) int) int {
+	if ret := exec(a); ret != VisitContinue {
 		if ret == VisitAbort {
 			return ret
 		}
@@ -58,5 +78,5 @@ func (r *Ast) visit(exec func(nodeInterface) int) int {
 		}
 	}
 
-	return r.Program.visit(exec)
+	return a.Program.visit(exec)
 }

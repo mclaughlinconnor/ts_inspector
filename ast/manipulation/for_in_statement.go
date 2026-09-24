@@ -14,6 +14,52 @@ type forInStatement struct {
 	body  nodeInterface
 }
 
+func (f *forInStatement) _buildCfgBlock() (bool, error) {
+	cfg := f.getCfg()
+
+	cfg.addInstruction(instructionBranch, "", f, "")
+
+	initialiseBlock := cfg.currentCfg().addBlock("For-in initialisation block")
+	nextBlock := cfg.currentCfg().addBlock("For-in condition block")
+
+	bodyBlock := cfg.currentCfg().addBlock("For-in body block")
+	afterBlock := cfg.currentCfg().addBlock("For-in after block")
+
+	cfg.pushLoopBlocks(nextBlock, afterBlock)
+
+	cfg.currentCfg().addEdge(cfg.current, initialiseBlock)
+
+	cfg.current = initialiseBlock
+	cfg.addInstruction(instructionAssign, "%iter", f.right, f.right.getText()+"[Symbol.iterator]()")
+
+	cfg.currentCfg().addEdge(initialiseBlock, nextBlock)
+	cfg.current = nextBlock
+	cfg.addInstruction(instructionAssign, "%value", f.right, "%iter.next()")
+	cfg.addInstruction(instructionBranch, "!%value.done", f.right, "")
+
+	cfg.currentCfg().addEdge(nextBlock, bodyBlock)
+	cfg.currentCfg().addEdge(cfg.current, afterBlock)
+
+	bodyBlock.Node = f.body
+	cfg.current = bodyBlock
+
+	_, err := f.body.buildCfgBlock()
+	if err != nil {
+		return true, err
+	}
+
+	if len(cfg.current.After) == 0 {
+		// If the loop doesn't break/return
+		cfg.currentCfg().addEdge(cfg.current, nextBlock)
+	}
+
+	cfg.current = afterBlock
+
+	cfg.popLoopBlocks()
+
+	return true, nil
+}
+
 func (f *forInStatement) getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool) {
 	if !f.isUnderCursor(offset) {
 		return nil, false

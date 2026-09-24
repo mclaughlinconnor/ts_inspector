@@ -11,6 +11,24 @@ type returnExpression struct {
 	expression nodeInterface
 }
 
+func (r *returnExpression) _buildCfgBlock() (bool, error) {
+	cfg := r.getCfg()
+	prevBlock := cfg.current
+	returnBlock := cfg.currentCfg().addBlock("Return block")
+	afterReturnBlock := cfg.currentCfg().addBlock("After return block")
+
+	cfg.current = returnBlock
+
+	cfg.addInstruction(instructionJump, "", r, "")
+
+	cfg.currentCfg().addEdge(prevBlock, returnBlock)
+	cfg.currentCfg().addEdge(returnBlock, cfg.currentCfg().End)
+
+	cfg.current = afterReturnBlock
+
+	return true, nil
+}
+
 func visitReturn(node *sitter.Node, state walkState, indexInParent uint, funcMap walk.VisitorFuncMap[walkState]) (walkState, error) {
 	returnExpression := returnExpression{childedCommonNode: makeCommonChildedNode("returnExpression", state, node)}
 	returnExpression.setImpl(&returnExpression)

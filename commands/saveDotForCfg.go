@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"ts_inspector/analysis/cfg"
+	"ts_inspector/ast/manipulation"
 	"ts_inspector/interfaces"
 	"ts_inspector/parser"
 	"ts_inspector/utils"
@@ -24,14 +24,14 @@ func SaveDotForCfg(writer *utils.Writer, state *parser.State, args *any) (map[st
 		return map[string]utils.TextEdits{}, nil
 	}
 
-	cfgState, err := cfg.BuildGraphFromFile(file)
+	cfg, err := file.Snapshot().Ast.GetCfg()
 	if err != nil {
 		return changes, err
 	}
 
 	sb := strings.Builder{}
-	visited := map[*cfg.Block]any{}
-	cfgState.PrintFromState(&sb, &visited)
+	visited := map[*manipulation.CfgBlock]any{}
+	cfg.PrintFromState(&sb, &visited)
 
 	savePath := filepath.Base(file.Filename()) + "_cfg.dot"
 	err = os.WriteFile(savePath, []byte(sb.String()), 0644)

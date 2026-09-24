@@ -13,28 +13,40 @@ type variableDeclarator struct {
 	value nodeInterface
 }
 
-func (a *variableDeclarator) getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool) {
-	if !a.isUnderCursor(offset) {
+func (v *variableDeclarator) getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool) {
+	if !v.isUnderCursor(offset) {
 		return nil, false
 	}
 
-	if first && a.getKind() == kind {
-		return a, true
+	if first && v.getKind() == kind {
+		return v, true
 	}
 
-	if a.name != nil && a.name.isUnderCursor(offset) {
-		return a.name.getAstNodeOfKindAtOffset(offset, kind, first)
+	if v.name != nil && v.name.isUnderCursor(offset) {
+		return v.name.getAstNodeOfKindAtOffset(offset, kind, first)
 	}
 
-	if a.value != nil && a.value.isUnderCursor(offset) {
-		return a.value.getAstNodeOfKindAtOffset(offset, kind, first)
+	if v.value != nil && v.value.isUnderCursor(offset) {
+		return v.value.getAstNodeOfKindAtOffset(offset, kind, first)
 	}
 
-	if kind == NULL_KIND || a.getKind() == kind {
-		return a, true
+	if kind == NULL_KIND || v.getKind() == kind {
+		return v, true
 	}
 
 	return nil, false
+}
+
+func (v *variableDeclarator) getNameText() string {
+	return v.name.getText()
+}
+
+func (v *variableDeclarator) getValueText() string {
+	if v.value != nil {
+		return v.value.getText()
+	}
+
+	return ""
 }
 
 func (a *variableDeclarator) visit(exec func(nodeInterface) int) int {
@@ -64,18 +76,20 @@ func visitVariableDeclarator(node *sitter.Node, state walkState, _ uint, funcMap
 	variableDeclarator.setImpl(&variableDeclarator)
 
 	valueNode := node.ChildByFieldName("value")
-	if valueNode == nil {
-		return nil, fmt.Errorf("invalid ast: missing value")
-	}
 
 	nameNode := node.ChildByFieldName("name")
 	if nameNode == nil {
 		return nil, fmt.Errorf("invalid ast: missing name")
 	}
 
-	value, err := walk.VisitNode(valueNode, state, 0, funcMap, false)
-	if err != nil {
-		return nil, err
+	var value nodeInterface
+	var err error
+
+	if valueNode != nil {
+		value, err = walk.VisitNode(valueNode, state, 0, funcMap, false)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	nameCommonNode, err := walk.VisitNode(nameNode, state, 0, funcMap, false)
