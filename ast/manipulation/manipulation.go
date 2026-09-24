@@ -40,6 +40,7 @@ func BuildAst(content string) (*Ast, error) {
 	funcMap["function_declaration"] = visitFunctionDeclaration
 	funcMap["identifier"] = visitIdentifier
 	funcMap["if_statement"] = visitIfStatement
+	funcMap["lexical_declaration"] = visitlexicalDeclaration
 	funcMap["method_definition"] = visitMethodDefinition
 	funcMap["parenthesized_expression"] = visitParenthesizedExpression
 	funcMap["program"] = visitProgram
@@ -47,6 +48,8 @@ func BuildAst(content string) (*Ast, error) {
 	funcMap["return_statement"] = visitReturn
 	funcMap["true"] = visitBoolean
 	funcMap["unary_expression"] = visitUnaryExpression
+	funcMap["variable_declaration"] = visitVariableDeclaration
+	funcMap["variable_declarator"] = visitVariableDeclarator
 	funcMap[walk.DUMMY_VISITOR_KIND] = visitUnhandled
 
 	astRoot := Ast{kind: "root", element: elementFromNode(rootNode), programContent: &programContent{text: byteContent, tree: tree}}

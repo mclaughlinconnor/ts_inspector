@@ -72,6 +72,7 @@ type nodeInterface interface {
 	isForInStatement() (*forInStatement, bool)
 	isFunctionDeclaration() (*functionDeclaration, bool)
 	isIdentifier() (*identifier, bool)
+	isLexicalDeclaration() (*lexicalDeclaration, bool)
 	isPropertyIdentifier() (*propertyIdentifier, bool)
 	isIfStatement() (*ifStatement, bool)
 	isInvertable() (invertableNodeInterface, bool)
@@ -82,6 +83,8 @@ type nodeInterface interface {
 	isUnaryExpression() (*unaryExpression, bool)
 	isUnderCursor(offset uint) bool
 	isUnhandled() (*unhandled, bool)
+	isVariableDeclaration() (*variableDeclaration, bool)
+	isVariableDeclarator() (*variableDeclarator, bool)
 	setElement(element *element)
 	setStagedElement(element *element)
 	visit(func(nodeInterface) int) int
@@ -323,6 +326,11 @@ func (c *commonNode) isInvertable() (invertableNodeInterface, bool) {
 	return n, yes
 }
 
+func (c *commonNode) isLexicalDeclaration() (*lexicalDeclaration, bool) {
+	n, yes := c.getImpl().getNode().getImpl().(*lexicalDeclaration)
+	return n, yes
+}
+
 func (c *commonNode) isMethodDefinition() (*methodDefinition, bool) {
 	n, yes := c.getImpl().getNode().getImpl().(*methodDefinition)
 	return n, yes
@@ -361,6 +369,16 @@ func (c *commonNode) isUnderCursor(offset uint) bool {
 
 func (c *commonNode) isUnhandled() (*unhandled, bool) {
 	n, yes := c.getImpl().getNode().getImpl().(*unhandled)
+	return n, yes
+}
+
+func (c *commonNode) isVariableDeclaration() (*variableDeclaration, bool) {
+	n, yes := c.getImpl().getNode().getImpl().(*variableDeclaration)
+	return n, yes
+}
+
+func (c *commonNode) isVariableDeclarator() (*variableDeclarator, bool) {
+	n, yes := c.getImpl().getNode().getImpl().(*variableDeclarator)
 	return n, yes
 }
 
