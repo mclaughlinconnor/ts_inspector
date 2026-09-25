@@ -74,6 +74,7 @@ type nodeInterface interface {
 	hasConstantFalse() bool
 	hasConstantTrue() bool
 	hasEditSession() bool
+	isAccessibilityModifier() (*accessibilityModifier, bool)
 	isArguments() (*arguments, bool)
 	isArrowFunction() (*arrowFunction, bool)
 	isAwaitExpression() (*awaitExpression, bool)
@@ -306,6 +307,11 @@ func (c *commonNode) getStagedElement() *element {
 func (c *commonNode) hasEditSession() bool {
 	stagedElement := c.getImpl().getStagedElement()
 	return stagedElement != nil
+}
+
+func (c *commonNode) isAccessibilityModifier() (*accessibilityModifier, bool) {
+	n, yes := c.getImpl().getNode().getImpl().(*accessibilityModifier)
+	return n, yes
 }
 
 func (c *commonNode) isArguments() (*arguments, bool) {
@@ -612,4 +618,16 @@ func buildFunctionCfg(this nodeInterface, name string, body nodeInterface) error
 	cfg.current = prevCurrent
 
 	return nil
+}
+
+func validateChildNodeExists(node *sitter.Node, child string) (*sitter.Node, error) {
+	return validateNodeExists(node.ChildByFieldName(child), child)
+}
+
+func validateNodeExists(node *sitter.Node, name string) (*sitter.Node, error) {
+	if node == nil {
+		return nil, fmt.Errorf("invalid ast: missing %s", name)
+	}
+
+	return node, nil
 }

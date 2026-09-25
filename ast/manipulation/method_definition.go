@@ -9,11 +9,12 @@ import (
 
 type methodDefinition struct {
 	commonNode
-	body       nodeInterface
-	name       *propertyIdentifier
-	parameters nodeInterface // todo: make it the formal_parameters node
-	returnType nodeInterface // type_annotation
-	// accessibility  nodeInterface // accessibility_modifier
+	accessibility *accessibilityModifier
+	body          nodeInterface
+	name          *propertyIdentifier
+	parameters    nodeInterface // todo: make it the formal_parameters node
+	returnType    nodeInterface // type_annotation
+
 	// isStatic       bool
 	// isOverride     bool
 	// isReadonly     bool
@@ -68,6 +69,14 @@ func (a *methodDefinition) visit(exec func(nodeInterface) int) int {
 		}
 	}
 
+	if ret := a.accessibility.visit(exec); ret == VisitAbort {
+		return ret
+	}
+
+	if ret := a.name.visit(exec); ret == VisitAbort {
+		return ret
+	}
+
 	if ret := a.parameters.visit(exec); ret == VisitAbort {
 		return ret
 	}
@@ -89,26 +98,36 @@ func visitMethodDefinition(node *sitter.Node, state walkState, _ uint, funcMap w
 	methodDefinition := methodDefinition{commonNode: makeCommonNode("methodDefinition", state, node)}
 	methodDefinition.setImpl(&methodDefinition)
 
-	nameNode := node.ChildByFieldName("name")
-	if nameNode == nil {
+	nodes := map[string]nodeInterface{}
+
+	for index, child := range node.NamedChildren(node.Walk()) {
+		commonNode, err := walk.VisitNode(&child, state, 0, funcMap, false)
+		if err != nil {
+			return nil, err
+		}
+
+		label := node.FieldNameForNamedChild(uint32(index))
+		if label == "" {
+			label = child.Kind()
+		}
+
+		nodes[label] = commonNode
+	}
+
+	accessibilityCommonNode, found := nodes["accessibility_modifier"]
+
+	var accessibility *accessibilityModifier
+	if found {
+		if accessibilityModifier, isAccessibilityModifier := accessibilityCommonNode.isAccessibilityModifier(); isAccessibilityModifier {
+			accessibility = accessibilityModifier
+		} else {
+			return nil, fmt.Errorf("invalid ast: accessibility isn't an accessibility")
+		}
+	}
+
+	nameCommonNode, found := nodes["name"]
+	if !found {
 		return nil, fmt.Errorf("invalid ast: missing name")
-	}
-
-	parametersNode := node.ChildByFieldName("parameters")
-	if parametersNode == nil {
-		return nil, fmt.Errorf("invalid ast: missing parameters")
-	}
-
-	bodyNode := node.ChildByFieldName("body")
-	if bodyNode == nil {
-		return nil, fmt.Errorf("invalid ast: missing body")
-	}
-
-	returnTypeNode := node.ChildByFieldName("return_type")
-
-	nameCommonNode, err := walk.VisitNode(nameNode, state, 0, funcMap, false)
-	if err != nil {
-		return nil, err
 	}
 
 	var name *propertyIdentifier
@@ -118,24 +137,19 @@ func visitMethodDefinition(node *sitter.Node, state walkState, _ uint, funcMap w
 		return nil, fmt.Errorf("invalid ast: name isn't a property identifier")
 	}
 
-	parameters, err := walk.VisitNode(parametersNode, state, 0, funcMap, false)
-	if err != nil {
-		return nil, err
+	parameters, found := nodes["parameters"]
+	if !found {
+		return nil, fmt.Errorf("invalid ast: missing parameters")
 	}
 
-	body, err := walk.VisitNode(bodyNode, state, 0, funcMap, false)
-	if err != nil {
-		return nil, err
+	body, found := nodes["body"]
+	if !found {
+		return nil, fmt.Errorf("invalid ast: missing body")
 	}
 
-	var returnType nodeInterface
-	if returnTypeNode != nil {
-		returnType, err = walk.VisitNode(returnTypeNode, state, 0, funcMap, false)
-		if err != nil {
-			return nil, err
-		}
-	}
+	returnType, found := nodes["return_type"]
 
+	methodDefinition.accessibility = accessibility
 	methodDefinition.name = name
 	methodDefinition.parameters = parameters
 	methodDefinition.body = body

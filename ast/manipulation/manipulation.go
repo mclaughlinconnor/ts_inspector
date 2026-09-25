@@ -26,6 +26,7 @@ func BuildAst(content string) (*Ast, error) {
 	}
 
 	funcMap := walk.NewVisitorFuncsMap[walkState]()
+	funcMap["accessibility_modifier"] = visitAccessibilityModifier
 	funcMap["arguments"] = visitArguments
 	funcMap["arrow_function"] = visitArrowFunction
 	funcMap["await_expression"] = visitAwaitExpression
