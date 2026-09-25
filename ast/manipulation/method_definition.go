@@ -8,158 +8,84 @@ import (
 )
 
 type methodDefinition struct {
-	commonNode
-	accessibility  *accessibilityModifier
-	body           nodeInterface
-	isAsync        bool
-	isGenerator    bool
-	isGetter       bool
-	isOptional     bool
-	isOverride     bool
-	isReadonly     bool
-	isSetter       bool
-	isStatic       bool
-	name           *propertyIdentifier
-	parameters     nodeInterface // todo: make it the formal_parameters node
-	returnType     nodeInterface // type_annotation
-	typeParameters nodeInterface
+	methodSignature
+	body nodeInterface
 }
 
-func (a *methodDefinition) getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool) {
-	if !a.isUnderCursor(offset) {
+func (m *methodDefinition) getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool) {
+	if !m.isUnderCursor(offset) {
 		return nil, false
 	}
 
-	if first && a.getKind() == kind {
-		return a, true
+	if first && m.getKind() == kind {
+		return m, true
 	}
 
-	if a.body != nil && a.body.isUnderCursor(offset) {
-		return a.body.getAstNodeOfKindAtOffset(offset, kind, first)
+	if m.body != nil && m.body.isUnderCursor(offset) {
+		return m.body.getAstNodeOfKindAtOffset(offset, kind, first)
 	}
 
-	if a.parameters != nil && a.parameters.isUnderCursor(offset) {
-		return a.parameters.getAstNodeOfKindAtOffset(offset, kind, first)
+	if m.parameters != nil && m.parameters.isUnderCursor(offset) {
+		return m.parameters.getAstNodeOfKindAtOffset(offset, kind, first)
 	}
 
-	if a.returnType != nil && a.returnType.isUnderCursor(offset) {
-		return a.returnType.getAstNodeOfKindAtOffset(offset, kind, first)
+	if m.returnType != nil && m.returnType.isUnderCursor(offset) {
+		return m.returnType.getAstNodeOfKindAtOffset(offset, kind, first)
 	}
 
-	if kind == NULL_KIND || a.getKind() == kind {
-		return a, true
+	if kind == NULL_KIND || m.getKind() == kind {
+		return m, true
 	}
 
 	return nil, false
 }
 
-func (f *methodDefinition) _buildCfgBlock() (bool, error) {
-	return true, buildFunctionCfg(f, f.name.getText(), f.body)
+func (m *methodDefinition) _buildCfgBlock() (bool, error) {
+	return true, buildFunctionCfg(m, m.name.getText(), m.body)
 }
 
-func (a *methodDefinition) visit(exec func(nodeInterface) int) int {
-	if ret := exec(a); ret != VisitContinue {
-		if ret == VisitAbort {
-			return ret
-		}
-
-		if ret == VisitSkip {
-			return VisitContinue
-		}
-	}
-
-	if ret := a.accessibility.visit(exec); ret == VisitAbort {
+func (m *methodDefinition) visit(exec func(nodeInterface) int) int {
+	if ret := m.methodSignature.visit(exec); ret == VisitAbort {
 		return ret
 	}
 
-	if ret := a.name.visit(exec); ret == VisitAbort {
+	if ret := m.body.visit(exec); ret == VisitAbort {
 		return ret
-	}
-
-	if ret := a.parameters.visit(exec); ret == VisitAbort {
-		return ret
-	}
-
-	if ret := a.body.visit(exec); ret == VisitAbort {
-		return ret
-	}
-
-	if a.returnType != nil {
-		if ret := a.returnType.visit(exec); ret == VisitAbort {
-			return ret
-		}
 	}
 
 	return VisitContinue
 }
 
 func visitMethodDefinition(node *sitter.Node, state walkState, _ uint, funcMap walk.VisitorFuncMap[walkState]) (walkState, error) {
-	methodDefinition := methodDefinition{commonNode: makeCommonNode("methodDefinition", state, node)}
+	methodSignatureCommonNode, err := visitMethodSignature(node, state, 0, funcMap)
+	if err != nil {
+		return nil, err
+	}
+
+	if methodSignatureCommonNode == nil {
+		return nil, fmt.Errorf("invalid ast: missing method signature")
+	}
+
+	methodSignature, isMethodSignature := methodSignatureCommonNode.isMethodSignature()
+	if !isMethodSignature {
+		return nil, fmt.Errorf("invalid ast: method signature is't a method signature")
+	}
+
+	methodDefinition := methodDefinition{methodSignature: *methodSignature}
 	methodDefinition.setImpl(&methodDefinition)
+	methodDefinition.kind = "methodDefinition"
 
-	nodes := map[string]nodeInterface{}
-
-	for index, child := range node.Children(node.Walk()) {
-		commonNode, err := walk.VisitNode(&child, state, 0, funcMap, false)
-		if err != nil {
-			return nil, err
-		}
-
-		label := node.FieldNameForChild(uint32(index))
-		if label == "" {
-			label = child.Kind()
-		}
-
-		nodes[label] = commonNode
-	}
-
-	accessibilityCommonNode, found := nodes["accessibility_modifier"]
-
-	var accessibility *accessibilityModifier
-	if found {
-		if accessibilityModifier, isAccessibilityModifier := accessibilityCommonNode.isAccessibilityModifier(); isAccessibilityModifier {
-			accessibility = accessibilityModifier
-		} else {
-			return nil, fmt.Errorf("invalid ast: accessibility isn't an accessibility")
-		}
-	}
-
-	body, found := nodes["body"]
-	if !found {
+	bodyNode := node.ChildByFieldName("body")
+	if bodyNode == nil {
 		return nil, fmt.Errorf("invalid ast: missing body")
 	}
 
-	nameCommonNode, found := nodes["name"]
-	if !found {
-		return nil, fmt.Errorf("invalid ast: missing name")
+	body, err := walk.VisitNode(bodyNode, state, 0, funcMap, false)
+	if err != nil {
+		return nil, err
 	}
 
-	var name *propertyIdentifier
-	if propertyIdentifier, isPropertyIdentifier := nameCommonNode.isPropertyIdentifier(); isPropertyIdentifier {
-		name = propertyIdentifier
-	} else {
-		return nil, fmt.Errorf("invalid ast: name isn't a property identifier")
-	}
-
-	parameters, found := nodes["parameters"]
-	if !found {
-		return nil, fmt.Errorf("invalid ast: missing parameters")
-	}
-
-	methodDefinition.accessibility = accessibility
 	methodDefinition.body = body
-	methodDefinition.isAsync = nodes["async"] != nil
-	methodDefinition.isGenerator = nodes["*"] != nil
-	methodDefinition.isGetter = nodes["get"] != nil
-	methodDefinition.isOptional = nodes["?"] != nil
-	methodDefinition.isOverride = nodes["override_modifier"] != nil
-	methodDefinition.isReadonly = nodes["readonly"] != nil
-	methodDefinition.isSetter = nodes["set"] != nil
-	methodDefinition.isStatic = nodes["static"] != nil
-	methodDefinition.name = name
-	methodDefinition.parameters = parameters
-	methodDefinition.returnType = nodes["return_type"]
-	methodDefinition.typeParameters = nodes["type_parameters"]
 
 	return &methodDefinition, nil
 }

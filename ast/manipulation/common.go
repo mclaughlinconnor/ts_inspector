@@ -93,6 +93,7 @@ type nodeInterface interface {
 	isIfStatement() (*ifStatement, bool)
 	isInvertable() (invertableNodeInterface, bool)
 	isMethodDefinition() (*methodDefinition, bool)
+	isMethodSignature() (*methodSignature, bool)
 	isParenthesizedExpression() (*parenthesizedExpression, bool)
 	isProgram() (*program, bool)
 	isReturn() (*returnExpression, bool)
@@ -396,6 +397,11 @@ func (c *commonNode) isLexicalDeclaration() (*lexicalDeclaration, bool) {
 
 func (c *commonNode) isMethodDefinition() (*methodDefinition, bool) {
 	n, yes := c.getImpl().getNode().getImpl().(*methodDefinition)
+	return n, yes
+}
+
+func (c *commonNode) isMethodSignature() (*methodSignature, bool) {
+	n, yes := c.getImpl().getNode().getImpl().(*methodSignature)
 	return n, yes
 }
 

@@ -43,6 +43,7 @@ func BuildAst(content string) (*Ast, error) {
 	funcMap["if_statement"] = visitIfStatement
 	funcMap["lexical_declaration"] = visitlexicalDeclaration
 	funcMap["method_definition"] = visitMethodDefinition
+	funcMap["method_signature"] = visitMethodSignature
 	funcMap["parenthesized_expression"] = visitParenthesizedExpression
 	funcMap["program"] = visitProgram
 	funcMap["property_identifier"] = visitPropertyIdentifier
