@@ -2,6 +2,7 @@ package lsp
 
 import (
 	"log"
+	"runtime"
 	traversetypescriptfiles "ts_inspector/ast/indexing"
 	"ts_inspector/commands"
 	"ts_inspector/config"
@@ -64,6 +65,7 @@ func lspHandleInitialise(writer *utils.Writer, logger *log.Logger, state *parser
 
 	if config.GetConfig().Indexing.ExperiementalParallelInitialIndexing {
 		eg := errgroup.Group{}
+		eg.SetLimit(runtime.NumCPU()) // debugging with thousands of macos threads is horribly slow
 
 		for _, filename := range filenames {
 			eg.Go(func() error { return parser.IndexFileFromIndexer(state, filename, false) })
