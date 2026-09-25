@@ -29,7 +29,7 @@ func (p *program) _buildCfgBlock() (bool, error) {
 
 	p.visitChildren(func(ni nodeInterface) int {
 		_, err := ni.buildCfgBlock()
-		if err == nil {
+		if err != nil {
 			outsideError = err
 			return VisitAbort
 		}
@@ -43,7 +43,7 @@ func (p *program) _buildCfgBlock() (bool, error) {
 
 	cfg.currentCfg().addEdge(cfg.current, end)
 
-	return false, nil
+	return true, nil
 }
 
 func visitProgram(node *sitter.Node, state walkState, indexInParent uint, funcMap walk.VisitorFuncMap[walkState]) (walkState, error) {
