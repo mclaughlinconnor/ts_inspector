@@ -9,21 +9,20 @@ import (
 
 type methodDefinition struct {
 	commonNode
-	accessibility *accessibilityModifier
-	body          nodeInterface
-	name          *propertyIdentifier
-	parameters    nodeInterface // todo: make it the formal_parameters node
-	returnType    nodeInterface // type_annotation
-
-	// isStatic       bool
-	// isOverride     bool
-	// isReadonly     bool
-	// isAsync        bool
-	// isGetter       bool
-	// isSetter       bool
-	// isGenerator    bool
-	// isOptional     bool
-	// typeParameters nodeInterface
+	accessibility  *accessibilityModifier
+	body           nodeInterface
+	isAsync        bool
+	isGenerator    bool
+	isGetter       bool
+	isOptional     bool
+	isOverride     bool
+	isReadonly     bool
+	isSetter       bool
+	isStatic       bool
+	name           *propertyIdentifier
+	parameters     nodeInterface // todo: make it the formal_parameters node
+	returnType     nodeInterface // type_annotation
+	typeParameters nodeInterface
 }
 
 func (a *methodDefinition) getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool) {
@@ -100,13 +99,13 @@ func visitMethodDefinition(node *sitter.Node, state walkState, _ uint, funcMap w
 
 	nodes := map[string]nodeInterface{}
 
-	for index, child := range node.NamedChildren(node.Walk()) {
+	for index, child := range node.Children(node.Walk()) {
 		commonNode, err := walk.VisitNode(&child, state, 0, funcMap, false)
 		if err != nil {
 			return nil, err
 		}
 
-		label := node.FieldNameForNamedChild(uint32(index))
+		label := node.FieldNameForChild(uint32(index))
 		if label == "" {
 			label = child.Kind()
 		}
@@ -123,6 +122,11 @@ func visitMethodDefinition(node *sitter.Node, state walkState, _ uint, funcMap w
 		} else {
 			return nil, fmt.Errorf("invalid ast: accessibility isn't an accessibility")
 		}
+	}
+
+	body, found := nodes["body"]
+	if !found {
+		return nil, fmt.Errorf("invalid ast: missing body")
 	}
 
 	nameCommonNode, found := nodes["name"]
@@ -142,18 +146,20 @@ func visitMethodDefinition(node *sitter.Node, state walkState, _ uint, funcMap w
 		return nil, fmt.Errorf("invalid ast: missing parameters")
 	}
 
-	body, found := nodes["body"]
-	if !found {
-		return nil, fmt.Errorf("invalid ast: missing body")
-	}
-
-	returnType, found := nodes["return_type"]
-
 	methodDefinition.accessibility = accessibility
+	methodDefinition.body = body
+	methodDefinition.isAsync = nodes["async"] != nil
+	methodDefinition.isGenerator = nodes["*"] != nil
+	methodDefinition.isGetter = nodes["get"] != nil
+	methodDefinition.isOptional = nodes["?"] != nil
+	methodDefinition.isOverride = nodes["override_modifier"] != nil
+	methodDefinition.isReadonly = nodes["readonly"] != nil
+	methodDefinition.isSetter = nodes["set"] != nil
+	methodDefinition.isStatic = nodes["static"] != nil
 	methodDefinition.name = name
 	methodDefinition.parameters = parameters
-	methodDefinition.body = body
-	methodDefinition.returnType = returnType
+	methodDefinition.returnType = nodes["return_type"]
+	methodDefinition.typeParameters = nodes["type_parameters"]
 
 	return &methodDefinition, nil
 }
