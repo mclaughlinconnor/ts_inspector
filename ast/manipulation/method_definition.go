@@ -66,7 +66,7 @@ func visitMethodDefinition(node *sitter.Node, state walkState, _ uint, funcMap w
 		return nil, fmt.Errorf("invalid ast: missing method signature")
 	}
 
-	methodSignature, isMethodSignature := methodSignatureCommonNode.isMethodSignature()
+	methodSignature, isMethodSignature := isNode[*methodSignature](methodSignatureCommonNode)
 	if !isMethodSignature {
 		return nil, fmt.Errorf("invalid ast: method signature is't a method signature")
 	}

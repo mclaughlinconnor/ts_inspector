@@ -104,7 +104,7 @@ func visitMethodSignature(node *sitter.Node, state walkState, _ uint, funcMap wa
 
 	var accessibility *accessibilityModifier
 	if found {
-		if accessibilityModifier, isAccessibilityModifier := accessibilityCommonNode.isAccessibilityModifier(); isAccessibilityModifier {
+		if accessibilityModifier, isAccessibilityModifier := isNode[*accessibilityModifier](accessibilityCommonNode); isAccessibilityModifier {
 			accessibility = accessibilityModifier
 		} else {
 			return nil, fmt.Errorf("invalid ast: accessibility isn't an accessibility")
@@ -117,7 +117,7 @@ func visitMethodSignature(node *sitter.Node, state walkState, _ uint, funcMap wa
 	}
 
 	var name *propertyIdentifier
-	if propertyIdentifier, isPropertyIdentifier := nameCommonNode.isPropertyIdentifier(); isPropertyIdentifier {
+	if propertyIdentifier, isPropertyIdentifier := isNode[*propertyIdentifier](nameCommonNode); isPropertyIdentifier {
 		name = propertyIdentifier
 	} else {
 		return nil, fmt.Errorf("invalid ast: name isn't a property identifier")

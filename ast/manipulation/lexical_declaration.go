@@ -88,7 +88,7 @@ func visitlexicalDeclaration(node *sitter.Node, state walkState, _ uint, funcMap
 	}
 
 	var declarator *variableDeclarator
-	if variableDeclarator, isVariableDeclarator := declaratorCommonNode.isVariableDeclarator(); isVariableDeclarator {
+	if variableDeclarator, isVariableDeclarator := isNode[*variableDeclarator](declaratorCommonNode); isVariableDeclarator {
 		declarator = variableDeclarator
 	} else {
 		return nil, fmt.Errorf("invalid ast: declarator is not a variable_declarator")

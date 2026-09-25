@@ -16,7 +16,7 @@ type callExpression struct {
 func (c *callExpression) _buildCfgBlock() (bool, error) {
 	c.getCfg().addInstruction(instructionCall, "", c, "")
 
-	if expressionStatement, isExpressionStatement := c.arguments.isExpressionStatement(); isExpressionStatement {
+	if expressionStatement, isExpressionStatement := isNode[*expressionStatement](c.arguments); isExpressionStatement {
 		_, err := expressionStatement.buildCfgBlock()
 		if err != nil {
 			return true, err

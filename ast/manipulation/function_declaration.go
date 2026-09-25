@@ -102,7 +102,7 @@ func visitFunctionDeclaration(node *sitter.Node, state walkState, _ uint, funcMa
 	}
 
 	var name *identifier
-	if identifier, isIdentifier := nameCommonNode.isIdentifier(); isIdentifier {
+	if identifier, isIdentifier := isNode[*identifier](nameCommonNode); isIdentifier {
 		name = identifier
 	} else {
 		return nil, fmt.Errorf("invalid ast: name isn't an identifier")

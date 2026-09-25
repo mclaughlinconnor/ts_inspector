@@ -74,36 +74,7 @@ type nodeInterface interface {
 	hasConstantFalse() bool
 	hasConstantTrue() bool
 	hasEditSession() bool
-	isAccessibilityModifier() (*accessibilityModifier, bool)
-	isArguments() (*arguments, bool)
-	isArrowFunction() (*arrowFunction, bool)
-	isAwaitExpression() (*awaitExpression, bool)
-	isBinaryExpression() (*binaryExpression, bool)
-	isBoolean() (*boolean, bool)
-	isBreak() (*breakExpression, bool)
-	isCallExpression() (*callExpression, bool)
-	isContinue() (*continueExpression, bool)
-	isElseClause() (*elseClause, bool)
-	isExpressionStatement() (*expressionStatement, bool)
-	isForInStatement() (*forInStatement, bool)
-	isFunctionDeclaration() (*functionDeclaration, bool)
-	isIdentifier() (*identifier, bool)
-	isLexicalDeclaration() (*lexicalDeclaration, bool)
-	isPropertyIdentifier() (*propertyIdentifier, bool)
-	isIfStatement() (*ifStatement, bool)
-	isInvertable() (invertableNodeInterface, bool)
-	isMethodDefinition() (*methodDefinition, bool)
-	isMethodSignature() (*methodSignature, bool)
-	isParenthesizedExpression() (*parenthesizedExpression, bool)
-	isProgram() (*program, bool)
-	isReturn() (*returnExpression, bool)
-	isRoot() (*Ast, bool)
-	isUnaryExpression() (*unaryExpression, bool)
 	isUnderCursor(offset uint) bool
-	isUnhandled() (*unhandled, bool)
-	isVariableDeclaration() (*variableDeclaration, bool)
-	isVariableDeclarator() (*variableDeclarator, bool)
-	isWhileStatment() (*whileStatement, bool)
 	setElement(element *element)
 	setStagedElement(element *element)
 	visit(func(nodeInterface) int) int
@@ -310,153 +281,8 @@ func (c *commonNode) hasEditSession() bool {
 	return stagedElement != nil
 }
 
-func (c *commonNode) isAccessibilityModifier() (*accessibilityModifier, bool) {
-	n, yes := c.getImpl().getNode().getImpl().(*accessibilityModifier)
-	return n, yes
-}
-
-func (c *commonNode) isArguments() (*arguments, bool) {
-	n, yes := c.getImpl().getNode().getImpl().(*arguments)
-	return n, yes
-}
-
-func (c *commonNode) isArrowFunction() (*arrowFunction, bool) {
-	n, yes := c.getImpl().getNode().getImpl().(*arrowFunction)
-	return n, yes
-}
-
-func (c *commonNode) isAwaitExpression() (*awaitExpression, bool) {
-	n, yes := c.getImpl().getNode().getImpl().(*awaitExpression)
-	return n, yes
-}
-
-func (c *commonNode) isBinaryExpression() (*binaryExpression, bool) {
-	n, yes := c.getImpl().getNode().getImpl().(*binaryExpression)
-	return n, yes
-}
-
-func (c *commonNode) isBoolean() (*boolean, bool) {
-	n, yes := c.getImpl().getNode().getImpl().(*boolean)
-	return n, yes
-}
-
-func (c *commonNode) isBreak() (*breakExpression, bool) {
-	n, yes := c.getImpl().getNode().getImpl().(*breakExpression)
-	return n, yes
-}
-
-func (c *commonNode) isCallExpression() (*callExpression, bool) {
-	n, yes := c.getImpl().getNode().getImpl().(*callExpression)
-	return n, yes
-}
-
-func (c *commonNode) isContinue() (*continueExpression, bool) {
-	n, yes := c.getImpl().getNode().getImpl().(*continueExpression)
-	return n, yes
-}
-
-func (c *commonNode) isElseClause() (*elseClause, bool) {
-	n, yes := c.getImpl().getNode().getImpl().(*elseClause)
-	return n, yes
-}
-
-func (c *commonNode) isExpressionStatement() (*expressionStatement, bool) {
-	n, yes := c.getImpl().getNode().getImpl().(*expressionStatement)
-	return n, yes
-}
-
-func (c *commonNode) isFunctionDeclaration() (*functionDeclaration, bool) {
-	n, yes := c.getImpl().getNode().getImpl().(*functionDeclaration)
-	return n, yes
-}
-
-func (c *commonNode) isForInStatement() (*forInStatement, bool) {
-	n, yes := c.getImpl().getNode().getImpl().(*forInStatement)
-	return n, yes
-}
-
-func (c *commonNode) isIdentifier() (*identifier, bool) {
-	n, yes := c.getImpl().getNode().getImpl().(*identifier)
-	return n, yes
-}
-
-func (c *commonNode) isIfStatement() (*ifStatement, bool) {
-	n, yes := c.getImpl().getNode().getImpl().(*ifStatement)
-	return n, yes
-}
-
-func (c *commonNode) isInvertable() (invertableNodeInterface, bool) {
-	n, yes := c.getImpl().getNode().getImpl().(invertableNodeInterface)
-	return n, yes
-}
-
-func (c *commonNode) isLexicalDeclaration() (*lexicalDeclaration, bool) {
-	n, yes := c.getImpl().getNode().getImpl().(*lexicalDeclaration)
-	return n, yes
-}
-
-func (c *commonNode) isMethodDefinition() (*methodDefinition, bool) {
-	n, yes := c.getImpl().getNode().getImpl().(*methodDefinition)
-	return n, yes
-}
-
-func (c *commonNode) isMethodSignature() (*methodSignature, bool) {
-	n, yes := c.getImpl().getNode().getImpl().(*methodSignature)
-	return n, yes
-}
-
-func (c *commonNode) isParenthesizedExpression() (*parenthesizedExpression, bool) {
-	n, yes := c.getImpl().getNode().getImpl().(*parenthesizedExpression)
-	return n, yes
-}
-
-func (c *commonNode) isProgram() (*program, bool) {
-	n, yes := c.getImpl().getNode().getImpl().(*program)
-	return n, yes
-}
-
-func (c *commonNode) isPropertyIdentifier() (*propertyIdentifier, bool) {
-	n, yes := c.getImpl().getNode().getImpl().(*propertyIdentifier)
-	return n, yes
-}
-
-func (c *commonNode) isReturn() (*returnExpression, bool) {
-	n, yes := c.getImpl().getNode().getImpl().(*returnExpression)
-	return n, yes
-}
-
-func (c *commonNode) isRoot() (*Ast, bool) {
-	n, yes := c.getImpl().getNode().getImpl().(*Ast)
-	return n, yes
-}
-
-func (c *commonNode) isUnaryExpression() (*unaryExpression, bool) {
-	n, yes := c.getImpl().getNode().getImpl().(*unaryExpression)
-	return n, yes
-}
-
 func (c *commonNode) isUnderCursor(offset uint) bool {
 	return c.getStartOffset() <= offset && offset < c.getEndOffset()
-}
-
-func (c *commonNode) isUnhandled() (*unhandled, bool) {
-	n, yes := c.getImpl().getNode().getImpl().(*unhandled)
-	return n, yes
-}
-
-func (c *commonNode) isVariableDeclaration() (*variableDeclaration, bool) {
-	n, yes := c.getImpl().getNode().getImpl().(*variableDeclaration)
-	return n, yes
-}
-
-func (c *commonNode) isVariableDeclarator() (*variableDeclarator, bool) {
-	n, yes := c.getImpl().getNode().getImpl().(*variableDeclarator)
-	return n, yes
-}
-
-func (c *commonNode) isWhileStatment() (*whileStatement, bool) {
-	n, yes := c.getImpl().getNode().getImpl().(*whileStatement)
-	return n, yes
 }
 
 func (c *commonNode) setElement(element *element) {
@@ -636,4 +462,14 @@ func validateNodeExists(node *sitter.Node, name string) (*sitter.Node, error) {
 	}
 
 	return node, nil
+}
+
+func isNode[T nodeInterface](node nodeInterface) (T, bool) {
+	if node == nil || node.getNode() == nil {
+		var zero T
+		return zero, false
+	}
+
+	n, yes := node.getNode().getImpl().(T)
+	return n, yes
 }
