@@ -141,16 +141,19 @@ func visitClassDeclaration(node *sitter.Node, state walkState, _ uint, funcMap w
 	var typeParameters nodeInterface
 	if typeParametersNode != nil {
 		typeParameters, err = walk.VisitNode(typeParametersNode, state, 0, funcMap, false)
-		if typeParametersNode == nil {
+		if err != nil {
 			return nil, err
 		}
 	}
 
-	classHeritageNode := node.ChildByFieldName("class_heritage")
 	var classHeritage nodeInterface
-	if classHeritageNode != nil {
-		classHeritage, err = walk.VisitNode(classHeritageNode, state, 0, funcMap, false)
-		if classHeritageNode == nil {
+	for _, child := range node.NamedChildren(node.Walk()) {
+		if child.Kind() != "class_heritage" {
+			continue
+		}
+
+		classHeritage, err = walk.VisitNode(&child, state, 0, funcMap, false)
+		if err != nil {
 			return nil, err
 		}
 	}
