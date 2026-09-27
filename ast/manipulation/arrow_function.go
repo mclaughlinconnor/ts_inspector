@@ -11,6 +11,7 @@ type arrowFunction struct {
 	commonNode
 	body       nodeInterface
 	parameters nodeInterface // todo: make it the formal_parameters node
+	parameter  *identifier
 	returnType nodeInterface // type_annotation
 }
 
@@ -25,6 +26,10 @@ func (a *arrowFunction) getAstNodeOfKindAtOffset(offset uint, kind string, first
 
 	if a.body != nil && a.body.isUnderCursor(offset) {
 		return a.body.getAstNodeOfKindAtOffset(offset, kind, first)
+	}
+
+	if a.parameter != nil && a.parameter.isUnderCursor(offset) {
+		return a.parameter.getAstNodeOfKindAtOffset(offset, kind, first)
 	}
 
 	if a.parameters != nil && a.parameters.isUnderCursor(offset) {
@@ -57,8 +62,16 @@ func (a *arrowFunction) visit(exec func(nodeInterface) int) int {
 		}
 	}
 
-	if ret := a.parameters.visit(exec); ret == VisitAbort {
-		return ret
+	if a.parameter != nil {
+		if ret := a.parameter.visit(exec); ret == VisitAbort {
+			return ret
+		}
+	}
+
+	if a.parameters != nil {
+		if ret := a.parameters.visit(exec); ret == VisitAbort {
+			return ret
+		}
 	}
 
 	if ret := a.body.visit(exec); ret == VisitAbort {
@@ -78,9 +91,11 @@ func visitArrowFunction(node *sitter.Node, state walkState, _ uint, funcMap walk
 	arrowFunction := arrowFunction{commonNode: makeCommonNode("arrowFunction", state, node)}
 	arrowFunction.setImpl(&arrowFunction)
 
+	parameterNode := node.ChildByFieldName("parameter")
 	parametersNode := node.ChildByFieldName("parameters")
-	if parametersNode == nil {
-		return nil, fmt.Errorf("invalid ast: missing parameters")
+
+	if parametersNode == nil && parameterNode == nil {
+		return nil, fmt.Errorf("invalid ast: missing parameter and parameters")
 	}
 
 	bodyNode := node.ChildByFieldName("body")
@@ -90,9 +105,28 @@ func visitArrowFunction(node *sitter.Node, state walkState, _ uint, funcMap walk
 
 	returnTypeNode := node.ChildByFieldName("return_type")
 
-	parameters, err := walk.VisitNode(parametersNode, state, 0, funcMap, false)
-	if err != nil {
-		return nil, err
+	var err error
+
+	var parameter *identifier
+	if parameterNode != nil {
+		parameterCommonNode, err := walk.VisitNode(parameterNode, state, 0, funcMap, false)
+		if err != nil {
+			return nil, err
+		}
+
+		if identifier, isIdentifier := isNode[*identifier](parameterCommonNode); isIdentifier {
+			parameter = identifier
+		} else {
+			return nil, fmt.Errorf("invalid ast: parameter isn't an identifier")
+		}
+	}
+
+	var parameters nodeInterface
+	if parametersNode != nil {
+		parameters, err = walk.VisitNode(parametersNode, state, 0, funcMap, false)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	body, err := walk.VisitNode(bodyNode, state, 0, funcMap, false)
@@ -108,6 +142,7 @@ func visitArrowFunction(node *sitter.Node, state walkState, _ uint, funcMap walk
 		}
 	}
 
+	arrowFunction.parameter = parameter
 	arrowFunction.parameters = parameters
 	arrowFunction.body = body
 	arrowFunction.returnType = returnType
