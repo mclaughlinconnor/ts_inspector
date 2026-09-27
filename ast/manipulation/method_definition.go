@@ -21,16 +21,13 @@ func (m *methodDefinition) getAstNodeOfKindAtOffset(offset uint, kind string, fi
 		return m, true
 	}
 
+	under, found := m.commonField.getAstNodeOfKindAtOffset(offset, kind, first)
+	if found && under != m {
+		return under, found
+	}
+
 	if m.body != nil && m.body.isUnderCursor(offset) {
 		return m.body.getAstNodeOfKindAtOffset(offset, kind, first)
-	}
-
-	if m.parameters != nil && m.parameters.isUnderCursor(offset) {
-		return m.parameters.getAstNodeOfKindAtOffset(offset, kind, first)
-	}
-
-	if m.returnType != nil && m.returnType.isUnderCursor(offset) {
-		return m.returnType.getAstNodeOfKindAtOffset(offset, kind, first)
 	}
 
 	if kind == NULL_KIND || m.getKind() == kind {
@@ -72,8 +69,8 @@ func visitMethodDefinition(node *sitter.Node, state walkState, _ uint, funcMap w
 	}
 
 	methodDefinition := methodDefinition{methodSignature: *methodSignature}
-	methodDefinition.setImpl(&methodDefinition)
 	methodDefinition.kind = "methodDefinition"
+	methodDefinition.setImpl(&methodDefinition)
 
 	bodyNode := node.ChildByFieldName("body")
 	if bodyNode == nil {

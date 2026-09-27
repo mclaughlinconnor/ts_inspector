@@ -47,6 +47,7 @@ func BuildAst(content string) (*Ast, error) {
 	funcMap["parenthesized_expression"] = visitParenthesizedExpression
 	funcMap["program"] = visitProgram
 	funcMap["property_identifier"] = visitPropertyIdentifier
+	funcMap["public_field_definition"] = visitPublicFieldDefinition
 	funcMap["return_statement"] = visitReturn
 	funcMap["true"] = visitBoolean
 	funcMap["unary_expression"] = visitUnaryExpression

@@ -8,17 +8,11 @@ import (
 )
 
 type methodSignature struct {
-	commonNode
-	accessibility  *accessibilityModifier
+	commonField
 	isAsync        bool
 	isGenerator    bool
 	isGetter       bool
-	isOptional     bool
-	isOverride     bool
-	isReadonly     bool
 	isSetter       bool
-	isStatic       bool
-	name           *propertyIdentifier
 	parameters     nodeInterface // todo: make it the formal_parameters node
 	returnType     nodeInterface // type_annotation
 	typeParameters nodeInterface
@@ -33,8 +27,17 @@ func (a *methodSignature) getAstNodeOfKindAtOffset(offset uint, kind string, fir
 		return a, true
 	}
 
+	under, found := a.commonField.getAstNodeOfKindAtOffset(offset, kind, first)
+	if found && under != a {
+		return under, found
+	}
+
 	if a.parameters != nil && a.parameters.isUnderCursor(offset) {
 		return a.parameters.getAstNodeOfKindAtOffset(offset, kind, first)
+	}
+
+	if a.typeParameters != nil && a.typeParameters.isUnderCursor(offset) {
+		return a.typeParameters.getAstNodeOfKindAtOffset(offset, kind, first)
 	}
 
 	if a.returnType != nil && a.returnType.isUnderCursor(offset) {
@@ -81,7 +84,22 @@ func (a *methodSignature) visit(exec func(nodeInterface) int) int {
 }
 
 func visitMethodSignature(node *sitter.Node, state walkState, _ uint, funcMap walk.VisitorFuncMap[walkState]) (walkState, error) {
-	methodSignature := methodSignature{commonNode: makeCommonNode("methodSignature", state, node)}
+	commonFieldCommonNode, err := visitCommonField(node, state, 0, funcMap)
+	if err != nil {
+		return nil, err
+	}
+
+	if commonFieldCommonNode == nil {
+		return nil, fmt.Errorf("invalid ast: missing method signature")
+	}
+
+	commonField, isCommonField := isNode[*commonField](commonFieldCommonNode)
+	if !isCommonField {
+		return nil, fmt.Errorf("invalid ast: method signature is't a method signature")
+	}
+
+	methodSignature := methodSignature{commonField: *commonField}
+	methodSignature.kind = "methodSignature"
 	methodSignature.setImpl(&methodSignature)
 
 	nodes := map[string]nodeInterface{}
@@ -100,44 +118,15 @@ func visitMethodSignature(node *sitter.Node, state walkState, _ uint, funcMap wa
 		nodes[label] = commonNode
 	}
 
-	accessibilityCommonNode, found := nodes["accessibility_modifier"]
-
-	var accessibility *accessibilityModifier
-	if found {
-		if accessibilityModifier, isAccessibilityModifier := isNode[*accessibilityModifier](accessibilityCommonNode); isAccessibilityModifier {
-			accessibility = accessibilityModifier
-		} else {
-			return nil, fmt.Errorf("invalid ast: accessibility isn't an accessibility")
-		}
-	}
-
-	nameCommonNode, found := nodes["name"]
-	if !found {
-		return nil, fmt.Errorf("invalid ast: missing name")
-	}
-
-	var name *propertyIdentifier
-	if propertyIdentifier, isPropertyIdentifier := isNode[*propertyIdentifier](nameCommonNode); isPropertyIdentifier {
-		name = propertyIdentifier
-	} else {
-		return nil, fmt.Errorf("invalid ast: name isn't a property identifier")
-	}
-
 	parameters, found := nodes["parameters"]
 	if !found {
 		return nil, fmt.Errorf("invalid ast: missing parameters")
 	}
 
-	methodSignature.accessibility = accessibility
 	methodSignature.isAsync = nodes["async"] != nil
 	methodSignature.isGenerator = nodes["*"] != nil
 	methodSignature.isGetter = nodes["get"] != nil
-	methodSignature.isOptional = nodes["?"] != nil
-	methodSignature.isOverride = nodes["override_modifier"] != nil
-	methodSignature.isReadonly = nodes["readonly"] != nil
 	methodSignature.isSetter = nodes["set"] != nil
-	methodSignature.isStatic = nodes["static"] != nil
-	methodSignature.name = name
 	methodSignature.parameters = parameters
 	methodSignature.returnType = nodes["return_type"]
 	methodSignature.typeParameters = nodes["type_parameters"]
