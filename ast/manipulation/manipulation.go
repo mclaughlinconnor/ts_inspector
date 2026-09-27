@@ -49,6 +49,7 @@ func BuildAst(content string) (*Ast, error) {
 	funcMap["property_identifier"] = visitPropertyIdentifier
 	funcMap["public_field_definition"] = visitPublicFieldDefinition
 	funcMap["return_statement"] = visitReturn
+	funcMap["this"] = visitThis
 	funcMap["true"] = visitBoolean
 	funcMap["unary_expression"] = visitUnaryExpression
 	funcMap["variable_declaration"] = visitVariableDeclaration
