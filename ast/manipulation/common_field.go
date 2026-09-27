@@ -52,8 +52,10 @@ func (a *commonField) visit(exec func(nodeInterface) int) int {
 		}
 	}
 
-	if ret := a.accessibility.visit(exec); ret == VisitAbort {
-		return ret
+	if a.accessibility != nil {
+		if ret := a.accessibility.visit(exec); ret == VisitAbort {
+			return ret
+		}
 	}
 
 	if ret := a.name.visit(exec); ret == VisitAbort {
