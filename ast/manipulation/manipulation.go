@@ -44,6 +44,7 @@ func BuildAst(content string) (*Ast, error) {
 	funcMap["false"] = visitBoolean
 	funcMap["for_in_statement"] = visitForInStatement
 	funcMap["function_declaration"] = visitFunctionDeclaration
+	funcMap["function_signature"] = visitFunctionSignature
 	funcMap["identifier"] = visitIdentifier
 	funcMap["if_statement"] = visitIfStatement
 	funcMap["implements_clause"] = visitImplementsClause
