@@ -34,6 +34,7 @@ func BuildAst(content string) (*Ast, error) {
 	funcMap["break_statement"] = visitBreak
 	funcMap["call_expression"] = visitCallExpression
 	funcMap["continue_statement"] = visitContinue
+	funcMap["decorator"] = visitDecorator
 	funcMap["else_clause"] = visitElseClause
 	funcMap["expression_statement"] = visitExpressionStatement
 	funcMap["false"] = visitBoolean
