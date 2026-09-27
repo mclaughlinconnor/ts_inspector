@@ -10,7 +10,7 @@ import (
 type functionSignature struct {
 	commonNode
 	name       *identifier
-	parameters nodeInterface // todo: make it the formal_parameters node
+	parameters *formalParameters
 	returnType nodeInterface // type_annotation
 }
 
@@ -90,9 +90,18 @@ func visitFunctionSignature(node *sitter.Node, state walkState, _ uint, funcMap 
 		return nil, fmt.Errorf("invalid ast: name isn't an identifier")
 	}
 
-	parameters, err := walk.VisitNode(parametersNode, state, 0, funcMap, false)
+	parametersCommonNode, err := walk.VisitNode(parametersNode, state, 0, funcMap, false)
 	if err != nil {
 		return nil, err
+	}
+
+	var parameters *formalParameters
+	if parametersCommonNode != nil {
+		if formalParameters, isFormalParameters := isNode[*formalParameters](parametersCommonNode); isFormalParameters {
+			parameters = formalParameters
+		} else {
+			return nil, fmt.Errorf("invalid ast: parameters isn't a formal parameters")
+		}
 	}
 
 	var returnType nodeInterface

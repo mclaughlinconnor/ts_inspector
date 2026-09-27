@@ -13,7 +13,7 @@ type methodSignature struct {
 	isGenerator    bool
 	isGetter       bool
 	isSetter       bool
-	parameters     nodeInterface // todo: make it the formal_parameters node
+	parameters     *formalParameters
 	returnType     nodeInterface // type_annotation
 	typeParameters *typeParameters
 }
@@ -110,9 +110,14 @@ func visitMethodSignature(node *sitter.Node, state walkState, _ uint, funcMap wa
 		nodes[label] = commonNode
 	}
 
-	parameters, found := nodes["parameters"]
-	if !found {
-		return nil, fmt.Errorf("invalid ast: missing parameters")
+	parametersCommonNode, found := nodes["parameters"]
+	var parameters *formalParameters
+	if found {
+		if formalParameters, isFormalParameters := isNode[*formalParameters](parametersCommonNode); isFormalParameters {
+			parameters = formalParameters
+		} else {
+			return nil, fmt.Errorf("invalid ast: parameters isn't a formal parameters")
+		}
 	}
 
 	typeParametersCommonNode, found := nodes["type_parameters"]

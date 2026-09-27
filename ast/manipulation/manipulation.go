@@ -43,6 +43,7 @@ func BuildAst(content string) (*Ast, error) {
 	funcMap["extends_clause"] = visitExtendsClause
 	funcMap["false"] = visitBoolean
 	funcMap["for_in_statement"] = visitForInStatement
+	funcMap["formal_parameters"] = visitFormalParameters
 	funcMap["function_declaration"] = visitFunctionDeclaration
 	funcMap["function_signature"] = visitFunctionSignature
 	funcMap["identifier"] = visitIdentifier
@@ -52,10 +53,12 @@ func BuildAst(content string) (*Ast, error) {
 	funcMap["member_expression"] = visitMemberExpression
 	funcMap["method_definition"] = visitMethodDefinition
 	funcMap["method_signature"] = visitMethodSignature
+	funcMap["optional_parameter"] = visitParameter
 	funcMap["parenthesized_expression"] = visitParenthesizedExpression
 	funcMap["program"] = visitProgram
 	funcMap["property_identifier"] = visitPropertyIdentifier
 	funcMap["public_field_definition"] = visitPublicFieldDefinition
+	funcMap["required_parameter"] = visitParameter
 	funcMap["return_statement"] = visitReturn
 	funcMap["subscript_expression"] = visitSubscriptExpression
 	funcMap["this"] = visitThis
