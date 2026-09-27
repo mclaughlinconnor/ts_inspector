@@ -84,7 +84,7 @@ func visitFunctionSignature(node *sitter.Node, state walkState, _ uint, funcMap 
 	}
 
 	var name *identifier
-	if identifier, isIdentifier := isNode[*identifier](nameCommonNode); isIdentifier {
+	if identifier, isIdentifier := IsNode[*identifier](nameCommonNode); isIdentifier {
 		name = identifier
 	} else {
 		return nil, fmt.Errorf("invalid ast: name isn't an identifier")
@@ -97,7 +97,7 @@ func visitFunctionSignature(node *sitter.Node, state walkState, _ uint, funcMap 
 
 	var parameters *formalParameters
 	if parametersCommonNode != nil {
-		if formalParameters, isFormalParameters := isNode[*formalParameters](parametersCommonNode); isFormalParameters {
+		if formalParameters, isFormalParameters := IsNode[*formalParameters](parametersCommonNode); isFormalParameters {
 			parameters = formalParameters
 		} else {
 			return nil, fmt.Errorf("invalid ast: parameters isn't a formal parameters")

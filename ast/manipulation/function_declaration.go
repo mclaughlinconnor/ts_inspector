@@ -63,7 +63,7 @@ func visitFunctionDeclaration(node *sitter.Node, state walkState, _ uint, funcMa
 		return nil, fmt.Errorf("invalid ast: missing function signature")
 	}
 
-	functionSignature, isFunctionSignature := isNode[*functionSignature](functionSignatureCommonNode)
+	functionSignature, isFunctionSignature := IsNode[*functionSignature](functionSignatureCommonNode)
 	if !isFunctionSignature {
 		return nil, fmt.Errorf("invalid ast: function signature is't a function signature")
 	}

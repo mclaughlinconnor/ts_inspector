@@ -83,7 +83,7 @@ func visitMemberExpression(node *sitter.Node, state walkState, _ uint, funcMap w
 	}
 
 	var property *propertyIdentifier
-	if propertyIdentifier, isPropertyIdentifier := isNode[*propertyIdentifier](propertyCommonNode); isPropertyIdentifier {
+	if propertyIdentifier, isPropertyIdentifier := IsNode[*propertyIdentifier](propertyCommonNode); isPropertyIdentifier {
 		property = propertyIdentifier
 	} else {
 		return nil, fmt.Errorf("invalid ast: property isn't a property")

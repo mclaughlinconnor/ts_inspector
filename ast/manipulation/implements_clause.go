@@ -8,7 +8,7 @@ import (
 
 type implementsClause struct {
 	commonNode
-	implements []nodeInterface
+	Implements []nodeInterface
 }
 
 func (t *implementsClause) getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool) {
@@ -20,7 +20,7 @@ func (t *implementsClause) getAstNodeOfKindAtOffset(offset uint, kind string, fi
 		return t, true
 	}
 
-	for _, typeParameter := range t.implements {
+	for _, typeParameter := range t.Implements {
 		if typeParameter != nil && typeParameter.isUnderCursor(offset) {
 			return typeParameter.getAstNodeOfKindAtOffset(offset, kind, first)
 		}
@@ -44,7 +44,7 @@ func (t *implementsClause) visit(exec func(nodeInterface) int) int {
 		}
 	}
 
-	for _, typeParameter := range t.implements {
+	for _, typeParameter := range t.Implements {
 		if typeParameter == nil {
 			continue
 		}
@@ -71,7 +71,7 @@ func visitImplementsClause(node *sitter.Node, state walkState, _ uint, funcMap w
 		implements = append(implements, childCommonNode)
 	}
 
-	implementsClause.implements = implements
+	implementsClause.Implements = implements
 
 	return &implementsClause, nil
 }

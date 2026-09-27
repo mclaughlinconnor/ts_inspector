@@ -98,7 +98,7 @@ func visitVariableDeclarator(node *sitter.Node, state walkState, _ uint, funcMap
 	}
 
 	var name *identifier
-	if identifier, isIdentifier := isNode[*identifier](nameCommonNode); isIdentifier {
+	if identifier, isIdentifier := IsNode[*identifier](nameCommonNode); isIdentifier {
 		name = identifier
 	} else {
 		return nil, fmt.Errorf("invalid ast: identifier isn't an identifier")

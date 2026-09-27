@@ -114,7 +114,7 @@ func visitArrowFunction(node *sitter.Node, state walkState, _ uint, funcMap walk
 			return nil, err
 		}
 
-		if identifier, isIdentifier := isNode[*identifier](parameterCommonNode); isIdentifier {
+		if identifier, isIdentifier := IsNode[*identifier](parameterCommonNode); isIdentifier {
 			parameter = identifier
 		} else {
 			return nil, fmt.Errorf("invalid ast: parameter isn't an identifier")
@@ -131,7 +131,7 @@ func visitArrowFunction(node *sitter.Node, state walkState, _ uint, funcMap walk
 
 	var parameters *formalParameters
 	if parametersCommonNode != nil {
-		if formalParameters, isFormalParameters := isNode[*formalParameters](parametersCommonNode); isFormalParameters {
+		if formalParameters, isFormalParameters := IsNode[*formalParameters](parametersCommonNode); isFormalParameters {
 			parameters = formalParameters
 		} else {
 			return nil, fmt.Errorf("invalid ast: parameters isn't a formal parameters")

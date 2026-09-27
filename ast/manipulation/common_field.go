@@ -89,7 +89,7 @@ func visitCommonField(node *sitter.Node, state walkState, _ uint, funcMap walk.V
 
 	var accessibility *accessibilityModifier
 	if found {
-		if accessibilityModifier, isAccessibilityModifier := isNode[*accessibilityModifier](accessibilityCommonNode); isAccessibilityModifier {
+		if accessibilityModifier, isAccessibilityModifier := IsNode[*accessibilityModifier](accessibilityCommonNode); isAccessibilityModifier {
 			accessibility = accessibilityModifier
 		} else {
 			return nil, fmt.Errorf("invalid ast: accessibility isn't an accessibility")

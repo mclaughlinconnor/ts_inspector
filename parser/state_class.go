@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync"
 	"ts_inspector/ast"
+	"ts_inspector/ast/manipulation"
 	"ts_inspector/interfaces"
 
 	sitter "github.com/tree-sitter/go-tree-sitter"
@@ -19,6 +20,7 @@ type Decorator struct {
 
 type classState struct {
 	Angular              *Angular
+	Ast                  *manipulation.ClassDeclaration
 	Content              string
 	Definitions          *Definitions
 	Extends              References // Extends may have nil references if resolution failed
@@ -782,7 +784,15 @@ func (c *ClassedDefinition) GetLocation() interfaces.Location {
 func ClassId(uri string, className string) string { return uri + "-" + className }
 
 func NewClass(content string, file *File, node *sitter.Node) Class {
+	var ast *manipulation.ClassDeclaration
+
+	astCommonNode, _ := file.Snapshot().Ast.GetAstNodeOfKindAtOffset(node.StartByte(), "classDeclaration", true)
+	if class, _ := manipulation.IsNode[*manipulation.ClassDeclaration](astCommonNode); class != nil {
+		ast = class
+	}
+
 	state := classState{
+		Ast:                  ast,
 		Content:              content,
 		Definitions:          &Definitions{RWMutex: sync.RWMutex{}, data: map[string]*Definition{}},
 		Extends:              []*Reference{},

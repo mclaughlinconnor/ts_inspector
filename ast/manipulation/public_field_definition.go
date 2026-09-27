@@ -77,7 +77,7 @@ func visitPublicFieldDefinition(node *sitter.Node, state walkState, _ uint, func
 		return nil, fmt.Errorf("invalid ast: missing common field")
 	}
 
-	commonField, isCommonField := isNode[*commonField](commonFieldCommonNode)
+	commonField, isCommonField := IsNode[*commonField](commonFieldCommonNode)
 	if !isCommonField {
 		return nil, fmt.Errorf("invalid ast: common field is't a common field")
 	}

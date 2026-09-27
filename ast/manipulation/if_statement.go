@@ -22,7 +22,7 @@ type ifStatement struct {
 }
 
 func (e *elseClause) isElseIf() bool {
-	_, ok := isNode[*ifStatement](e.statement)
+	_, ok := IsNode[*ifStatement](e.statement)
 
 	return ok
 }
@@ -112,7 +112,7 @@ func (i *ifStatement) flipElse() {
 		return
 	}
 
-	invertableCondition, ok := isNode[invertableNodeInterface](i.condition)
+	invertableCondition, ok := IsNode[invertableNodeInterface](i.condition)
 	if !ok {
 		return
 	}
@@ -140,7 +140,7 @@ func (i *ifStatement) getAnalysis() []interfaces.Analysis {
 	analyses := []interfaces.Analysis{}
 
 	if i.alternative != nil && !i.alternative.isElseIf() {
-		unaryExpression, isUnaryExpression := isNode[*unaryExpression](i.condition)
+		unaryExpression, isUnaryExpression := IsNode[*unaryExpression](i.condition)
 		if isUnaryExpression && unaryExpression.Operator.getOperator() == unaryExpressionOperatorEnum.LNOT {
 			analyses = append(analyses, interfaces.NewAnalysis("yoda speak", i.condition.getRange(), interfaces.AnalysisSeverity.Information, "This condition could be inverted for readability", nil))
 		}
@@ -257,7 +257,7 @@ func visitIfStatement(node *sitter.Node, state walkState, _ uint, funcMap walk.V
 			return nil, err
 		}
 
-		alternativeElseClause, ok := isNode[*elseClause](alternativeWalkState)
+		alternativeElseClause, ok := IsNode[*elseClause](alternativeWalkState)
 		if !ok {
 			return nil, fmt.Errorf("invalid ast: else branch is not an else node, %+v", alternativeWalkState)
 		}

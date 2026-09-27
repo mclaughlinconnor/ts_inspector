@@ -71,7 +71,7 @@ func visitVariableDeclaration(node *sitter.Node, state walkState, _ uint, funcMa
 	}
 
 	var declarator *variableDeclarator
-	if variableDeclarator, isVariableDeclarator := isNode[*variableDeclarator](declaratorCommonNode); isVariableDeclarator {
+	if variableDeclarator, isVariableDeclarator := IsNode[*variableDeclarator](declaratorCommonNode); isVariableDeclarator {
 		declarator = variableDeclarator
 	} else {
 		return nil, fmt.Errorf("invalid ast: declarator is not a variable_declarator")

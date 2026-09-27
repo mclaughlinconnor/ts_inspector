@@ -45,6 +45,7 @@ type invertableNodeInterface interface {
 type nodeInterface interface {
 	GetEndOffset() uint
 	GetRange() utils.Range
+	GetText() string
 	GetStartOffset() uint
 
 	applyAction(apply func()) ([]utils.TextEdit, error)
@@ -92,6 +93,10 @@ func (c *commonNode) GetRange() utils.Range {
 
 func (c *commonNode) GetStartOffset() uint {
 	return c.getStartOffset()
+}
+
+func (c *commonNode) GetText() string {
+	return c.getText()
 }
 
 func (c *commonNode) applyAction(apply func()) ([]utils.TextEdit, error) {
@@ -464,7 +469,7 @@ func validateNodeExists(node *sitter.Node, name string) (*sitter.Node, error) {
 	return node, nil
 }
 
-func isNode[T nodeInterface](node nodeInterface) (T, bool) {
+func IsNode[T nodeInterface](node nodeInterface) (T, bool) {
 	if node == nil || node.getNode() == nil {
 		var zero T
 		return zero, false

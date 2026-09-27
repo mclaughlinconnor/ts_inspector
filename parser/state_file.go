@@ -326,18 +326,6 @@ func (f *File) IsTypeScript() bool {
 func (f *File) Postprocess(state *State) {
 	f.ResetThings()
 
-	// Ignore the error for now
-	if f.Snapshot().Filetype == "typescript" {
-		ast, err := manipulation.BuildAst(f.Snapshot().Content)
-		if err == nil {
-			f.Update(func(data *fileState) {
-				data.Ast = ast
-			})
-		} else {
-			state.Logger.Println(err)
-		}
-	}
-
 	for _, class := range f.Snapshot().Classes {
 		state.SetClass(class.Id(), class)
 		class.Postprocess(state)

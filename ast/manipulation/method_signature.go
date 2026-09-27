@@ -85,7 +85,7 @@ func visitMethodSignature(node *sitter.Node, state walkState, _ uint, funcMap wa
 		return nil, fmt.Errorf("invalid ast: missing method signature")
 	}
 
-	commonField, isCommonField := isNode[*commonField](commonFieldCommonNode)
+	commonField, isCommonField := IsNode[*commonField](commonFieldCommonNode)
 	if !isCommonField {
 		return nil, fmt.Errorf("invalid ast: method signature is't a method signature")
 	}
@@ -113,7 +113,7 @@ func visitMethodSignature(node *sitter.Node, state walkState, _ uint, funcMap wa
 	parametersCommonNode, found := nodes["parameters"]
 	var parameters *formalParameters
 	if found {
-		if formalParameters, isFormalParameters := isNode[*formalParameters](parametersCommonNode); isFormalParameters {
+		if formalParameters, isFormalParameters := IsNode[*formalParameters](parametersCommonNode); isFormalParameters {
 			parameters = formalParameters
 		} else {
 			return nil, fmt.Errorf("invalid ast: parameters isn't a formal parameters")
@@ -123,7 +123,7 @@ func visitMethodSignature(node *sitter.Node, state walkState, _ uint, funcMap wa
 	typeParametersCommonNode, found := nodes["type_parameters"]
 	var ttypeParameters *typeParameters
 	if found {
-		if typeParameters, isTypeParameters := isNode[*typeParameters](typeParametersCommonNode); isTypeParameters {
+		if typeParameters, isTypeParameters := IsNode[*typeParameters](typeParametersCommonNode); isTypeParameters {
 			ttypeParameters = typeParameters
 		} else {
 			return nil, fmt.Errorf("invalid ast: typeParameters isn't a property identifier")

@@ -9,8 +9,8 @@ import (
 
 type extendsClause struct {
 	commonNode
-	typeArguments nodeInterface
-	value         nodeInterface
+	TypeArguments nodeInterface
+	Value         nodeInterface
 }
 
 func (t *extendsClause) getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool) {
@@ -22,8 +22,8 @@ func (t *extendsClause) getAstNodeOfKindAtOffset(offset uint, kind string, first
 		return t, true
 	}
 
-	if t.value != nil && t.value.isUnderCursor(offset) {
-		return t.value.getAstNodeOfKindAtOffset(offset, kind, first)
+	if t.Value != nil && t.Value.isUnderCursor(offset) {
+		return t.Value.getAstNodeOfKindAtOffset(offset, kind, first)
 	}
 
 	if kind == NULL_KIND || t.getKind() == kind {
@@ -44,7 +44,7 @@ func (t *extendsClause) visit(exec func(nodeInterface) int) int {
 		}
 	}
 
-	if ret := t.value.visit(exec); ret == VisitAbort {
+	if ret := t.Value.visit(exec); ret == VisitAbort {
 		return ret
 	}
 
@@ -74,8 +74,8 @@ func visitExtendsClause(node *sitter.Node, state walkState, _ uint, funcMap walk
 		}
 	}
 
-	extendsClause.typeArguments = typeArguments
-	extendsClause.value = value
+	extendsClause.TypeArguments = typeArguments
+	extendsClause.Value = value
 
 	return &extendsClause, nil
 }

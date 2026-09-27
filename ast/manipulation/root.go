@@ -59,7 +59,7 @@ func (a *Ast) GetAllAnalysis() []interfaces.Analysis {
 	return analyses
 }
 
-func (a *Ast) getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool) {
+func (a *Ast) GetAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool) {
 	if kind == NULL_KIND || a.getKind() == kind {
 		return a, true
 	}

@@ -9,7 +9,7 @@ import (
 
 type typeParameters struct {
 	commonNode
-	parameters []*typeParameter
+	Parameters []*typeParameter
 }
 
 func (t *typeParameters) getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool) {
@@ -21,7 +21,7 @@ func (t *typeParameters) getAstNodeOfKindAtOffset(offset uint, kind string, firs
 		return t, true
 	}
 
-	for _, typeParameter := range t.parameters {
+	for _, typeParameter := range t.Parameters {
 		if typeParameter != nil && typeParameter.isUnderCursor(offset) {
 			return typeParameter.getAstNodeOfKindAtOffset(offset, kind, first)
 		}
@@ -45,7 +45,7 @@ func (t *typeParameters) visit(exec func(nodeInterface) int) int {
 		}
 	}
 
-	for _, typeParameter := range t.parameters {
+	for _, typeParameter := range t.Parameters {
 		if typeParameter == nil {
 			continue
 		}
@@ -69,14 +69,14 @@ func visitTypeParameters(node *sitter.Node, state walkState, _ uint, funcMap wal
 			return nil, err
 		}
 
-		if typeParameter, isTypeParameter := isNode[*typeParameter](childCommonNode); isTypeParameter {
+		if typeParameter, isTypeParameter := IsNode[*typeParameter](childCommonNode); isTypeParameter {
 			parameters = append(parameters, typeParameter)
 		} else {
 			return nil, fmt.Errorf("invalid ast: type parameter isn't a type parameter")
 		}
 	}
 
-	typeParameters.parameters = parameters
+	typeParameters.Parameters = parameters
 
 	return &typeParameters, nil
 }

@@ -5,6 +5,7 @@ import (
 	"log"
 	"runtime/debug"
 	"ts_inspector/ast"
+	"ts_inspector/ast/manipulation"
 	"ts_inspector/ast/walk"
 	"ts_inspector/utils"
 
@@ -35,6 +36,17 @@ type varWalkState struct {
 }
 
 func Index(state *State, file *File) error {
+	var err error
+	file.Update(func(data *fileState) {
+		var ast *manipulation.Ast
+		ast, err = manipulation.BuildAst(data.Content)
+		data.Ast = ast
+	})
+
+	if err != nil {
+		return err
+	}
+
 	file.ResetDeclarations()
 
 	root, err := utils.ParseText([]byte(file.Snapshot().Content), utils.TypeScript)
@@ -144,76 +156,46 @@ func extractFileImports(root *sitter.Node, file *File) error {
 	return nil
 }
 
-func extractMetadata(class *Class, root *sitter.Node, content []byte) error {
-	funcMap := walk.NewVisitorFuncsMap[*Class]()
+func extractMetadata(class *Class, root *sitter.Node, content []byte) {
+	ast := class.Snapshot().Ast
 
-	classVisitor := func(node *sitter.Node, state *Class, indexInParent uint, funcMap walk.VisitorFuncMap[*Class]) (*Class, error) {
-		for i := range node.NamedChildCount() {
-			child := node.NamedChild(i)
-			t := child.Kind()
-
-			if t == "type_parameters" {
-				for ti := range child.NamedChildCount() {
-					tp := child.NamedChild(ti)
-
-					tpName := tp.ChildByFieldName("name")
-					if tpName == nil {
-						continue
-					}
-
-					state.Update(func(data *classState) {
-						data.TypeParameters = append(data.TypeParameters, tpName.Utf8Text(content))
-					})
-				}
-			}
-
-			if t != "class_heritage" {
-				continue
-			}
-
-			for i := range child.NamedChildCount() {
-				clause := child.NamedChild(i)
-				jt := clause.Kind()
-
-				switch jt {
-				case "extends_clause":
-					extendsClause := clause
-					identCount := int(extendsClause.NamedChildCount())
-					extendsIdentifiers := make([]string, identCount)
-
-					for i := range identCount {
-						extendsIdentifiers[i] = extendsClause.NamedChild(uint(i)).Utf8Text(content)
-					}
-
-					state.Update(func(data *classState) {
-						data.ExtendsIdentNames = extendsIdentifiers
-					})
-				case "implements_clause":
-					implementsClause := clause
-					identCount := int(implementsClause.NamedChildCount())
-					implementsIdentifiers := make([]string, identCount)
-
-					for i := range identCount {
-						implementsIdentifiers[i] = implementsClause.NamedChild(uint(i)).Utf8Text(content)
-					}
-
-					state.Update(func(data *classState) {
-						data.ImplementsIdentNames = implementsIdentifiers
-					})
-				}
-			}
-
-		}
-
-		return nil, nil
+	if ast == nil {
+		return
 	}
 
-	funcMap["abstract_class_declaration"] = classVisitor
-	funcMap["class_declaration"] = classVisitor
-	funcMap["interface_declaration"] = classVisitor
+	if ast.TypeParameters != nil {
+		class.Update(func(data *classState) {
+			typeParameters := make([]string, len(ast.TypeParameters.Parameters))
+			for i, parameter := range ast.TypeParameters.Parameters {
+				typeParameters[i] = parameter.Name.GetText()
+			}
 
-	_, err := walk.WalkTypeScript(root, class, funcMap)
-	return err
+			data.TypeParameters = typeParameters
+		})
+	}
+
+	classHeritage := ast.ClassHeritage
+
+	if classHeritage == nil {
+		return
+	}
+
+	if classHeritage.Extends != nil {
+		class.Update(func(data *classState) {
+			data.ExtendsIdentNames = []string{classHeritage.Extends.Value.GetText()}
+		})
+	}
+
+	if classHeritage.Implements != nil {
+		class.Update(func(data *classState) {
+			implementsIdentNames := make([]string, len(classHeritage.Implements.Implements))
+			for i, implement := range classHeritage.Implements.Implements {
+				implementsIdentNames[i] = implement.GetText()
+			}
+
+			data.ImplementsIdentNames = implementsIdentNames
+		})
+	}
 }
 
 func extractType(node *sitter.Node, content []byte) string {
@@ -470,13 +452,15 @@ func parseClasses(state *State, root *sitter.Node, file *File) error {
 				data.Content = classContentS
 				data.Name = className
 				data.NameNode = classNameNode
+
+				astCommonNode, _ := file.Snapshot().Ast.GetAstNodeOfKindAtOffset(node.StartByte(), "classDeclaration", true)
+				if class, _ := manipulation.IsNode[*manipulation.ClassDeclaration](astCommonNode); class != nil {
+					data.Ast = class
+				}
 			})
 		}
 
-		err = extractMetadata(class, classRoot, classContentW)
-		if err != nil {
-			return classWalkState, err
-		}
+		extractMetadata(class, classRoot, classContentW)
 
 		err = extractTypeScriptDefinitions(class, classRoot, []byte(class.Snapshot().Content))
 		if err != nil {

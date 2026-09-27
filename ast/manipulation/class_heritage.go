@@ -9,8 +9,8 @@ import (
 
 type classHeritage struct {
 	commonNode
-	extends    *extendsClause
-	implements *implementsClause
+	Extends    *extendsClause
+	Implements *implementsClause
 }
 
 func (t *classHeritage) getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool) {
@@ -22,12 +22,12 @@ func (t *classHeritage) getAstNodeOfKindAtOffset(offset uint, kind string, first
 		return t, true
 	}
 
-	if t.extends != nil && t.extends.isUnderCursor(offset) {
-		return t.extends.getAstNodeOfKindAtOffset(offset, kind, first)
+	if t.Extends != nil && t.Extends.isUnderCursor(offset) {
+		return t.Extends.getAstNodeOfKindAtOffset(offset, kind, first)
 	}
 
-	if t.implements != nil && t.implements.isUnderCursor(offset) {
-		return t.implements.getAstNodeOfKindAtOffset(offset, kind, first)
+	if t.Implements != nil && t.Implements.isUnderCursor(offset) {
+		return t.Implements.getAstNodeOfKindAtOffset(offset, kind, first)
 	}
 
 	if kind == NULL_KIND || t.getKind() == kind {
@@ -48,14 +48,14 @@ func (t *classHeritage) visit(exec func(nodeInterface) int) int {
 		}
 	}
 
-	if t.extends != nil {
-		if ret := t.extends.visit(exec); ret == VisitAbort {
+	if t.Extends != nil {
+		if ret := t.Extends.visit(exec); ret == VisitAbort {
 			return ret
 		}
 	}
 
-	if t.implements != nil {
-		if ret := t.implements.visit(exec); ret == VisitAbort {
+	if t.Implements != nil {
+		if ret := t.Implements.visit(exec); ret == VisitAbort {
 			return ret
 		}
 	}
@@ -77,7 +77,7 @@ func visitClassHeritage(node *sitter.Node, state walkState, _ uint, funcMap walk
 				return nil, err
 			}
 
-			if extendsClause, isExtendsClause := isNode[*extendsClause](extendsClauseCommonNode); isExtendsClause {
+			if extendsClause, isExtendsClause := IsNode[*extendsClause](extendsClauseCommonNode); isExtendsClause {
 				eextendsClause = extendsClause
 			} else {
 				return nil, fmt.Errorf("invalid ast: extends clause isn't an extends clause")
@@ -92,7 +92,7 @@ func visitClassHeritage(node *sitter.Node, state walkState, _ uint, funcMap walk
 				return nil, err
 			}
 
-			if implementsClause, isImplementsClause := isNode[*implementsClause](implementsClauseCommonNode); isImplementsClause {
+			if implementsClause, isImplementsClause := IsNode[*implementsClause](implementsClauseCommonNode); isImplementsClause {
 				iimplementsClause = implementsClause
 			} else {
 				return nil, fmt.Errorf("invalid ast: implements clause isn't an implements clause")
@@ -102,8 +102,8 @@ func visitClassHeritage(node *sitter.Node, state walkState, _ uint, funcMap walk
 		}
 	}
 
-	classHeritage.extends = eextendsClause
-	classHeritage.implements = iimplementsClause
+	classHeritage.Extends = eextendsClause
+	classHeritage.Implements = iimplementsClause
 
 	return &classHeritage, nil
 }

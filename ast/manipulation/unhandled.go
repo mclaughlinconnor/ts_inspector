@@ -12,7 +12,7 @@ type unhandled struct {
 
 func (u *unhandled) invert() {
 	for _, child := range u.getChildren() {
-		invertableChild, isInvertable := isNode[invertableNodeInterface](child)
+		invertableChild, isInvertable := IsNode[invertableNodeInterface](child)
 		if isInvertable {
 			invertableChild.invert()
 		}

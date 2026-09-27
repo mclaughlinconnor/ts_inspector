@@ -10,9 +10,9 @@ import (
 type typeParameter struct {
 	commonNode
 	isConst    bool
-	name       nodeInterface
-	constraint nodeInterface
-	value      nodeInterface
+	Name       nodeInterface
+	Constraint nodeInterface
+	Value      nodeInterface
 }
 
 func (t *typeParameter) getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool) {
@@ -24,16 +24,16 @@ func (t *typeParameter) getAstNodeOfKindAtOffset(offset uint, kind string, first
 		return t, true
 	}
 
-	if t.name.isUnderCursor(offset) {
-		return t.name.getAstNodeOfKindAtOffset(offset, kind, first)
+	if t.Name.isUnderCursor(offset) {
+		return t.Name.getAstNodeOfKindAtOffset(offset, kind, first)
 	}
 
-	if t.constraint.isUnderCursor(offset) {
-		return t.constraint.getAstNodeOfKindAtOffset(offset, kind, first)
+	if t.Constraint.isUnderCursor(offset) {
+		return t.Constraint.getAstNodeOfKindAtOffset(offset, kind, first)
 	}
 
-	if t.value.isUnderCursor(offset) {
-		return t.value.getAstNodeOfKindAtOffset(offset, kind, first)
+	if t.Value.isUnderCursor(offset) {
+		return t.Value.getAstNodeOfKindAtOffset(offset, kind, first)
 	}
 
 	if kind == NULL_KIND || t.getKind() == kind {
@@ -54,18 +54,18 @@ func (t *typeParameter) visit(exec func(nodeInterface) int) int {
 		}
 	}
 
-	if ret := t.name.visit(exec); ret == VisitAbort {
+	if ret := t.Name.visit(exec); ret == VisitAbort {
 		return ret
 	}
 
-	if t.constraint != nil {
-		if ret := t.constraint.visit(exec); ret == VisitAbort {
+	if t.Constraint != nil {
+		if ret := t.Constraint.visit(exec); ret == VisitAbort {
 			return ret
 		}
 	}
 
-	if t.value != nil {
-		if ret := t.value.visit(exec); ret == VisitAbort {
+	if t.Value != nil {
+		if ret := t.Value.visit(exec); ret == VisitAbort {
 			return ret
 		}
 	}
@@ -108,10 +108,10 @@ func visitTypeParameter(node *sitter.Node, state walkState, _ uint, funcMap walk
 
 	isConstant := node.Child(0).Kind() == "const"
 
-	typeParameter.constraint = constraint
+	typeParameter.Constraint = constraint
 	typeParameter.isConst = isConstant
-	typeParameter.name = name
-	typeParameter.value = value
+	typeParameter.Name = name
+	typeParameter.Value = value
 
 	return &typeParameter, nil
 }
