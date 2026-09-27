@@ -137,7 +137,7 @@ func visitClassDeclaration(node *sitter.Node, state walkState, _ uint, funcMap w
 		return nil, fmt.Errorf("invalid ast: name isn't a property identifier")
 	}
 
-	typeParametersNode := node.ChildByFieldName("typeParameters")
+	typeParametersNode := node.ChildByFieldName("type_parameters")
 	var typeParameters nodeInterface
 	if typeParametersNode != nil {
 		typeParameters, err = walk.VisitNode(typeParametersNode, state, 0, funcMap, false)
@@ -161,7 +161,7 @@ func visitClassDeclaration(node *sitter.Node, state walkState, _ uint, funcMap w
 	}
 
 	body, err := walk.VisitNode(bodyNode, state, 0, funcMap, false)
-	if bodyNode == nil {
+	if body == nil {
 		return nil, err
 	}
 

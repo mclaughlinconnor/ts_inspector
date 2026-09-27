@@ -15,7 +15,7 @@ type methodSignature struct {
 	isSetter       bool
 	parameters     nodeInterface // todo: make it the formal_parameters node
 	returnType     nodeInterface // type_annotation
-	typeParameters nodeInterface
+	typeParameters *typeParameters
 }
 
 func (a *methodSignature) getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool) {
@@ -52,22 +52,14 @@ func (a *methodSignature) getAstNodeOfKindAtOffset(offset uint, kind string, fir
 }
 
 func (a *methodSignature) visit(exec func(nodeInterface) int) int {
-	if ret := exec(a); ret != VisitContinue {
-		if ret == VisitAbort {
+	if ret := a.commonField.visit(exec); ret == VisitAbort {
+		return ret
+	}
+
+	if a.typeParameters != nil {
+		if ret := a.typeParameters.visit(exec); ret == VisitAbort {
 			return ret
 		}
-
-		if ret == VisitSkip {
-			return VisitContinue
-		}
-	}
-
-	if ret := a.accessibility.visit(exec); ret == VisitAbort {
-		return ret
-	}
-
-	if ret := a.name.visit(exec); ret == VisitAbort {
-		return ret
 	}
 
 	if ret := a.parameters.visit(exec); ret == VisitAbort {
@@ -123,13 +115,23 @@ func visitMethodSignature(node *sitter.Node, state walkState, _ uint, funcMap wa
 		return nil, fmt.Errorf("invalid ast: missing parameters")
 	}
 
+	typeParametersCommonNode, found := nodes["type_parameters"]
+	var ttypeParameters *typeParameters
+	if found {
+		if typeParameters, isTypeParameters := isNode[*typeParameters](typeParametersCommonNode); isTypeParameters {
+			ttypeParameters = typeParameters
+		} else {
+			return nil, fmt.Errorf("invalid ast: typeParameters isn't a property identifier")
+		}
+	}
+
 	methodSignature.isAsync = nodes["async"] != nil
 	methodSignature.isGenerator = nodes["*"] != nil
 	methodSignature.isGetter = nodes["get"] != nil
 	methodSignature.isSetter = nodes["set"] != nil
 	methodSignature.parameters = parameters
 	methodSignature.returnType = nodes["return_type"]
-	methodSignature.typeParameters = nodes["type_parameters"]
+	methodSignature.typeParameters = ttypeParameters
 
 	return &methodSignature, nil
 }

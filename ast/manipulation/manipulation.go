@@ -56,7 +56,10 @@ func BuildAst(content string) (*Ast, error) {
 	funcMap["subscript_expression"] = visitSubscriptExpression
 	funcMap["this"] = visitThis
 	funcMap["true"] = visitBoolean
+	funcMap["type"] = visitType
 	funcMap["type_identifier"] = visitIdentifier
+	funcMap["type_parameter"] = visitTypeParameter
+	funcMap["type_parameters"] = visitTypeParameters
 	funcMap["unary_expression"] = visitUnaryExpression
 	funcMap["variable_declaration"] = visitVariableDeclaration
 	funcMap["variable_declarator"] = visitVariableDeclarator
