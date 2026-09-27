@@ -14,7 +14,7 @@ type commonField struct {
 	isOverride    bool
 	isReadonly    bool
 	isStatic      bool
-	name          *propertyIdentifier
+	name          nodeInterface
 }
 
 func (a *commonField) getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool) {
@@ -99,19 +99,12 @@ func visitCommonField(node *sitter.Node, state walkState, _ uint, funcMap walk.V
 		return nil, fmt.Errorf("invalid ast: missing name")
 	}
 
-	var name *propertyIdentifier
-	if propertyIdentifier, isPropertyIdentifier := isNode[*propertyIdentifier](nameCommonNode); isPropertyIdentifier {
-		name = propertyIdentifier
-	} else {
-		return nil, fmt.Errorf("invalid ast: name isn't a property identifier")
-	}
-
 	commonField.accessibility = accessibility
 	commonField.isOptional = nodes["?"] != nil
 	commonField.isOverride = nodes["override_modifier"] != nil
 	commonField.isReadonly = nodes["readonly"] != nil
 	commonField.isStatic = nodes["static"] != nil
-	commonField.name = name
+	commonField.name = nameCommonNode
 
 	return &commonField, nil
 }
