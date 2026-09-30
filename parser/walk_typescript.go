@@ -108,30 +108,26 @@ func addUsage(class *Class, name string, node *sitter.Node, content []byte) {
 	class.AppendDefinitionUsage(name, &usageInstance)
 }
 
-func extractClassName(root *sitter.Node, content []byte) (string, *sitter.Node, error) {
-	type ret struct {
-		text string
-		node *sitter.Node
+func extractClassName(root *sitter.Node, ast *manipulation.Ast) (string, *sitter.Node, error) {
+	astNode, found := ast.GetAstNodeOfKindAtOffset(root.StartByte(), "classDeclaration", true)
+
+	if !found {
+		astNode, found = ast.GetAstNodeOfKindAtOffset(root.StartByte(), "interfaceDeclaration", true)
 	}
 
-	funcMap := walk.NewVisitorFuncsMap[ret]()
-
-	classVisitor := func(node *sitter.Node, state ret, indexInParent uint, funcMap walk.VisitorFuncMap[ret]) (ret, error) {
-		nameNode := node.ChildByFieldName("name")
-		if nameNode == nil {
-			return ret{}, nil
-		}
-
-		return ret{text: nameNode.Utf8Text(content), node: nameNode}, nil
+	if !found {
+		return "", nil, nil
 	}
 
-	funcMap["abstract_class_declaration"] = classVisitor
-	funcMap["class_declaration"] = classVisitor
-	funcMap["interface_declaration"] = classVisitor
+	classDeclaration, isClassDeclaration := manipulation.IsNode[*manipulation.ClassDeclaration](astNode)
+	if !isClassDeclaration {
+		return "", nil, nil
+	}
 
-	r, err := walk.WalkTypeScript(root, ret{}, funcMap)
+	name := classDeclaration.Name
+	nameNode := root.FirstNamedChildForByte(name.GetStartOffset())
 
-	return r.text, r.node, err
+	return name.GetText(), nameNode, nil
 }
 
 func extractFileImports(root *sitter.Node, file *File) error {
@@ -425,7 +421,7 @@ func parseClasses(state *State, root *sitter.Node, file *File) error {
 		uri := file.Snapshot().URI
 
 		// TODO: it's valid to have an interface with the same name as a class in a file, but this will count them both as the same thing
-		className, classNameNode, err := extractClassName(classRoot, classContentW)
+		className, classNameNode, err := extractClassName(node, file.Snapshot().Ast)
 		if err != nil {
 			return classWalkState, err
 		}
