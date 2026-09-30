@@ -13,6 +13,7 @@ type ClassDeclaration struct {
 	ClassHeritage  *classHeritage
 	Decorators     []*decorator
 	IsAbstract     bool
+	IsExport       bool
 	Name           *identifier
 	TypeParameters *typeParameters
 }
@@ -191,6 +192,7 @@ func visitClassDeclaration(node *sitter.Node, state walkState, _ uint, funcMap w
 	classDeclaration.ClassHeritage = cclassHeritage
 	classDeclaration.Decorators = decorators
 	classDeclaration.IsAbstract = isAbstract
+	_, classDeclaration.IsExport = IsNode[*ExportStatement](state)
 	classDeclaration.Name = name
 	classDeclaration.TypeParameters = ttypeParameters
 

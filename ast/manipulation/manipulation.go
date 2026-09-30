@@ -39,6 +39,7 @@ func BuildAst(content string) (*Ast, error) {
 	funcMap["continue_statement"] = visitContinue
 	funcMap["decorator"] = visitDecorator
 	funcMap["else_clause"] = visitElseClause
+	funcMap["export_statement"] = visitExportStatement
 	funcMap["expression_statement"] = visitExpressionStatement
 	funcMap["extends_clause"] = visitExtendsClause
 	funcMap["false"] = visitBoolean
