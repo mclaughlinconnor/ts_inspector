@@ -188,11 +188,16 @@ func visitClassDeclaration(node *sitter.Node, state walkState, _ uint, funcMap w
 		}
 	}
 
+	export, isExport := IsNode[*ExportStatement](state)
+	if isExport && len(export.Decorators) > 0 {
+		classDeclaration.Decorators = append(classDeclaration.Decorators, export.Decorators...)
+	}
+
 	classDeclaration.Body = body
 	classDeclaration.ClassHeritage = cclassHeritage
 	classDeclaration.Decorators = decorators
 	classDeclaration.IsAbstract = isAbstract
-	_, classDeclaration.IsExport = IsNode[*ExportStatement](state)
+	classDeclaration.IsExport = isExport
 	classDeclaration.Name = name
 	classDeclaration.TypeParameters = ttypeParameters
 
