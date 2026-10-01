@@ -31,6 +31,7 @@ func BuildAst(content string) (*Ast, error) {
 	funcMap["accessibility_modifier"] = visitAccessibilityModifier
 	funcMap["arguments"] = visitArguments
 	funcMap["array"] = visitArray
+	funcMap["object"] = visitObject
 	funcMap["arrow_function"] = visitArrowFunction
 	funcMap["await_expression"] = visitAwaitExpression
 	funcMap["binary_expression"] = visitBinaryExpression
@@ -58,6 +59,7 @@ func BuildAst(content string) (*Ast, error) {
 	funcMap["method_definition"] = visitMethodDefinition
 	funcMap["method_signature"] = visitMethodSignature
 	funcMap["optional_parameter"] = visitParameter
+	funcMap["pair"] = visitPair
 	funcMap["parenthesized_expression"] = visitParenthesizedExpression
 	funcMap["program"] = visitProgram
 	funcMap["property_identifier"] = visitPropertyIdentifier
