@@ -16,19 +16,20 @@ type lexicalDeclarationKindStruct struct {
 
 var lexicalDeclarationKindEnum = lexicalDeclarationKindStruct{CONST: "const", LET: "let"}
 
-type lexicalDeclaration struct {
+type LexicalDeclaration struct {
 	commonNode
-	declarator *variableDeclarator
-	kind       string
+	Declarator *VariableDeclarator
+	IsExport   bool
+	Kind       string
 }
 
-func (l *lexicalDeclaration) _buildCfgBlock() (bool, error) {
-	l.getCfg().addInstruction(instructionAssign, l.declarator.getNameText(), l, l.declarator.getValueText())
+func (l *LexicalDeclaration) _buildCfgBlock() (bool, error) {
+	l.getCfg().addInstruction(instructionAssign, l.Declarator.getNameText(), l, l.Declarator.getValueText())
 
 	return true, nil
 }
 
-func (l *lexicalDeclaration) getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool) {
+func (l *LexicalDeclaration) getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool) {
 	if !l.isUnderCursor(offset) {
 		return nil, false
 	}
@@ -37,8 +38,8 @@ func (l *lexicalDeclaration) getAstNodeOfKindAtOffset(offset uint, kind string, 
 		return l, true
 	}
 
-	if l.declarator != nil && l.declarator.isUnderCursor(offset) {
-		return l.declarator.getAstNodeOfKindAtOffset(offset, kind, first)
+	if l.Declarator != nil && l.Declarator.isUnderCursor(offset) {
+		return l.Declarator.getAstNodeOfKindAtOffset(offset, kind, first)
 	}
 
 	if kind == NULL_KIND || l.getKind() == kind {
@@ -48,7 +49,7 @@ func (l *lexicalDeclaration) getAstNodeOfKindAtOffset(offset uint, kind string, 
 	return nil, false
 }
 
-func (l *lexicalDeclaration) visit(exec func(nodeInterface) int) int {
+func (l *LexicalDeclaration) visit(exec func(nodeInterface) int) int {
 	if ret := exec(l); ret != VisitContinue {
 		if ret == VisitAbort {
 			return ret
@@ -59,7 +60,7 @@ func (l *lexicalDeclaration) visit(exec func(nodeInterface) int) int {
 		}
 	}
 
-	if ret := l.declarator.visit(exec); ret == VisitAbort {
+	if ret := l.Declarator.visit(exec); ret == VisitAbort {
 		return ret
 	}
 
@@ -67,7 +68,7 @@ func (l *lexicalDeclaration) visit(exec func(nodeInterface) int) int {
 }
 
 func visitlexicalDeclaration(node *sitter.Node, state walkState, _ uint, funcMap walk.VisitorFuncMap[walkState]) (walkState, error) {
-	lexicalDeclaration := lexicalDeclaration{commonNode: makeCommonNode("lexicalDeclaration", state, node)}
+	lexicalDeclaration := LexicalDeclaration{commonNode: makeCommonNode("lexicalDeclaration", state, node)}
 	lexicalDeclaration.setImpl(&lexicalDeclaration)
 
 	kindNode := node.ChildByFieldName("kind")
@@ -87,15 +88,16 @@ func visitlexicalDeclaration(node *sitter.Node, state walkState, _ uint, funcMap
 		return nil, err
 	}
 
-	var declarator *variableDeclarator
-	if variableDeclarator, isVariableDeclarator := IsNode[*variableDeclarator](declaratorCommonNode); isVariableDeclarator {
+	var declarator *VariableDeclarator
+	if variableDeclarator, isVariableDeclarator := IsNode[*VariableDeclarator](declaratorCommonNode); isVariableDeclarator {
 		declarator = variableDeclarator
 	} else {
 		return nil, fmt.Errorf("invalid ast: declarator is not a variable_declarator")
 	}
 
-	lexicalDeclaration.declarator = declarator
-	lexicalDeclaration.kind = kind
+	lexicalDeclaration.Declarator = declarator
+	lexicalDeclaration.Kind = kind
+	_, lexicalDeclaration.IsExport = IsNode[*ExportStatement](state)
 
 	return &lexicalDeclaration, nil
 }

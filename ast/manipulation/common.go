@@ -12,14 +12,14 @@ type AstManipulationNode = nodeInterface
 
 type childedCommonNode struct {
 	commonNode
-	_self    childedNodeInterface
+	_self    ChildedNodeInterface
 	children []nodeInterface
 }
 
-type childedNodeInterface interface {
+type ChildedNodeInterface interface {
 	nodeInterface
-	impl[childedNodeInterface]
-	getChildren() []nodeInterface
+	impl[ChildedNodeInterface]
+	GetChildren() []nodeInterface
 	visitChildren(func(nodeInterface) int) int
 }
 
@@ -44,6 +44,8 @@ type invertableNodeInterface interface {
 
 type nodeInterface interface {
 	GetEndOffset() uint
+	GetKind() string
+	GetNode() nodeInterface
 	GetRange() utils.Range
 	GetText() string
 	GetStartOffset() uint
@@ -85,6 +87,14 @@ type nodeInterface interface {
 
 func (c *commonNode) GetEndOffset() uint {
 	return c.getEndOffset()
+}
+
+func (c *commonNode) GetKind() string {
+	return c.getKind()
+}
+
+func (c *commonNode) GetNode() nodeInterface {
+	return c.getNode().getImpl()
 }
 
 func (c *commonNode) GetRange() utils.Range {
@@ -316,7 +326,7 @@ func (c *commonNode) _buildCfgBlock() (bool, error) {
 
 func (c *childedCommonNode) _buildCfgBlock() (bool, error) {
 	built := false
-	for _, child := range c.getChildren() {
+	for _, child := range c.GetChildren() {
 		b, err := child.buildCfgBlock()
 		built = built || b
 
@@ -328,15 +338,15 @@ func (c *childedCommonNode) _buildCfgBlock() (bool, error) {
 	return built, nil
 }
 
-func (c *childedCommonNode) getChildren() []nodeInterface {
+func (c *childedCommonNode) GetChildren() []nodeInterface {
 	return c.children
 }
 
-func (c *childedCommonNode) getImpl() childedNodeInterface {
+func (c *childedCommonNode) getImpl() ChildedNodeInterface {
 	return c._self
 }
 
-func (c *childedCommonNode) setImpl(impl childedNodeInterface) {
+func (c *childedCommonNode) setImpl(impl ChildedNodeInterface) {
 	c._self = impl
 	c.commonNode.setImpl(impl)
 }
@@ -346,7 +356,7 @@ func (c *childedCommonNode) visit(exec func(nodeInterface) int) int {
 }
 
 func (c *childedCommonNode) visitChildren(exec func(nodeInterface) int) int {
-	for _, child := range c.getImpl().getChildren() {
+	for _, child := range c.getImpl().GetChildren() {
 		if ret := child.visit(exec); ret == VisitAbort {
 			return ret
 		}
@@ -365,7 +375,7 @@ func (c *childedCommonNode) getAstNodeOfKindAtOffset(offset uint, kind string, f
 		return c, true
 	}
 
-	for _, child := range c.getImpl().getChildren() {
+	for _, child := range c.getImpl().GetChildren() {
 		astNode, found := child.getAstNodeOfKindAtOffset(offset, kind, first)
 		if found {
 			return astNode, true
@@ -393,7 +403,7 @@ func makeCommonChildedNode(kind string, state walkState, node *sitter.Node) chil
 	return childedCommonNode{children: []nodeInterface{}, commonNode: makeCommonNode(kind, state, node)}
 }
 
-func childedVisitor(this childedNodeInterface, exec func(nodeInterface) int) int {
+func childedVisitor(this ChildedNodeInterface, exec func(nodeInterface) int) int {
 	if ret := exec(this); ret != VisitContinue {
 		if ret == VisitAbort {
 			return ret

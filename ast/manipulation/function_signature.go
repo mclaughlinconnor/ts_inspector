@@ -9,7 +9,7 @@ import (
 
 type functionSignature struct {
 	commonNode
-	name       *identifier
+	name       *Identifier
 	parameters *formalParameters
 	returnType nodeInterface // type_annotation
 }
@@ -83,8 +83,8 @@ func visitFunctionSignature(node *sitter.Node, state walkState, _ uint, funcMap 
 		return nil, err
 	}
 
-	var name *identifier
-	if identifier, isIdentifier := IsNode[*identifier](nameCommonNode); isIdentifier {
+	var name *Identifier
+	if identifier, isIdentifier := IsNode[*Identifier](nameCommonNode); isIdentifier {
 		name = identifier
 	} else {
 		return nil, fmt.Errorf("invalid ast: name isn't an identifier")

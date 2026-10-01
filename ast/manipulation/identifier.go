@@ -6,16 +6,16 @@ import (
 	sitter "github.com/tree-sitter/go-tree-sitter"
 )
 
-type identifier struct {
+type Identifier struct {
 	commonNode
 }
 
-func (i *identifier) invert() {
+func (i *Identifier) invert() {
 	i.editText("!" + i.getText())
 }
 
 func visitIdentifier(node *sitter.Node, state walkState, indexInParent uint, funcMap walk.VisitorFuncMap[walkState]) (walkState, error) {
-	identifier := identifier{commonNode: makeCommonNode("identifier", state, node)}
+	identifier := Identifier{commonNode: makeCommonNode("identifier", state, node)}
 	identifier.setImpl(&identifier)
 
 	return &identifier, nil

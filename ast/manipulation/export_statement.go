@@ -39,6 +39,11 @@ func (a *ExportStatement) getAstNodeOfKindAtOffset(offset uint, kind string, fir
 	return nil, false
 }
 
+func (a *ExportStatement) getNode() impl[nodeInterface] {
+	commonNode, _ := a.Declaration.(impl[nodeInterface])
+	return commonNode
+}
+
 func (a *ExportStatement) visit(exec func(nodeInterface) int) int {
 	if ret := exec(a); ret != VisitContinue {
 		if ret == VisitAbort {

@@ -7,13 +7,13 @@ import (
 	sitter "github.com/tree-sitter/go-tree-sitter"
 )
 
-type variableDeclarator struct {
+type VariableDeclarator struct {
 	commonNode
-	name  *identifier
-	value nodeInterface
+	Name  *Identifier
+	Value nodeInterface
 }
 
-func (v *variableDeclarator) getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool) {
+func (v *VariableDeclarator) getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool) {
 	if !v.isUnderCursor(offset) {
 		return nil, false
 	}
@@ -22,12 +22,12 @@ func (v *variableDeclarator) getAstNodeOfKindAtOffset(offset uint, kind string, 
 		return v, true
 	}
 
-	if v.name != nil && v.name.isUnderCursor(offset) {
-		return v.name.getAstNodeOfKindAtOffset(offset, kind, first)
+	if v.Name != nil && v.Name.isUnderCursor(offset) {
+		return v.Name.getAstNodeOfKindAtOffset(offset, kind, first)
 	}
 
-	if v.value != nil && v.value.isUnderCursor(offset) {
-		return v.value.getAstNodeOfKindAtOffset(offset, kind, first)
+	if v.Value != nil && v.Value.isUnderCursor(offset) {
+		return v.Value.getAstNodeOfKindAtOffset(offset, kind, first)
 	}
 
 	if kind == NULL_KIND || v.getKind() == kind {
@@ -37,19 +37,19 @@ func (v *variableDeclarator) getAstNodeOfKindAtOffset(offset uint, kind string, 
 	return nil, false
 }
 
-func (v *variableDeclarator) getNameText() string {
-	return v.name.getText()
+func (v *VariableDeclarator) getNameText() string {
+	return v.Name.getText()
 }
 
-func (v *variableDeclarator) getValueText() string {
-	if v.value != nil {
-		return v.value.getText()
+func (v *VariableDeclarator) getValueText() string {
+	if v.Value != nil {
+		return v.Value.getText()
 	}
 
 	return ""
 }
 
-func (a *variableDeclarator) visit(exec func(nodeInterface) int) int {
+func (a *VariableDeclarator) visit(exec func(nodeInterface) int) int {
 	if ret := exec(a); ret != VisitContinue {
 		if ret == VisitAbort {
 			return ret
@@ -60,11 +60,11 @@ func (a *variableDeclarator) visit(exec func(nodeInterface) int) int {
 		}
 	}
 
-	if ret := a.value.visit(exec); ret == VisitAbort {
+	if ret := a.Value.visit(exec); ret == VisitAbort {
 		return ret
 	}
 
-	if ret := a.name.visit(exec); ret == VisitAbort {
+	if ret := a.Name.visit(exec); ret == VisitAbort {
 		return ret
 	}
 
@@ -72,7 +72,7 @@ func (a *variableDeclarator) visit(exec func(nodeInterface) int) int {
 }
 
 func visitVariableDeclarator(node *sitter.Node, state walkState, _ uint, funcMap walk.VisitorFuncMap[walkState]) (walkState, error) {
-	variableDeclarator := variableDeclarator{commonNode: makeCommonNode("variableDeclarator", state, node)}
+	variableDeclarator := VariableDeclarator{commonNode: makeCommonNode("variableDeclarator", state, node)}
 	variableDeclarator.setImpl(&variableDeclarator)
 
 	valueNode := node.ChildByFieldName("value")
@@ -97,15 +97,15 @@ func visitVariableDeclarator(node *sitter.Node, state walkState, _ uint, funcMap
 		return nil, err
 	}
 
-	var name *identifier
-	if identifier, isIdentifier := IsNode[*identifier](nameCommonNode); isIdentifier {
+	var name *Identifier
+	if identifier, isIdentifier := IsNode[*Identifier](nameCommonNode); isIdentifier {
 		name = identifier
 	} else {
 		return nil, fmt.Errorf("invalid ast: identifier isn't an identifier")
 	}
 
-	variableDeclarator.value = value
-	variableDeclarator.name = name
+	variableDeclarator.Value = value
+	variableDeclarator.Name = name
 
 	return &variableDeclarator, nil
 }

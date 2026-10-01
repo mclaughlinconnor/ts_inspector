@@ -1,6 +1,7 @@
 package manipulation
 
 import (
+	"fmt"
 	"ts_inspector/ast/walk"
 	"ts_inspector/utils"
 )
@@ -29,6 +30,7 @@ func BuildAst(content string) (*Ast, error) {
 	funcMap["abstract_class_declaration"] = visitClassDeclaration
 	funcMap["accessibility_modifier"] = visitAccessibilityModifier
 	funcMap["arguments"] = visitArguments
+	funcMap["array"] = visitArray
 	funcMap["arrow_function"] = visitArrowFunction
 	funcMap["await_expression"] = visitAwaitExpression
 	funcMap["binary_expression"] = visitBinaryExpression
@@ -62,6 +64,8 @@ func BuildAst(content string) (*Ast, error) {
 	funcMap["public_field_definition"] = visitPublicFieldDefinition
 	funcMap["required_parameter"] = visitParameter
 	funcMap["return_statement"] = visitReturn
+	funcMap["spread_element"] = visitSpreadElement
+	funcMap["string"] = visitString
 	funcMap["subscript_expression"] = visitSubscriptExpression
 	funcMap["this"] = visitThis
 	funcMap["true"] = visitBoolean
@@ -79,12 +83,16 @@ func BuildAst(content string) (*Ast, error) {
 	var ast walkState = &astRoot
 	astRoot.getProgramContent().root = ast.(*Ast)
 
-	program, err := walk.WalkTypeScript(rootNode, ast, funcMap)
+	programNode, err := walk.WalkTypeScript(rootNode, ast, funcMap)
 	if err != nil {
 		return nil, err
 	}
 
-	astRoot.Program = program
+	var ok bool
+	astRoot.Program, ok = programNode.(*program)
+	if !ok {
+		return nil, fmt.Errorf("invalid ast: programNode is not a program")
+	}
 
 	return &astRoot, nil
 }

@@ -5,6 +5,7 @@ import (
 	"path"
 	"slices"
 	"sync"
+	"ts_inspector/ast/manipulation"
 	"ts_inspector/config"
 	"ts_inspector/utils"
 
@@ -12,6 +13,7 @@ import (
 )
 
 type Reference struct {
+	AstNode  manipulation.AstManipulationNode
 	Class    *Class
 	File     *File
 	Name     string

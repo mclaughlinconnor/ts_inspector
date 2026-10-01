@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 	"runtime/debug"
-	"ts_inspector/ast"
+	astUtils "ts_inspector/ast"
 	"ts_inspector/ast/manipulation"
 	"ts_inspector/ast/walk"
 	"ts_inspector/utils"
@@ -27,11 +27,6 @@ type classWalkState struct {
 }
 
 type funcWalkState struct {
-	IsExport bool
-}
-
-type varWalkState struct {
-	Kind     string // const/let/var
 	IsExport bool
 }
 
@@ -131,7 +126,7 @@ func extractClassName(root *sitter.Node, ast *manipulation.Ast) (string, *sitter
 }
 
 func extractFileImports(root *sitter.Node, file *File) error {
-	imports, err := ast.ExtractImports(root, []byte(file.Snapshot().Content))
+	imports, err := astUtils.ExtractImports(root, []byte(file.Snapshot().Content))
 	if err != nil {
 		return err
 	}
@@ -140,7 +135,7 @@ func extractFileImports(root *sitter.Node, file *File) error {
 		data.Imports = imports
 	})
 
-	dynamicImports, err := ast.ExtractDynamicImports(root, []byte(file.Snapshot().Content))
+	dynamicImports, err := astUtils.ExtractDynamicImports(root, []byte(file.Snapshot().Content))
 	if err != nil {
 		return err
 	}
@@ -583,86 +578,51 @@ func parseRootFunctions(state *State, root *sitter.Node, file *File) error {
 func parseRootVariables(state *State, root *sitter.Node, file *File) error {
 	fileContent := []byte(file.Snapshot().Content)
 
-	funcMap := walk.NewVisitorFuncsMap[varWalkState]()
+	ast := file.Snapshot().Ast
+	for _, child := range ast.Program.GetChildren() {
+		node := child.GetNode()
 
-	funcMap["export_statement"] = func(node *sitter.Node, varWalkState varWalkState, indexInParent uint, funcMap walk.VisitorFuncMap[varWalkState]) (varWalkState, error) {
-		varWalkState.IsExport = true
-		_, err := walk.VisitNamedChildren(node, varWalkState, funcMap, true)
-		if err != nil {
-			return varWalkState, err
+		kind := node.GetKind()
+		if kind != "lexicalDeclaration" && kind != "variableDeclaration" {
+			continue
 		}
 
-		varWalkState.IsExport = false
+		var declarator manipulation.VariableDeclarator
+		lexicalDeclaration, isLexicalDeclaration := manipulation.IsNode[*manipulation.LexicalDeclaration](node)
+		variableDeclaration, isVariableDeclaration := manipulation.IsNode[*manipulation.VariableDeclaration](node)
 
-		return varWalkState, nil
-	}
-
-	declarationVisitor := func(node *sitter.Node, varWalkState varWalkState, indexInParent uint, funcMap walk.VisitorFuncMap[varWalkState]) (varWalkState, error) {
-		var kindNode *sitter.Node
-
-		kindNode = node.ChildByFieldName("kind")
-		if kindNode == nil {
-			n := node.Child(0)
-			if !n.IsNamed() {
-				kindNode = n
-			}
+		if isLexicalDeclaration {
+			declarator = *lexicalDeclaration.Declarator
+		} else if isVariableDeclaration {
+			declarator = *variableDeclaration.Declarator
 		}
 
-		kind := kindNode.Utf8Text(fileContent)
+		tsNode := astUtils.GetNamedNodeAtPosition(root, node.GetStartOffset())
 
-		varWalkState.Kind = kind
-		_, err := walk.VisitNamedChildren(node, varWalkState, funcMap, true)
-		if err != nil {
-			return varWalkState, err
+		variable := Variable{Node: tsNode}
+
+		variable.Name = declarator.Name.GetText()
+		variable.Value = AstNodeToValue(file, declarator.Value, fileContent)
+
+		if variableDeclaration != nil {
+			variable.Kind = "var"
+			variable.IsExport = variableDeclaration.IsExport
+		} else if lexicalDeclaration != nil {
+			variable.Kind = lexicalDeclaration.Kind
+			variable.IsExport = lexicalDeclaration.IsExport
 		}
-
-		varWalkState.Kind = ""
-
-		return varWalkState, nil
-	}
-
-	funcMap["lexical_declaration"] = declarationVisitor
-	funcMap["variable_declaration"] = declarationVisitor
-
-	funcMap["variable_declarator"] = func(node *sitter.Node, varWalkState varWalkState, indexInParent uint, _funcMap walk.VisitorFuncMap[varWalkState]) (varWalkState, error) {
-		nameNode := node.ChildByFieldName("name")
-		valueNode := node.ChildByFieldName("value")
-
-		variable := Variable{Node: node}
-
-		if nameNode != nil {
-			name := nameNode.Utf8Text(fileContent)
-			variable.Name = name
-		}
-
-		if valueNode != nil {
-			variable.Value = NodeToValue(file, valueNode, fileContent)
-		}
-
-		variable.IsExport = varWalkState.IsExport
-		variable.Kind = varWalkState.Kind
 
 		file.Update(func(data *fileState) {
 			if variable.IsExport {
-				ref := Reference{Name: variable.Name, Node: node, Variable: &variable}
+				ref := Reference{Name: variable.Name, Node: tsNode, Variable: &variable}
 				data.Exports = append(data.Exports, &ref)
 			}
 
 			data.Variables = append(data.Variables, &variable)
 		})
-
-		return varWalkState, nil
 	}
 
-	funcMap["program"] = func(node *sitter.Node, varWalkState varWalkState, indexInParent uint, funcMap walk.VisitorFuncMap[varWalkState]) (varWalkState, error) {
-		_, err := walk.VisitNamedChildren(node, varWalkState, funcMap, true)
-
-		return varWalkState, err
-	}
-
-	varWalkState := varWalkState{}
-	_, err := walk.WalkTypeScriptShallow(root, varWalkState, funcMap)
-	return err
+	return nil
 }
 
 func visitDefinition(content []byte) walk.VisitorFunction[typescriptWalkState] {

@@ -1,6 +1,12 @@
 package parser
 
-import sitter "github.com/tree-sitter/go-tree-sitter"
+import (
+	"ts_inspector/ast"
+	"ts_inspector/ast/manipulation"
+	"ts_inspector/utils"
+
+	sitter "github.com/tree-sitter/go-tree-sitter"
+)
 
 type Value struct {
 	ArrayValues     []*Value
@@ -11,8 +17,9 @@ type Value struct {
 }
 
 type Variable struct {
-	Kind     string // const/let/var
+	AstNode  *manipulation.AstManipulationNode
 	IsExport bool
+	Kind     string // const/let/var
 	Name     string
 	Node     *sitter.Node
 	Value    *Value
@@ -161,6 +168,35 @@ func NodeToValue(file *File, node *sitter.Node, content []byte) *Value {
 	}
 }
 
+func AstNodeToValue(file *File, node manipulation.AstManipulationNode, content []byte) *Value {
+	if node == nil {
+		return nil
+	}
+
+	switch node.GetKind() {
+	case "array":
+		return astNodeToArrayValue(file, node, content)
+	case "string":
+		return &Value{StringValue: node.GetText(), Type: "string"}
+	case "spreadElement":
+		identifier, isIdentifier := manipulation.IsNode[*manipulation.Identifier](node)
+		if !isIdentifier {
+			return nil
+		}
+
+		return &Value{SpreadReference: astNodeToReference(file, identifier, content), Type: "spread"}
+	case "identifier":
+		identifier, isIdentifier := manipulation.IsNode[*manipulation.Identifier](node)
+		if !isIdentifier {
+			return nil
+		}
+
+		return &Value{Reference: astNodeToReference(file, identifier, content), Type: "reference"}
+	default:
+		return nil
+	}
+}
+
 func nodeToArrayValue(file *File, node *sitter.Node, content []byte) *Value {
 	values := make([]*Value, 0)
 
@@ -177,6 +213,37 @@ func nodeToArrayValue(file *File, node *sitter.Node, content []byte) *Value {
 	return &Value{ArrayValues: values, Type: "array"}
 }
 
+func astNodeToArrayValue(file *File, node manipulation.AstManipulationNode, content []byte) *Value {
+	childedNode, isChildedNodeInterface := manipulation.IsNode[manipulation.ChildedNodeInterface](node)
+	if !isChildedNodeInterface {
+		return nil
+	}
+
+	values := make([]*Value, 0)
+
+	for _, element := range childedNode.GetChildren() {
+		value := AstNodeToValue(file, element, content)
+		if value == nil {
+			continue
+		}
+
+		values = append(values, value)
+	}
+
+	return &Value{ArrayValues: values, Type: "array"}
+}
+
 func nodeToReference(file *File, node *sitter.Node, content []byte) *Reference {
 	return &Reference{File: file, Name: node.Utf8Text(content), Node: node}
+}
+
+func astNodeToReference(file *File, node *manipulation.Identifier, content []byte) *Reference {
+	root, err := utils.ParseText(content, utils.TypeScript)
+	if err != nil {
+		return nil
+	}
+
+	tsNode := ast.GetNamedNodeAtPosition(root, node.GetStartOffset())
+
+	return &Reference{AstNode: node, File: file, Name: node.GetText(), Node: tsNode}
 }

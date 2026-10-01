@@ -7,18 +7,19 @@ import (
 	sitter "github.com/tree-sitter/go-tree-sitter"
 )
 
-type variableDeclaration struct {
+type VariableDeclaration struct {
 	commonNode
-	declarator *variableDeclarator
+	Declarator *VariableDeclarator
+	IsExport   bool
 }
 
-func (a *variableDeclaration) _buildCfgBlock() (bool, error) {
-	a.getCfg().addInstruction(instructionAssign, a.declarator.getNameText(), a, a.declarator.getValueText())
+func (a *VariableDeclaration) _buildCfgBlock() (bool, error) {
+	a.getCfg().addInstruction(instructionAssign, a.Declarator.getNameText(), a, a.Declarator.getValueText())
 
 	return true, nil
 }
 
-func (a *variableDeclaration) getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool) {
+func (a *VariableDeclaration) getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool) {
 	if !a.isUnderCursor(offset) {
 		return nil, false
 	}
@@ -27,8 +28,8 @@ func (a *variableDeclaration) getAstNodeOfKindAtOffset(offset uint, kind string,
 		return a, true
 	}
 
-	if a.declarator != nil && a.declarator.isUnderCursor(offset) {
-		return a.declarator.getAstNodeOfKindAtOffset(offset, kind, first)
+	if a.Declarator != nil && a.Declarator.isUnderCursor(offset) {
+		return a.Declarator.getAstNodeOfKindAtOffset(offset, kind, first)
 	}
 
 	if kind == NULL_KIND || a.getKind() == kind {
@@ -38,7 +39,7 @@ func (a *variableDeclaration) getAstNodeOfKindAtOffset(offset uint, kind string,
 	return nil, false
 }
 
-func (a *variableDeclaration) visit(exec func(nodeInterface) int) int {
+func (a *VariableDeclaration) visit(exec func(nodeInterface) int) int {
 	if ret := exec(a); ret != VisitContinue {
 		if ret == VisitAbort {
 			return ret
@@ -49,7 +50,7 @@ func (a *variableDeclaration) visit(exec func(nodeInterface) int) int {
 		}
 	}
 
-	if ret := a.declarator.visit(exec); ret == VisitAbort {
+	if ret := a.Declarator.visit(exec); ret == VisitAbort {
 		return ret
 	}
 
@@ -57,7 +58,7 @@ func (a *variableDeclaration) visit(exec func(nodeInterface) int) int {
 }
 
 func visitVariableDeclaration(node *sitter.Node, state walkState, _ uint, funcMap walk.VisitorFuncMap[walkState]) (walkState, error) {
-	variableDeclaration := variableDeclaration{commonNode: makeCommonNode("variableDeclaration", state, node)}
+	variableDeclaration := VariableDeclaration{commonNode: makeCommonNode("variableDeclaration", state, node)}
 	variableDeclaration.setImpl(&variableDeclaration)
 
 	declaratorNode := node.NamedChild(0)
@@ -70,14 +71,15 @@ func visitVariableDeclaration(node *sitter.Node, state walkState, _ uint, funcMa
 		return nil, err
 	}
 
-	var declarator *variableDeclarator
-	if variableDeclarator, isVariableDeclarator := IsNode[*variableDeclarator](declaratorCommonNode); isVariableDeclarator {
+	var declarator *VariableDeclarator
+	if variableDeclarator, isVariableDeclarator := IsNode[*VariableDeclarator](declaratorCommonNode); isVariableDeclarator {
 		declarator = variableDeclarator
 	} else {
 		return nil, fmt.Errorf("invalid ast: declarator is not a variable_declarator")
 	}
 
-	variableDeclaration.declarator = declarator
+	variableDeclaration.Declarator = declarator
+	_, variableDeclaration.IsExport = IsNode[*ExportStatement](state)
 
 	return &variableDeclaration, nil
 }

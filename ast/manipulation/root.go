@@ -4,7 +4,7 @@ import "ts_inspector/interfaces"
 
 type Ast struct {
 	commonNode
-	Program nodeInterface
+	Program *program
 }
 
 func (a *Ast) GetCfg() (*Cfg, error) {

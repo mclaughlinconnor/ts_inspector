@@ -11,7 +11,7 @@ type arrowFunction struct {
 	commonNode
 	body       nodeInterface
 	parameters *formalParameters
-	parameter  *identifier
+	parameter  *Identifier
 	returnType nodeInterface // type_annotation
 }
 
@@ -107,14 +107,14 @@ func visitArrowFunction(node *sitter.Node, state walkState, _ uint, funcMap walk
 
 	var err error
 
-	var parameter *identifier
+	var parameter *Identifier
 	if parameterNode != nil {
 		parameterCommonNode, err := walk.VisitNode(parameterNode, state, 0, funcMap, false)
 		if err != nil {
 			return nil, err
 		}
 
-		if identifier, isIdentifier := IsNode[*identifier](parameterCommonNode); isIdentifier {
+		if identifier, isIdentifier := IsNode[*Identifier](parameterCommonNode); isIdentifier {
 			parameter = identifier
 		} else {
 			return nil, fmt.Errorf("invalid ast: parameter isn't an identifier")

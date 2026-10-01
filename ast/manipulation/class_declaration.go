@@ -14,7 +14,7 @@ type ClassDeclaration struct {
 	Decorators     []*decorator
 	IsAbstract     bool
 	IsExport       bool
-	Name           *identifier
+	Name           *Identifier
 	TypeParameters *typeParameters
 }
 
@@ -131,8 +131,8 @@ func visitClassDeclaration(node *sitter.Node, state walkState, _ uint, funcMap w
 		return nil, err
 	}
 
-	var name *identifier
-	if identifier, isIdentifier := IsNode[*identifier](nameCommonNode); isIdentifier {
+	var name *Identifier
+	if identifier, isIdentifier := IsNode[*Identifier](nameCommonNode); isIdentifier {
 		name = identifier
 	} else {
 		return nil, fmt.Errorf("invalid ast: name isn't a property identifier")
