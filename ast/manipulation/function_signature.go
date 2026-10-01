@@ -9,6 +9,7 @@ import (
 
 type functionSignature struct {
 	commonNode
+	isExport   bool
 	name       *Identifier
 	parameters *formalParameters
 	returnType nodeInterface // type_annotation
@@ -112,6 +113,7 @@ func visitFunctionSignature(node *sitter.Node, state walkState, _ uint, funcMap 
 		}
 	}
 
+	_, functionSignature.isExport = IsNode[*ExportStatement](state)
 	functionSignature.name = name
 	functionSignature.parameters = parameters
 	functionSignature.returnType = returnType
