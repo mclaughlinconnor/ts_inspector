@@ -186,10 +186,10 @@ func (c *commonNode) getActions() []action {
 }
 
 func (c *commonNode) getAnalysis() []interfaces.Analysis {
-	return []interfaces.Analysis{
-		interfaces.NewAnalysis("debug", c.getRange(), interfaces.AnalysisSeverity.Warning, c.getKind(), nil),
-	}
-	// return []interfaces.Analysis{}
+	// return []interfaces.Analysis{
+	// 	interfaces.NewAnalysis("debug", c.getRange(), interfaces.AnalysisSeverity.Warning, c.getKind(), nil),
+	// }
+	return []interfaces.Analysis{}
 }
 
 func (c *commonNode) getAstNodeAtOffset(offset uint) (nodeInterface, bool) {
@@ -465,18 +465,6 @@ func buildFunctionCfg(this nodeInterface, name string, body nodeInterface) error
 	cfg.current = prevCurrent
 
 	return nil
-}
-
-func validateChildNodeExists(node *sitter.Node, child string) (*sitter.Node, error) {
-	return validateNodeExists(node.ChildByFieldName(child), child)
-}
-
-func validateNodeExists(node *sitter.Node, name string) (*sitter.Node, error) {
-	if node == nil {
-		return nil, fmt.Errorf("invalid ast: missing %s", name)
-	}
-
-	return node, nil
 }
 
 func IsNode[T nodeInterface](node nodeInterface) (T, bool) {

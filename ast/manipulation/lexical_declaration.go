@@ -7,13 +7,16 @@ import (
 	sitter "github.com/tree-sitter/go-tree-sitter"
 )
 
+// nolint:unused
 type lexicalDeclarationKind string
 
+// nolint:unused
 type lexicalDeclarationKindStruct struct {
 	CONST lexicalDeclarationKind
 	LET   lexicalDeclarationKind
 }
 
+// nolint:unused
 var lexicalDeclarationKindEnum = lexicalDeclarationKindStruct{CONST: "const", LET: "let"}
 
 type LexicalDeclaration struct {

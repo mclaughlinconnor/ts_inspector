@@ -8,12 +8,14 @@ import (
 
 type accessibilityModifierKind = string
 
+//nolint:unused
 type accessibilityModifierKindStruct struct {
 	PRIVATE   string
 	PROTECTED string
 	PUBLIC    string
 }
 
+//nolint:unused
 var accessibilityModifierKindEnum = accessibilityModifierKindStruct{"public", "private", "protected"}
 
 type accessibilityModifier struct {
@@ -24,14 +26,17 @@ func (b *accessibilityModifier) getKind() accessibilityModifierKind {
 	return b.getText()
 }
 
+//nolint:unused
 func (b *accessibilityModifier) isPrivate() bool {
 	return b.getText() == accessibilityModifierKindEnum.PRIVATE
 }
 
+//nolint:unused
 func (b *accessibilityModifier) isProtected() bool {
 	return b.getText() == accessibilityModifierKindEnum.PROTECTED
 }
 
+//nolint:unused
 func (b *accessibilityModifier) isPublic() bool {
 	return b.getText() == accessibilityModifierKindEnum.PUBLIC
 }

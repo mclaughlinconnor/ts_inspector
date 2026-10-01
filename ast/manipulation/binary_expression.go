@@ -62,7 +62,7 @@ func (b *binaryExpression) getAnalysis() []interfaces.Analysis {
 
 	if leftIsBoolean {
 		var r utils.Range
-		if leftBoolean.getValue() == true && b.Operator.getOperator() == binaryExpressionOperatorEnum.OR {
+		if leftBoolean.getValue() && b.Operator.getOperator() == binaryExpressionOperatorEnum.OR {
 			r = b.Right.getRange()
 		} else {
 			r = b.Left.getRange()
@@ -73,7 +73,7 @@ func (b *binaryExpression) getAnalysis() []interfaces.Analysis {
 
 	if rightIsBoolean {
 		var r utils.Range
-		if rightBoolean.getValue() == true && b.Operator.getOperator() == binaryExpressionOperatorEnum.OR {
+		if rightBoolean.getValue() && b.Operator.getOperator() == binaryExpressionOperatorEnum.OR {
 			r = b.Left.getRange()
 		} else {
 			r = b.Right.getRange()
@@ -183,7 +183,7 @@ func (b *binaryExpression) removeRedundant() bool {
 	}
 
 	if boolean, isRedundant := IsNode[*boolean](b.Left); isRedundant {
-		if boolean.getValue() == true && b.Operator.getOperator() == binaryExpressionOperatorEnum.OR {
+		if boolean.getValue() && b.Operator.getOperator() == binaryExpressionOperatorEnum.OR {
 			rightIsRedundant = isRedundant
 		} else {
 			leftIsRedundant = isRedundant
@@ -191,7 +191,7 @@ func (b *binaryExpression) removeRedundant() bool {
 	}
 
 	if boolean, isRedundant := IsNode[*boolean](b.Right); isRedundant {
-		if boolean.getValue() == true && b.Operator.getOperator() == binaryExpressionOperatorEnum.OR {
+		if boolean.getValue() && b.Operator.getOperator() == binaryExpressionOperatorEnum.OR {
 			leftIsRedundant = isRedundant
 		} else {
 			rightIsRedundant = isRedundant
