@@ -1,14 +1,14 @@
 package parser
 
-import sitter "github.com/tree-sitter/go-tree-sitter"
+import (
+	"ts_inspector/ast/manipulation"
+)
 
 // Only used for interesting points
 
 type Function struct {
-	BodyNode       *sitter.Node // potentially missing
-	IsExport       bool
-	Name           string
-	NameNode       *sitter.Node
-	Node           *sitter.Node
-	ParametersNode *sitter.Node
+	BodyNode       manipulation.AstManipulationNode // potentially missing
+	NameNode       *manipulation.Identifier
+	Node           manipulation.FunctionSignature
+	ParametersNode *manipulation.FormalParameters
 }

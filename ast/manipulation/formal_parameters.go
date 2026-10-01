@@ -6,12 +6,12 @@ import (
 	sitter "github.com/tree-sitter/go-tree-sitter"
 )
 
-type formalParameters struct {
+type FormalParameters struct {
 	commonNode
 	parameters []nodeInterface
 }
 
-func (t *formalParameters) getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool) {
+func (t *FormalParameters) getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool) {
 	if !t.isUnderCursor(offset) {
 		return nil, false
 	}
@@ -33,7 +33,7 @@ func (t *formalParameters) getAstNodeOfKindAtOffset(offset uint, kind string, fi
 	return nil, false
 }
 
-func (t *formalParameters) visit(exec func(nodeInterface) int) int {
+func (t *FormalParameters) visit(exec func(nodeInterface) int) int {
 	if ret := exec(t); ret != VisitContinue {
 		if ret == VisitAbort {
 			return ret
@@ -58,7 +58,7 @@ func (t *formalParameters) visit(exec func(nodeInterface) int) int {
 }
 
 func visitFormalParameters(node *sitter.Node, state walkState, _ uint, funcMap walk.VisitorFuncMap[walkState]) (walkState, error) {
-	formalParameters := formalParameters{commonNode: makeCommonNode("formalParameters", state, node)}
+	formalParameters := FormalParameters{commonNode: makeCommonNode("formalParameters", state, node)}
 	formalParameters.setImpl(&formalParameters)
 
 	parameters := []nodeInterface{}

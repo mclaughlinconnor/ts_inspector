@@ -26,10 +26,6 @@ type classWalkState struct {
 	IsExport  bool
 }
 
-type funcWalkState struct {
-	IsExport bool
-}
-
 func Index(state *State, file *File) error {
 	var err error
 	file.Update(func(data *fileState) {
@@ -59,15 +55,8 @@ func Index(state *State, file *File) error {
 		return err
 	}
 
-	err = parseRootFunctions(state, root, file)
-	if err != nil {
-		return err
-	}
-
-	err = parseRootVariables(state, root, file)
-	if err != nil {
-		return err
-	}
+	parseRootFunctions(state, root, file)
+	parseRootVariables(state, root, file)
 
 	return nil
 }
@@ -520,62 +509,34 @@ func parseClasses(state *State, root *sitter.Node, file *File) error {
 	return err
 }
 
-func parseRootFunctions(state *State, root *sitter.Node, file *File) error {
-	fileContent := []byte(file.Snapshot().Content)
+func parseRootFunctions(state *State, root *sitter.Node, file *File) {
+	ast := file.Snapshot().Ast
+	for _, child := range ast.Program.GetChildren() {
+		node := child.GetNode()
 
-	funcMap := walk.NewVisitorFuncsMap[funcWalkState]()
-
-	funcMap["export_statement"] = func(node *sitter.Node, funcWalkState funcWalkState, indexInParent uint, funcMap walk.VisitorFuncMap[funcWalkState]) (funcWalkState, error) {
-		funcWalkState.IsExport = true
-		_, err := walk.VisitNamedChildren(node, funcWalkState, funcMap, true)
-		if err != nil {
-			return funcWalkState, err
+		kind := node.GetKind()
+		if kind != "functionSignature" && kind != "functionDeclaration" {
+			continue
 		}
 
-		funcWalkState.IsExport = false
-
-		return funcWalkState, nil
-	}
-
-	funcVisitor := func(node *sitter.Node, funcWalkState funcWalkState, indexInParent uint, _funcMap walk.VisitorFuncMap[funcWalkState]) (funcWalkState, error) {
-		nameNode := node.ChildByFieldName("name")
-		parametersNode := node.ChildByFieldName("parameters")
-		bodyNode := node.ChildByFieldName("body")
-
-		function := Function{Node: node, BodyNode: bodyNode, ParametersNode: parametersNode}
-
-		if nameNode != nil {
-			name := nameNode.Utf8Text(fileContent)
-			function.Name = name
+		var signature manipulation.FunctionSignature
+		var body manipulation.AstManipulationNode = nil
+		if s, isSignature := manipulation.IsNode[*manipulation.FunctionSignature](node); isSignature {
+			signature = *s
+		} else if d, isDeclaration := manipulation.IsNode[*manipulation.FunctionDeclaration](node); isDeclaration {
+			signature = d.FunctionSignature
+			body = d.Body
 		}
 
-		function.IsExport = funcWalkState.IsExport
+		function := Function{Node: signature, BodyNode: body, NameNode: signature.Name, ParametersNode: signature.Parameters}
 
 		file.Update(func(data *fileState) {
 			data.Functions = append(data.Functions, &function)
 		})
-
-		return funcWalkState, nil
 	}
-
-	funcMap["function_declaration"] = funcVisitor
-	funcMap["function_signature"] = funcVisitor
-
-	funcMap["program"] = func(node *sitter.Node, funcWalkState funcWalkState, indexInParent uint, funcMap walk.VisitorFuncMap[funcWalkState]) (funcWalkState, error) {
-		_, err := walk.VisitNamedChildren(node, funcWalkState, funcMap, true)
-		if err != nil {
-			return funcWalkState, err
-		}
-
-		return funcWalkState, nil
-	}
-
-	funcWalkState := funcWalkState{}
-	_, err := walk.WalkTypeScriptShallow(root, funcWalkState, funcMap)
-	return err
 }
 
-func parseRootVariables(state *State, root *sitter.Node, file *File) error {
+func parseRootVariables(state *State, root *sitter.Node, file *File) {
 	fileContent := []byte(file.Snapshot().Content)
 
 	ast := file.Snapshot().Ast
@@ -621,8 +582,6 @@ func parseRootVariables(state *State, root *sitter.Node, file *File) error {
 			data.Variables = append(data.Variables, &variable)
 		})
 	}
-
-	return nil
 }
 
 func visitDefinition(content []byte) walk.VisitorFunction[typescriptWalkState] {

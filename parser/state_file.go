@@ -221,25 +221,25 @@ func (f *File) GetInterestingPoints() []InterestingPoint {
 	}
 
 	for _, v := range f.Snapshot().Functions {
-		if !v.IsExport {
+		if !v.Node.IsExport {
 			continue
 		}
 
-		var locationNode *sitter.Node
+		var locationNode manipulation.AstManipulationNode
 
 		nameNode := v.NameNode
 		if nameNode != nil {
 			locationNode = nameNode
 		} else {
-			locationNode = v.Node
+			locationNode = &v.Node
 		}
 
-		startOffset := locationNode.StartByte()
-		endOffset := locationNode.EndByte()
+		startOffset := locationNode.GetStartOffset()
+		endOffset := locationNode.GetEndOffset()
 
 		var kind = interfaces.SymbolKind.Function
 
-		interestingPoint := InterestingPoint{Text: filename + "." + v.Name, Kind: kind}
+		interestingPoint := InterestingPoint{Text: filename + "." + v.NameNode.GetText(), Kind: kind}
 		interestingPoint.SetPosition(startOffset, endOffset)
 		interestingPoint.SetFile(content, uri)
 

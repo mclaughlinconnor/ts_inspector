@@ -7,16 +7,16 @@ import (
 	sitter "github.com/tree-sitter/go-tree-sitter"
 )
 
-type functionDeclaration struct {
-	functionSignature
-	body nodeInterface
+type FunctionDeclaration struct {
+	FunctionSignature
+	Body nodeInterface
 }
 
-func (f *functionDeclaration) _buildCfgBlock() (bool, error) {
-	return true, buildFunctionCfg(f, f.name.getText(), f.body)
+func (f *FunctionDeclaration) _buildCfgBlock() (bool, error) {
+	return true, buildFunctionCfg(f, f.Name.getText(), f.Body)
 }
 
-func (f *functionDeclaration) getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool) {
+func (f *FunctionDeclaration) getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool) {
 	if !f.isUnderCursor(offset) {
 		return nil, false
 	}
@@ -25,13 +25,13 @@ func (f *functionDeclaration) getAstNodeOfKindAtOffset(offset uint, kind string,
 		return f, true
 	}
 
-	under, found := f.functionSignature.getAstNodeOfKindAtOffset(offset, kind, first)
+	under, found := f.FunctionSignature.getAstNodeOfKindAtOffset(offset, kind, first)
 	if found && under != f {
 		return under, found
 	}
 
-	if f.body != nil && f.body.isUnderCursor(offset) {
-		return f.body.getAstNodeOfKindAtOffset(offset, kind, first)
+	if f.Body != nil && f.Body.isUnderCursor(offset) {
+		return f.Body.getAstNodeOfKindAtOffset(offset, kind, first)
 	}
 
 	if kind == NULL_KIND || f.getKind() == kind {
@@ -41,12 +41,12 @@ func (f *functionDeclaration) getAstNodeOfKindAtOffset(offset uint, kind string,
 	return nil, false
 }
 
-func (f *functionDeclaration) visit(exec func(nodeInterface) int) int {
-	if ret := f.functionSignature.visit(exec); ret == VisitAbort {
+func (f *FunctionDeclaration) visit(exec func(nodeInterface) int) int {
+	if ret := f.FunctionSignature.visit(exec); ret == VisitAbort {
 		return ret
 	}
 
-	if ret := f.body.visit(exec); ret == VisitAbort {
+	if ret := f.Body.visit(exec); ret == VisitAbort {
 		return ret
 	}
 
@@ -63,12 +63,12 @@ func visitFunctionDeclaration(node *sitter.Node, state walkState, _ uint, funcMa
 		return nil, fmt.Errorf("invalid ast: missing function signature")
 	}
 
-	functionSignature, isFunctionSignature := IsNode[*functionSignature](functionSignatureCommonNode)
+	functionSignature, isFunctionSignature := IsNode[*FunctionSignature](functionSignatureCommonNode)
 	if !isFunctionSignature {
 		return nil, fmt.Errorf("invalid ast: function signature is't a function signature")
 	}
 
-	functionDeclaration := functionDeclaration{functionSignature: *functionSignature}
+	functionDeclaration := FunctionDeclaration{FunctionSignature: *functionSignature}
 	functionDeclaration.kind = "functionDeclaration"
 	functionDeclaration.setImpl(&functionDeclaration)
 
@@ -82,7 +82,7 @@ func visitFunctionDeclaration(node *sitter.Node, state walkState, _ uint, funcMa
 		return nil, err
 	}
 
-	functionDeclaration.body = body
+	functionDeclaration.Body = body
 
 	return &functionDeclaration, nil
 }

@@ -10,7 +10,7 @@ import (
 type arrowFunction struct {
 	commonNode
 	body       nodeInterface
-	parameters *formalParameters
+	parameters *FormalParameters
 	parameter  *Identifier
 	returnType nodeInterface // type_annotation
 }
@@ -129,9 +129,9 @@ func visitArrowFunction(node *sitter.Node, state walkState, _ uint, funcMap walk
 		}
 	}
 
-	var parameters *formalParameters
+	var parameters *FormalParameters
 	if parametersCommonNode != nil {
-		if formalParameters, isFormalParameters := IsNode[*formalParameters](parametersCommonNode); isFormalParameters {
+		if formalParameters, isFormalParameters := IsNode[*FormalParameters](parametersCommonNode); isFormalParameters {
 			parameters = formalParameters
 		} else {
 			return nil, fmt.Errorf("invalid ast: parameters isn't a formal parameters")

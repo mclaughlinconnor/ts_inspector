@@ -7,15 +7,15 @@ import (
 	sitter "github.com/tree-sitter/go-tree-sitter"
 )
 
-type functionSignature struct {
+type FunctionSignature struct {
 	commonNode
-	isExport   bool
-	name       *Identifier
-	parameters *formalParameters
-	returnType nodeInterface // type_annotation
+	IsExport   bool
+	Name       *Identifier
+	Parameters *FormalParameters
+	ReturnType nodeInterface // type_annotation
 }
 
-func (f *functionSignature) getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool) {
+func (f *FunctionSignature) getAstNodeOfKindAtOffset(offset uint, kind string, first bool) (nodeInterface, bool) {
 	if !f.isUnderCursor(offset) {
 		return nil, false
 	}
@@ -24,12 +24,12 @@ func (f *functionSignature) getAstNodeOfKindAtOffset(offset uint, kind string, f
 		return f, true
 	}
 
-	if f.parameters != nil && f.parameters.isUnderCursor(offset) {
-		return f.parameters.getAstNodeOfKindAtOffset(offset, kind, first)
+	if f.Parameters != nil && f.Parameters.isUnderCursor(offset) {
+		return f.Parameters.getAstNodeOfKindAtOffset(offset, kind, first)
 	}
 
-	if f.returnType != nil && f.returnType.isUnderCursor(offset) {
-		return f.returnType.getAstNodeOfKindAtOffset(offset, kind, first)
+	if f.ReturnType != nil && f.ReturnType.isUnderCursor(offset) {
+		return f.ReturnType.getAstNodeOfKindAtOffset(offset, kind, first)
 	}
 
 	if kind == NULL_KIND || f.getKind() == kind {
@@ -39,7 +39,7 @@ func (f *functionSignature) getAstNodeOfKindAtOffset(offset uint, kind string, f
 	return nil, false
 }
 
-func (f *functionSignature) visit(exec func(nodeInterface) int) int {
+func (f *FunctionSignature) visit(exec func(nodeInterface) int) int {
 	if ret := exec(f); ret != VisitContinue {
 		if ret == VisitAbort {
 			return ret
@@ -50,12 +50,12 @@ func (f *functionSignature) visit(exec func(nodeInterface) int) int {
 		}
 	}
 
-	if ret := f.parameters.visit(exec); ret == VisitAbort {
+	if ret := f.Parameters.visit(exec); ret == VisitAbort {
 		return ret
 	}
 
-	if f.returnType != nil {
-		if ret := f.returnType.visit(exec); ret == VisitAbort {
+	if f.ReturnType != nil {
+		if ret := f.ReturnType.visit(exec); ret == VisitAbort {
 			return ret
 		}
 	}
@@ -64,7 +64,7 @@ func (f *functionSignature) visit(exec func(nodeInterface) int) int {
 }
 
 func visitFunctionSignature(node *sitter.Node, state walkState, _ uint, funcMap walk.VisitorFuncMap[walkState]) (walkState, error) {
-	functionSignature := functionSignature{commonNode: makeCommonNode("functionSignature", state, node)}
+	functionSignature := FunctionSignature{commonNode: makeCommonNode("functionSignature", state, node)}
 	functionSignature.setImpl(&functionSignature)
 
 	nameNode := node.ChildByFieldName("name")
@@ -96,9 +96,9 @@ func visitFunctionSignature(node *sitter.Node, state walkState, _ uint, funcMap 
 		return nil, err
 	}
 
-	var parameters *formalParameters
+	var parameters *FormalParameters
 	if parametersCommonNode != nil {
-		if formalParameters, isFormalParameters := IsNode[*formalParameters](parametersCommonNode); isFormalParameters {
+		if formalParameters, isFormalParameters := IsNode[*FormalParameters](parametersCommonNode); isFormalParameters {
 			parameters = formalParameters
 		} else {
 			return nil, fmt.Errorf("invalid ast: parameters isn't a formal parameters")
@@ -113,10 +113,10 @@ func visitFunctionSignature(node *sitter.Node, state walkState, _ uint, funcMap 
 		}
 	}
 
-	_, functionSignature.isExport = IsNode[*ExportStatement](state)
-	functionSignature.name = name
-	functionSignature.parameters = parameters
-	functionSignature.returnType = returnType
+	_, functionSignature.IsExport = IsNode[*ExportStatement](state)
+	functionSignature.Name = name
+	functionSignature.Parameters = parameters
+	functionSignature.ReturnType = returnType
 
 	return &functionSignature, nil
 }
