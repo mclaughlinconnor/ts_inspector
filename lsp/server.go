@@ -39,10 +39,10 @@ func Start() {
 	logger := state.Logger
 
 	scanner := bufio.NewScanner(os.Stdin)
-	scanner.Split(rpc.Split)
-	big := 1024 * 1024 // 1 mb
+	big := 5 * 1024 * 1024 // 5 mb
 	buf := make([]byte, big)
 	scanner.Buffer(buf, big)
+	scanner.Split(rpc.Split)
 
 	writer := utils.NewWriter(os.Stdout)
 
