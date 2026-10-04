@@ -2,6 +2,7 @@ package tcb
 
 import (
 	"slices"
+	"strconv"
 	"ts_inspector/ast/walk"
 	"ts_inspector/utils"
 
@@ -634,6 +635,8 @@ func isIntrinsicValue(text string) bool {
 	case "NaN":
 		return true
 	default:
-		return false
+		// The parser doesn't support negative numbers. Hack it like this to avoid touching the TS parser
+		_, isNumber := strconv.Atoi(text)
+		return isNumber == nil
 	}
 }
