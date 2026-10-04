@@ -524,6 +524,16 @@ func visitIdentifier(node *sitter.Node, state *exprState, indexInParent uint, in
 	state.parts.AddVirtPart("this.")
 	state.parts.AddRealPart(name, node)
 
+	// The parser doesn't have non_null_assertion nodes. I'm not sure why. Hack it like this to avoid touching the TS parser
+	if node.EndByte() < uint(len(state.content)) {
+		nextChar := state.content[node.EndByte() : node.EndByte()+1]
+		if len(nextChar) == 1 {
+			if nextChar[0] == '!' {
+				state.parts.AddVirtPart("!")
+			}
+		}
+	}
+
 	return state, nil
 }
 
