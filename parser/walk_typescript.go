@@ -104,15 +104,25 @@ func extractClassName(root *sitter.Node, ast *manipulation.Ast) (string, *sitter
 		return "", nil, nil
 	}
 
+	var nameNode manipulation.AstManipulationNode
+
 	classDeclaration, isClassDeclaration := manipulation.IsNode[*manipulation.ClassDeclaration](astNode)
-	if !isClassDeclaration {
+	if isClassDeclaration {
+		nameNode = classDeclaration.Name
+	}
+
+	interfaceDeclaration, isInterfaceDeclaration := manipulation.IsNode[*manipulation.InterfaceDeclaration](astNode)
+	if isInterfaceDeclaration {
+		nameNode = interfaceDeclaration.Name
+	}
+
+	if nameNode == nil {
 		return "", nil, nil
 	}
 
-	name := classDeclaration.Name
-	nameNode := root.FirstNamedChildForByte(name.GetStartOffset())
+	nameNodeTS := root.FirstNamedChildForByte(nameNode.GetStartOffset())
 
-	return name.GetText(), nameNode, nil
+	return nameNode.GetText(), nameNodeTS, nil
 }
 
 func extractFileImports(root *sitter.Node, file *File) error {
