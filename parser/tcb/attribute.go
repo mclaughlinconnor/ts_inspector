@@ -271,24 +271,31 @@ THING:
 
 			classIdent := tcb.AddImport(thing)
 			declIdent := buildDirectiveDeclaration(tcb, thing)
+			ctxIdent := tcb.CreateVarInCurrentScope(StatementFromString(NULL_AS_ANY), classIdent)
+
+			var err error
+			var valueShv *structuraldirective.ShorthandValue
+			if attribute.IsStructuralInput() {
+				valueShv, err = attribute.GetShv()
+				if err != nil {
+					return map[string]bool{}, err
+				}
+
+				buildStructuralShorthandContextExpansion(attribute, tcb, valueShv, ctxIdent)
+			}
 
 			assIdent, err := buildDirectiveAssignment(tcb, thing, attribute, declIdent, &attachedInputs)
 			if err != nil {
 				return map[string]bool{}, err
 			}
 
-			ctxIdent, err := buildGuards(tcb, attribute, thing, assIdent, classIdent)
+			err = buildGuards(tcb, attribute, thing, assIdent, classIdent, ctxIdent)
 			if err != nil {
 				return map[string]bool{}, err
 			}
 
-			if attribute.IsStructuralInput() {
-				valueShv, err := attribute.GetShv()
-				if err != nil {
-					return map[string]bool{}, err
-				}
-
-				buildStructuralShorthandContextExpansion(attribute, tcb, valueShv, ctxIdent)
+			if attribute.IsStructuralInput() && valueShv != nil {
+				buildStructuralShorthandContextExpansionVariables(attribute, tcb, valueShv, ctxIdent)
 			}
 
 			continue THING
@@ -385,19 +392,11 @@ THING:
 
 				classIdent := tcb.AddImport(thing)
 				declIdent := buildDirectiveDeclaration(tcb, thing)
+				ctxIdent := tcb.CreateVarInCurrentScope(StatementFromString(NULL_AS_ANY), classIdent)
 
-				assIdent, err := buildDirectiveAssignment(tcb, thing, attribute, declIdent, &attachedInputs)
-				if err != nil {
-					return err
-				}
-
-				ctxIdent, err := buildGuards(tcb, attribute, thing, assIdent, classIdent)
-				if err != nil {
-					return err
-				}
-
+				var valueShv *structuraldirective.ShorthandValue
 				if attribute.IsStructuralInput() {
-					valueShv, err := attribute.GetShv()
+					valueShv, err = attribute.GetShv()
 					if err != nil {
 						return err
 					}
@@ -405,10 +404,22 @@ THING:
 					buildStructuralShorthandContextExpansion(attribute, tcb, valueShv, ctxIdent)
 				}
 
+				assIdent, err := buildDirectiveAssignment(tcb, thing, attribute, declIdent, &attachedInputs)
+				if err != nil {
+					return err
+				}
+
+				err = buildGuards(tcb, attribute, thing, assIdent, classIdent, ctxIdent)
+				if err != nil {
+					return err
+				}
+
+				if attribute.IsStructuralInput() && valueShv != nil {
+					buildStructuralShorthandContextExpansionVariables(attribute, tcb, valueShv, ctxIdent)
+				}
+
 				continue THING
-
 			}
-
 		}
 	}
 
@@ -433,9 +444,9 @@ func buildDirectiveAssignment(tcb *Tcb, thing *parser.Class, attribute *Attribut
 	return assIdent, nil
 }
 
-func buildGuards(tcb *Tcb, attribute *Attribute, thing *parser.Class, assIdent string, classIdent string) (string, error) {
+func buildGuards(tcb *Tcb, attribute *Attribute, thing *parser.Class, assIdent string, classIdent string, ctxIdent string) error {
 	if !thing.HasDirective() && !strings.HasPrefix(attribute.Name, "*") && attribute.Tag.Name != "ng-template" {
-		return "", nil
+		return nil
 	}
 
 	hasContextGuard := false
@@ -471,19 +482,19 @@ func buildGuards(tcb *Tcb, attribute *Attribute, thing *parser.Class, assIdent s
 	}
 
 	if !hasContextGuard && inputGuard == nil {
-		return "", nil
+		return nil
 	}
 
 	valueExpr, err := attribute.GetExpression()
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	var value *Statement
 	if valueExpr != nil {
 		value, err = buildTcbExpression(tcb.Ast, valueExpr.Expression)
 		if err != nil {
-			return "", err
+			return err
 		}
 
 		if attribute.ValueNode != nil {
@@ -496,7 +507,6 @@ func buildGuards(tcb *Tcb, attribute *Attribute, thing *parser.Class, assIdent s
 	statement := Statement{}
 	statement.AddVirtPart("if (")
 
-	ctxIdent := tcb.CreateVarInCurrentScope(StatementFromString(NULL_AS_ANY), classIdent)
 	if hasContextGuard {
 		statement.AddVirtPart(fmt.Sprintf("%s.%s(%s, %s)", classIdent, NG_TEMPLATE_CONTEXT_GUARD, assIdent, ctxIdent))
 	}
@@ -539,7 +549,7 @@ func buildGuards(tcb *Tcb, attribute *Attribute, thing *parser.Class, assIdent s
 
 	attribute.Tag.closeScope = true
 
-	return ctxIdent, nil
+	return nil
 }
 
 func buildGenericDirectiveAssignment(tcb *Tcb, attribute *Attribute, thing *parser.Class, compIdent string, attachedInputs *map[string]*Attribute) (string, error) {
@@ -796,6 +806,12 @@ func buildStructuralShorthandContextExpansion(attribute *Attribute, tcb *Tcb, sh
 			continue
 		}
 
+		// if statement.HasKeyExp() {} // doesn't affect context
+	}
+}
+
+func buildStructuralShorthandContextExpansionVariables(attribute *Attribute, tcb *Tcb, shv *structuraldirective.ShorthandValue, ctxIdent string) {
+	for _, statement := range shv.Statements.Elements {
 		if statement.HasLet() {
 			let := statement.Let
 
