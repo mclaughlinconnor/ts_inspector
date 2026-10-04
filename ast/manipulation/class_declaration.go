@@ -1,7 +1,6 @@
 package manipulation
 
 import (
-	"fmt"
 	"ts_inspector/ast/walk"
 
 	sitter "github.com/tree-sitter/go-tree-sitter"
@@ -115,7 +114,7 @@ func visitClassDeclaration(node *sitter.Node, state walkState, _ uint, funcMap w
 		if decorator, isIdentifier := IsNode[*decorator](decoratorCommonNode); isIdentifier {
 			ddecorator = decorator
 		} else {
-			return nil, fmt.Errorf("invalid ast: decorator isn't a decorator")
+			return nil, newAstError(decorator, "decorator isn't a decorator: "+decorator.getKind())
 		}
 
 		decorators = append(decorators, ddecorator)
@@ -123,7 +122,7 @@ func visitClassDeclaration(node *sitter.Node, state walkState, _ uint, funcMap w
 
 	nameNode := node.ChildByFieldName("name")
 	if nameNode == nil {
-		return nil, fmt.Errorf("invalid ast: missing name")
+		return nil, newAstErrorTS(node, state, "missing name")
 	}
 
 	nameCommonNode, err := walk.VisitNode(nameNode, state, 0, funcMap, false)
@@ -135,7 +134,7 @@ func visitClassDeclaration(node *sitter.Node, state walkState, _ uint, funcMap w
 	if identifier, isIdentifier := IsNode[*Identifier](nameCommonNode); isIdentifier {
 		name = identifier
 	} else {
-		return nil, fmt.Errorf("invalid ast: name isn't a property identifier")
+		return nil, newAstError(identifier, "name isn't a property identifier: "+identifier.getKind())
 	}
 
 	typeParametersNode := node.ChildByFieldName("type_parameters")
@@ -149,7 +148,7 @@ func visitClassDeclaration(node *sitter.Node, state walkState, _ uint, funcMap w
 		if typeParameters, isTypeParameters := IsNode[*typeParameters](typeParametersCommonNode); isTypeParameters {
 			ttypeParameters = typeParameters
 		} else {
-			return nil, fmt.Errorf("invalid ast: type parameters isn't a type parameters")
+			return nil, newAstError(typeParameters, "type parameters isn't a type parameters: "+typeParameters.getKind())
 		}
 	}
 
@@ -167,13 +166,13 @@ func visitClassDeclaration(node *sitter.Node, state walkState, _ uint, funcMap w
 		if classHeritage, isClassHeritage := IsNode[*classHeritage](classHeritageCommonNode); isClassHeritage {
 			cclassHeritage = classHeritage
 		} else {
-			return nil, fmt.Errorf("invalid ast: class heritage isn't a class heritage")
+			return nil, newAstError(classHeritage, "class heritage isn't a class heritage: "+classHeritage.getKind())
 		}
 	}
 
 	bodyNode := node.ChildByFieldName("body")
 	if bodyNode == nil {
-		return nil, fmt.Errorf("invalid ast: missing body")
+		return nil, newAstErrorTS(node, state, "missing body")
 	}
 
 	body, err := walk.VisitNode(bodyNode, state, 0, funcMap, false)

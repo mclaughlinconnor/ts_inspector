@@ -67,6 +67,7 @@ type nodeInterface interface {
 	getKind() string
 	getNode() impl[nodeInterface]
 	getProgramContent() *programContent
+	getProgramFilename() string
 	getProgramRoot() *Ast
 	getProgramText() string
 	getRange() utils.Range
@@ -129,7 +130,7 @@ func (c *commonNode) applyAction(apply func()) ([]utils.TextEdit, error) {
 
 func (c *commonNode) beginEditSession() error {
 	if c.hasEditSession() {
-		return fmt.Errorf("tried to start an edit session when there is already an edit session in progress")
+		return newAstError(c, "tried to start an edit session when there is already an edit session in progress")
 	}
 
 	stagedElement := c.getImpl().getElement().copy()
@@ -277,6 +278,10 @@ func (c *commonNode) hasConstantTrue() bool {
 
 func (c *commonNode) getProgramContent() *programContent {
 	return c.programContent
+}
+
+func (c *commonNode) getProgramFilename() string {
+	return c.getImpl().getProgramContent().getFilename()
 }
 
 func (c *commonNode) getProgramRoot() *Ast {

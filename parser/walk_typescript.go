@@ -28,9 +28,10 @@ type classWalkState struct {
 
 func Index(state *State, file *File) error {
 	var err error
+	filename := file.Filename()
 	file.Update(func(data *fileState) {
 		var ast *manipulation.Ast
-		ast, err = manipulation.BuildAst(data.Content)
+		ast, err = manipulation.BuildAst(filename, data.Content)
 		data.Ast = ast
 	})
 

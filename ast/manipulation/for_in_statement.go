@@ -1,7 +1,6 @@
 package manipulation
 
 import (
-	"fmt"
 	"ts_inspector/ast/walk"
 
 	sitter "github.com/tree-sitter/go-tree-sitter"
@@ -120,17 +119,17 @@ func visitForInStatement(node *sitter.Node, state walkState, _ uint, funcMap wal
 
 	leftNode := node.ChildByFieldName("left")
 	if leftNode == nil {
-		return nil, fmt.Errorf("invalid ast: missing left")
+		return nil, newAstErrorTS(node, state, "missing left")
 	}
 
 	rightNode := node.ChildByFieldName("right")
 	if rightNode == nil {
-		return nil, fmt.Errorf("invalid ast: missing right")
+		return nil, newAstErrorTS(node, state, "missing right")
 	}
 
 	bodyNode := node.ChildByFieldName("body")
 	if bodyNode == nil {
-		return nil, fmt.Errorf("invalid ast: missing body")
+		return nil, newAstErrorTS(node, state, "missing body")
 	}
 
 	left, err := walk.VisitNode(leftNode, state, 0, funcMap, false)

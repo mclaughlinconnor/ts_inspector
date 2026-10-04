@@ -1,7 +1,6 @@
 package manipulation
 
 import (
-	"fmt"
 	"ts_inspector/ast/walk"
 
 	sitter "github.com/tree-sitter/go-tree-sitter"
@@ -108,12 +107,12 @@ func visitWhileStatement(node *sitter.Node, state walkState, _ uint, funcMap wal
 
 	conditionNode := node.ChildByFieldName("condition")
 	if conditionNode == nil {
-		return nil, fmt.Errorf("invalid ast: missing condition")
+		return nil, newAstErrorTS(node, state, "missing condition")
 	}
 
 	bodyNode := node.ChildByFieldName("body")
 	if bodyNode == nil {
-		return nil, fmt.Errorf("invalid ast: missing body")
+		return nil, newAstErrorTS(node, state, "missing body")
 	}
 
 	condition, err := walk.VisitNode(conditionNode, state, 0, funcMap, false)

@@ -1,7 +1,6 @@
 package manipulation
 
 import (
-	"fmt"
 	"ts_inspector/ast/walk"
 
 	sitter "github.com/tree-sitter/go-tree-sitter"
@@ -92,13 +91,13 @@ func visitCommonField(node *sitter.Node, state walkState, _ uint, funcMap walk.V
 		if accessibilityModifier, isAccessibilityModifier := IsNode[*accessibilityModifier](accessibilityCommonNode); isAccessibilityModifier {
 			accessibility = accessibilityModifier
 		} else {
-			return nil, fmt.Errorf("invalid ast: accessibility isn't an accessibility")
+			return nil, newAstError(accessibilityModifier, "accessibility isn't an accessibility: "+accessibilityModifier.getKind())
 		}
 	}
 
 	nameCommonNode, found := nodes["name"]
 	if !found {
-		return nil, fmt.Errorf("invalid ast: missing name")
+		return nil, newAstErrorTS(node, state, "missing name")
 	}
 
 	commonField.accessibility = accessibility

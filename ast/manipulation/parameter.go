@@ -1,7 +1,6 @@
 package manipulation
 
 import (
-	"fmt"
 	"ts_inspector/ast/walk"
 
 	sitter "github.com/tree-sitter/go-tree-sitter"
@@ -130,7 +129,7 @@ func visitParameter(node *sitter.Node, state walkState, _ uint, funcMap walk.Vis
 		if decorator, isIdentifier := IsNode[*decorator](decoratorCommonNode); isIdentifier {
 			ddecorator = decorator
 		} else {
-			return nil, fmt.Errorf("invalid ast: decorator isn't a decorator")
+			return nil, newAstError(decorator, "decorator isn't a decorator: "+decorator.getKind())
 		}
 
 		decorators = append(decorators, ddecorator)
@@ -142,7 +141,7 @@ func visitParameter(node *sitter.Node, state walkState, _ uint, funcMap walk.Vis
 		if accessibilityModifier, isAccessibilityModifier := IsNode[*accessibilityModifier](accessibilityModifierCommonNode); isAccessibilityModifier {
 			accessibility = accessibilityModifier
 		} else {
-			return nil, fmt.Errorf("invalid ast: accessibility modifier isn't an accessibilityModifier")
+			return nil, newAstError(accessibilityModifier, "accessibility modifier isn't an accessibilityModifier: "+accessibilityModifier.getKind())
 		}
 	}
 
@@ -153,7 +152,7 @@ func visitParameter(node *sitter.Node, state walkState, _ uint, funcMap walk.Vis
 	}
 
 	if pattern == nil {
-		return nil, fmt.Errorf("invalid ast: missing pattern")
+		return nil, newAstErrorTS(node, state, "missing pattern")
 	}
 
 	parameter.accessibilityModifier = accessibility

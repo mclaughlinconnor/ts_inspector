@@ -1,7 +1,6 @@
 package manipulation
 
 import (
-	"fmt"
 	"ts_inspector/ast/walk"
 
 	sitter "github.com/tree-sitter/go-tree-sitter"
@@ -78,22 +77,22 @@ func visitCallExpression(node *sitter.Node, state walkState, indexInParent uint,
 
 	functionNode := node.ChildByFieldName("function")
 	if functionNode == nil {
-		return nil, fmt.Errorf("invalid ast: missing function identifier")
+		return nil, newAstErrorTS(node, state, "missing function identifier")
 	}
 
 	argumentsNode := node.ChildByFieldName("arguments")
 	if argumentsNode == nil {
-		return nil, fmt.Errorf("invalid ast: missing arguments")
+		return nil, newAstErrorTS(node, state, "missing arguments")
 	}
 
 	function, err := walk.VisitNode(functionNode, state, 0, funcMap, false)
 	if err != nil {
-		return nil, err
+		return nil, newAstErrorETS(functionNode, state, err)
 	}
 
 	arguments, err := walk.VisitNode(argumentsNode, state, 0, funcMap, false)
 	if err != nil {
-		return nil, err
+		return nil, newAstErrorETS(argumentsNode, state, err)
 	}
 
 	callExpression.function = function

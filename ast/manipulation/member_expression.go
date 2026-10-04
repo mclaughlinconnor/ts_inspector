@@ -1,7 +1,6 @@
 package manipulation
 
 import (
-	"fmt"
 	"ts_inspector/ast/walk"
 
 	sitter "github.com/tree-sitter/go-tree-sitter"
@@ -65,7 +64,7 @@ func visitMemberExpression(node *sitter.Node, state walkState, _ uint, funcMap w
 	}
 
 	if commonMemberSubscript == nil {
-		return nil, fmt.Errorf("invalid ast: missing common member subscript")
+		return nil, newAstError(commonMemberSubscript, "missing common member subscript")
 	}
 
 	memberExpression := memberExpression{commonMemberSubscript: *commonMemberSubscript}
@@ -74,7 +73,7 @@ func visitMemberExpression(node *sitter.Node, state walkState, _ uint, funcMap w
 
 	propertyNode := node.ChildByFieldName("property")
 	if propertyNode == nil {
-		return nil, fmt.Errorf("invalid ast: missing property")
+		return nil, newAstErrorTS(node, state, "missing property")
 	}
 
 	propertyCommonNode, err := walk.VisitNode(propertyNode, state, 0, funcMap, false)
@@ -86,7 +85,7 @@ func visitMemberExpression(node *sitter.Node, state walkState, _ uint, funcMap w
 	if propertyIdentifier, isPropertyIdentifier := IsNode[*propertyIdentifier](propertyCommonNode); isPropertyIdentifier {
 		property = propertyIdentifier
 	} else {
-		return nil, fmt.Errorf("invalid ast: property isn't a property")
+		return nil, newAstError(propertyIdentifier, "property isn't a property: "+propertyIdentifier.getKind())
 	}
 
 	memberExpression.property = property

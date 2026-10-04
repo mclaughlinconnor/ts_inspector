@@ -1,7 +1,6 @@
 package manipulation
 
 import (
-	"fmt"
 	"ts_inspector/ast/walk"
 
 	sitter "github.com/tree-sitter/go-tree-sitter"
@@ -76,12 +75,12 @@ func visitlexicalDeclaration(node *sitter.Node, state walkState, _ uint, funcMap
 
 	kindNode := node.ChildByFieldName("kind")
 	if kindNode == nil {
-		return nil, fmt.Errorf("invalid ast: missing kind")
+		return nil, newAstErrorTS(node, state, "missing kind")
 	}
 
 	declaratorNode := node.NamedChild(0)
 	if declaratorNode == nil {
-		return nil, fmt.Errorf("invalid ast: missing declarator")
+		return nil, newAstErrorTS(node, state, "missing declarator")
 	}
 
 	kind := kindNode.Utf8Text([]byte(lexicalDeclaration.getProgramText()))
@@ -95,7 +94,7 @@ func visitlexicalDeclaration(node *sitter.Node, state walkState, _ uint, funcMap
 	if variableDeclarator, isVariableDeclarator := IsNode[*VariableDeclarator](declaratorCommonNode); isVariableDeclarator {
 		declarator = variableDeclarator
 	} else {
-		return nil, fmt.Errorf("invalid ast: declarator is not a variable_declarator")
+		return nil, newAstError(variableDeclarator, "declarator is not a variable_declarator")
 	}
 
 	lexicalDeclaration.Declarator = declarator

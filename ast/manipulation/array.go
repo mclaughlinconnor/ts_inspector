@@ -19,7 +19,7 @@ func visitArray(node *sitter.Node, state walkState, indexInParent uint, funcMap 
 	for i := range node.NamedChildCount() {
 		child, err := walk.VisitNode(node.NamedChild(i), state, i, funcMap, false)
 		if err != nil {
-			return nil, err
+			return nil, newAstErrorETS(node, child, err)
 		}
 
 		// VisitNode returns its state if nothing is visited. Don't create cycles in the tree

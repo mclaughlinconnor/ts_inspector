@@ -1,7 +1,6 @@
 package manipulation
 
 import (
-	"fmt"
 	"ts_inspector/ast/walk"
 	"ts_inspector/interfaces"
 	"ts_inspector/utils"
@@ -277,17 +276,17 @@ func visitBinaryExpression(node *sitter.Node, state walkState, _ uint, funcMap w
 
 	leftNode := node.ChildByFieldName("left")
 	if leftNode == nil {
-		return nil, fmt.Errorf("invalid ast: missing left")
+		return nil, newAstErrorTS(node, state, "missing left")
 	}
 
 	operatorNode := node.ChildByFieldName("operator")
 	if operatorNode == nil {
-		return nil, fmt.Errorf("invalid ast: missing operator")
+		return nil, newAstErrorTS(node, state, "missing operator")
 	}
 
 	rightNode := node.ChildByFieldName("right")
 	if rightNode == nil {
-		return nil, fmt.Errorf("invalid ast: missing right")
+		return nil, newAstErrorTS(node, state, "missing right")
 	}
 
 	left, err := walk.VisitNode(leftNode, state, 0, funcMap, false)

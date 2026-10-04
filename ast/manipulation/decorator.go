@@ -1,7 +1,6 @@
 package manipulation
 
 import (
-	"fmt"
 	"ts_inspector/ast/walk"
 
 	sitter "github.com/tree-sitter/go-tree-sitter"
@@ -56,7 +55,7 @@ func visitDecorator(node *sitter.Node, state walkState, _ uint, funcMap walk.Vis
 
 	bodyNode := node.NamedChild(0)
 	if bodyNode == nil {
-		return nil, fmt.Errorf("invalid ast: no decorator node")
+		return nil, newAstErrorTS(node, state, "no decorator node")
 	}
 
 	body, err := walk.VisitNode(bodyNode, state, 0, funcMap, false)

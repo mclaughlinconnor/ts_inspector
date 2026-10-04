@@ -1,7 +1,6 @@
 package manipulation
 
 import (
-	"fmt"
 	"ts_inspector/ast/walk"
 
 	sitter "github.com/tree-sitter/go-tree-sitter"
@@ -40,7 +39,7 @@ func visitSpreadElement(node *sitter.Node, state walkState, indexInParent uint, 
 	spreadElement.setImpl(&spreadElement)
 
 	if node.NamedChildCount() == 0 {
-		return nil, fmt.Errorf("invalid ast: no expression in spread element")
+		return nil, newAstErrorTS(node, state, "no expression in spread element")
 	}
 
 	expressionNode := node.NamedChild(0)

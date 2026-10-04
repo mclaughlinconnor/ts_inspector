@@ -1,7 +1,6 @@
 package manipulation
 
 import (
-	"fmt"
 	"ts_inspector/ast/walk"
 
 	sitter "github.com/tree-sitter/go-tree-sitter"
@@ -80,7 +79,7 @@ func visitClassHeritage(node *sitter.Node, state walkState, _ uint, funcMap walk
 			if extendsClause, isExtendsClause := IsNode[*extendsClause](extendsClauseCommonNode); isExtendsClause {
 				eextendsClause = extendsClause
 			} else {
-				return nil, fmt.Errorf("invalid ast: extends clause isn't an extends clause")
+				return nil, newAstError(extendsClause, "extends clause isn't an extends clause: "+extendsClause.getKind())
 			}
 
 			continue
@@ -95,7 +94,7 @@ func visitClassHeritage(node *sitter.Node, state walkState, _ uint, funcMap walk
 			if implementsClause, isImplementsClause := IsNode[*implementsClause](implementsClauseCommonNode); isImplementsClause {
 				iimplementsClause = implementsClause
 			} else {
-				return nil, fmt.Errorf("invalid ast: implements clause isn't an implements clause")
+				return nil, newAstError(implementsClause, "implements clause isn't an implements clause: "+implementsClause.getKind())
 			}
 
 			continue

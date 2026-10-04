@@ -1,7 +1,6 @@
 package manipulation
 
 import (
-	"fmt"
 	"slices"
 	"ts_inspector/ast/walk"
 
@@ -88,7 +87,7 @@ func visitInterfaceDeclaration(node *sitter.Node, state walkState, _ uint, funcM
 
 	nameNode := node.ChildByFieldName("name")
 	if nameNode == nil {
-		return nil, fmt.Errorf("invalid ast: missing name")
+		return nil, newAstErrorTS(node, state, "missing name")
 	}
 
 	nameCommonNode, err := walk.VisitNode(nameNode, state, 0, funcMap, false)
@@ -100,7 +99,7 @@ func visitInterfaceDeclaration(node *sitter.Node, state walkState, _ uint, funcM
 	if identifier, isIdentifier := IsNode[*Identifier](nameCommonNode); isIdentifier {
 		name = identifier
 	} else {
-		return nil, fmt.Errorf("invalid ast: name isn't a property identifier")
+		return nil, newAstError(identifier, "name isn't a property identifier: "+identifier.getKind())
 	}
 
 	typeParametersNode := node.ChildByFieldName("type_parameters")
@@ -114,7 +113,7 @@ func visitInterfaceDeclaration(node *sitter.Node, state walkState, _ uint, funcM
 		if typeParameters, isTypeParameters := IsNode[*typeParameters](typeParametersCommonNode); isTypeParameters {
 			ttypeParameters = typeParameters
 		} else {
-			return nil, fmt.Errorf("invalid ast: type parameters isn't a type parameters")
+			return nil, newAstError(typeParameters, "type parameters isn't a type parameters: "+typeParameters.getKind())
 		}
 	}
 
@@ -133,7 +132,7 @@ func visitInterfaceDeclaration(node *sitter.Node, state walkState, _ uint, funcM
 
 	bodyNode := node.ChildByFieldName("body")
 	if bodyNode == nil {
-		return nil, fmt.Errorf("invalid ast: missing body")
+		return nil, newAstErrorTS(node, state, "missing body")
 	}
 
 	body, err := walk.VisitNode(bodyNode, state, 0, funcMap, false)

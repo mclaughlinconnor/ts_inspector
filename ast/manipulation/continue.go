@@ -1,7 +1,6 @@
 package manipulation
 
 import (
-	"fmt"
 	"ts_inspector/ast/walk"
 
 	sitter "github.com/tree-sitter/go-tree-sitter"
@@ -20,7 +19,7 @@ func (c *continueExpression) _buildCfgBlock() (bool, error) {
 	breakBlock := cfg.currentCfg().addBlock("Continue block")
 
 	if afterBlock == nil {
-		return true, fmt.Errorf("continue stack is unexpectedly empty")
+		return true, newAstError(c, "continue stack is unexpectedly empty")
 	}
 
 	cfg.current = breakBlock
@@ -42,7 +41,7 @@ func (c *continueExpression) getAstNodeOfKindAtOffset(offset uint, kind string, 
 		return c, true
 	}
 
-	if c.label.isUnderCursor(offset) {
+	if c.label != nil && c.label.isUnderCursor(offset) {
 		return c.label.getAstNodeOfKindAtOffset(offset, kind, first)
 	}
 
@@ -64,8 +63,10 @@ func (c *continueExpression) visit(exec func(nodeInterface) int) int {
 		}
 	}
 
-	if ret := c.label.visit(exec); ret == VisitAbort {
-		return ret
+	if c.label != nil {
+		if ret := c.label.visit(exec); ret == VisitAbort {
+			return ret
+		}
 	}
 
 	return VisitContinue
@@ -75,14 +76,14 @@ func visitContinue(node *sitter.Node, state walkState, indexInParent uint, funcM
 	continueExpression := continueExpression{commonNode: makeCommonNode("continueExpression", state, node)}
 	continueExpression.setImpl(&continueExpression)
 
+	var label nodeInterface
+	var err error
 	labelNode := node.ChildByFieldName("label")
-	if labelNode == nil {
-		return nil, fmt.Errorf("invalid ast: missing label")
-	}
-
-	label, err := walk.VisitNode(labelNode, state, 0, funcMap, false)
-	if err != nil {
-		return nil, err
+	if labelNode != nil {
+		label, err = walk.VisitNode(labelNode, state, 0, funcMap, false)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	continueExpression.label = label

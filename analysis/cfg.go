@@ -59,7 +59,7 @@ func cfgUnreachableBlock(state *parser.State, file *parser.File) ([]interfaces.A
 
 		tcbBlock := tcb.ToString()
 
-		ast, err := manipulation.BuildAst(tcbBlock)
+		ast, err := manipulation.BuildAst(file.Filename(), tcbBlock)
 		if err != nil {
 			return analyses, err
 		}

@@ -1,7 +1,6 @@
 package manipulation
 
 import (
-	"fmt"
 	"ts_inspector/ast/walk"
 
 	sitter "github.com/tree-sitter/go-tree-sitter"
@@ -60,12 +59,12 @@ func visitFunctionDeclaration(node *sitter.Node, state walkState, _ uint, funcMa
 	}
 
 	if functionSignatureCommonNode == nil {
-		return nil, fmt.Errorf("invalid ast: missing function signature")
+		return nil, newAstError(functionSignatureCommonNode, "missing function signature")
 	}
 
 	functionSignature, isFunctionSignature := IsNode[*FunctionSignature](functionSignatureCommonNode)
 	if !isFunctionSignature {
-		return nil, fmt.Errorf("invalid ast: function signature is't a function signature")
+		return nil, newAstError(functionSignature, "function signature isn't a function signature: "+functionSignature.getKind())
 	}
 
 	functionDeclaration := FunctionDeclaration{FunctionSignature: *functionSignature}
@@ -74,7 +73,7 @@ func visitFunctionDeclaration(node *sitter.Node, state walkState, _ uint, funcMa
 
 	bodyNode := node.ChildByFieldName("body")
 	if bodyNode == nil {
-		return nil, fmt.Errorf("invalid ast: missing body")
+		return nil, newAstErrorTS(node, state, "missing body")
 	}
 
 	body, err := walk.VisitNode(bodyNode, state, 0, funcMap, false)

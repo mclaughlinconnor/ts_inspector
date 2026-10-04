@@ -31,6 +31,7 @@ type elementEdit struct {
 
 type programContent struct {
 	editSession *editSession
+	filename    string
 	root        *Ast
 	text        []byte
 	tree        *sitter.Tree
@@ -189,6 +190,10 @@ func (p *programContent) editTree(edit *elementEdit) {
 		ni.getElement().edit(edit)
 		return VisitContinue
 	})
+}
+
+func (p *programContent) getFilename() string {
+	return p.filename
 }
 
 func (p *programContent) getText() string {

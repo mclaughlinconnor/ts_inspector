@@ -1,7 +1,6 @@
 package manipulation
 
 import (
-	"fmt"
 	"ts_inspector/ast/walk"
 
 	sitter "github.com/tree-sitter/go-tree-sitter"
@@ -74,12 +73,12 @@ func visitPublicFieldDefinition(node *sitter.Node, state walkState, _ uint, func
 	}
 
 	if commonFieldCommonNode == nil {
-		return nil, fmt.Errorf("invalid ast: missing common field")
+		return nil, newAstError(commonFieldCommonNode, "missing common field")
 	}
 
 	commonField, isCommonField := IsNode[*commonField](commonFieldCommonNode)
 	if !isCommonField {
-		return nil, fmt.Errorf("invalid ast: common field is't a common field")
+		return nil, newAstError(commonField, "common field isn't a common field: "+commonField.getKind())
 	}
 
 	publicFieldDefinition := publicFieldDefinition{commonField: *commonField}

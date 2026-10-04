@@ -1,7 +1,6 @@
 package manipulation
 
 import (
-	"fmt"
 	"ts_inspector/ast/walk"
 
 	sitter "github.com/tree-sitter/go-tree-sitter"
@@ -60,12 +59,12 @@ func visitMethodDefinition(node *sitter.Node, state walkState, _ uint, funcMap w
 	}
 
 	if methodSignatureCommonNode == nil {
-		return nil, fmt.Errorf("invalid ast: missing method signature")
+		return nil, newAstError(methodSignatureCommonNode, "missing method signature")
 	}
 
 	methodSignature, isMethodSignature := IsNode[*methodSignature](methodSignatureCommonNode)
 	if !isMethodSignature {
-		return nil, fmt.Errorf("invalid ast: method signature is't a method signature")
+		return nil, newAstError(methodSignature, "method signature isn't a method signature: "+methodSignature.getKind())
 	}
 
 	methodDefinition := methodDefinition{methodSignature: *methodSignature}
@@ -74,7 +73,7 @@ func visitMethodDefinition(node *sitter.Node, state walkState, _ uint, funcMap w
 
 	bodyNode := node.ChildByFieldName("body")
 	if bodyNode == nil {
-		return nil, fmt.Errorf("invalid ast: missing body")
+		return nil, newAstErrorTS(node, state, "missing body")
 	}
 
 	body, err := walk.VisitNode(bodyNode, state, 0, funcMap, false)

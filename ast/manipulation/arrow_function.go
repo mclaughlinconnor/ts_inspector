@@ -1,7 +1,6 @@
 package manipulation
 
 import (
-	"fmt"
 	"ts_inspector/ast/walk"
 
 	sitter "github.com/tree-sitter/go-tree-sitter"
@@ -95,37 +94,35 @@ func visitArrowFunction(node *sitter.Node, state walkState, _ uint, funcMap walk
 	parametersNode := node.ChildByFieldName("parameters")
 
 	if parametersNode == nil && parameterNode == nil {
-		return nil, fmt.Errorf("invalid ast: missing parameter and parameters")
+		return nil, newAstErrorTS(node, state, "missing parameter and parameters")
 	}
 
 	bodyNode := node.ChildByFieldName("body")
 	if bodyNode == nil {
-		return nil, fmt.Errorf("invalid ast: missing body")
+		return nil, newAstErrorTS(node, state, "missing body")
 	}
 
 	returnTypeNode := node.ChildByFieldName("return_type")
-
-	var err error
 
 	var parameter *Identifier
 	if parameterNode != nil {
 		parameterCommonNode, err := walk.VisitNode(parameterNode, state, 0, funcMap, false)
 		if err != nil {
-			return nil, err
+			return nil, newAstErrorETS(parameterNode, parameterCommonNode, err)
 		}
 
 		if identifier, isIdentifier := IsNode[*Identifier](parameterCommonNode); isIdentifier {
 			parameter = identifier
 		} else {
-			return nil, fmt.Errorf("invalid ast: parameter isn't an identifier")
+			return nil, newAstError(identifier, "parameter isn't an identifier: "+identifier.getKind())
 		}
 	}
 
 	var parametersCommonNode nodeInterface
 	if parametersNode != nil {
-		parametersCommonNode, err = walk.VisitNode(parametersNode, state, 0, funcMap, false)
+		parametersCommonNode, err := walk.VisitNode(parametersNode, state, 0, funcMap, false)
 		if err != nil {
-			return nil, err
+			return nil, newAstErrorETS(parametersNode, parametersCommonNode, err)
 		}
 	}
 
@@ -134,20 +131,20 @@ func visitArrowFunction(node *sitter.Node, state walkState, _ uint, funcMap walk
 		if formalParameters, isFormalParameters := IsNode[*FormalParameters](parametersCommonNode); isFormalParameters {
 			parameters = formalParameters
 		} else {
-			return nil, fmt.Errorf("invalid ast: parameters isn't a formal parameters")
+			return nil, newAstError(formalParameters, "parameters isn't a formal parameters: "+formalParameters.getKind())
 		}
 	}
 
 	body, err := walk.VisitNode(bodyNode, state, 0, funcMap, false)
 	if err != nil {
-		return nil, err
+		return nil, newAstErrorETS(bodyNode, state, err)
 	}
 
 	var returnType nodeInterface
 	if returnTypeNode != nil {
 		returnType, err = walk.VisitNode(returnTypeNode, state, 0, funcMap, false)
 		if err != nil {
-			return nil, err
+			return nil, newAstErrorETS(returnTypeNode, state, err)
 		}
 	}
 

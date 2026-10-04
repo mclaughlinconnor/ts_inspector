@@ -1,7 +1,6 @@
 package manipulation
 
 import (
-	"fmt"
 	"ts_inspector/ast/walk"
 
 	sitter "github.com/tree-sitter/go-tree-sitter"
@@ -65,7 +64,7 @@ func visitSubscriptExpression(node *sitter.Node, state walkState, _ uint, funcMa
 	}
 
 	if commonMemberSubscript == nil {
-		return nil, fmt.Errorf("invalid ast: missing common member subscript")
+		return nil, newAstError(commonMemberSubscript, "missing common member subscript")
 	}
 
 	subscriptExpression := subscriptExpression{commonMemberSubscript: *commonMemberSubscript}
@@ -74,7 +73,7 @@ func visitSubscriptExpression(node *sitter.Node, state walkState, _ uint, funcMa
 
 	indexNode := node.ChildByFieldName("index")
 	if indexNode == nil {
-		return nil, fmt.Errorf("invalid ast: missing index")
+		return nil, newAstErrorTS(node, state, "missing index")
 	}
 
 	index, err := walk.VisitNode(indexNode, state, 0, funcMap, false)

@@ -1,7 +1,6 @@
 package manipulation
 
 import (
-	"fmt"
 	"ts_inspector/ast/walk"
 
 	sitter "github.com/tree-sitter/go-tree-sitter"
@@ -69,12 +68,12 @@ func visitFunctionSignature(node *sitter.Node, state walkState, _ uint, funcMap 
 
 	nameNode := node.ChildByFieldName("name")
 	if nameNode == nil {
-		return nil, fmt.Errorf("invalid ast: missing name")
+		return nil, newAstErrorTS(node, state, "missing name")
 	}
 
 	parametersNode := node.ChildByFieldName("parameters")
 	if parametersNode == nil {
-		return nil, fmt.Errorf("invalid ast: missing parameters")
+		return nil, newAstErrorTS(node, state, "missing parameters")
 	}
 
 	returnTypeNode := node.ChildByFieldName("return_type")
@@ -88,7 +87,7 @@ func visitFunctionSignature(node *sitter.Node, state walkState, _ uint, funcMap 
 	if identifier, isIdentifier := IsNode[*Identifier](nameCommonNode); isIdentifier {
 		name = identifier
 	} else {
-		return nil, fmt.Errorf("invalid ast: name isn't an identifier")
+		return nil, newAstError(identifier, "name isn't an identifier: "+identifier.getKind())
 	}
 
 	parametersCommonNode, err := walk.VisitNode(parametersNode, state, 0, funcMap, false)
@@ -101,7 +100,7 @@ func visitFunctionSignature(node *sitter.Node, state walkState, _ uint, funcMap 
 		if formalParameters, isFormalParameters := IsNode[*FormalParameters](parametersCommonNode); isFormalParameters {
 			parameters = formalParameters
 		} else {
-			return nil, fmt.Errorf("invalid ast: parameters isn't a formal parameters")
+			return nil, newAstError(formalParameters, "parameters isn't a formal parameters: "+formalParameters.getKind())
 		}
 	}
 

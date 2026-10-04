@@ -1,7 +1,6 @@
 package manipulation
 
 import (
-	"fmt"
 	"ts_inspector/ast/walk"
 	"ts_inspector/interfaces"
 	"ts_inspector/utils"
@@ -211,7 +210,7 @@ func visitElseClause(node *sitter.Node, state walkState, _ uint, funcMap walk.Vi
 
 	statementNode := node.NamedChild(0)
 	if statementNode == nil {
-		return nil, fmt.Errorf("invalid ast: missing statement")
+		return nil, newAstErrorTS(node, state, "missing statement")
 	}
 
 	statement, err := walk.VisitNode(statementNode, state, 0, funcMap, false)
@@ -230,12 +229,12 @@ func visitIfStatement(node *sitter.Node, state walkState, _ uint, funcMap walk.V
 
 	conditionNode := node.ChildByFieldName("condition")
 	if conditionNode == nil {
-		return nil, fmt.Errorf("invalid ast: missing condition")
+		return nil, newAstErrorTS(node, state, "missing condition")
 	}
 
 	consequenceNode := node.ChildByFieldName("consequence")
 	if consequenceNode == nil {
-		return nil, fmt.Errorf("invalid ast: missing consequence")
+		return nil, newAstErrorTS(node, state, "missing consequence")
 	}
 
 	alternativeNode := node.ChildByFieldName("alternative")
@@ -259,7 +258,7 @@ func visitIfStatement(node *sitter.Node, state walkState, _ uint, funcMap walk.V
 
 		alternativeElseClause, ok := IsNode[*elseClause](alternativeWalkState)
 		if !ok {
-			return nil, fmt.Errorf("invalid ast: else branch is not an else node, %+v", alternativeWalkState)
+			return nil, newAstError(alternativeElseClause, "else branch is not an else node")
 		}
 
 		alternative = alternativeElseClause

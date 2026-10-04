@@ -1,7 +1,6 @@
 package manipulation
 
 import (
-	"fmt"
 	"ts_inspector/ast/walk"
 
 	sitter "github.com/tree-sitter/go-tree-sitter"
@@ -82,12 +81,12 @@ func visitMethodSignature(node *sitter.Node, state walkState, _ uint, funcMap wa
 	}
 
 	if commonFieldCommonNode == nil {
-		return nil, fmt.Errorf("invalid ast: missing method signature")
+		return nil, newAstError(commonFieldCommonNode, "missing method signature")
 	}
 
 	commonField, isCommonField := IsNode[*commonField](commonFieldCommonNode)
 	if !isCommonField {
-		return nil, fmt.Errorf("invalid ast: method signature is't a method signature")
+		return nil, newAstError(commonField, "method signature isn't a method signature: "+commonField.getKind())
 	}
 
 	methodSignature := methodSignature{commonField: *commonField}
@@ -116,7 +115,7 @@ func visitMethodSignature(node *sitter.Node, state walkState, _ uint, funcMap wa
 		if formalParameters, isFormalParameters := IsNode[*FormalParameters](parametersCommonNode); isFormalParameters {
 			parameters = formalParameters
 		} else {
-			return nil, fmt.Errorf("invalid ast: parameters isn't a formal parameters")
+			return nil, newAstError(formalParameters, "parameters isn't a formal parameters: "+formalParameters.getKind())
 		}
 	}
 
@@ -126,7 +125,7 @@ func visitMethodSignature(node *sitter.Node, state walkState, _ uint, funcMap wa
 		if typeParameters, isTypeParameters := IsNode[*typeParameters](typeParametersCommonNode); isTypeParameters {
 			ttypeParameters = typeParameters
 		} else {
-			return nil, fmt.Errorf("invalid ast: typeParameters isn't a property identifier")
+			return nil, newAstError(typeParameters, "typeParameters isn't a property identifier: "+typeParameters.getKind())
 		}
 	}
 

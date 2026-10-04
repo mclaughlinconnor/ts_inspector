@@ -1,7 +1,6 @@
 package manipulation
 
 import (
-	"fmt"
 	"ts_inspector/ast/walk"
 	"ts_inspector/utils"
 )
@@ -17,7 +16,7 @@ const (
 
 type walkState = nodeInterface
 
-func BuildAst(content string) (*Ast, error) {
+func BuildAst(filename string, content string) (*Ast, error) {
 	utils.ResetNextId(ID_NAMESPACE)
 	byteContent := []byte(content)
 
@@ -81,7 +80,7 @@ func BuildAst(content string) (*Ast, error) {
 	funcMap["while_statement"] = visitWhileStatement
 	funcMap[walk.DUMMY_VISITOR_KIND] = visitUnhandled
 
-	astRoot := Ast{cfg: newCfg(), kind: "root", element: elementFromNode(rootNode), programContent: &programContent{text: byteContent, tree: tree}}
+	astRoot := Ast{cfg: newCfg(), kind: "root", element: elementFromNode(rootNode), programContent: &programContent{filename: filename, text: byteContent, tree: tree}}
 	var ast walkState = &astRoot
 	astRoot.getProgramContent().root = ast.(*Ast)
 
@@ -93,7 +92,7 @@ func BuildAst(content string) (*Ast, error) {
 	var ok bool
 	astRoot.Program, ok = programNode.(*program)
 	if !ok {
-		return nil, fmt.Errorf("invalid ast: programNode is not a program")
+		return nil, newAstError(programNode, "programNode is not a program")
 	}
 
 	return &astRoot, nil

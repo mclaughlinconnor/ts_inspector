@@ -1,7 +1,6 @@
 package manipulation
 
 import (
-	"fmt"
 	"ts_inspector/ast/walk"
 
 	sitter "github.com/tree-sitter/go-tree-sitter"
@@ -19,7 +18,7 @@ func visitCommonMemberSubscript(node *sitter.Node, state walkState, _ uint, func
 
 	objectNode := node.ChildByFieldName("object")
 	if objectNode == nil {
-		return nil, fmt.Errorf("invalid ast: missing object")
+		return nil, newAstErrorTS(node, state, "missing object")
 	}
 
 	isOptionalChainNode := node.ChildByFieldName("operator")

@@ -1,7 +1,6 @@
 package manipulation
 
 import (
-	"fmt"
 	"ts_inspector/ast/walk"
 
 	sitter "github.com/tree-sitter/go-tree-sitter"
@@ -57,7 +56,7 @@ func visitExtendsClause(node *sitter.Node, state walkState, _ uint, funcMap walk
 
 	valueNode := node.ChildByFieldName("value")
 	if valueNode == nil {
-		return nil, fmt.Errorf("invalid ast: missing value")
+		return nil, newAstErrorTS(node, state, "missing value")
 	}
 
 	value, err := walk.VisitNode(valueNode, state, 0, funcMap, false)

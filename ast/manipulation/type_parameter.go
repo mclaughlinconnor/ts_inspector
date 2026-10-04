@@ -1,7 +1,6 @@
 package manipulation
 
 import (
-	"fmt"
 	"ts_inspector/ast/walk"
 
 	sitter "github.com/tree-sitter/go-tree-sitter"
@@ -79,7 +78,7 @@ func visitTypeParameter(node *sitter.Node, state walkState, _ uint, funcMap walk
 
 	nameNode := node.ChildByFieldName("name")
 	if nameNode == nil {
-		return nil, fmt.Errorf("invalid ast: missing name")
+		return nil, newAstErrorTS(node, state, "missing name")
 	}
 
 	constraintNode := node.ChildByFieldName("constraint")

@@ -1,7 +1,6 @@
 package manipulation
 
 import (
-	"fmt"
 	"ts_inspector/ast/walk"
 
 	sitter "github.com/tree-sitter/go-tree-sitter"
@@ -72,7 +71,7 @@ func visitTypeParameters(node *sitter.Node, state walkState, _ uint, funcMap wal
 		if typeParameter, isTypeParameter := IsNode[*typeParameter](childCommonNode); isTypeParameter {
 			parameters = append(parameters, typeParameter)
 		} else {
-			return nil, fmt.Errorf("invalid ast: type parameter isn't a type parameter")
+			return nil, newAstError(typeParameter, "type parameter isn't a type parameter: "+typeParameter.getKind())
 		}
 	}
 

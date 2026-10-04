@@ -1,6 +1,9 @@
 package interfaces
 
-import "ts_inspector/utils"
+import (
+	"errors"
+	"ts_inspector/utils"
+)
 
 type Analysis struct {
 	Code string
@@ -73,6 +76,10 @@ func AnalysisSeverityFromTsGoCategory(category *Category) int {
 }
 
 func ErrorToAnalyses(err error) Analysis {
+	if locationError, isLocationError := errors.AsType[utils.LocationError](err); isLocationError {
+		return NewAnalysis("analysisError", locationError.GetRange(), AnalysisSeverity.Error, locationError.GetMessage(), nil)
+	}
+
 	return NewAnalysis("analysisError", utils.ZeroRange(), AnalysisSeverity.Error, err.Error(), nil)
 }
 

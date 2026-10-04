@@ -40,7 +40,7 @@ func visitAwaitExpression(node *sitter.Node, state walkState, indexInParent uint
 		childNode := node.NamedChild(i)
 		child, err := walk.VisitNode(childNode, state, i, funcMap, false)
 		if err != nil {
-			return nil, err
+			return nil, newAstErrorETS(childNode, state, err)
 		}
 
 		// VisitNode returns its state if nothing is visited. Don't create cycles in the tree

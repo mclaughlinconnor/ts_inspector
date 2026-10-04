@@ -72,14 +72,14 @@ func lspHandleInitialise(writer *utils.Writer, logger *log.Logger, state *parser
 		}
 
 		if err := eg.Wait(); err != nil {
-			logger.Fatal(err)
+			logger.Print(err)
 		}
 	} else {
 		var err error
 		for _, filename := range filenames {
 			err = parser.IndexFileFromIndexer(state, filename, false)
 			if err != nil {
-				logger.Fatal(err)
+				logger.Println(err)
 			}
 		}
 	}

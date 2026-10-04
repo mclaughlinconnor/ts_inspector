@@ -1,7 +1,6 @@
 package manipulation
 
 import (
-	"fmt"
 	"ts_inspector/ast/walk"
 
 	sitter "github.com/tree-sitter/go-tree-sitter"
@@ -79,7 +78,7 @@ func visitVariableDeclarator(node *sitter.Node, state walkState, _ uint, funcMap
 
 	nameNode := node.ChildByFieldName("name")
 	if nameNode == nil {
-		return nil, fmt.Errorf("invalid ast: missing name")
+		return nil, newAstErrorTS(node, state, "missing name")
 	}
 
 	var value nodeInterface
@@ -101,7 +100,7 @@ func visitVariableDeclarator(node *sitter.Node, state walkState, _ uint, funcMap
 	if identifier, isIdentifier := IsNode[*Identifier](nameCommonNode); isIdentifier {
 		name = identifier
 	} else {
-		return nil, fmt.Errorf("invalid ast: identifier isn't an identifier")
+		return nil, newAstError(identifier, "identifier isn't an identifier: "+identifier.getKind())
 	}
 
 	variableDeclarator.Value = value

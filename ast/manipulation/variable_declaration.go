@@ -1,7 +1,6 @@
 package manipulation
 
 import (
-	"fmt"
 	"ts_inspector/ast/walk"
 
 	sitter "github.com/tree-sitter/go-tree-sitter"
@@ -63,7 +62,7 @@ func visitVariableDeclaration(node *sitter.Node, state walkState, _ uint, funcMa
 
 	declaratorNode := node.NamedChild(0)
 	if declaratorNode == nil {
-		return nil, fmt.Errorf("invalid ast: missing declarator")
+		return nil, newAstErrorTS(node, state, "missing declarator")
 	}
 
 	declaratorCommonNode, err := walk.VisitNode(declaratorNode, state, 0, funcMap, false)
@@ -75,7 +74,7 @@ func visitVariableDeclaration(node *sitter.Node, state walkState, _ uint, funcMa
 	if variableDeclarator, isVariableDeclarator := IsNode[*VariableDeclarator](declaratorCommonNode); isVariableDeclarator {
 		declarator = variableDeclarator
 	} else {
-		return nil, fmt.Errorf("invalid ast: declarator is not a variable_declarator")
+		return nil, newAstError(variableDeclarator, "declarator is not a variable_declarator")
 	}
 
 	variableDeclaration.Declarator = declarator

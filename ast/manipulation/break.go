@@ -1,7 +1,6 @@
 package manipulation
 
 import (
-	"fmt"
 	"ts_inspector/ast/walk"
 
 	sitter "github.com/tree-sitter/go-tree-sitter"
@@ -20,7 +19,7 @@ func (b *breakExpression) _buildCfgBlock() (bool, error) {
 	breakBlock := cfg.currentCfg().addBlock("Break block")
 
 	if afterBlock == nil {
-		return true, fmt.Errorf("break stack is unexpectedly empty")
+		return true, newAstError(b, "break stack is unexpectedly empty")
 	}
 
 	cfg.current = breakBlock
@@ -42,7 +41,7 @@ func (i *breakExpression) getAstNodeOfKindAtOffset(offset uint, kind string, fir
 		return i, true
 	}
 
-	if i.label.isUnderCursor(offset) {
+	if i.label != nil && i.label.isUnderCursor(offset) {
 		return i.label.getAstNodeOfKindAtOffset(offset, kind, first)
 	}
 
@@ -64,8 +63,10 @@ func (e *breakExpression) visit(exec func(nodeInterface) int) int {
 		}
 	}
 
-	if ret := e.label.visit(exec); ret == VisitAbort {
-		return ret
+	if e.label != nil {
+		if ret := e.label.visit(exec); ret == VisitAbort {
+			return ret
+		}
 	}
 
 	return VisitContinue
@@ -75,14 +76,14 @@ func visitBreak(node *sitter.Node, state walkState, indexInParent uint, funcMap 
 	breakExpression := breakExpression{commonNode: makeCommonNode("breakExpression", state, node)}
 	breakExpression.setImpl(&breakExpression)
 
+	var label nodeInterface
+	var err error
 	labelNode := node.ChildByFieldName("label")
-	if labelNode == nil {
-		return nil, fmt.Errorf("invalid ast: missing label")
-	}
-
-	label, err := walk.VisitNode(labelNode, state, 0, funcMap, false)
-	if err != nil {
-		return nil, err
+	if labelNode != nil {
+		label, err = walk.VisitNode(labelNode, state, 0, funcMap, false)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	breakExpression.label = label

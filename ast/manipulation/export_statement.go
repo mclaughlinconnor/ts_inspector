@@ -1,7 +1,6 @@
 package manipulation
 
 import (
-	"fmt"
 	"ts_inspector/ast/walk"
 
 	sitter "github.com/tree-sitter/go-tree-sitter"
@@ -87,7 +86,7 @@ func visitExportStatement(node *sitter.Node, state walkState, _ uint, funcMap wa
 		if decorator, isIdentifier := IsNode[*decorator](decoratorCommonNode); isIdentifier {
 			ddecorator = decorator
 		} else {
-			return nil, fmt.Errorf("invalid ast: decorator isn't a decorator")
+			return nil, newAstError(decorator, "decorator isn't a decorator: "+decorator.getKind())
 		}
 
 		decorators = append(decorators, ddecorator)
@@ -99,7 +98,7 @@ func visitExportStatement(node *sitter.Node, state walkState, _ uint, funcMap wa
 	if declarationNode != nil {
 		declaration, err = walk.VisitNode(declarationNode, state, 0, funcMap, false)
 		if declaration == nil {
-			return nil, err
+			return nil, newAstErrorETS(declarationNode, state, err)
 		}
 	}
 

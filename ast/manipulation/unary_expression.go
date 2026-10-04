@@ -1,7 +1,6 @@
 package manipulation
 
 import (
-	"fmt"
 	"ts_inspector/ast/walk"
 
 	sitter "github.com/tree-sitter/go-tree-sitter"
@@ -100,12 +99,12 @@ func visitUnaryExpression(node *sitter.Node, state walkState, _ uint, funcMap wa
 
 	operatorNode := node.ChildByFieldName("operator")
 	if operatorNode == nil {
-		return nil, fmt.Errorf("invalid ast: missing operator")
+		return nil, newAstErrorTS(node, state, "missing operator")
 	}
 
 	argumentNode := node.ChildByFieldName("argument")
 	if argumentNode == nil {
-		return nil, fmt.Errorf("invalid ast: missing argument")
+		return nil, newAstErrorTS(node, state, "missing argument")
 	}
 
 	operator := unaryExpressionOperator{commonNode: makeCommonNode("operator", state, operatorNode)}
