@@ -469,11 +469,6 @@ func IndexFileFromIndexer(state *State, filename string, postprocess bool) error
 		return err
 	}
 
-	file, found := state.GetFile(filename)
-	if found {
-		file.Postprocess(state)
-	}
-
 	return nil
 }
 
@@ -588,6 +583,7 @@ func getFileByPath(state *State, path string) (*File, error) {
 
 	file, found = state.GetFile(extensionedPath)
 	if found {
+		file.Postprocess(state)
 		return file, nil
 	}
 

@@ -63,26 +63,7 @@ func lspHandleInitialise(writer *utils.Writer, logger *log.Logger, state *parser
 
 	state.SetTsConfigFiles(tsconfigFiles)
 
-	if config.GetConfig().Indexing.ExperiementalParallelInitialIndexing {
-		eg := errgroup.Group{}
-		eg.SetLimit(runtime.NumCPU()) // debugging with thousands of macos threads is horribly slow
-
-		for _, filename := range filenames {
-			eg.Go(func() error { return parser.IndexFileFromIndexer(state, filename, false) })
-		}
-
-		if err := eg.Wait(); err != nil {
-			logger.Print(err)
-		}
-	} else {
-		var err error
-		for _, filename := range filenames {
-			err = parser.IndexFileFromIndexer(state, filename, false)
-			if err != nil {
-				logger.Println(err)
-			}
-		}
-	}
+	index(state, filenames)
 
 	lspReportProgress(writer, progressToken, "Postprocessing", -1)
 	state.Postprocess()
@@ -124,4 +105,35 @@ func initTsGo(state *parser.State, writer *utils.Writer, progressToken *interfac
 	print(us)
 
 	state.SetTsGo(t)
+}
+
+func index(state *parser.State, filenames []string) {
+	if config.GetConfig().Indexing.ExperiementalParallelInitialIndexing {
+		parallelIndex(state, filenames)
+	} else {
+		sequentialIndex(state, filenames)
+	}
+}
+
+func parallelIndex(state *parser.State, filenames []string) {
+	eg := errgroup.Group{}
+	eg.SetLimit(runtime.NumCPU()) // debugging with thousands of macos threads is horribly slow
+
+	for _, filename := range filenames {
+		eg.Go(func() error { return parser.IndexFileFromIndexer(state, filename, false) })
+	}
+
+	if err := eg.Wait(); err != nil {
+		state.Logger.Print(err)
+	}
+}
+
+func sequentialIndex(state *parser.State, filenames []string) {
+	var err error
+	for _, filename := range filenames {
+		err = parser.IndexFileFromIndexer(state, filename, false)
+		if err != nil {
+			state.Logger.Println(err)
+		}
+	}
 }

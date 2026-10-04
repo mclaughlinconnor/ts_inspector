@@ -102,6 +102,11 @@ func main() {
 		if err != nil {
 			state.Logger.Fatal(err)
 		}
+
+		file, found := state.GetFile(filename)
+		if found {
+			file.Postprocess(&state)
+		}
 	}
 
 	state.Postprocess()
