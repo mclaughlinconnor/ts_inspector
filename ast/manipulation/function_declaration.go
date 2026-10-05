@@ -64,7 +64,7 @@ func visitFunctionDeclaration(node *sitter.Node, state walkState, _ uint, funcMa
 
 	functionSignature, isFunctionSignature := IsNode[*FunctionSignature](functionSignatureCommonNode)
 	if !isFunctionSignature {
-		return nil, newAstError(functionSignature, "function signature isn't a function signature: "+functionSignature.getKind())
+		return nil, newAstError(functionSignatureCommonNode, "function signature isn't a function signature: "+functionSignatureCommonNode.getKind())
 	}
 
 	functionDeclaration := FunctionDeclaration{FunctionSignature: *functionSignature}

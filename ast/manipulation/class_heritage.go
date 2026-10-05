@@ -79,7 +79,7 @@ func visitClassHeritage(node *sitter.Node, state walkState, _ uint, funcMap walk
 			if extendsClause, isExtendsClause := IsNode[*extendsClause](extendsClauseCommonNode); isExtendsClause {
 				eextendsClause = extendsClause
 			} else {
-				return nil, newAstError(extendsClause, "extends clause isn't an extends clause: "+extendsClause.getKind())
+				return nil, newAstError(extendsClauseCommonNode, "extends clause isn't an extends clause: "+extendsClauseCommonNode.getKind())
 			}
 
 			continue
@@ -94,7 +94,7 @@ func visitClassHeritage(node *sitter.Node, state walkState, _ uint, funcMap walk
 			if implementsClause, isImplementsClause := IsNode[*implementsClause](implementsClauseCommonNode); isImplementsClause {
 				iimplementsClause = implementsClause
 			} else {
-				return nil, newAstError(implementsClause, "implements clause isn't an implements clause: "+implementsClause.getKind())
+				return nil, newAstError(implementsClauseCommonNode, "implements clause isn't an implements clause: "+implementsClauseCommonNode.getKind())
 			}
 
 			continue

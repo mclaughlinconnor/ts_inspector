@@ -99,7 +99,7 @@ func visitInterfaceDeclaration(node *sitter.Node, state walkState, _ uint, funcM
 	if identifier, isIdentifier := IsNode[*Identifier](nameCommonNode); isIdentifier {
 		name = identifier
 	} else {
-		return nil, newAstError(identifier, "name isn't a property identifier: "+identifier.getKind())
+		return nil, newAstError(nameCommonNode, "name isn't a property identifier: "+nameCommonNode.getKind())
 	}
 
 	typeParametersNode := node.ChildByFieldName("type_parameters")
@@ -113,7 +113,7 @@ func visitInterfaceDeclaration(node *sitter.Node, state walkState, _ uint, funcM
 		if typeParameters, isTypeParameters := IsNode[*typeParameters](typeParametersCommonNode); isTypeParameters {
 			ttypeParameters = typeParameters
 		} else {
-			return nil, newAstError(typeParameters, "type parameters isn't a type parameters: "+typeParameters.getKind())
+			return nil, newAstError(typeParametersCommonNode, "type parameters isn't a type parameters: "+typeParametersCommonNode.getKind())
 		}
 	}
 

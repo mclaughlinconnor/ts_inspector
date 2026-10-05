@@ -71,7 +71,7 @@ func visitTypeParameters(node *sitter.Node, state walkState, _ uint, funcMap wal
 		if typeParameter, isTypeParameter := IsNode[*typeParameter](childCommonNode); isTypeParameter {
 			parameters = append(parameters, typeParameter)
 		} else {
-			return nil, newAstError(typeParameter, "type parameter isn't a type parameter: "+typeParameter.getKind())
+			return nil, newAstError(childCommonNode, "type parameter isn't a type parameter: "+childCommonNode.getKind())
 		}
 	}
 

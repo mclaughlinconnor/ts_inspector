@@ -129,7 +129,7 @@ func visitParameter(node *sitter.Node, state walkState, _ uint, funcMap walk.Vis
 		if decorator, isIdentifier := IsNode[*decorator](decoratorCommonNode); isIdentifier {
 			ddecorator = decorator
 		} else {
-			return nil, newAstError(decorator, "decorator isn't a decorator: "+decorator.getKind())
+			return nil, newAstError(decoratorCommonNode, "decorator isn't a decorator: "+decoratorCommonNode.getKind())
 		}
 
 		decorators = append(decorators, ddecorator)
@@ -141,7 +141,7 @@ func visitParameter(node *sitter.Node, state walkState, _ uint, funcMap walk.Vis
 		if accessibilityModifier, isAccessibilityModifier := IsNode[*accessibilityModifier](accessibilityModifierCommonNode); isAccessibilityModifier {
 			accessibility = accessibilityModifier
 		} else {
-			return nil, newAstError(accessibilityModifier, "accessibility modifier isn't an accessibilityModifier: "+accessibilityModifier.getKind())
+			return nil, newAstError(accessibilityModifierCommonNode, "accessibility modifier isn't an accessibilityModifier: "+accessibilityModifierCommonNode.getKind())
 		}
 	}
 

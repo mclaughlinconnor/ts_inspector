@@ -86,7 +86,7 @@ func visitMethodSignature(node *sitter.Node, state walkState, _ uint, funcMap wa
 
 	commonField, isCommonField := IsNode[*commonField](commonFieldCommonNode)
 	if !isCommonField {
-		return nil, newAstError(commonField, "method signature isn't a method signature: "+commonField.getKind())
+		return nil, newAstError(commonFieldCommonNode, "method signature isn't a method signature: "+commonFieldCommonNode.getKind())
 	}
 
 	methodSignature := methodSignature{commonField: *commonField}
@@ -115,7 +115,7 @@ func visitMethodSignature(node *sitter.Node, state walkState, _ uint, funcMap wa
 		if formalParameters, isFormalParameters := IsNode[*FormalParameters](parametersCommonNode); isFormalParameters {
 			parameters = formalParameters
 		} else {
-			return nil, newAstError(formalParameters, "parameters isn't a formal parameters: "+formalParameters.getKind())
+			return nil, newAstError(parametersCommonNode, "parameters isn't a formal parameters: "+parametersCommonNode.getKind())
 		}
 	}
 
@@ -125,7 +125,7 @@ func visitMethodSignature(node *sitter.Node, state walkState, _ uint, funcMap wa
 		if typeParameters, isTypeParameters := IsNode[*typeParameters](typeParametersCommonNode); isTypeParameters {
 			ttypeParameters = typeParameters
 		} else {
-			return nil, newAstError(typeParameters, "typeParameters isn't a property identifier: "+typeParameters.getKind())
+			return nil, newAstError(typeParametersCommonNode, "typeParameters isn't a property identifier: "+typeParametersCommonNode.getKind())
 		}
 	}
 

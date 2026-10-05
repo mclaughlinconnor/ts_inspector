@@ -64,7 +64,7 @@ func visitMethodDefinition(node *sitter.Node, state walkState, _ uint, funcMap w
 
 	methodSignature, isMethodSignature := IsNode[*methodSignature](methodSignatureCommonNode)
 	if !isMethodSignature {
-		return nil, newAstError(methodSignature, "method signature isn't a method signature: "+methodSignature.getKind())
+		return nil, newAstError(methodSignatureCommonNode, "method signature isn't a method signature: "+methodSignatureCommonNode.getKind())
 	}
 
 	methodDefinition := methodDefinition{methodSignature: *methodSignature}

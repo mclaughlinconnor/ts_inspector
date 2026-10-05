@@ -114,7 +114,7 @@ func visitClassDeclaration(node *sitter.Node, state walkState, _ uint, funcMap w
 		if decorator, isIdentifier := IsNode[*decorator](decoratorCommonNode); isIdentifier {
 			ddecorator = decorator
 		} else {
-			return nil, newAstError(decorator, "decorator isn't a decorator: "+decorator.getKind())
+			return nil, newAstError(decoratorCommonNode, "decorator isn't a decorator: "+decoratorCommonNode.getKind())
 		}
 
 		decorators = append(decorators, ddecorator)
@@ -134,7 +134,7 @@ func visitClassDeclaration(node *sitter.Node, state walkState, _ uint, funcMap w
 	if identifier, isIdentifier := IsNode[*Identifier](nameCommonNode); isIdentifier {
 		name = identifier
 	} else {
-		return nil, newAstError(identifier, "name isn't a property identifier: "+identifier.getKind())
+		return nil, newAstError(nameCommonNode, "name isn't a property identifier: "+nameCommonNode.getKind())
 	}
 
 	typeParametersNode := node.ChildByFieldName("type_parameters")
@@ -148,7 +148,7 @@ func visitClassDeclaration(node *sitter.Node, state walkState, _ uint, funcMap w
 		if typeParameters, isTypeParameters := IsNode[*typeParameters](typeParametersCommonNode); isTypeParameters {
 			ttypeParameters = typeParameters
 		} else {
-			return nil, newAstError(typeParameters, "type parameters isn't a type parameters: "+typeParameters.getKind())
+			return nil, newAstError(typeParametersCommonNode, "type parameters isn't a type parameters: "+typeParametersCommonNode.getKind())
 		}
 	}
 
@@ -166,7 +166,7 @@ func visitClassDeclaration(node *sitter.Node, state walkState, _ uint, funcMap w
 		if classHeritage, isClassHeritage := IsNode[*classHeritage](classHeritageCommonNode); isClassHeritage {
 			cclassHeritage = classHeritage
 		} else {
-			return nil, newAstError(classHeritage, "class heritage isn't a class heritage: "+classHeritage.getKind())
+			return nil, newAstError(classHeritageCommonNode, "class heritage isn't a class heritage: "+classHeritageCommonNode.getKind())
 		}
 	}
 

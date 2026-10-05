@@ -91,7 +91,7 @@ func visitCommonField(node *sitter.Node, state walkState, _ uint, funcMap walk.V
 		if accessibilityModifier, isAccessibilityModifier := IsNode[*accessibilityModifier](accessibilityCommonNode); isAccessibilityModifier {
 			accessibility = accessibilityModifier
 		} else {
-			return nil, newAstError(accessibilityModifier, "accessibility isn't an accessibility: "+accessibilityModifier.getKind())
+			return nil, newAstError(accessibilityCommonNode, "accessibility isn't an accessibility: "+accessibilityCommonNode.getKind())
 		}
 	}
 

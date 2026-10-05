@@ -86,7 +86,7 @@ func visitExportStatement(node *sitter.Node, state walkState, _ uint, funcMap wa
 		if decorator, isIdentifier := IsNode[*decorator](decoratorCommonNode); isIdentifier {
 			ddecorator = decorator
 		} else {
-			return nil, newAstError(decorator, "decorator isn't a decorator: "+decorator.getKind())
+			return nil, newAstError(decoratorCommonNode, "decorator isn't a decorator: "+decoratorCommonNode.getKind())
 		}
 
 		decorators = append(decorators, ddecorator)

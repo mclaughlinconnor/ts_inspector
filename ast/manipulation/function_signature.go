@@ -87,7 +87,7 @@ func visitFunctionSignature(node *sitter.Node, state walkState, _ uint, funcMap 
 	if identifier, isIdentifier := IsNode[*Identifier](nameCommonNode); isIdentifier {
 		name = identifier
 	} else {
-		return nil, newAstError(identifier, "name isn't an identifier: "+identifier.getKind())
+		return nil, newAstError(nameCommonNode, "name isn't an identifier: "+nameCommonNode.getKind())
 	}
 
 	parametersCommonNode, err := walk.VisitNode(parametersNode, state, 0, funcMap, false)
@@ -100,7 +100,7 @@ func visitFunctionSignature(node *sitter.Node, state walkState, _ uint, funcMap 
 		if formalParameters, isFormalParameters := IsNode[*FormalParameters](parametersCommonNode); isFormalParameters {
 			parameters = formalParameters
 		} else {
-			return nil, newAstError(formalParameters, "parameters isn't a formal parameters: "+formalParameters.getKind())
+			return nil, newAstError(parametersCommonNode, "parameters isn't a formal parameters: "+parametersCommonNode.getKind())
 		}
 	}
 

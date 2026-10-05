@@ -59,8 +59,10 @@ func (a *VariableDeclarator) visit(exec func(nodeInterface) int) int {
 		}
 	}
 
-	if ret := a.Value.visit(exec); ret == VisitAbort {
-		return ret
+	if a.Value != nil {
+		if ret := a.Value.visit(exec); ret == VisitAbort {
+			return ret
+		}
 	}
 
 	if ret := a.Name.visit(exec); ret == VisitAbort {
@@ -100,7 +102,7 @@ func visitVariableDeclarator(node *sitter.Node, state walkState, _ uint, funcMap
 	if identifier, isIdentifier := IsNode[*Identifier](nameCommonNode); isIdentifier {
 		name = identifier
 	} else {
-		return nil, newAstError(identifier, "identifier isn't an identifier: "+identifier.getKind())
+		return nil, newAstError(nameCommonNode, "identifier isn't an identifier: "+nameCommonNode.getKind())
 	}
 
 	variableDeclarator.Value = value

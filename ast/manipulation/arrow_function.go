@@ -114,7 +114,7 @@ func visitArrowFunction(node *sitter.Node, state walkState, _ uint, funcMap walk
 		if identifier, isIdentifier := IsNode[*Identifier](parameterCommonNode); isIdentifier {
 			parameter = identifier
 		} else {
-			return nil, newAstError(identifier, "parameter isn't an identifier: "+identifier.getKind())
+			return nil, newAstError(parameterCommonNode, "parameter isn't an identifier: "+parameterCommonNode.getKind())
 		}
 	}
 
@@ -131,7 +131,7 @@ func visitArrowFunction(node *sitter.Node, state walkState, _ uint, funcMap walk
 		if formalParameters, isFormalParameters := IsNode[*FormalParameters](parametersCommonNode); isFormalParameters {
 			parameters = formalParameters
 		} else {
-			return nil, newAstError(formalParameters, "parameters isn't a formal parameters: "+formalParameters.getKind())
+			return nil, newAstError(parametersCommonNode, "parameters isn't a formal parameters: "+parametersCommonNode.getKind())
 		}
 	}
 

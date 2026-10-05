@@ -15,8 +15,11 @@ type astError struct {
 }
 
 func (a astError) Error() string {
-	filename := a.state.getProgramFilename()
+	if a.state == nil {
+		return fmt.Sprintf("No state: Invalid ast: %v", a.message)
+	}
 
+	filename := a.state.getProgramFilename()
 	position := utils.GetPositionForOffset(a.state.getProgramText(), a.startOffset)
 	line := position.Line
 	column := position.Character
